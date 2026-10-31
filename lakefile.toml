@@ -1,0 +1,11 @@
+name = "rpg"
+defaultTargets = ["Rpg", "rpg"]
+
+# Build every module under Rpg/, so a new Adventure file is checked even if Main does not import it.
+[[lean_lib]]
+name = "Rpg"
+globs = ["Rpg.+"]
+
+[[lean_exe]]
+name = "rpg"
+root = "Main"
