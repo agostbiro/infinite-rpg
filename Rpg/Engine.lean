@@ -54,7 +54,8 @@ def RollResult.name : RollResult → String
 
 /-- Make a Success Roll at an effective skill. Returns the result and a line of text.
 `none` means the being cannot use the skill at all. Then, and also when the effective skill
-is below 3, there is no roll and the result is a failure (p. 2, and deviation 7). -/
+is below 3, there is no roll and the result is a failure (p. 2, and deviation 7).
+A Legal Adventure never asks for such a roll (see `CanTryRoll` in the spec). -/
 def makeRoll (label : String) (skill? : Option Int) : Roll (RollResult × String) := do
   let some skill := skill?
     | return (.failure, s!"{label}: you cannot use this skill untrained. Failure.")
@@ -63,19 +64,6 @@ def makeRoll (label : String) (skill? : Option Int) : Roll (RollResult × String
   let r ← roll3d6
   let res := successRoll skill r
   return (res, s!"{label} (needs {skill} or less): rolled {r}, {res.name}.")
-
-/-- The effective level for a Success Roll against a target. -/
-def Being.rollLevel (b : Being) : RollTarget → Option Int
-  | .skill s => b.skillLevel s
-  | .attribute a => some (b.attr a)
-
-/-- The name of a roll target, for display. -/
-def RollTarget.name : RollTarget → String
-  | .skill s => s.name
-  | .attribute .st => "ST"
-  | .attribute .dx => "DX"
-  | .attribute .iq => "IQ"
-  | .attribute .ht => "HT"
 
 /-- A being in a Fight, with its current HP. -/
 structure Fighter where

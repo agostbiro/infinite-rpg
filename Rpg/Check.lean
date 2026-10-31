@@ -94,6 +94,13 @@ def checkModifier : Outcome → List String
   | .roll _ m _ _ => need (-10 ≤ m ∧ m ≤ 10) s!"roll modifier {m} is not from -10 to +10"
   | _ => []
 
+/-- Errors in a Success Roll that the Character `c` cannot try. -/
+def checkCanTry (c : Being) : Outcome → List String
+  | .roll t m _ _ =>
+    need (CanTryRoll c t m)
+      s!"{c.name} cannot try this {t.name} roll at {m}: the effective skill must be 3 or more"
+  | _ => []
+
 /-- Errors in the list of Creatures in a Fight. -/
 def checkFoesNonempty : Outcome → List String
   | .fight fs _ => need (fs ≠ []) "a Fight has no Creatures"
@@ -109,6 +116,7 @@ def checkFoe (c f : Being) : List String :=
 def checkOutcome (c : Being) (a : Adventure) (o : Outcome) : List String :=
   o.targets.flatMap (fun t => need (SceneExists a t) s!"Scene {t} does not exist") ++
   checkModifier o ++
+  checkCanTry c o ++
   checkFoesNonempty o ++
   o.foes.flatMap (checkFoe c)
 
@@ -116,13 +124,15 @@ def checkOutcome (c : Being) (a : Adventure) (o : Outcome) : List String :=
 theorem checkOutcome_sound {c : Being} {a : Adventure} {o : Outcome}
     (h : checkOutcome c a o = []) : LegalOutcome c a o := by
   simp only [checkOutcome, List.append_eq_nil_iff, List.flatMap_eq_nil_iff] at h
-  obtain ⟨⟨⟨hTargets, hMod⟩, hFoes⟩, hEach⟩ := h
-  refine ⟨?_, ?_, ?_, ?_⟩
+  obtain ⟨⟨⟨⟨hTargets, hMod⟩, hTry⟩, hFoes⟩, hEach⟩ := h
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
   -- Every target Scene exists.
   · intro t ht
     exact need_sound (hTargets t ht)
   -- The roll modifier is in range.
   · cases o <;> first | trivial | exact need_sound hMod
+  -- The Character can try a Success Roll.
+  · cases o <;> first | trivial | exact need_sound hTry
   -- A Fight has at least one Creature.
   · cases o <;> first | trivial | exact need_sound hFoes
   -- Each Creature is legal and its Fight can end.

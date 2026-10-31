@@ -107,8 +107,18 @@ example : ¬ LegalAdventure mara cheatHiddenEnding := by
   simp at h1
 example : check mara cheatHiddenEnding ≠ [] := by decide
 
+/-- Cheat 7: a roll the Character can never make. Mara's Diplomacy is 11, so at -10 the
+effective skill is 1. The Engine never rolls below 3, so it always takes the failure branch
+back to the start, and the Player loops forever. -/
+def cheatUnrollable : Adventure :=
+  oneChoice "Roll that can't be made" (.roll (.skill .diplomacy) (-10) 1 0)
+
+example : ¬ LegalAdventure mara cheatUnrollable := fun h => absurd h.2.2.2.1 (by decide)
+example : check mara cheatUnrollable ≠ [] := by decide
+
 /-- All the cheating Adventures, for the demo. -/
 def cheats : List Adventure :=
-  [cheatGiant, cheatBrokenLink, cheatEasyLock, cheatEndless, cheatNoEnding, cheatHiddenEnding]
+  [cheatGiant, cheatBrokenLink, cheatEasyLock, cheatEndless, cheatNoEnding, cheatHiddenEnding,
+    cheatUnrollable]
 
 end Rpg

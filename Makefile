@@ -13,9 +13,17 @@ run:
 build:
 	lake build
 
+# Words that can make compiled code differ from what the proofs are about.
+# The DM may not use them in Adventure or Character files.
+# `@[` and `attribute [` catch every attribute, such as `@[implemented_by]`.
+FORBIDDEN = \b(implemented_by|extern|unsafe|initialize|builtin_initialize|macro|macro_rules|syntax|elab|set_option)\b|@\[|attribute *\[
+
 # Build, then replay every proof through the Lean kernel. This fails on `sorry` and on new axioms.
+# It also fails if a DM file uses a forbidden word.
 check: build
 	lake check
+	@if grep -rnE '$(FORBIDDEN)' Rpg/Adventures Rpg/Characters.lean; then \
+	  echo "error: a forbidden word is used above"; exit 1; fi
 
 # Show the checker rejecting the cheating Adventures.
 cheats:

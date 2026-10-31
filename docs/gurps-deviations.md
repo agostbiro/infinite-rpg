@@ -72,6 +72,8 @@ These entries describe the full v1 design. The current v0 version leaves out mor
 
 **Reason:** A Test always has a result, so play can always go on.
 
+**In v0:** The spec requires that the Character can try every roll in an Adventure (`CanTryRoll`). So in a Legal Adventure this case never happens for the Character. It can still happen for a Creature's attack.
+
 **Follow-up task:** None needed. If the rule must match GURPS exactly, show the Choice as unavailable instead, and make the dead-end check use each Character's effective skill.
 
 ## 8. A Quick Contest tie counts as a failure

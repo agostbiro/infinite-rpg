@@ -122,6 +122,14 @@ def main (args : List String) : IO Unit := do
   IO.println "  2. Watch the checker catch a cheating DM"
   match ← askChoice 2 with
   | some 0 =>
+    -- Check the Adventure again, on the value the program will play.
+    -- The theorem covers the value Lean proved things about. A trick such as `implemented_by`
+    -- can make the compiled value different, and this check catches that.
+    let errs := checkCharacter mara ++ check mara lighthouse
+    if !errs.isEmpty then
+      say "\nThe Adventure failed the check, so the game will not start:"
+      for e in errs do say s!"  ERROR: {e}"
+      return
     say s!"\nMara: ST {mara.st}, DX {mara.dx}, IQ {mara.iq}, HT {mara.ht}, HP {mara.maxHP}, Dodge {mara.dodge}. Broadsword-14, leather armor (DR 2)."
     play g mara lighthouse mara.maxHP lighthouse.start
   | some _ => showCheats

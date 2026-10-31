@@ -10,7 +10,9 @@ A Legal Adventure obeys these rules:
 
 1. Every Creature is a legal build: attributes from 1 to 20, at most 150 points,
    each skill bought at a level that can be bought, each skill listed once, and ST high enough for its weapon.
-2. Every Success Roll uses a modifier from -10 to +10.
+2. Every Success Roll uses a modifier from -10 to +10, and the Character can try it:
+   the Character can use the skill, and the effective skill is 3 or more.
+   Then both results can happen, so both Scenes that the roll leads to can be reached in play.
 3. Every Scene that a Choice leads to exists, and so does the start Scene.
 4. No two Scenes share a number.
 5. At least one Scene is an Ending (it has no Choices).
@@ -20,12 +22,14 @@ A Legal Adventure obeys these rules:
 7. Every Scene can be reached from the start Scene by following Choices.
 
 These rules do not say that the Adventure is fair or can be won.
-For example, a Fight that the Character cannot win is legal. Fairness is planned for a later version.
+For example, a Fight that the Character cannot win is legal,
+and so is a Scene from which no Ending can be reached. Fairness is planned for a later version.
 
 The Character must be a legal build too: attributes from 7 to 14, exactly 100 points, no natural DR.
 
 Rules 1, 2, 5, 7, and the point caps are design rules of this game, not GURPS rules.
-They stop the DM from making absurd Creatures and rolls.
+They put limits on Creatures and rolls. They do not stop a strong Creature:
+low attributes give points back, so a 150-point Creature can still be one the Character cannot hurt.
 -/
 
 namespace Rpg
@@ -67,6 +71,17 @@ def FightCanEnd (c foe : Being) : Prop :=
 instance (c foe : Being) : Decidable (FightCanEnd c foe) := by
   unfold FightCanEnd; infer_instance
 
+/-- The Character `c` can try a Success Roll against `t` at modifier `m`:
+`c` can use the skill, and the effective skill is 3 or more (p. 2).
+Then a roll of 3 always succeeds and a roll of 18 always fails, so both results can happen. -/
+def CanTryRoll (c : Being) (t : RollTarget) (m : Int) : Prop :=
+  match c.rollLevel t with
+  | some level => 3 ≤ level + m
+  | none => False
+
+instance (c : Being) (t : RollTarget) (m : Int) : Decidable (CanTryRoll c t m) := by
+  unfold CanTryRoll; split <;> infer_instance
+
 /-- A Scene with this number exists in the Adventure. -/
 def SceneExists (a : Adventure) (id : SceneId) : Prop :=
   id ∈ a.scenes.map (·.id)
@@ -92,6 +107,10 @@ def LegalOutcome (c : Being) (a : Adventure) (o : Outcome) : Prop :=
   -- A Success Roll has a modifier from -10 to +10.
   (match o with
     | .roll _ m _ _ => -10 ≤ m ∧ m ≤ 10
+    | _ => True) ∧
+  -- The Character can try a Success Roll.
+  (match o with
+    | .roll t m _ _ => CanTryRoll c t m
     | _ => True) ∧
   -- A Fight has at least one Creature.
   (match o with

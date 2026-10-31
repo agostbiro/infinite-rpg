@@ -22,6 +22,20 @@ inductive RollTarget where
   | attribute (a : Attribute)
   deriving Repr
 
+/-- The level of a being for a Success Roll against a target, before modifiers.
+`none` means the being cannot use the skill, not even at its default. -/
+def Being.rollLevel (b : Being) : RollTarget → Option Int
+  | .skill s => b.skillLevel s
+  | .attribute a => some (b.attr a)
+
+/-- The name of a roll target, for display. -/
+def RollTarget.name : RollTarget → String
+  | .skill s => s.name
+  | .attribute .st => "ST"
+  | .attribute .dx => "DX"
+  | .attribute .iq => "IQ"
+  | .attribute .ht => "HT"
+
 /-- What happens when the Player picks a Choice. -/
 inductive Outcome where
   /-- Go to a Scene. -/

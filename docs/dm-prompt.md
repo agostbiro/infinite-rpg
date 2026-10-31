@@ -43,4 +43,6 @@ Add an `import` for your file in `Main.lean` only if you are asked to.
 - Do not edit `Rpg/Spec.lean`, `Rpg/Check.lean`, `Rpg/Rules.lean`, or `Rpg/Engine.lean`.
   If the rules stop you from writing the story you want, change the story.
 - Do not use `sorry`, `axiom`, `native_decide`, or `set_option`.
+- Do not use attributes (`@[...]` or `attribute [...]`), `unsafe`, `extern`, `initialize`, macros, or new syntax. `make check` fails if you do.
+- Every roll must be one the Character can try: the Character must have the skill or a default for it, and the effective skill (level plus modifier) must be 3 or more.
 - Make the Adventure fun. Give the Player real choices, with more than one way to an Ending.
