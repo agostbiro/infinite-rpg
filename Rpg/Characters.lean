@@ -11,10 +11,10 @@ namespace Rpg
 /-- Mara, a sellsword. 100 points: attributes 70, skills 30. -/
 def mara : Being where
   name := "Mara"
-  st := 11
-  dx := 12
-  iq := 10
-  ht := 12
+  st := 11 /- Strength -/
+  dx := 12 /- Dexterity -/
+  iq := 10 /- IQ -/
+  ht := 12 /- Health -/
   skills := [(.broadsword, 14), (.stealth, 13), (.lockpicking, 12), (.diplomacy, 11),
              (.brawling, 12), (.knife, 12)]
   weapon := .broadsword
