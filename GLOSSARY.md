@@ -77,3 +77,7 @@ _Avoid_: opposed roll
 **Fight**:
 Melee combat between the Character and one or more Creatures, run turn by turn by the Engine.
 _Avoid_: combat encounter, battle
+
+**Maneuver**:
+What a being chooses to do on its turn in a Fight: Attack, All-Out Attack, or All-Out Defense. The maneuver also sets the being's defense until its next turn.
+_Avoid_: action, combat option

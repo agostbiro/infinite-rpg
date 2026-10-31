@@ -43,7 +43,30 @@ def status (s : FightState) : String :=
   let show1 (f : Fighter) := s!"{f.being.name} {max f.hp 0}/{f.being.maxHP}"
   " | ".intercalate (show1 s.hero :: s.foes.map show1)
 
-/-- Run a Fight. Returns the Character's HP after a win, or `none` if the Character dies or input ends. -/
+/-- The maneuvers the Player can choose in a Fight, in menu order. -/
+def maneuverMenu : List Maneuver := [.attack, .allOutAttack, .allOutDefense]
+
+/-- Ask the Player for a maneuver. Returns `none` at end of input. -/
+def askManeuver : IO (Option Maneuver) := do
+  IO.println "Your turn. Choose a maneuver:"
+  for (m, i) in maneuverMenu.zipIdx do
+    IO.println s!"  {i + 1}. {m.describe}"
+  let some k ← askChoice maneuverMenu.length | return none
+  return some (maneuverMenu.getD k .attack)
+
+/-- Ask the Player which living Creature to attack. Returns its number, or `none` at end of input.
+If only one Creature is alive, there is no question. -/
+def askTarget (s : FightState) : IO (Option Nat) := do
+  let living := s.foes.zipIdx.filter (·.1.alive)
+  if living.length = 1 then return living[0]?.map (·.2)
+  IO.println "Attack whom?"
+  for ((f, _), k) in living.zipIdx do
+    IO.println s!"  {k + 1}. {f.being.name}"
+  let some k ← askChoice living.length | return none
+  return living[k]?.map (·.2)
+
+/-- Run a Fight. Returns the Character's HP after a win, or `none` if the Character dies or input ends.
+The Player chooses a maneuver on the Character's turn, after the Creatures that act first. -/
 partial def runFight (g : IO.Ref Rng) (hero : Fighter) (foes : List Being) : IO (Option Int) := do
   let order := turnOrder hero.being foes
   let rec loop (s : FightState) (round : Nat) : IO (Option Int) := do
@@ -54,18 +77,19 @@ partial def runFight (g : IO.Ref Rng) (hero : Fighter) (foes : List Being) : IO 
       say "You win the Fight."
       return some s.hero.hp
     IO.println s!"\n-- Round {round}: {status s}"
-    let living := (s.foes.zipIdx.filter fun (f, _) => f.alive).map (·.2)
-    let target ← if living.length = 1 then pure (living.getD 0 0) else do
-      IO.println "Attack whom?"
-      for (i, k) in living.zipIdx do
-        IO.println s!"  {k + 1}. {(s.foes.getD i hero).being.name}"
-      match ← askChoice living.length with
-      | some k => pure (living.getD k 0)
-      | none => return none
-    let (s', log) ← withDice g (fightRound order s target)
-    for l in log do IO.println l
-    loop s' (round + 1)
-  loop ⟨hero, foes.map fun b => ⟨b, b.maxHP⟩⟩ 1
+    let mut st := s
+    for who in order do
+      if st.over then break
+      let (st', log) ← match who with
+        | some i => withDice g (foeTurn st i)
+        | none =>
+          let some m ← askManeuver | return none
+          let some t ← if m.attacks then askTarget st else pure (some 0) | return none
+          withDice g (heroTurn st m t)
+      for l in log do IO.println l
+      st := st'
+    loop st (round + 1)
+  loop { hero := hero, foes := foes.map fun b => { being := b, hp := b.maxHP } } 1
 
 /-- Play an Adventure from a Scene, with the Character at the given HP. -/
 partial def play (g : IO.Ref Rng) (hero : Being) (a : Adventure) (hp : Int) (id : SceneId) : IO Unit := do
@@ -89,7 +113,7 @@ partial def play (g : IO.Ref Rng) (hero : Being) (a : Adventure) (hp : Int) (id 
     IO.println line
     play g hero a hp (if res.succeeded then onS else onF)
   | .fight foes onWin =>
-    match ← runFight g ⟨hero, hp⟩ foes with
+    match ← runFight g { being := hero, hp := hp } foes with
     | some hp' => play g hero a hp' onWin
     | none => return
 

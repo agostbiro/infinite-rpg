@@ -2,7 +2,7 @@
 
 This file lists each place where the game rules differ from GURPS Lite (Fourth Edition, 2020), with the reason and a possible follow-up task.
 
-These entries describe the full v1 design. The current v0 version leaves out more rules, such as shock, All-Out maneuvers, and Quick Contests. See the scope section of `README.md`.
+These entries describe the full v1 design. The current v0 version leaves out more rules, such as shock, Parry, and Quick Contests. See the scope section of `README.md`.
 
 ## 1. A being at 0 HP or less is dead
 

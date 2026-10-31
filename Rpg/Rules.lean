@@ -321,4 +321,44 @@ example : successRoll 10 11 = .failure := by decide
 example : successRoll 20 17 = .failure := by decide
 example : successRoll 5 15 = .criticalFailure := by decide
 
+/-! ## Maneuvers -/
+
+/-- The maneuvers that a being can choose on its turn in a Fight (p. 25-26).
+A maneuver stays in effect for defense until the being chooses again on its next turn. -/
+inductive Maneuver where
+  /-- Attack, and defend as usual. -/
+  | attack
+  /-- All-Out Attack (Determined): attack at +4 to hit, with no defense until the next turn. -/
+  | allOutAttack
+  /-- All-Out Defense (Increased Defense): do not attack, and get +2 to Dodge until the next turn. -/
+  | allOutDefense
+  deriving Repr, DecidableEq
+
+/-- `true` if the maneuver includes an attack. -/
+def Maneuver.attacks : Maneuver → Bool
+  | .allOutDefense => false
+  | _ => true
+
+/-- The bonus to the attack roll: +4 for All-Out Attack (Determined), else 0. -/
+def Maneuver.hitBonus : Maneuver → Int
+  | .allOutAttack => 4
+  | _ => 0
+
+/-- The bonus to Dodge, or `none` if the being cannot defend.
+All-Out Attack gives no defense, and All-Out Defense gives +2. -/
+def Maneuver.dodgeBonus : Maneuver → Option Nat
+  | .attack => some 0
+  | .allOutAttack => none
+  | .allOutDefense => some 2
+
+/-- The name and effect of a maneuver, for display. -/
+def Maneuver.describe : Maneuver → String
+  | .attack => "Attack"
+  | .allOutAttack => "All-Out Attack: +4 to hit, but no Dodge until the next turn"
+  | .allOutDefense => "All-Out Defense: no attack, but +2 to Dodge until the next turn"
+
+example : Maneuver.allOutAttack.hitBonus = 4 := by decide
+example : Maneuver.allOutAttack.dodgeBonus = none := by decide
+example : Maneuver.allOutDefense.attacks = false := by decide
+
 end Rpg

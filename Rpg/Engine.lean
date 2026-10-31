@@ -9,7 +9,9 @@ so the same seed always gives the same game.
 
 A Fight runs in rounds. In each round, every living being acts once,
 in order of Basic Speed, then DX. The Character wins any tie that is left.
-On its turn, a being attacks. The defender may Dodge.
+On its turn, a being chooses a maneuver: Attack, All-Out Attack, or All-Out Defense.
+Each Creature always chooses Attack. A maneuver includes at most one attack.
+The defender may Dodge, unless its own last maneuver was an All-Out Attack.
 -/
 
 namespace Rpg
@@ -65,22 +67,29 @@ def makeRoll (label : String) (skill? : Option Int) : Roll (RollResult × String
   let res := successRoll skill r
   return (res, s!"{label} (needs {skill} or less): rolled {r}, {res.name}.")
 
-/-- A being in a Fight, with its current HP. -/
+/-- A being in a Fight, with its current HP and its last maneuver. -/
 structure Fighter where
   being : Being
   hp : Int
+  /-- The maneuver from the being's last turn. It sets the being's defense (p. 25).
+  Before its first turn, a being counts as doing nothing, which defends like Attack. -/
+  maneuver : Maneuver := .attack
 
 /-- A Fighter is alive while it has more than 0 HP (see deviation 1). -/
 def Fighter.alive (f : Fighter) : Bool := f.hp > 0
 
-/-- Dodge, halved (rounded up) when the being has less than 1/3 of its HP left (p. 29). -/
-def Fighter.dodge (f : Fighter) : Nat :=
+/-- The Dodge score of a Fighter now, or `none` if it cannot defend.
+Dodge is halved (rounded up) when the being has less than 1/3 of its HP left (p. 29).
+Then the bonus from the last maneuver is added. -/
+def Fighter.dodge (f : Fighter) : Option Nat :=
   let d := f.being.dodge
-  if 3 * f.hp < f.being.maxHP then (d + 1) / 2 else d
+  let base := if 3 * f.hp < f.being.maxHP then (d + 1) / 2 else d
+  f.maneuver.dodgeBonus.map (base + ·)
 
-/-- One attack by `att` on `def`. Returns the injury done and lines of text. -/
+/-- One attack by `att` on `dfn`. The last maneuver of `att` gives the bonus to hit.
+Returns the injury done and lines of text. -/
 def attack (att : Fighter) (dfn : Fighter) : Roll (Nat × List String) := do
-  let level := att.being.attackLevel
+  let level := att.being.attackLevel + att.maneuver.hitBonus
   if level < 3 then
     return (0, [s!"{att.being.name} cannot attack: effective skill {level} is too low to try."])
   let r ← roll3d6
@@ -90,12 +99,16 @@ def attack (att : Fighter) (dfn : Fighter) : Roll (Nat × List String) := do
     return (0, [line])
   let mut lines := [line]
   if res != .criticalSuccess then
-    let dr ← roll3d6
-    -- A defense roll has no critical results: it just succeeds or fails (p. 28).
-    let dodged := (successRoll dfn.dodge dr).succeeded
-    lines := lines ++ [s!"  {dfn.being.name} dodges (needs {dfn.dodge} or less): rolled {dr}, {if dodged then "success" else "failure"}."]
-    if dodged then
-      return (0, lines)
+    match dfn.dodge with
+    | none =>
+      lines := lines ++ [s!"  {dfn.being.name} cannot defend after an All-Out Attack."]
+    | some dodge =>
+      let dr ← roll3d6
+      -- A defense roll has no critical results: it just succeeds or fails (p. 28).
+      let dodged := (successRoll dodge dr).succeeded
+      lines := lines ++ [s!"  {dfn.being.name} dodges (needs {dodge} or less): rolled {dr}, {if dodged then "success" else "failure"}."]
+      if dodged then
+        return (0, lines)
   let dice := att.being.weapon.damage att.being.st
   let sum ← if r = 3 then pure (6 * dice.count) else rollDice dice.count
   let basic := basicDamage dice att.being.weapon.damageType sum
@@ -131,33 +144,80 @@ def turnOrder (hero : Being) (foes : List Being) : List Actor :=
 def hurtFoe (foes : List Fighter) (i : Nat) (inj : Nat) : List Fighter :=
   foes.modify i fun f => { f with hp := f.hp - inj }
 
-/-- One turn of one actor. The Character attacks Creature number `target`. Each Creature attacks the Character. -/
-def takeTurn (s : FightState) (target : Nat) (who : Actor) : Roll (FightState × List String) := do
-  if s.over then return (s, [])
-  match who with
-  | none =>
-    match s.foes[target]? with
-    | some foe =>
-      if !foe.alive then return (s, [])
-      let (inj, lines) ← attack s.hero foe
-      return ({ s with foes := hurtFoe s.foes target inj }, lines)
-    | none => return (s, [])
-  | some i =>
-    match s.foes[i]? with
-    | some foe =>
-      if !foe.alive then return (s, [])
-      let (inj, lines) ← attack foe s.hero
-      return ({ s with hero := { s.hero with hp := s.hero.hp - inj } }, lines)
-    | none => return (s, [])
+/-- A line of text that says which maneuver a being chose. Attack needs no line. -/
+def announce (name : String) (m : Maneuver) : List String :=
+  if m = .attack then [] else [s!"{name} chooses {m.describe}."]
 
-/-- One round of a Fight: every actor takes a turn in turn order. -/
-def fightRound (order : List Actor) (s : FightState) (target : Nat) : Roll (FightState × List String) := do
-  let mut st := s
-  let mut log : List String := []
-  for who in order do
-    let (st', lines) ← takeTurn st target who
-    st := st'
-    log := log ++ lines
-  return (st, log)
+/-- The Character's turn. The Character uses maneuver `choice`. If the maneuver includes
+an attack, the Character attacks Creature number `target`. A dead or missing target makes
+the turn do nothing. -/
+def heroTurn (s : FightState) (choice : Maneuver) (target : Nat) :
+    Roll (FightState × List String) := do
+  if s.over then return (s, [])
+  let hero := { s.hero with maneuver := choice }
+  let intro := announce hero.being.name choice
+  if !choice.attacks then return ({ s with hero := hero }, intro)
+  let some foe := s.foes[target]? | return (s, [])
+  if !foe.alive then return (s, [])
+  let (inj, lines) ← attack hero foe
+  return ({ s with hero := hero, foes := hurtFoe s.foes target inj }, intro ++ lines)
+
+/-- The turn of Creature number `i`. A Creature always chooses Attack and attacks the Character. -/
+def foeTurn (s : FightState) (i : Nat) : Roll (FightState × List String) := do
+  if s.over then return (s, [])
+  let some foe := s.foes[i]? | return (s, [])
+  if !foe.alive then return (s, [])
+  let (inj, lines) ← attack foe s.hero
+  return ({ s with hero := { s.hero with hp := s.hero.hp - inj } }, lines)
+
+/-! ## Tests -/
+
+/-- A test being with Dodge 9, 12 HP, and no armor. -/
+private def testBeing : Being :=
+  { name := "Test", st := 12, dx := 12, iq := 10, ht := 12,
+    skills := [(.broadsword, 12)], weapon := .broadsword, armor := .none }
+
+-- Dodge with each maneuver, at full HP and below 1/3 HP.
+#guard ({ being := testBeing, hp := 12 } : Fighter).dodge == some 9
+#guard ({ being := testBeing, hp := 12, maneuver := .allOutDefense } : Fighter).dodge == some 11
+#guard ({ being := testBeing, hp := 3, maneuver := .allOutDefense } : Fighter).dodge == some 7
+#guard ({ being := testBeing, hp := 12, maneuver := .allOutAttack } : Fighter).dodge == none
+
+/-- A Fight between two test beings, with the Character's last maneuver set to `m`. -/
+private def testFight (m : Maneuver) : FightState :=
+  ⟨{ being := testBeing, hp := 12, maneuver := m }, [{ being := testBeing, hp := 12 }]⟩
+
+-- Halved Dodge with no maneuver bonus: 9 halves to 5.
+#guard ({ being := testBeing, hp := 3 } : Fighter).dodge == some 5
+
+-- All-Out Defense: the Character does not attack, and the maneuver is stored.
+#guard
+  let (s, lines) := (heroTurn (testFight .attack) .allOutDefense 0).run' ⟨7⟩
+  s.foes.map (·.hp) == [12] && s.hero.maneuver == .allOutDefense &&
+    lines == ["Test chooses All-Out Defense: no attack, but +2 to Dodge until the next turn."]
+
+-- After an All-Out Attack, the Character never dodges, and for some seeds it is hit with no defense.
+#guard
+  let logs := (List.range 50).map fun seed =>
+    ((foeTurn (testFight .allOutAttack) 0).run' ⟨seed.toUInt64⟩).2
+  logs.all (·.all (!·.startsWith "  Test dodges")) &&
+    logs.any (·.contains "  Test cannot defend after an All-Out Attack.")
+
+/-- The Character makes an All-Out Attack, then an Attack, then the Creature attacks. Returns the Creature's lines. -/
+private def attackAfterAllOut : Roll (List String) := do
+  let (s, _) ← heroTurn (testFight .attack) .allOutAttack 0
+  let (s, _) ← foeTurn s 0
+  let (s, _) ← heroTurn s .attack 0
+  let (_, lines) ← foeTurn s 0
+  return lines
+
+-- An Attack after an All-Out Attack gives the defense back: for some seeds the Character dodges.
+#guard (List.range 50).any fun seed =>
+  (attackAfterAllOut.run' ⟨seed.toUInt64⟩).any (·.startsWith "  Test dodges")
+
+-- All-Out Attack adds 4 to the attack roll: Broadsword-12 needs 16 or less.
+#guard
+  let (_, lines) := (heroTurn (testFight .attack) .allOutAttack 0).run' ⟨1⟩
+  lines.any (·.startsWith "Test attacks Test with broadsword (needs 16 or less)")
 
 end Rpg

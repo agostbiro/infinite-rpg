@@ -44,7 +44,7 @@ The spec does not say that an Adventure is fair or can be won. A Fight that the 
 
 ## Scope of this version (v0)
 
-This is a 1-hour slice of the design. Left out for now: Items and Flags, Quick Contests, Parry, All-Out maneuvers, attack modes (each weapon has one), shock, rest, and more than one Character. Proofs about the Engine are also left for later.
+This is a 1-hour slice of the design. Left out for now: Items and Flags, Quick Contests, Parry, attack modes (each weapon has one), shock, rest, and more than one Character. The only maneuvers are Attack, All-Out Attack, and All-Out Defense, and Creatures always choose Attack. Proofs about the Engine are also left for later.
 
 Deviations from GURPS Lite are in `docs/gurps-deviations.md`. Design rules that are not GURPS rules: the point caps, the -10 to +10 modifier limit, the rule that the Character can try every roll, and natural DR for Creatures at 5 points per level (the full GURPS price; GURPS Lite has no such trait). In turn order, a tie that is left after Basic Speed and DX goes to the Character; GURPS rolls for it.
 
