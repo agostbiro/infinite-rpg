@@ -139,10 +139,11 @@ Add tests next to the code:
 
 - The mechanic fires when on, and nothing changes when off (`#guard` or `example`).
 - **Agreement**: run [`agree.lean`](agree.lean) with the mechanic on
-  (`lake env lean .agents/skills/add-mechanic/agree.lean`). It compares the
-  model's death chance for a fight with the frequency over 20,000 simulated
-  fights. Add one fight from each target story to `cases`. Every line must
-  say `ok` (gap under 1 point).
+  (`lake exe agree`). It compares the
+  model's death chance for a fight with `validationGames` simulated fights,
+  using the admission round limit and confidence level. Add one fight from
+  each target story to `cases`. Every line must say `ok` (the model's chance
+  is inside the simulation's 90% interval).
 
 Write a line to the play log when the mechanic fires, so the player sees it.
 

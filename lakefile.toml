@@ -13,3 +13,9 @@ root = "Main"
 [[lean_exe]]
 name = "validate"
 root = "Validate"
+
+# Model and simulation agreement check for the add-mechanic skill. Run: lake exe agree
+[[lean_exe]]
+name = "agree"
+srcDir = ".agents/skills/add-mechanic"
+root = "agree"
