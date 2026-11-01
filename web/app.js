@@ -34,6 +34,8 @@
     busy: false,     // true while a request is out
     aim: null,       // the number of the Maneuver that waits for a target
     cardsFor: -1,    // the Report number of the Fight whose cards are on screen
+    wishOpen: false, // true while the Wish form is open on the front page
+    gridKey: null,   // the cards on screen, as JSON, so a poll can tell if they changed
   };
 
   // ---------- Server ----------
@@ -239,6 +241,12 @@
     }
     const scroll = $('scroll');
     scroll.textContent = '';
+    if (S.view.intro) {
+      const intro = el('section', 'chapter intro');
+      if (S.view.world) intro.appendChild(el('p', 'intro-world', S.view.world));
+      intro.appendChild(el('p', 'intro-text', S.view.intro));
+      scroll.appendChild(intro);
+    }
     chapters.forEach((ch, ci) => {
       const current = ci === chapters.length - 1;
       const sec = el('section', 'chapter ' + (current ? 'current' : 'past'));
@@ -460,6 +468,7 @@
     choices.textContent = '';
     $('over').hidden = true;
     $('skip').hidden = !S.playing;
+    $('leave').disabled = S.playing || S.busy;
     renderCards(S.shown);
     renderManeuvers();
     markState();
@@ -498,6 +507,7 @@
     p.appendChild(el('h2', '', 'Character'));
     p.appendChild(el('p', 'char-name', c.name));
     p.appendChild(el('p', 'char-sub', 'The Character you play'));
+    if (S.view.background) p.appendChild(el('p', 'char-bg', S.view.background));
     const attrs = el('div', 'attrs');
     for (const [k, label] of [['st', 'ST'], ['dx', 'DX'], ['iq', 'IQ'], ['ht', 'HT']]) {
       const a = el('div', 'attr');
@@ -640,51 +650,44 @@
 
   // ---------- Whole page ----------
 
-  /** The "Meet your Character" card: name, background, attributes, skills, and Gear.
-   * Skills and Gear show their Theme Names. */
-  function characterCard(v) {
-    const c = v.character;
-    const box = $('title-character');
-    box.textContent = '';
-    box.append(el('p', 'char-card-h', 'Meet your Character'));
-    box.append(el('strong', '', c.name));
-    if (v.background) box.append(el('p', 'char-card-bg', v.background));
-    const attrs = el('div', 'char-card-attrs');
-    for (const [k, label] of [['st', 'ST'], ['dx', 'DX'], ['iq', 'IQ'], ['ht', 'HT']]) {
-      const a = el('div');
-      a.append(el('b', '', String(c[k])), el('span', '', label));
-      attrs.appendChild(a);
-    }
-    box.append(attrs);
-    box.append(el('span', 'muted', 'HP ' + c.maxHP + ', Dodge ' + c.dodge + ', Basic Speed ' + c.speed + '.'));
-    box.append(document.createElement('br'));
-    box.append(el('span', 'muted', 'Skills: ' + c.skills.map((s) => s.name + '-' + s.level).join(', ') + '.'));
-    box.append(document.createElement('br'));
-    box.append(el('span', 'muted', 'Gear: ' + c.weapon + ' (' + c.damage + '), ' + c.armor + ' (DR ' + c.dr + ').'));
-  }
-
   /** A line about the Pictures of a live Adventure, or null. */
   function picturesNote(v) {
     const P = v.pictures;
     if (!P || P.ready === null) return null;
     if (P.off) return 'Pictures are off: the Picture check cannot run on this machine.';
-    if (P.drawing > 0) return 'The DM is drawing the Pictures: ' + P.ready.length + ' done, ' + P.drawing + ' to go. You can begin now.';
+    if (P.drawing > 0) return 'The Dungeon Master is drawing the Pictures: ' + P.ready.length + ' done, ' + P.drawing + ' to go.';
     if (P.failed > 0) return P.failed + (P.failed === 1 ? ' Picture' : ' Pictures') + ' failed the check or did not come, so ' + (P.failed === 1 ? 'its Scene shows' : 'their Scenes show') + ' a plain backdrop.';
     return null;
   }
 
-  /** The Wish box, or the steps of the work on a Wish. */
+  /** The "New Adventure" tile: a button, or the Wish form, or the steps of the work on a Wish. */
   function renderWish(v) {
     const gen = v.generation;
     const running = gen.state === 'running';
     const showSteps = gen.state !== 'idle';
-    $('wish-off').hidden = gen.available;
-    $('wish-form').hidden = !gen.available || showSteps;
+    const open = showSteps || (S.wishOpen && gen.available);
+    $('new-tile').classList.toggle('open', open);
+    $('new-open').hidden = open;
+    $('new-open').disabled = !gen.available;
+    $('new-sub').textContent = gen.available
+      ? 'Tell an AI Dungeon Master what you want to play'
+      : 'Not available: the server has no API key. Set ANTHROPIC_API_KEY and run the game again.';
+    $('wish-panel').hidden = !open;
+    $('wish-form').hidden = showSteps;
     $('progress').hidden = !showSteps;
     $('cancel').hidden = !running;
     $('retry').hidden = gen.state !== 'failed';
-    $('to-builtin').hidden = gen.state !== 'failed';
     $('dismiss').hidden = gen.state !== 'refused' && gen.state !== 'failed';
+    const ready = gen.state === 'ready';
+    $('ready').hidden = !ready;
+    $('play-now').hidden = !ready;
+    $('later').hidden = !ready;
+    if (ready) {
+      $('ready-title').textContent = v.adventure;
+      const note = picturesNote(v);
+      $('ready-pictures').hidden = note === null;
+      $('ready-pictures').textContent = note || '';
+    }
     $('progress-wish').textContent = gen.wish ? 'Your Wish: ' + gen.wish : '';
     const list = $('progress-steps');
     list.textContent = '';
@@ -707,42 +710,49 @@
     });
   }
 
-  /** The list of Adventures: the built-in one, then the saved ones. */
-  function renderSaved(v) {
-    const list = $('saved-list');
-    list.textContent = '';
-    const busy = v.generation.state === 'running';
-    const row = (title, note, onPlay, ok) => {
-      const li = el('li', ok ? '' : 'failed');
-      const t = el('span', 'saved-title', title);
-      t.appendChild(el('span', 'saved-note', note));
-      const b = el('button', 'small-button', ok ? 'Play' : 'Failed');
-      b.type = 'button';
-      b.disabled = busy || !ok;
-      b.onclick = onPlay;
-      li.append(t, b);
-      list.appendChild(li);
-    };
-    row('The Drowned Lighthouse', 'Built in. Mara the sellsword.', () => action('/api/builtin'), true);
-    for (const a of v.saved) {
-      const note = a.ok ? 'From a Wish' : 'Fails the checker now, so it cannot be played: ' + a.why;
-      row(a.title, note, () => action('/api/load', { id: a.id }), a.ok);
+  /** One Adventure card. With `onPlay`, a click starts play; without it, the card is greyed. */
+  function adventureCard(c, onPlay, busy, why) {
+    const card = el(onPlay ? 'button' : 'div', 'tile adv-card' + (onPlay ? '' : ' failed'));
+    if (onPlay) {
+      card.type = 'button';
+      card.disabled = busy;
+      card.onclick = onPlay;
     }
+    card.append(el('span', 'card-title', c.title));
+    if (c.world) card.append(el('span', 'card-world', c.world));
+    if (c.hero) card.append(el('span', 'card-hero', 'You play ' + c.hero));
+    if (c.about) card.append(el('span', 'card-about', c.about));
+    if (why !== undefined) {
+      card.append(el('span', 'card-why', 'Fails the checker now, so you cannot play it: ' + why));
+    } else {
+      card.append(el('span', 'card-source', c.source));
+    }
+    return card;
+  }
+
+  /** The grid: the "New Adventure" tile, the saved Adventures (newest first), the built-in one,
+   * and last the saved Adventures that fail the checker now. */
+  function renderGrid(v) {
+    const grid = $('grid');
+    const busy = v.generation.state === 'running';
+    // A poll every 2 seconds must not rebuild the same cards: that would take away keyboard focus
+    // and lose a click. So draw again only when the cards change.
+    const key = JSON.stringify([v.saved, v.builtin, busy]);
+    if (key === S.gridKey && grid.querySelector('.adv-card')) return;
+    S.gridKey = key;
+    for (const old of grid.querySelectorAll('.adv-card')) old.remove();
+    const ok = v.saved.filter((a) => a.ok);
+    const bad = v.saved.filter((a) => !a.ok);
+    for (const a of ok) grid.appendChild(adventureCard(a, () => startGame('/api/load', { id: a.id }), busy));
+    grid.appendChild(adventureCard(v.builtin, () => startGame('/api/builtin'), busy));
+    for (const a of bad) grid.appendChild(adventureCard(a, null, busy, a.why || 'it does not read'));
   }
 
   function renderTitle() {
     const v = S.view;
-    $('title-adventure').textContent = v.adventure;
-    $('title-blurb').textContent = v.live
-      ? 'The DM wrote this Adventure for a Wish. It passed the checker before you could play it, so the DM cannot cheat.'
-      : 'The rules and the dice run in Lean. The Adventure passed the checker before you could play it, so the DM cannot cheat.';
-    characterCard(v);
-    const note = picturesNote(v);
-    $('title-pictures').hidden = note === null;
-    $('title-pictures').textContent = note || '';
-    $('begin').disabled = v.generation.state === 'running';
+    $('busy-note').hidden = v.generation.state !== 'running';
     renderWish(v);
-    renderSaved(v);
+    renderGrid(v);
   }
 
   /** Tell tests and screen readers whether the page waits for the Player. */
@@ -765,7 +775,9 @@
     const title = v.phase === 'title';
     $('title-screen').hidden = !title;
     $('table').hidden = title;
-    document.title = v.adventure + ' · Verified RPG';
+    // The seed belongs to a game, so the front page does not show it.
+    $('seed').hidden = title;
+    document.title = (title ? 'Choose an Adventure' : v.adventure) + ' · Verified RPG';
     if (title) {
       renderTitle();
       markState();
@@ -879,6 +891,47 @@
     }
   }
 
+  /** Send a POST that loads an Adventure, such as a click on its card, then begin it. */
+  async function startGame(path, body) {
+    if (S.busy || S.playing) return;
+    S.busy = true;
+    try {
+      const { ok, view } = await post(path, body);
+      S.view = view;
+      S.mapView = view;
+      S.shown = view.reports.length;
+      S.cardsFor = -1;
+      S.wishOpen = false;
+      if (!ok || view.phase !== 'title' || view.inputs.length === 0) {
+        if (!ok) toast(view.error || 'The game refused that.');
+        renderAll();
+        // A refused card is drawn again as a grey card, so the focused element is gone.
+        if (!ok) focusFront();
+        return;
+      }
+      S.busy = false;
+      await send(view.inputs[0]);
+    } catch (e) {
+      toast(failText(e));
+    } finally {
+      S.busy = false;
+      markState();
+      schedulePoll();
+    }
+  }
+
+  /** `true` if the game in play is over: an Ending, or the Character died. */
+  function gameOver(v) {
+    return v.phase === 'ended' || v.phase === 'dead' || (v.phase !== 'title' && v.inputs.length === 0);
+  }
+
+  /** Go back to the front page. A game that is not over asks first, because it is lost. */
+  function leave() {
+    if (S.busy || S.playing || !S.view) return;
+    if (gameOver(S.view)) { action('/api/new').then(focusFront); return; }
+    $('leave-dialog').showModal();
+  }
+
   /** Load the game from the server and show it all at once. */
   async function load() {
     try {
@@ -894,7 +947,7 @@
     }
   }
 
-  /** Send a POST that changes the title screen, such as a Wish or "Play" on a saved Adventure. */
+  /** Send a POST that changes the front page, such as a Wish or "Later". */
   async function action(path, body) {
     if (S.busy || S.playing) return;
     S.busy = true;
@@ -972,20 +1025,65 @@
       const { view } = await post('/api/cancel');
       S.view = view;
       renderAll();
-      toast('The DM stopped.');
+      focusFront();
+      toast('The Dungeon Master stopped.');
     } catch (e) {
       toast(failText(e));
     }
   });
   $('retry').addEventListener('click', () => action('/api/retry'));
-  $('to-builtin').addEventListener('click', () => action('/api/builtin'));
-  $('dismiss').addEventListener('click', () => action('/api/dismiss'));
-  $('to-title').addEventListener('click', () => action('/api/new'));
+  /** Put keyboard focus on the front page: the Wish box if the form is open, else the
+   * "New Adventure" button, else the first card. */
+  function focusFront() {
+    const open = $('new-open');
+    let target = null;
+    if (!$('wish-panel').hidden && !$('wish-form').hidden) target = $('wish');
+    else if (!open.hidden && !open.disabled) target = open;
+    else target = document.querySelector('button.adv-card:not(:disabled)');
+    if (target) target.focus();
+  }
 
-  $('begin').addEventListener('click', () => {
-    const begin = S.view && S.view.inputs[0];
-    if (begin !== undefined) send(begin);
+  $('dismiss').addEventListener('click', async () => { await action('/api/dismiss'); focusFront(); });
+  // Load the Adventure that passed by its folder name, not whatever is loaded now: another tab
+  // may have loaded another Adventure since.
+  /** Empty the Wish form, after a Wish became an Adventure. */
+  function clearWish() {
+    $('wish').value = '';
+    $('wish-name').value = '';
+    $('wish-gender').value = 'dm';
+    $('wish-count').textContent = '0 / 500';
+  }
+
+  $('play-now').addEventListener('click', () => {
+    const id = S.view && S.view.generation.readyId;
+    if (!id) return;
+    clearWish();
+    startGame('/api/load', { id });
   });
+  $('later').addEventListener('click', async () => {
+    clearWish();
+    S.wishOpen = false;
+    await action('/api/dismiss');
+    focusFront();
+  });
+  $('new-open').addEventListener('click', () => {
+    S.wishOpen = true;
+    renderAll();
+    $('wish').focus();
+  });
+  $('wish-close').addEventListener('click', () => {
+    S.wishOpen = false;
+    renderAll();
+    focusFront();
+  });
+  $('to-title').addEventListener('click', async () => { await action('/api/new'); focusFront(); });
+  $('leave').addEventListener('click', leave);
+  $('leave-yes').addEventListener('click', async () => {
+    $('leave-dialog').close();
+    await action('/api/new');
+    focusFront();
+  });
+  $('leave-no').addEventListener('click', () => $('leave-dialog').close());
   $('again').addEventListener('click', playAgain);
   $('skip').addEventListener('click', () => {
     S.skip = true;
@@ -996,12 +1094,17 @@
     if (S.busy || S.playing || !S.view) return;
     try {
       const v = await fetchView();
-      if (v.seed !== S.view.seed || v.reports.length !== S.view.reports.length || v.phase !== S.view.phase) {
+      // On the Front Page, another tab may have sent a Wish: then the Wish state changed.
+      const wishChanged = v.phase === 'title' &&
+        JSON.stringify(v.generation) !== JSON.stringify(S.view.generation);
+      if (v.seed !== S.view.seed || v.reports.length !== S.view.reports.length || v.phase !== S.view.phase ||
+          wishChanged) {
         S.view = v;
         S.mapView = v;
         S.shown = v.reports.length;
         S.cardsFor = -1;
         renderAll();
+        schedulePoll();
       }
     } catch (e) { /* The server is gone; the next click says so. */ }
   });

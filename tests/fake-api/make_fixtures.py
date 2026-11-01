@@ -51,6 +51,8 @@ scenes = [
 ]
 good = {
   "title": "The Silver Acorn",
+  "world": "Middle-earth, the Shire",
+  "intro": "The Shire, in the green heart of Middle-earth, where hobbits mind their gardens and nothing much ever happens. You are Pip Tunnelly, a young hobbit of Bywater who reads the weather better than books. This morning, something has happened.",
   "character": pip,
   "themeNames": {"skills": [{"skill": "stealth", "name": "Hobbit Quietness"}, {"skill": "fastTalk", "name": "Hobbit Chatter"},
                             {"skill": "naturalist", "name": "Weather-lore"}, {"skill": "knife", "name": "Blade-work"},

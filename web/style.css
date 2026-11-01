@@ -54,26 +54,15 @@ button { font: inherit; color: inherit; }
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Title screen ---------- */
+/* ---------- Front page: choose an Adventure ---------- */
 
-.title-screen {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 22px;
-  padding: 32px 16px;
+.front {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 40px 16px 60px;
 }
 
-.title-card {
-  width: min(640px, 100%);
-  padding: 36px 32px 32px;
-  text-align: center;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(24, 36, 58, 0.92), rgba(12, 19, 32, 0.95));
-  box-shadow: 0 0 80px rgba(242, 179, 91, 0.12), 0 20px 60px rgba(0, 0, 0, 0.6);
-}
+.front-head { text-align: center; margin-bottom: 26px; }
 
 .kicker {
   margin: 0 0 8px;
@@ -83,8 +72,8 @@ button { font: inherit; color: inherit; }
   text-transform: uppercase;
 }
 
-.title-card h1 {
-  margin: 0 0 14px;
+.front-head h1 {
+  margin: 0 0 12px;
   font-family: var(--serif);
   font-size: clamp(30px, 6vw, 46px);
   font-weight: 600;
@@ -92,29 +81,99 @@ button { font: inherit; color: inherit; }
   text-shadow: 0 0 24px rgba(242, 179, 91, 0.45);
 }
 
-.title-blurb {
-  margin: 0 auto 22px;
-  max-width: 46ch;
+.front-help {
+  margin: 0 auto;
+  max-width: 60ch;
   color: var(--ink-dim);
   font-family: var(--serif);
   font-size: 17px;
   line-height: 1.5;
 }
 
-.title-character {
-  margin: 0 auto 26px;
-  padding: 14px 16px;
-  max-width: 460px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(7, 11, 18, 0.5);
-  text-align: left;
+.busy-note {
+  margin: 0 auto 16px;
+  max-width: 60ch;
+  text-align: center;
+  color: var(--lamp);
   font-size: 14px;
-  line-height: 1.5;
 }
 
-.title-character strong { color: var(--ink); font-size: 16px; }
-.title-character .muted { color: var(--ink-dim); }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 18px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 210px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(24, 36, 58, 0.92), rgba(12, 19, 32, 0.95));
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  text-align: left;
+  color: var(--ink);
+}
+
+button.adv-card { cursor: pointer; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
+button.adv-card:hover:not(:disabled) {
+  border-color: var(--lamp);
+  transform: translateY(-2px);
+  box-shadow: 0 0 40px rgba(242, 179, 91, 0.15), 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+button.adv-card:focus-visible { outline: 3px solid var(--lamp-hot); outline-offset: 3px; }
+
+.adv-card, .wish-panel, .chapter.intro { min-width: 0; }
+.adv-card span, .ready-title, #progress-wish, .intro-world, .intro-text { overflow-wrap: anywhere; }
+.card-title { font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--lamp-hot); line-height: 1.2; }
+.card-world { color: var(--lamp); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+.card-hero { margin-top: 8px; font-family: var(--serif); font-size: 16px; color: var(--ink); }
+.card-about {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  color: var(--ink-dim);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.card-source { margin-top: auto; padding-top: 10px; color: var(--ink-faint); font-size: 12px; }
+.card-why { margin-top: auto; padding-top: 10px; color: var(--blood); font-size: 12px; }
+.adv-card.failed { opacity: 0.55; }
+.adv-card.failed .card-title { color: var(--ink-dim); }
+
+.new-tile { padding: 0; border-style: dashed; border-color: #3a4c6c; background: rgba(12, 19, 32, 0.6); }
+.new-tile.open { grid-column: 1 / -1; min-height: 0; padding: 24px 28px; border-style: solid; }
+.new-open {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 20px;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  text-align: center;
+  cursor: pointer;
+}
+.new-open:hover:not(:disabled) { background: rgba(242, 179, 91, 0.06); }
+.new-open:focus-visible { outline: 3px solid var(--lamp-hot); outline-offset: -3px; }
+.new-plus { font-size: 44px; line-height: 1; color: var(--lamp); }
+.new-h { font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--lamp-hot); }
+.new-sub { max-width: 30ch; color: var(--ink-dim); font-size: 14px; line-height: 1.45; }
+
+.wish-panel h2 { margin: 0 0 6px; font-family: var(--serif); font-size: 24px; color: var(--lamp-hot); font-weight: 600; }
+.wish-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+.ready { margin: 4px 0 16px; padding: 14px 16px; border: 1px solid var(--moss); border-radius: 12px; background: rgba(127, 176, 122, 0.08); }
+.ready-h { margin: 0 0 4px; color: var(--moss); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; }
+.ready-title { margin: 0; font-family: var(--serif); font-size: 22px; color: var(--lamp-hot); }
+.ready-pictures { margin: 6px 0 0; color: var(--ink-dim); font-size: 13px; }
 
 .big-button {
   padding: 12px 34px;
@@ -145,17 +204,8 @@ button { font: inherit; color: inherit; }
 .small-button:focus-visible { outline: 2px solid var(--lamp-hot); outline-offset: 2px; }
 button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 
-.char-card-h { margin: 0 0 6px; font-size: 11px; color: var(--lamp); letter-spacing: 0.14em; text-transform: uppercase; }
-.char-card-bg { margin: 6px 0 10px; font-family: var(--serif); font-size: 15px; color: var(--ink); }
-.char-card-attrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; text-align: center; }
-.char-card-attrs div { padding: 4px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--deep); }
-.char-card-attrs b { display: block; font-size: 17px; color: var(--ink); }
-.char-card-attrs span { font-size: 11px; color: var(--ink-dim); }
-.title-pictures, .top-pictures { margin: 0 0 18px; color: var(--ink-dim); font-size: 13px; }
-.top-pictures { margin: 4px 0 0; }
+.top-pictures { margin: 4px 0 0; color: var(--ink-dim); font-size: 13px; }
 
-.wish-card, .saved-card { text-align: left; padding: 24px 28px; }
-.wish-card h2, .saved-card h2 { margin: 0 0 6px; font-family: var(--serif); font-size: 24px; color: var(--lamp-hot); font-weight: 600; }
 .wish-help { margin: 0 0 14px; color: var(--ink-dim); font-size: 14px; line-height: 1.5; }
 .wish-label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--ink-dim); }
 .wish-form textarea, .wish-form input, .wish-form select {
@@ -175,7 +225,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 .wish-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .wish-row label { flex: 1 1 200px; font-size: 13px; color: var(--ink-dim); }
 .wish-row input, .wish-row select { margin-top: 4px; }
-.wish-off { margin: 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--ink-dim); font-size: 14px; }
 
 .progress-steps { margin: 0 0 14px; padding-left: 20px; line-height: 1.5; }
 .progress-steps > li { margin-bottom: 6px; }
@@ -186,13 +235,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 .progress-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
 @keyframes pulse { 50% { opacity: 0.55; } }
 
-.saved-list { margin: 0; padding: 0; list-style: none; }
-.saved-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
-.saved-list li:first-child { border-top: 0; }
-.saved-list .saved-title { font-family: var(--serif); font-size: 16px; color: var(--ink); }
-.saved-list .saved-note { display: block; font-size: 12px; color: var(--ink-faint); font-family: var(--sans); }
-.saved-list li.failed .saved-title { color: var(--ink-dim); }
-.saved-list li.failed .saved-note { color: var(--blood); }
 
 /* ---------- Table layout ---------- */
 
@@ -209,7 +251,33 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
   align-items: start;
 }
 
-.top { grid-area: top; text-align: center; }
+.top { grid-area: top; position: relative; text-align: center; }
+
+.leave { position: absolute; left: 0; top: 2px; }
+
+/* Keep a long title clear of the "Adventures" button. */
+.top h1 { padding: 0 150px; }
+
+@media (max-width: 780px) {
+  .leave { position: static; margin-bottom: 6px; }
+  .top h1 { padding: 0; }
+}
+
+.leave-dialog {
+  max-width: min(380px, calc(100% - 32px));
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--slate);
+  color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.leave-dialog::backdrop { background: rgba(7, 11, 18, 0.7); }
+.leave-h { margin: 0 0 6px; font-family: var(--serif); font-size: 21px; color: var(--lamp-hot); }
+.leave-text { margin: 0 0 18px; color: var(--ink-dim); }
+.leave-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; }
+.leave-buttons .big-button { padding: 8px 26px; font-size: 16px; }
+.small-button.danger { border-color: var(--blood); color: #f3cfc8; }
 
 .top h1 {
   margin: 4px 0 0;
@@ -272,6 +340,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 }
 
 .char-sub { margin: 0 0 12px; color: var(--ink-dim); font-size: 13px; }
+.char-bg { margin: -4px 0 12px; font-family: var(--serif); font-size: 14px; line-height: 1.45; color: var(--ink); }
 
 .attrs {
   display: grid;
@@ -334,6 +403,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 }
 
 .chapter.past { opacity: 0.78; }
+
+.chapter.intro { padding: 20px 24px; border-color: rgba(242, 179, 91, 0.35); background: rgba(242, 179, 91, 0.05); }
+.intro-world { margin: 0 0 8px; color: var(--lamp); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; }
+.intro-text { margin: 0; font-family: var(--serif); font-size: 18px; line-height: 1.6; font-style: italic; color: var(--ink); }
 
 .chapter.current {
   padding-top: 0;

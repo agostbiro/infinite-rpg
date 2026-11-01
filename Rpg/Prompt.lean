@@ -107,6 +107,8 @@ def dmSystemPrompt : String :=
     "- Give the Player real choices, and more than one way to an Ending. Write 2 or more Endings.",
     "- Do not name game rules in the Scene text. A Choice that makes a roll shows the roll in brackets, with the Theme Name of the skill, such as \"Sneak past the guard (Shadow-walking -2)\".",
     "- If the Wish names a known story or world, write a new adventure in that world. Do not copy text from books or films.",
+    "- `world` names the world of the Adventure in a few words, at most 60 characters, such as \"Middle-earth, the Shire\" or \"A drowned city of brass\".",
+    "- `intro` is what the Player reads before the first Scene: 2 to 4 sentences, second person, at most 600 characters. Name the world, and say who the Character is (\"You are ...\"). Do not repeat the first Scene.",
     "",
     "## The Adventure",
     "- Scenes have numbers (`id`). `start` is the number of the first Scene. No two Scenes share a number.",
@@ -220,6 +222,8 @@ def outcomeSchema : Json :=
 def adventureSchema : Json :=
   objSchema [
     ("title", strSchema),
+    ("world", strSchema),
+    ("intro", strSchema),
     ("character", objSchema (beingFields ++ [("background", strSchema)])),
     ("themeNames", objSchema [
       ("skills", arrSchema (objSchema [("skill", enumSchema (Skill.all.map Skill.key)), ("name", strSchema)])),

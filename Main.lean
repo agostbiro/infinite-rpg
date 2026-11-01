@@ -22,11 +22,12 @@ Routes:
 * `GET /api/view`: the current view, with the state of the Wish and the saved Adventures.
 * `POST /api/input`: apply one input (JSON). A refused input gives status 400, an error, and the
   view, and changes nothing.
-* `POST /api/new`: start the same Adventure again, on the title screen, with a new seed.
+* `POST /api/new`: start the same Adventure again, in the `title` phase (before the first Scene), with a
+  new seed. The page then shows the Front Page.
 * `POST /api/builtin`: go back to The Drowned Lighthouse.
 * `POST /api/wish`: ask the DM for an Adventure. The body is `{"wish", "name", "gender"}`.
 * `POST /api/retry`: ask again with the last Wish, after 3 failed tries.
-* `POST /api/dismiss`: hide the result of a failed or refused Wish.
+* `POST /api/dismiss`: hide the result of a Wish: failed, refused, or ready to play.
 * `POST /api/cancel`: stop the DM.
 * `POST /api/load`: play a saved Adventure. The body is `{"id"}`. It is checked again first.
 * `GET /saved/<id>/<name>.svg`: a Picture of the saved Adventure in play, if it passed the check.
@@ -48,14 +49,14 @@ open Rpg
 
 /-- The one game the server keeps, with its dice and every Report since it began. -/
 structure Session where
-  /-- The game on its title screen, for "Play again". -/
+  /-- The game in its `title` phase, before the first Scene, for "Play again". -/
   fresh : Game
   game : Game
   dice : Rng
   seed : Nat
   reports : Array Report
 
-/-- A new session of a game, from its title screen. -/
+/-- A new session of a game, from its `title` phase. -/
 def Session.start (g : Game) (seed : Nat) : Session :=
   { fresh := g, game := g, dice := ⟨seed.toUInt64⟩, seed, reports := #[] }
 
@@ -77,8 +78,12 @@ def Session.apply (s : Session) (i : Input) : Session × Option String × Nat :=
 structure Source where
   /-- The folder name under `adventures/`, or `none` for the built-in Adventure. -/
   savedId : Option String := none
-  /-- The Character's background, for a live Adventure. -/
+  /-- The Character's background. -/
   background : Option String := none
+  /-- The World of the Adventure, such as "Middle-earth, the Shire". -/
+  world : String := ""
+  /-- The Intro: the text the Player reads before the first Scene. -/
+  intro : String := ""
   /-- The Pictures that passed the check and can be served. -/
   pictures : List String := []
   /-- The Pictures the DM is drawing now. A Picture in neither list shows the plain backdrop. -/
@@ -92,6 +97,9 @@ inductive GenState where
   | running
   | failed
   | refused
+  /-- The Adventure passed the checker and is loaded. The page asks the Player to play it now
+  or later. -/
+  | ready
   deriving BEq
 
 /-- The name of a state, for the page. -/
@@ -100,6 +108,7 @@ def GenState.name : GenState → String
   | .running => "running"
   | .failed => "failed"
   | .refused => "refused"
+  | .ready => "ready"
 
 /-- One step of the work on a Wish, shown on the page. -/
 structure Step where
@@ -113,6 +122,9 @@ structure Generation where
   job : Nat := 0
   state : GenState := .idle
   steps : Array Step := #[]
+  /-- In state `ready`: the folder of the saved Adventure that passed, so "Play it now" loads
+  that one, even if another Adventure was loaded since. -/
+  readyId : Option String := none
   /-- The last Wish, name, and gender, for "Try again". -/
   wish : String := ""
   name : String := ""
@@ -126,9 +138,25 @@ structure ServerState where
   source : Source := {}
   gen : Generation := {}
 
-/-- A checked entry of the saved list: the folder, a stamp of its content (length and hash), the title,
-and `none` if the Adventure passes the checker, or else the first error. -/
-abbrev SavedEntry := String × String × String × Option String
+/-- What an Adventure card on the front page shows. -/
+structure AdventureCard where
+  title : String
+  /-- The World, such as "Middle-earth, the Shire". -/
+  world : String := ""
+  /-- The name of the Character. -/
+  hero : String := ""
+  /-- The Character's background. -/
+  about : String := ""
+  /-- Where the Adventure comes from: "Built in" or "From a Wish". -/
+  source : String := ""
+
+/-- A checked entry of the saved list: the folder, a stamp of its content (length and hash), what
+its card shows, and `none` if the Adventure passes the checker, or else the first error. -/
+structure SavedEntry where
+  id : String
+  stamp : String
+  card : AdventureCard
+  why : Option String
 
 /-- Settings that do not change while the server runs. -/
 structure GameConfig where
@@ -139,7 +167,7 @@ structure GameConfig where
   /-- Test hook: a folder of recorded API replies to use instead of calling the API
   (`RPG_FAKE_API`). -/
   fake : Option System.FilePath
-  /-- The saved list, checked once per version of each file, so the title screen stays fast. -/
+  /-- The saved list, checked once per version of each file, so the Front Page stays fast. -/
   savedCache : IO.Ref (List SavedEntry)
   /-- `true` if the Picture check (`scripts/check_pictures.py`) could run when the server started.
   If it is `false`, Pictures are off: the server never asks the DM for a Picture, because it could
@@ -158,6 +186,44 @@ def jobOwner (job : Nat) : String := s!"job-{job}"
 
 /-- The owner name of the `curl` processes that draw the Pictures of saved Adventure `id`. -/
 def picturesOwner (id : String) : String := s!"pictures-{id}"
+
+/-- The built-in Adventure's World, Intro, and Character background. They change only what the
+Player sees. -/
+def builtinSource : Source where
+  world := "A storm-wracked fishing coast"
+  intro := "A cold fishing coast, where storms roll in off the sea and wreckers wait for ships to break on the reef. You are Mara, a sellsword who works for coin, with a broadsword, leather armor, and quick hands for locks."
+  background := some "A sellsword who has guarded caravans across three kingdoms, and opened more than one door that was meant to stay shut."
+
+/-- The card of the built-in Adventure. -/
+def builtinCard : AdventureCard :=
+  { title := "The Drowned Lighthouse", world := builtinSource.world, hero := "Mara",
+    about := builtinSource.background.getD "", source := "Built in" }
+
+/-- `s` cut to at most `n` characters. If it was cut and `n` is more than 3, the end is "...". -/
+def clip (n : Nat) (s : String) : String :=
+  if s.length ≤ n then s
+  else if n ≤ 3 then (s.take n).toString
+  else (s.take (n - 3)).toString.trimAsciiEnd.toString ++ "..."
+
+#guard clip 8 "the Shire" == "the S..."
+#guard clip 9 "the Shire" == "the Shire"
+#guard clip 2 "abc" == "ab"
+#guard clip 0 "abc" == ""
+
+/-- The World and the Intro of a saved Draft. An older save has neither, so the World falls back
+to the Wish, and the Intro to the Character's background. -/
+def worldAndIntro (d : Draft) (wish : String) : String × String :=
+  (if d.world.isEmpty then clip maxWorld wish else d.world,
+   if d.intro.isEmpty then d.background else d.intro)
+
+/-- The Wish stored in a save, or "". -/
+def savedWish (text : String) : String :=
+  (Json.parse text >>= (·.getObjValAs? String "wish")).toOption.getD ""
+
+/-- The Source of a saved Draft: its folder, World, Intro, and background. -/
+def savedSource (id : String) (d : Draft) (wish : String) : Source :=
+  let (world, intro) := worldAndIntro d wish
+  { savedId := some id, background := some d.background, world, intro }
 
 /-- Kill every `curl` process of an owner. -/
 def killOwner (children : Children) (owner : String) : IO Unit := do
@@ -228,18 +294,28 @@ def checkSavedText (text : String) : Except (List String) (Draft × Game) := do
   let g ← d.toGame seed
   return (d, g)
 
-/-- Check one saved Adventure for the list: its title, and `none` if it passes the checker and
+/-- Check one saved Adventure for the list: its card, and `none` if it passes the checker and
 the fairness check, or else the first error. The Pictures are checked only on load. -/
-def checkSavedEntry (id : String) : IO (String × Option String) := do
+def checkSavedEntry (id : String) : IO (AdventureCard × Option String) := do
   match ← readText (savedRoot / id / "adventure.json") with
-  | .error e => return (id, some e)
+  | .error e => return ({ title := id }, some e)
   | .ok text =>
     let title := (Json.parse text >>= (·.getObjValAs? String "title")).toOption.getD id
-    match checkSavedText text with
-    | .ok _ => return (title, none)
-    | .error errs => return (title, some (errs.headD "it fails the checker"))
+    match Draft.parse text with
+    | .error e => return ({ title }, some e)
+    | .ok d =>
+      let src := savedSource id d (savedWish text)
+      let card := { title, world := src.world, hero := d.hero.name, about := d.background,
+                    source := "From a Wish" }
+      match checkSavedText text with
+      | .ok _ => return (card, none)
+      | .error errs => return (card, some (errs.headD "it fails the checker"))
 
-/-- The list of saved Adventures for the title screen: each id, title, and whether it passes the
+/-- A card as JSON for the page. -/
+def AdventureCard.toJson (c : AdventureCard) : Json :=
+  json% { title: $(c.title), world: $(c.world), hero: $(c.hero), about: $(c.about), source: $(c.source) }
+
+/-- The list of saved Adventures for the Front Page: each id, title, and whether it passes the
 checker now. A saved Adventure that fails is listed with `ok: false` and the reason, and the page
 does not let the Player play it. Each file is checked once per version (see `GameConfig.savedCache`). 
 Each check also runs the fairness check (1,000 games), so the first view after start can take
@@ -250,11 +326,12 @@ def savedList (cfg : GameConfig) : IO Json := do
   let mut out := #[]
   for id in ← savedIds do
     let stamp ← fileStamp (savedRoot / id / "adventure.json")
-    let (title, why) ← match cache.find? fun (i, st, _, _) => i == id && st == stamp with
-      | some (_, _, t, w) => pure (t, w)
+    let (card, why) ← match cache.find? fun e => e.id == id && e.stamp == stamp with
+      | some e => pure (e.card, e.why)
       | none => checkSavedEntry id
-    fresh := fresh ++ [(id, stamp, title, why)]
-    out := out.push (json% { id: $(id), title: $(title), ok: $(why.isNone), why: $(why) })
+    fresh := fresh ++ [{ id, stamp, card, why }]
+    out := out.push ((card.toJson.setObjVal! "id" (toJson id)).setObjVal! "ok" (toJson why.isNone)
+      |>.setObjVal! "why" (toJson why))
   cfg.savedCache.set fresh
   return Json.arr out
 
@@ -262,7 +339,7 @@ def savedList (cfg : GameConfig) : IO Json := do
 def markRefused (cfg : GameConfig) (id : String) (why : String) : IO Unit := do
   let stamp ← fileStamp (savedRoot / id / "adventure.json")
   cfg.savedCache.modify fun c =>
-    c.map fun (i, st, t, w) => if i == id then (i, stamp, t, some why) else (i, st, t, w)
+    c.map fun e => if e.id == id then { e with stamp, why := some why } else e
 
 /-- Save a Draft that passed the checker and the fairness check with seed `seed`. -/
 def saveDraft (id : String) (d : Draft) (wish : String) (seed : Nat) : IO Unit := do
@@ -535,7 +612,8 @@ def drawPictures (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerSt
   -- Remove this run's folder of unchecked drafts. Other runs have their own folders.
   try IO.FS.removeDirAll (draftFolder id run) catch _ => pure ()
 
-/-- Start play of a Draft that passed: save it, make it the session, and draw its Pictures. -/
+/-- Load a Draft that passed: save it, make it the session, and draw its Pictures. The page then
+asks the Player to play it now or later (state `ready`). -/
 def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
     (d : Draft) (g : Game) (wish : String) (fairnessSeed : Nat) : IO Unit := do
   let id ← newSavedId d.adventure.title
@@ -547,10 +625,10 @@ def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (j
     (some (s.source.savedId, run), { s with
       session := Session.start g seed,
       runs := run,
-      source := { savedId := some id, background := some d.background,
+      source := { savedSource id d wish with
                   drawing := if cfg.picturesOn then d.adventure.scenes.filterMap (·.picture) else [],
                   drawRun := run },
-      gen := { s.gen with state := .idle, steps := #[] } })
+      gen := { s.gen with state := .ready, readyId := some id } })
   if let some (old, run) := res then
     if let some oldId := old then killOwner children (picturesOwner oldId)
     -- With Pictures off, no Picture is asked for.
@@ -573,17 +651,17 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
   let mut messages := [userTurn (wishMessage wish name gender)]
   let mut lastErrors : List String := []
   for attempt in [1, 2, 3] do
-    let text := if attempt == 1 then "The DM is writing..." else "The DM is fixing them..."
+    let text := if attempt == 1 then "The Dungeon Master is writing..." else "The Dungeon Master is fixing them..."
     if !(← addStep ref job { text }) then return
     let reply ← callApi cfg children (jobOwner job) (jobWanted ref job) (adventureRequest messages)
       [s!"adventure-{attempt}"]
     if !(← jobWanted ref job) then return
     let (errors, hero?, content) ← match reply with
       | .refused =>
-        endJob ref job .refused { text := "The DM won't write that one. Try another Wish." }
+        endJob ref job .refused { text := "The Dungeon Master won't write that one. Try another Wish." }
         return
       | .failed why =>
-        endJob ref job .failed { text := "The DM could not be reached.", errors := [why] }
+        endJob ref job .failed { text := "The Dungeon Master could not be reached.", errors := [why] }
         return
       | .cutOff content =>
         pure (["the reply was cut off because it was too long. Write fewer or shorter Scenes"],
@@ -605,7 +683,7 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
     if !(← addStep ref job { text := errorsText errors.length, errors }) then return
     messages := messages ++ [assistantTurn content, userTurn (fixMessage errors hero?)]
   endJob ref job .failed
-    { text := "The DM could not write a legal and fair Adventure in 3 tries.", errors := lastErrors }
+    { text := "The Dungeon Master could not write a legal and fair Adventure in 3 tries.", errors := lastErrors }
 
 /-- Start the work on a Wish in the background. Returns `false`, and does nothing, if the DM is
 already writing. The check and the start are one atomic step. -/
@@ -650,7 +728,7 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     | some id => json% { base: $(s!"/saved/{id}/"), ready: $(s.source.pictures),
                          drawing: $(s.source.drawing.length), failed: $(failedPictures cfg s), off: $(!cfg.picturesOn) }
   let gen := json% {
-    available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps),
+    available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps), readyId: $(s.gen.readyId),
     wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender)
   }
   let saved ← if g.game.phase.name == "title" then savedList cfg else pure (Json.arr #[])
@@ -659,6 +737,9 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "saved" saved
     |>.setObjVal! "live" (toJson s.source.savedId.isSome)
     |>.setObjVal! "background" (toJson s.source.background)
+    |>.setObjVal! "world" (toJson s.source.world)
+    |>.setObjVal! "intro" (toJson s.source.intro)
+    |>.setObjVal! "builtin" builtinCard.toJson
   return v.compress
 
 /-! ## Responses -/
@@ -770,7 +851,7 @@ def parseWish (body : String) : Except String (String × String × String) := do
   if wish.isEmpty then throw "Type a Wish first."
   if wish.length > maxWish then throw s!"A Wish can have at most {maxWish} characters."
   if name.length > maxName then throw s!"A name can have at most {maxName} characters."
-  if !["she", "he", "they", "dm"].contains gender then throw "Pick she, he, they, or let the DM choose."
+  if !["she", "he", "they", "dm"].contains gender then throw "Pick she, he, they, or let the Dungeon Master choose."
   return (wish, name, gender)
 
 #guard (parseWish "{\"wish\": \"the Shire\", \"name\": \"Pip\", \"gender\": \"he\"}").toOption == some ("the Shire", "Pip", "he")
@@ -787,7 +868,7 @@ def loadSaved (id : String) : IO (Except String (Game × Source × Draft)) := do
   | .error errs => return .error s!"The saved Adventure failed the check: {"; ".intercalate errs}"
   | .ok (d, g) =>
       let pictures ← checkedPictures id d.adventure
-      return .ok (g, { savedId := some id, background := some d.background, pictures }, d)
+      return .ok (g, { savedSource id d (savedWish text) with pictures }, d)
 
 /-- Change the server state with `f`, but only if the DM is not writing. The check and the change
 are one atomic step, so a Wish that finishes in between is never overwritten. Returns `none`, and
@@ -827,7 +908,7 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
     if path == ["api", "cancel"] then
       cancelWish children state
       return ← replyJson .ok (← view)
-    let busyMsg := "The DM is still writing. Wait, or click Cancel."
+    let busyMsg := "The Dungeon Master is still writing. Wait, or click Cancel."
     let busy : ContextAsync (Response Body.Any) := do
       replyJson .conflict (← view (error := some busyMsg))
     -- A quick check first. Each change below checks again, atomically (`whenIdle`).
@@ -841,7 +922,10 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       | .ok i =>
         let r ← whenIdle state fun s =>
           let (s', error, fresh) := s.session.apply i
-          ((error, fresh), { s with session := s' })
+          -- Once play goes on, the "ready" prompt for a new Adventure is no longer shown.
+          let gen := if error.isNone && s.gen.state == .ready then
+            { s.gen with state := .idle, steps := #[], readyId := none } else s.gen
+          ((error, fresh), { s with session := s', gen })
         match r with
         | none => busy
         | some (some why, _) => replyJson .badRequest (← view (error := some why))
@@ -854,13 +938,14 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
     | ["api", "builtin"] =>
       let seed ← freshSeed
       let r ← whenIdle state fun s =>
-        (s.source.savedId, { s with session := Session.start builtinGame seed, source := {},
+        (s.source.savedId, { s with session := Session.start builtinGame seed, source := builtinSource,
                                     gen := { s.gen with state := .idle, steps := #[] } })
       let some old := r | busy
       stopOldPictures children old none
       replyJson .ok (← view)
     | ["api", "dismiss"] =>
-      let r ← whenIdle state fun s => ((), { s with gen := { s.gen with state := .idle, steps := #[] } })
+      let r ← whenIdle state fun s =>
+        ((), { s with gen := { s.gen with state := .idle, steps := #[], readyId := none } })
       if r.isNone then return ← busy
       replyJson .ok (← view)
     | ["api", "wish"] =>
@@ -883,6 +968,11 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       | .error e =>
         -- The list shows this refusal too, until the file changes.
         if safeSegment id then markRefused cfg id e
+        -- If this is the Adventure that "Play it now" offers, stop offering it: it would fail again.
+        state.modify fun s =>
+          if s.gen.state == .ready && s.gen.readyId == some id then
+            { s with gen := { s.gen with state := .idle, steps := #[], readyId := none } }
+          else s
         replyJson .badRequest (← view (error := some e))
       | .ok (g, src, d) =>
         let seed ← freshSeed
@@ -978,7 +1068,7 @@ def main (args : List String) : IO UInt32 := do
   let apiKey := (← IO.getEnv "ANTHROPIC_API_KEY").filter (!·.isEmpty)
   let fake := (← IO.getEnv "RPG_FAKE_API").filter (!·.isEmpty) |>.map System.FilePath.mk
   let cfg : GameConfig := { host, port, apiKey, fake, savedCache := ← IO.mkRef [], picturesOn }
-  let state ← IO.mkRef ({ session := Session.start builtinGame seed } : ServerState)
+  let state ← IO.mkRef ({ session := Session.start builtinGame seed, source := builtinSource } : ServerState)
   let children ← IO.mkRef #[]
   let addr : Net.SocketAddress := .v4 ⟨ip, port.toUInt16⟩
   Async.block do

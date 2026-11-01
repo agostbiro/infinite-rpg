@@ -94,10 +94,16 @@ structure Draft where
   adventure : Adventure
   /-- The Character. -/
   hero : Being
-  /-- A short story of the Character, for the "Meet your Character" card. -/
+  /-- A short story of the Character, for the Character panel. -/
   background : String
   /-- The colors for the Pictures, such as "#0b1220". -/
   palette : List String
+  /-- The World of the Adventure in a few words, such as "Middle-earth, the Shire". An older save
+  has none: then it is empty. -/
+  world : String := ""
+  /-- The Intro: the text the Player reads before the first Scene. An older save has none: then it
+  is empty. -/
+  intro : String := ""
   deriving Repr
 
 /-- The Picture name of a Scene in a live Adventure. -/
@@ -176,9 +182,17 @@ def themesOfJson (j : Json) : Except String ThemeNames := do
     return (← ofKey? Armor.all Armor.key "armor" (← x.getObjValAs? String "armor"), ← x.getObjValAs? String "name")
   return { skills, weapons, armor }
 
+/-- Read the string field `k` of an object, or the empty string if there is no such field. -/
+def optStrField (j : Json) (k : String) : Except String String :=
+  match j.getObjVal? k with
+  | .ok v => inCtx k (fromJson? v)
+  | .error _ => pure ""
+
 /-- Read a Draft from the DM's JSON. -/
 def Draft.ofJson (j : Json) : Except String Draft := do
   let title ← j.getObjValAs? String "title"
+  let world ← optStrField j "world"
+  let intro ← optStrField j "intro"
   let start ← j.getObjValAs? Nat "start"
   let scenes ← listField j "scenes" sceneOfJson
   let themes ← match j.getObjVal? "themeNames" with
@@ -190,7 +204,7 @@ def Draft.ofJson (j : Json) : Except String Draft := do
   let palette ← match j.getObjVal? "palette" with
     | .ok p => inCtx "palette" (fromJson? p)
     | .error _ => pure []
-  return { adventure := { title, start, scenes, themes }, hero, background, palette }
+  return { adventure := { title, start, scenes, themes }, hero, background, palette, world, intro }
 
 /-- Read a Draft from JSON text. -/
 def Draft.parse (s : String) : Except String Draft := do
@@ -221,6 +235,8 @@ def Draft.toJson (d : Draft) : Json :=
   let th := a.themes
   json% {
     title: $(a.title),
+    world: $(d.world),
+    intro: $(d.intro),
     character: $((beingToJson d.hero).setObjVal! "background" (Json.str d.background)),
     themeNames: {
       skills: $(th.skills.map fun (s, n) => json% { skill: $(s.key), name: $(n) }),
@@ -252,6 +268,12 @@ def maxShortText : Nat := 120
 /-- The most characters in the Character's background. -/
 def maxBackground : Nat := 1000
 
+/-- The most characters in the World. -/
+def maxWorld : Nat := 60
+
+/-- The most characters in the Intro. -/
+def maxIntro : Nat := 600
+
 /-- An error if `s` has more than `n` characters. -/
 def tooLong (what : String) (n : Nat) (s : String) : List String :=
   if s.length > n then [s!"{what} has {s.length} characters, but the limit is {n}"] else []
@@ -269,6 +291,8 @@ def sizeErrors (d : Draft) : List String :=
     [s!"the Adventure has {a.scenes.length} Scenes, but the limit is {maxScenes}"] else []) ++
   tooLong "the title" maxShortText a.title ++
   tooLong "the background" maxBackground d.background ++
+  tooLong "the world" maxWorld d.world ++
+  tooLong "the intro" maxIntro d.intro ++
   a.scenes.flatMap (fun sc =>
     tooLong s!"the text of Scene {sc.id}" maxSceneText sc.text ++
     tooLong s!"the title of Scene {sc.id}" maxShortText sc.title ++
@@ -336,6 +360,8 @@ def pointsBreakdown (b : Being) : String :=
 /-- A small legal Draft: a Character with a staff, two Scenes, a roll, and a Fight. -/
 def fixtureLegal : String := r##"{
   "title": "The Mill Pond",
+  "world": "A river valley of millers",
+  "intro": "A quiet river valley, where the mill wheels turn all day. You are Wren, a miller's child who hears the river talk.",
   "character": {"name": "Wren", "background": "A miller's child who hears the river talk.",
     "st": 10, "dx": 11, "iq": 12, "ht": 12,
     "skills": [{"skill": "staff", "level": 13}, {"skill": "swimming", "level": 12},
@@ -369,6 +395,11 @@ def fixtureIllegal : String :=
 def fixtureTooLong : String :=
   fixtureLegal.replace "You reach the mill." ("".pushn 'x' 2001)
 
+/-- Fixture: the same Draft as an older save, with no World and no Intro. -/
+def fixtureOld : String :=
+  (fixtureLegal.replace "  \"world\": \"A river valley of millers\",\n" "").replace
+    "  \"intro\": \"A quiet river valley, where the mill wheels turn all day. You are Wren, a miller's child who hears the river talk.\",\n" ""
+
 /-- `true` if the JSON text reads as a Draft and the Draft passes the checker. -/
 def passesChecker (s : String) : Bool :=
   match Draft.parse s with
@@ -395,6 +426,19 @@ def draftErrors (s : String) : List String :=
 #guard match Draft.parse fixtureLegal with
   | .ok d => (Draft.ofJson d.toJson).toOption.map (fun d' => reprStr d' == reprStr d) == some true
   | .error _ => false
+-- The World and the Intro are read.
+#guard match Draft.parse fixtureLegal with
+  | .ok d => d.world == "A river valley of millers" && d.intro.startsWith "A quiet river valley"
+  | .error _ => false
+-- An older save with no World and no Intro still reads and can be played. Both are empty.
+#guard !(fixtureOld.contains "\"world\"") && !(fixtureOld.contains "\"intro\"")
+#guard passesChecker fixtureOld
+#guard match Draft.parse fixtureOld with
+  | .ok d => d.world == "" && d.intro == ""
+  | .error _ => false
+-- A World over 60 characters fails the size limit.
+#guard draftErrors (fixtureLegal.replace "A river valley of millers" ("".pushn 'w' 61)) ==
+  ["the world has 61 characters, but the limit is 60"]
 -- The illegal fixture fails the checker: the Character costs 120 points, and Scene 1 has
 -- no way to an Ending.
 #guard !passesChecker fixtureIllegal

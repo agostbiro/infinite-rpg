@@ -30,6 +30,10 @@ _Avoid_: module, campaign, scenario
 The text the Player types to ask the DM for an Adventure, such as "I love LOTR, set it in the Shire".
 _Avoid_: prompt, request, query
 
+**Front Page**:
+The page where the Player chooses an Adventure to play or makes a Wish.
+_Avoid_: title screen, home page, menu
+
 **Legal Adventure**:
 An Adventure that obeys every rule in the spec, under its RuleSet. Only a Legal Adventure can be played.
 _Avoid_: valid adventure, verified adventure
@@ -45,6 +49,14 @@ _Avoid_: certification, validation (except for the run with the fixed seed)
 **Horizon**:
 How many turns after the first one the fairness check looks at. With horizon 5, it looks at turns 1 to 6.
 _Avoid_: window size
+
+**World**:
+The setting of an Adventure in a few words, such as "Middle-earth, the Shire". It changes only what the Player sees, never what the rules do.
+_Avoid_: universe, setting, genre
+
+**Intro**:
+The short text the Player reads before the first Scene. It names the world of the Adventure and says who the Character is. It changes only what the Player sees, never what the rules do.
+_Avoid_: blurb, premise, synopsis
 
 **Scene**:
 One step of an Adventure: some text and a list of Choices. A Scene can also name a Picture.
