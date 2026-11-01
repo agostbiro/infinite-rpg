@@ -338,7 +338,7 @@ button { font: inherit; color: inherit; }
 
 /* ---------- Dice ---------- */
 
-.dice { display: inline-flex; gap: 4px; margin: 0 4px; vertical-align: -5px; }
+.dice { display: inline-flex; gap: 4px; margin: 0 4px; vertical-align: middle; }
 
 .die {
   display: inline-grid;
@@ -360,7 +360,7 @@ button { font: inherit; color: inherit; }
 
 .log li.featured .die { width: 34px; height: 34px; padding: 5px; border-radius: 7px; }
 .log li.featured .die i { width: 5.5px; height: 5.5px; }
-.log li.featured .dice { vertical-align: -11px; gap: 7px; margin: 2px 6px; }
+.log li.featured .dice { gap: 7px; margin: 2px 6px; }
 
 .die.tumble { animation: tumble 1s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
 .die.tumble:nth-child(2) { animation-delay: 0.06s; }
