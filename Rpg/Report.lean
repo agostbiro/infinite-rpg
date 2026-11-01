@@ -47,11 +47,6 @@ def DamageType.name : DamageType → String
   | .impaling => "impaling"
   | .burning => "burning"
 
-/-- A Picture name is safe if it has only lowercase letters, digits, and dashes.
-The page builds the file name `pictures/<name>.svg` from it. -/
-def safePicture (name : String) : Bool :=
-  !name.isEmpty && name.all fun c => c.isLower || c.isDigit || c == '-'
-
 /-- What the page shows on a being's card at the start of a Fight. -/
 structure Card where
   name : String
@@ -73,9 +68,8 @@ def Being.card (rules : RuleSet) (b : Being) (hp : Int) : Card :=
 
 /-- One thing the Engine did or found out during play. -/
 inductive Report where
-  /-- The Character comes to a Scene. `ending` is true if the Scene is an Ending.
-  `picture` is the name of the Scene's Picture, if it has a safe one. -/
-  | scene (id : SceneId) (title : String) (text : String) (ending : Bool) (picture : Option String)
+  /-- The Character comes to a Scene. `ending` is true if the Scene is an Ending. -/
+  | scene (id : SceneId) (title : String) (text : String) (ending : Bool)
   /-- The Player picks the Choice with this text. -/
   | picked (text : String)
   /-- `who` makes a Success Roll against `target` at `modifier`, for example DX at -2. -/

@@ -2,7 +2,8 @@ import Rpg.Prompt
 import Rpg.WorldChange
 
 /-! The live GM proposes bounded adventure data. It receives the exact checkpoint,
-existing rules, the requested gift, and the same start-of-adventure balance bands as the checker. -/
+existing rules, the requested gift, and the same start-of-adventure balance bands as the checker:
+the bands of the game's own policy (its difficulty level). -/
 namespace Rpg.WorldChange
 open Lean Probability Probability.Confidence
 
@@ -32,7 +33,9 @@ def schema : Json := objSchema [
   ("rules", arrSchema combatRuleSchema),
   ("scenes", arrSchema (objSchema [
     ("id", intSchema), ("title", strSchema), ("text", strSchema),
-    ("choices", arrSchema (objSchema [("text", strSchema), ("outcome", outcomeSchema)]))]))]
+    ("choices", arrSchema (objSchema [("text", strSchema), ("outcome", outcomeSchema)]))])),
+  ("scenePlaces", arrSchema (objSchema [("scene", intSchema), ("place", intSchema),
+    ("npcs", arrSchema strSchema)]))]
 
 /-- A world change includes a fun counter-rule on its first proposal, before checking balance. -/
 def systemPrompt : String := "\n".intercalate [
@@ -47,18 +50,21 @@ def systemPrompt : String := "\n".intercalate [
   "Equipment has attackLevel 3..18, dice 1..6, add -3..6. Its attackLevel is the item's targeting/training effect, not a change to purchased skills. Explain that in the fiction. Other weapon keys retain their normal damage type and single-target behavior. Strength requirements still apply.",
   "`rules` contains NEW effects, appended to existing effects (maximum 24 total). Every effect needs a unique name, exact player-readable trigger and numbers in its description, side hero/foes, and nonzero effect. Include at least one positive enemy effect. Conditional hitBonus is -4..4, damageBonus -4..6 per hit, armorBonus 0..4. Effects stack only while their trigger holds.",
   "Triggers: always = unconditional (allowed only in requestedRules, not counter-rules); wounded = owner's HP at most half maximum; desperate = at most one third; reckless = owner's last maneuver All-Out Attack; guarding = owner's last maneuver All-Out Defense; againstReckless/againstGuarding = opponent's last maneuver; againstFlame = opponent currently wields a flamethrower. All enemies choose Attack, so their own reckless/guarding triggers never fire. Armor effects apply when defending; hit/damage effects when attacking. Use triggers that can actually happen.",
+  "Every loop of scenes must have at least 4 steps: a path of choices that comes back to the same scene must pass 3 other scenes first, counting every outcome target.",
   "`scenes` replaces unvisited scene IDs or adds new IDs. Default to scenes=[] for equipment and combat-rule requests. Patch scenes only when the request needs them or a balance failure requires it; omit unchanged scenes. NEVER patch a protected scene. All original scenes remain; all scenes must be reachable and have a path to an ending. You can extend an unvisited ending to create a longer, interesting continuation. Use at most 40 total scenes; keep choices and encounters small (at most 4 foes per fight).",
-  "The core engine rules, dice, character point budgets, time scale, balance tolerance, and Weibull parameters cannot change. No code, new actions, healing, ammo, invented triggers, or arbitrary new state. Set supported=true whenever the defining behavior can be implemented. Difficulty balancing a proposal is a reason to revise the world, not to call the mechanic unsupported. Never silently drop an essential part of the request or substitute a cosmetic name for a real effect. Only after considering faithful combinations, if an essential behavior still cannot be expressed, set supported=false, explain the specific missing capability and suggest the closest playable alternative in summary, with empty requestedRules/rules/scenes and null equipment. Suggest such a materially different alternative; do not apply it as though it fulfilled the request.",
-  s!"Design for the supplied balance bands from the beginning. The checker plays {validationGames} games including combat FROM THE ADVENTURE START, with full initial HP and ALL updated rules equipped from turn zero. It tests the first {liveHorizon+1} scene turns. The player resumes at their existing checkpoint after acceptance; do not simulate from that checkpoint or extend the adventure merely because the player is near its ending. Later zero-observation rows fail. Combat rounds do not count as scene turns.",
+  "If the world has an `environment` (its world map), keep the map: you cannot add or move places, paths, or props. Give each NEW scene ID exactly one entry in `scenePlaces` ({scene, place, npcs}) with a place id from the map, and at most 4 people in npcs. A replaced scene keeps its place. A scene can have at most 4 choices. Use scenePlaces=[] when you add no scene or the world has no map.",
+  "The core engine rules, dice, character point budgets, time scale, balance tolerance, difficulty level, and Weibull parameters cannot change. No code, new actions, healing, ammo, invented triggers, or arbitrary new state. Set supported=true whenever the defining behavior can be implemented. Difficulty balancing a proposal is a reason to revise the world, not to call the mechanic unsupported. Never silently drop an essential part of the request or substitute a cosmetic name for a real effect. Only after considering faithful combinations, if an essential behavior still cannot be expressed, set supported=false, explain the specific missing capability and suggest the closest playable alternative in summary, with empty requestedRules/rules/scenes and null equipment. Suggest such a materially different alternative; do not apply it as though it fulfilled the request.",
+  s!"Design for the supplied balance bands from the beginning. The checker plays {difficultyGames} games including combat FROM THE ADVENTURE START, with full initial HP and ALL updated rules equipped from turn zero. It tests the first {liveHorizon+1} scene turns. The player resumes at their existing checkpoint after acceptance; do not simulate from that checkpoint or extend the adventure merely because the player is near its ending. Later zero-observation rows fail. Combat rounds do not count as scene turns.",
   "Screen failures identify exact rows to adjust. A screened proposal is then frozen and checked on fresh games with the supplied error allowance. Never ask to reroll the same proposal. Revise the world after a failure.",
   rulesText]
 
-/-- The GM receives both the original world and the exact pause point, including enemy wounds. -/
-def context (g : Game) (wish : String) (risk : Rat) : String :=
-  let d : Draft := { adventure := g.adventure, hero := g.hero, background := "", palette := [] }
+/-- The GM receives both the original world and the exact pause point, including enemy wounds.
+The ranges are the bands of the game's own policy. -/
+def context (g : Game) (wish : String) (risk : Rat) (map : Option WorldEnvironment := none) : String :=
+  let d : Draft := { adventure := g.adventure, hero := g.hero, background := "", environment := map }
   let ranges := (List.range (liveHorizon+1)).filterMap fun row =>
     if h : row < liveHorizon+1 then
-      let band := confidenceBands liveHorizon ⟨row, h⟩
+      let band := confidenceBandsFor g.policy liveHorizon ⟨row, h⟩
       some (json% { row: $(row), lower: $(toString (max 0 (band.target-band.tolerance))),
         upper: $(toString (min 1 (band.target+band.tolerance))) })
     else none

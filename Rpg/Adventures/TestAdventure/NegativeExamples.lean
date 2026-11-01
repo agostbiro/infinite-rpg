@@ -1,4 +1,4 @@
-import Rpg.Adventures.Lighthouse
+import Rpg.Adventures.TestAdventure
 
 /-!
 # Illegal Adventures
@@ -9,7 +9,7 @@ the spec rejects it (`¬ LegalAdventure`), and the checker reports an error.
 Each spec proof picks out the rule that the cheat breaks and shows by `decide` that the rule fails.
 -/
 
-namespace Rpg.Lighthouse.Tests
+namespace Rpg.TestAdventure.Tests
 
 /-- A small Adventure around one Choice. The Choice leads from Scene 0, and Scene 1 is an Ending. -/
 def oneChoice (title : String) (o : Outcome) : Adventure where
@@ -172,4 +172,4 @@ def cheats : List Adventure :=
   [cheatGiant, cheatBrokenLink, cheatEasyLock, cheatEndless, cheatNoEnding, cheatHiddenEnding,
     cheatUnrollable, cheatTrap]
 
-end Rpg.Lighthouse.Tests
+end Rpg.TestAdventure.Tests

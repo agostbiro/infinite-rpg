@@ -69,32 +69,31 @@ def makeVariant (name label : String) (rules : RuleSet) (hero : Being) (story : 
   if hc : checkCharacter rules hero = [] then
     if ha : check rules hero story = [] then
       .ok ⟨name, label, ⟨⟨rules, hero, checkCharacter_sound hc, story, check_sound ha⟩,
-        liveHorizon, by decide, none, 0⟩⟩
+        liveHorizon, by decide, none, 0, DifficultyLevel.medium.policy⟩⟩
     else .error s!"{name}: {check rules hero story}"
   else .error s!"{name}: {checkCharacter rules hero}"
 
-/-- Fixed variants separate shared rules, story expansion, and deliberately bad balance. -/
-def variants (original acorn : Draft) : Except String (List StudyVariant) := do
-  let powerfulHero := { Lighthouse.mara with weapon := .flamethrower }
+/-- Fixed variants: the test Adventure, three changes to it with deliberately bad balance, and The
+Silver Acorn. -/
+def variants (acorn : Draft) : Except String (List StudyVariant) := do
+  let powerfulHero := { TestAdventure.mara with weapon := .flamethrower }
   let powerfulRules : RuleSet := {
     equipment := [⟨powerfulHero.name, .flamethrower, "Unchecked Sunfire", 18, 6, 6⟩] }
   let harshRules : RuleSet := {
     combatRules := defaultCombatRules ++ [{
       name := "Unbalanced Opposition", description := "Enemies always gain +4 to hit and +6 damage.",
       side := "foes", trigger := "always", hitBonus := 4, damageBonus := 6 }] }
-  let peaceful := { Lighthouse.lighthouse with
-    scenes := Lighthouse.lighthouse.scenes.map fun scene => { scene with
+  let peaceful := { TestAdventure.testAdventure with
+    scenes := TestAdventure.testAdventure.scenes.map fun scene => { scene with
       choices := scene.choices.map fun choice => { choice with
         outcome := match choice.outcome with
           | .fight _ next => .goto next
           | other => other } } }
   return [
-    ← makeVariant "original_lighthouse" "Original Lighthouse" { combatRules := [] } original.hero original.adventure,
-    ← makeVariant "meta_rules_only" "Original story + new meta rules" {} original.hero original.adventure,
-    ← makeVariant "expanded_lighthouse" "Expanded Lighthouse + meta rules" Lighthouse.rules Lighthouse.mara Lighthouse.lighthouse,
-    ← makeVariant "unchecked_power" "Expanded Lighthouse: unchecked superweapon" powerfulRules powerfulHero Lighthouse.lighthouse,
-    ← makeVariant "harsh_opposition" "Expanded Lighthouse: unbalanced enemies" harshRules Lighthouse.mara Lighthouse.lighthouse,
-    ← makeVariant "peaceful_lighthouse" "Expanded Lighthouse: no combat" {} Lighthouse.mara peaceful,
+    ← makeVariant "test_adventure" "Test Adventure + meta rules" TestAdventure.rules TestAdventure.mara TestAdventure.testAdventure,
+    ← makeVariant "unchecked_power" "Test Adventure: unchecked superweapon" powerfulRules powerfulHero TestAdventure.testAdventure,
+    ← makeVariant "harsh_opposition" "Test Adventure: unbalanced enemies" harshRules TestAdventure.mara TestAdventure.testAdventure,
+    ← makeVariant "peaceful" "Test Adventure: no combat" {} TestAdventure.mara peaceful,
     ← makeVariant "silver_acorn" "The Silver Acorn + meta rules" {} acorn.hero acorn.adventure]
 
 /-- Full trajectories use the same choice policy, combat rules, and timeout handling as admission. -/
@@ -132,19 +131,18 @@ def main (args : List String) : IO Unit := do
   let games ← require (plan.getObjValAs? Nat "lifetime_games_per_variant")
   let lifeSeed ← require (plan.getObjValAs? Nat "lifetime_seed")
   let turnLimit ← require (plan.getObjValAs? Nat "lifetime_turn_limit")
-  if (← require (plan.getObjValAs? Nat "admission_games_per_batch")) != validationGames ||
+  if (← require (plan.getObjValAs? Nat "admission_games_per_batch")) != difficultyGames ||
       (← require (plan.getObjValAs? Nat "combat_round_limit")) != validationRoundLimit ||
       (← require (plan.getObjValAs? Nat "balance_horizon")) != liveHorizon then
     throw (IO.userError "The study plan disagrees with the shared admission parameters")
-  let original ← require (Draft.parse (← IO.FS.readFile "experiments/adventures/lighthouse-original.json"))
   let acorn ← require (Draft.parse (← IO.FS.readFile "experiments/adventures/silver-acorn.json"))
-  let cases ← require (variants original acorn)
+  let cases ← require (variants acorn)
   if (cases.map (·.name)) != (← require (plan.getObjValAs? (List String) "variants")) then
     throw (IO.userError "The planned variants differ from the compiled variants")
   if args.contains "--screen" then
     for v in cases do
-      let counts := sampleCounts v.candidate 1 validationGames
-      IO.println s!"{v.name}: {decide (ValidationAccepted liveHorizon counts)}; deaths={counts.deaths}"
+      let counts := sampleCounts v.candidate 1 difficultyGames
+      IO.println s!"{v.name}: {decide (ValidationAccepted liveHorizon counts confidenceDelta 0 v.candidate.policy)}; deaths={counts.deaths}"
     return
   let selected := (args.find? (·.startsWith "--variant=")).map (fun s => (s.drop 10).toString)
   if let some name := selected then
@@ -155,8 +153,8 @@ def main (args : List String) : IO Unit := do
     let life := lifetimes v.candidate.toAdventureDefinition lifeSeed games turnLimit
     let mut batches : Array Json := #[]
     for seed in seeds do
-      IO.eprintln s!"  fixed admission batch {seed}: {validationGames} games, {policies.length} policies"
-      let counts := sampleCounts v.candidate seed validationGames
+      IO.eprintln s!"  fixed admission batch {seed}: {difficultyGames} games, {policies.length} policies"
+      let counts := sampleCounts v.candidate seed difficultyGames
       let comparisons := policies.map (policyResult v.candidate counts)
       batches := batches.push (json% { seed: $(seed), games: $(counts.games), aborted: $(counts.aborted),
         trials: $(counts.trials), deaths: $(counts.deaths), policies: $(comparisons) })

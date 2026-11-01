@@ -1,3 +1,3 @@
-import Rpg.Adventures.Lighthouse.NegativeExamples
+import Rpg.Adventures.TestAdventure.NegativeExamples
 
-/-! The cheating Adventures. They are in `Rpg/Adventures/Lighthouse/NegativeExamples.lean`. -/
+/-! The cheating Adventures. They are in `Rpg/Adventures/TestAdventure/NegativeExamples.lean`. -/

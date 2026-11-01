@@ -34,6 +34,10 @@ _Avoid_: prompt, request, query
 The page where the Player chooses an Adventure to play or makes a Wish.
 _Avoid_: title screen, home page, menu
 
+**Test Adventure**:
+A small Adventure, The Bandit Camp, for the tests and the example theorems. The server never offers it for play.
+_Avoid_: sample, demo adventure
+
 **Legal Adventure**:
 An Adventure that obeys every rule in the spec, under its RuleSet. Only a Legal Adventure can be played.
 _Avoid_: valid adventure, verified adventure
@@ -47,8 +51,12 @@ The property that the balance check tests: the deaths on each turn of an Adventu
 _Avoid_: fairness
 
 **Admission**:
-The balance check that an Adventure must pass after the checker, before play and before a World change is installed. It plays the Adventure 1,000 times from its start with a seed, and compares the deaths on each turn with a target curve.
+The balance check that an Adventure must pass after the checker, before play and before a World change is installed. It plays the Adventure 1,200 times from its start with a seed, and compares the deaths on each turn with the target curve of its Difficulty level.
 _Avoid_: certification, validation (except for the run with the fixed seed)
+
+**Difficulty level**:
+How dangerous an Adventure is: easy, medium, or hard. The Player picks it before a Wish. Each level is a target curve for the balance check, with a tolerance of 5 percentage points. An Adventure keeps its level for its whole life. An Adventure with no level is medium.
+_Avoid_: difficulty profile, mode
 
 **Horizon**:
 How many turns after the first one the balance check looks at. With horizon 5, it looks at turns 1 to 6.
@@ -63,12 +71,20 @@ The short text the Player reads before the first Scene. It names the world of th
 _Avoid_: blurb, premise, synopsis
 
 **Scene**:
-One step of an Adventure: some text and a list of Choices. A Scene can also name a Picture.
+One step of an Adventure: some text and a list of Choices.
 _Avoid_: room, node, page
 
-**Picture**:
-The drawing shown with a Scene. The DM picks it. It changes only what the Player sees, never what the rules do.
-_Avoid_: art, image, illustration
+**3D world**:
+The page shows the Adventure as a landscape. The Player walks to a marked object or person to pick a Choice or a Maneuver. Each object sends one input that the game offers, unchanged. It changes only what the Player sees, never what the rules do.
+_Avoid_: level, room
+
+**World map**:
+The places, paths, and props of an Adventure, and the place of each Scene. The DM writes it with the Adventure. It changes only what the Player sees, never what the rules do.
+_Avoid_: level, layout
+
+**Journal**:
+The text of the story, the Character, and one button for each input, next to the 3D world. Without WebGL, the page shows only the journal.
+_Avoid_: log, transcript
 
 **Theme Name**:
 A name an Adventure gives to a skill or a piece of Gear, shown to the Player in place of the rule name. For example, Broadsword shows as "Wand Duelling". It changes only what the Player sees, never what the rules do.
@@ -81,6 +97,10 @@ _Avoid_: action, option, exit
 **Ending**:
 A Scene with no Choices. Reaching it ends the Adventure. The Character's death also ends the Adventure, but it is not an Ending.
 _Avoid_: victory, conclusion, terminal scene
+
+**Loop**:
+A path of Choices that comes back to the Scene where it started. Each Scene that an Outcome can lead to counts as a step, whatever the dice do. Every Loop must have at least 4 steps (No Short Loops).
+_Avoid_: cycle, non-cyclic, equilibrium
 
 **Item**:
 A story thing the Character carries from Scene to Scene, such as a key or a letter. A Choice can require an Item. Weapons and armor are Gear, not Items.

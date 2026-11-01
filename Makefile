@@ -1,4 +1,4 @@
-.PHONY: install run run-fake build check check-pictures check-rules cheats validate comparator agree
+.PHONY: install run run-fake build check check-rules cheats validate comparator agree test-spatial test-browser
 
 # The port of the game server: make run PORT=9000
 PORT ?= 8080
@@ -23,7 +23,8 @@ run: build
 	exec .lake/build/bin/rpg --host $(HOST) --port $(PORT) $(if $(SEED),--seed $(SEED),)
 
 # Test hook: run the game with recorded API replies from tests/fake-api instead of the Claude API.
-# A Wish then always gives "The Silver Acorn", after one failed try. No API key is needed.
+# No API key is needed. There is no recorded Wish now, so a Wish fails with "no recorded reply"
+# (docs/follow-ups.md). The saved Adventures can be played.
 run-fake: build
 	@echo "TEST MODE: Wishes use recorded replies from tests/fake-api."
 	RPG_FAKE_API=tests/fake-api .lake/build/bin/rpg --host $(HOST) --port $(PORT) $(if $(SEED),--seed $(SEED),)
@@ -36,17 +37,13 @@ build:
 # `@[` and `attribute [` catch every attribute, such as `@[implemented_by]`.
 FORBIDDEN = \b(implemented_by|extern|unsafe|initialize|builtin_initialize|macro|macro_rules|syntax|elab|set_option)\b|@\[|attribute *\[
 
-# The folder of Pictures. The DM writes these SVG files.
-PICTURES ?= web/pictures
-
 # Build, then replay every proof through the Lean kernel. This fails on `sorry` and on new axioms.
-# It also fails if a DM file uses a forbidden word, or a Picture uses a forbidden SVG feature.
+# It also fails if a DM file uses a forbidden word.
 check: build
 	lake check
 	@if grep -rnE '$(FORBIDDEN)' Rpg/Adventures; then \
 	  echo "error: a forbidden word is used above"; exit 1; fi
 	@$(MAKE) --no-print-directory check-rules
-	@$(MAKE) --no-print-directory check-pictures
 
 # People own the rules files of each Adventure. A DM may not change them.
 # During play, the DM can propose a live change: equipment, combat effects, and new or replaced
@@ -66,17 +63,26 @@ check-rules:
 	  echo "error: an Adventure file names RuleSet or changes a rules value"; bad=1; fi; \
 	exit $$bad
 
-# Pictures may not run code or load things from elsewhere. scripts/check_pictures.py parses each
-# SVG file and rejects scripts, event handlers, outside links, and more (see its docstring).
-# The page shows Pictures only through <img> tags, which run no scripts; this is a second guard.
-check-pictures:
-	python3 scripts/check_pictures.py $(PICTURES)
+# Test the parts of the 3D page that have no browser in them: the objects for the inputs, the walk,
+# and the playback of Reports. This needs only Node.js.
+test-spatial:
+	node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js tests/travel.test.js
+
+# The port of the test server for the browser test. It is not PORT, so the test never talks to a
+# game that a Player has open.
+TEST_PORT ?= 8093
+
+# Play a Wish in a real browser (Playwright), with the recorded replies in tests/fake-api.
+# Run `npm ci` first. Playwright uses its own browser files; it does not download anything else.
+test-browser: build
+	TEST_PORT=$(TEST_PORT) npx playwright test
 
 # Show the checker rejecting the cheating Adventures.
 cheats:
 	lake exe cheats
 
-# Run the balance check on the Lighthouse, and print each row with its interval and range.
+# Run the balance check on the test Adventure (The Bandit Camp), and print each row with its
+# interval and range.
 validate:
 	lake exe validate
 
@@ -85,6 +91,7 @@ validate:
 comparator:
 	lake comparator
 
-# Compare the exact Fight model with the simulator on the Lighthouse Fights. This takes minutes.
+# Compare the exact Fight model with the simulator on the Fights of the test Adventure. This takes
+# minutes.
 agree:
 	lake exe agree

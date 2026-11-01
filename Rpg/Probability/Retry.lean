@@ -65,7 +65,7 @@ theorem RetryTree.balanced {n : Nat} (tree : RetryTree n) (start : Nat)
   | @attempt n a law next ih =>
     obtain ⟨lawValid, ⟨sampling⟩, probabilities, children⟩ := valid
     have tail0 := Rat.le_of_lt (remainingRisk_valid (start+1)).1
-    have first := (a.balancedAt (attemptRisk start) tail0 defaultPolicy law lawValid sampling probabilities).2
+    have first := (a.balancedAt (attemptRisk start) tail0 a.policy law lawValid sampling probabilities).2
     have bound := expectation_monotone law lawValid.1
       (fun obs => if acceptsFamily a.bands (attemptRisk start) obs ∧ ¬ familyBalanced a.truth a.bands then 1
         else (next obs).falseAcceptance (start+1))

@@ -1,0 +1,12 @@
+{
+  "name": "verified-rpg-spatial-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js tests/travel.test.js",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

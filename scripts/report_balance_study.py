@@ -18,7 +18,7 @@ from matplotlib.ticker import PercentFormatter
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "experiments/results"
 COLORS = ["#64748b", "#2563eb", "#7c3aed", "#16a34a", "#dc2626", "#0d9488", "#d97706"]
-SHORT = ["Original Lighthouse", "Original + meta rules", "Expanded Lighthouse", "Unchecked superweapon", "Harsh opposition", "No combat", "Silver Acorn"]
+SHORT = ["Test Adventure", "Unchecked superweapon", "Harsh opposition", "No combat", "Silver Acorn"]
 
 
 def quantile(histogram, p):
@@ -101,7 +101,7 @@ def main():
     for r, color, label in zip(records, COLORS, SHORT):
         values = np.cumsum(r["lifetime"]["deaths"]) / r["lifetime"]["games"]
         ax.step(range(max_turn+1), values[:max_turn+1], where="post", color=color, label=label,
-                linewidth=2.7 if r["variant"] == "expanded_lighthouse" else 1.8)
+                linewidth=2.7 if r["variant"] == "test_adventure" else 1.8)
     ax.set(title="Observed deaths over the game", xlabel="Scene-choice turn (including its entire fight)", ylabel="Fraction of all games ending in death")
     ax.set_ylim(-.015, 1.015)
     ax.yaxis.set_major_formatter(PercentFormatter(1))
@@ -151,7 +151,7 @@ def main():
     ax.fill_between(x, lo, hi, color="#e2e8f0", label="Default allowed band (±20 percentage points)")
     ax.plot(x, target, "k--", label="Discrete Weibull target")
     for r, color, label in zip(records, COLORS, SHORT):
-        if r["variant"] not in ("original_lighthouse", "expanded_lighthouse", "unchecked_power", "harsh_opposition"):
+        if r["variant"] not in ("test_adventure", "unchecked_power", "harsh_opposition"):
             continue
         values = [p["observed_probability"] for p in profiles if p["variant"] == r["variant"]]
         ax.plot(x, values, marker="o", color=color, label=label)
@@ -175,7 +175,7 @@ def main():
 <style>body{{max-width:1150px;margin:40px auto;padding:0 24px;font:16px/1.6 system-ui;color:#172033;background:#fafbfe}}h1,h2{{line-height:1.2}}h1{{font-size:36px}}h2{{margin-top:40px}}.lead{{font-size:20px}}.card{{padding:20px;background:white;border:1px solid #dce3ef;border-radius:12px;margin:24px 0}}svg{{width:100%;height:auto}}table{{border-collapse:collapse;width:100%;font-size:13px}}th,td{{text-align:left;padding:9px;border-bottom:1px solid #e2e8f0}}th{{background:#edf2fa}}.table{{overflow:auto}}code{{font-size:13px}}small{{color:#596579}}a{{color:#4f46e5}}</style>
 <h1>Does the balance check change which games we allow?</h1>
 <p class="lead">Yes: the same simulated outcomes produce different admission decisions when the Weibull curve, tolerance, or confidence changes. The parameters filter games; they do not change the dice or the lifetime of an unchanged game.</p>
-<p>{total_games:,} trajectories across seven variants of two adventures. Each variant has 20,000 lifetime runs and five independent-seed batches of 1,000 games. The nine policies reuse those five batches. Study runtime: {meta['elapsed_seconds']:.1f} seconds.</p>
+<p>{total_games:,} trajectories across five variants of two adventures. Each variant has 20,000 lifetime runs and five independent-seed batches of 1,000 games. The nine policies reuse those five batches. Study runtime: {meta['elapsed_seconds']:.1f} seconds.</p>
 <div class="card"><strong>Default policy:</strong> q=0.95, shape=2, tolerance=±0.20, 95% exact binomial confidence, six checked death rows.<br>At least one batch passed for: {html.escape(', '.join(accepted))}.<br>No batches passed for: {html.escape(', '.join(rejected))}.</div>
 <h2>Death rates and time before death</h2><div class="table">{stat_table}</div>
 <p><strong>Mean turns given death</strong> averages only characters who died within the observation window. A successful ending is never counted as a death. A game with no observed deaths has no such average. Mean completion turn includes both death and successful endings. One turn is one scene choice, including its entire fight; it is not one combat round.</p>
@@ -187,8 +187,8 @@ def main():
 <p><strong>What the sweep exposes:</strong> q=0.90, shape=3, and the ±0.10 tolerance each require some deaths on turn 2; every studied story has two safe opening turns, so even the harsh variant fails. With q=0.98, shape=1, or ±0.30 tolerance, all six bands include zero, so the no-combat variant can pass. The ±0.30 setting also admits the harsh variant. At 99% confidence, Silver Acorn passed four batches instead of five.</p>
 <h2>What the test compares</h2><div class="card">{frequency_svg}</div>
 <p>The first row is first-turn death. Later rows measure death at exactly t+2 given the game is active at t. These are not the probability of dying anywhere within two turns and not the one-turn hazard. The plotted observations pool five batches for display; admission uses each separate batch's complete exact-binomial intervals, not these point estimates.</p>
-<h2>What changed in the game</h2><p>The new meta rules are Committed Strike (+1 hero damage during All-Out Attack), Guard Feint (−1 enemy hit level against All-Out Defense), Cornered Fury (+2 enemy hit level at half HP), and Punish the Opening (+1 enemy damage against All-Out Attack). They are shared defaults for built-in and generated adventures. Lighthouse also adds a relief-watch bluff, a cargo-net route that splits the wreckers, a keeper rescue, a disarmed duel, a flare bluff, and a new ending.</p>
-<p>The original baseline uses its original graph and no new meta rules. The meta-rules-only variant isolates the combat change on that original graph. The expanded version adds the new choices. The unchecked superweapon has attack level 18 and 6d+6 flame damage; the harsh variant adds unconditional +4 enemy hit level and +6 damage. The peaceful variant replaces fights with their win destination. The Silver Acorn is a separate authored fixture with its own character and encounters.</p>
+<h2>What changed in the game</h2><p>The new meta rules are Committed Strike (+1 hero damage during All-Out Attack), Guard Feint (−1 enemy hit level against All-Out Defense), Cornered Fury (+2 enemy hit level at half HP), and Punish the Opening (+1 enemy damage against All-Out Attack). They are shared defaults for every adventure.</p>
+<p>The test Adventure (The Bandit Camp) is the main variant. The unchecked superweapon has attack level 18 and 6d+6 flame damage; the harsh variant adds unconditional +4 enemy hit level and +6 damage. The peaceful variant replaces fights with their win destination. The Silver Acorn is a separate authored fixture with its own character and encounters.</p>
 <h2>Method, proof, and limits</h2><ul><li>All trajectories run the compiled Lean simulator and the same shared combat engine as play, with uniform scene choices and the fixed uniform maneuver/target policy.</li><li>The lifetime cap is {plan['lifetime_turn_limit']} scene turns; the combat cap is {plan['combat_round_limit']} rounds per fight. Timeouts and invalid trajectories are retained. None are silently dropped.</li><li><code>StatisticalCandidate.balancedAt</code> now accepts an explicit policy. The study calls the same <code>ValidationAccepted</code> predicate with that policy. Production admission still uses <code>defaultPolicy</code>.</li><li>The theorem gives per-row coverage and bounds false acceptance of one whole test, under the accepted conditional-binomial sampling assumptions. It does not certify fun, every player strategy, PRNG independence, or simultaneous confidence across all cells in this exploratory study.</li><li>The default check admitted Silver Acorn despite an 83.4% random-play death rate: the finite timing bands do not set an overall win-rate target. Higher conditional mean time to death alone does not prove a game is safer: compare death rates too. Winning games never later die in this model, so an unconditional mean time to death can be infinite.</li><li>Policies and seeds were recorded before study results. No study result was used to tune the shipped rules. The same seeds across variants aid reproducibility but do not make every consumed roll a matched observation.</li><li>The Weibull values are game-design choices, not empirical RPG standards. Linux-only kernel replay and Comparator remain pending on this Mac.</li></ul>
 <h2>Reproduce and inspect</h2><p>Run <code>python3 scripts/run_balance_study.py</code>, then the report script with Matplotlib installed. The plan is <code>experiments/plan.json</code>. This report is self-contained; the CSVs, SVGs, PNGs, raw JSONL observations, and source SHA-256 hashes are alongside it.</p><p><small>Recorded parent commit: {html.escape(meta['git_parent'])}. Plan SHA-256: {html.escape(meta['plan_sha256'])}. Measurement started: {html.escape(meta['started_utc'])}.</small></p></html>'''
     (OUT / "report.html").write_text(report)

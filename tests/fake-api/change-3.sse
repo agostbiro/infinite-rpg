@@ -26,16 +26,16 @@ event: content_block_start
 data: {"type": "content_block_start", "index": 1, "content_block": {"type": "text", "text": ""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"supported\": true, \"summary\": \"You catch a Stormglass Flamethrower, its enchanted sight guiding your aim.\", \"moment\": \"Wounded wreckers rally through the smoke. Finish them or guard behind a Cinder V"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"supported\": true, \"summary\": \"You catch a Stormglass Flamethrower, its enchanted sight guiding your aim.\", \"moment\": \"Wounded bandits rally through the smoke. Finish them or guard behind a Cinder Ve"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "eil.\", \"equipment\": {\"weapon\": \"flamethrower\", \"name\": \"Stormglass Flamethrower\", \"attackLevel\": 12, \"dice\": 3, \"add\": 0}, \"requestedRules\": [], \"rules\": [{\"name\": \"Scorched Fury\", \"description\": \"Ene"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "il.\", \"equipment\": {\"weapon\": \"flamethrower\", \"name\": \"Stormglass Flamethrower\", \"attackLevel\": 12, \"dice\": 3, \"add\": 0}, \"requestedRules\": [], \"rules\": [{\"name\": \"Scorched Fury\", \"description\": \"Enem"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "mies at half HP or less gain +3 to hit and +2 damage. Finish them before they rally!\", \"side\": \"foes\", \"trigger\": \"wounded\", \"hitBonus\": 3, \"damageBonus\": 2, \"armorBonus\": 0}, {\"name\": \"Cinder Veil\", "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ies at half HP or less gain +3 to hit and +2 damage. Finish them before they rally!\", \"side\": \"foes\", \"trigger\": \"wounded\", \"hitBonus\": 3, \"damageBonus\": 2, \"armorBonus\": 0}, {\"name\": \"Cinder Veil\", \""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"description\": \"All-Out Defense wraps you in ash: +2 armor until your next maneuver.\", \"side\": \"hero\", \"trigger\": \"guarding\", \"hitBonus\": 0, \"damageBonus\": 0, \"armorBonus\": 2}], \"scenes\": []}"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "description\": \"All-Out Defense wraps you in ash: +2 armor until your next maneuver.\", \"side\": \"hero\", \"trigger\": \"guarding\", \"hitBonus\": 0, \"damageBonus\": 0, \"armorBonus\": 2}], \"scenes\": []}"}}
 
 event: content_block_stop
 data: {"type": "content_block_stop", "index": 1}

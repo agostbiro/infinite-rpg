@@ -4,11 +4,11 @@
   "theorem_names": [
     "Verified.check_sound",
     "Verified.checkCharacter_sound",
-    "Verified.lighthouse_legal",
-    "Verified.lighthouse_reaches_ending",
+    "Verified.test_adventure_legal",
+    "Verified.test_adventure_reaches_ending",
     "Verified.step_rejects",
     "Verified.mem_inputs_iff",
-    "Verified.lighthouse_default_rules",
+    "Verified.test_adventure_default_rules",
     "Verified.shared_tactical_rules",
     "Verified.balanced",
     "Verified.live_change_core",
@@ -16,7 +16,12 @@
     "Verified.live_change_existing_rule",
     "Verified.live_change_from_start",
     "Verified.live_change_balanced",
-    "Verified.retry_balanced"
+    "Verified.retry_balanced",
+    "Verified.noShortLoops",
+    "Verified.exactExpectation_eq_fast",
+    "Verified.difficulty_valid",
+    "Verified.difficulty_order",
+    "Verified.live_change_policy"
   ],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
 }

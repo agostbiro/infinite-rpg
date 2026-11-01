@@ -1,10 +1,10 @@
-import Rpg.Adventures.Lighthouse.Confidence
+import Rpg.Adventures.TestAdventure.Confidence
 
 namespace Rpg
 
-/-- The built-in Adventures, for the balance screen (`screen.lean`). Each must pass the balance
-check before play. -/
+/-- The Adventures in this repo, for the balance screen (`screen.lean`): now only the test
+Adventure. A new built-in Adventure goes here too (see `docs/follow-ups.md`). -/
 def statisticalCandidates : List Probability.StatisticalCandidate :=
-  [Lighthouse.statisticalCandidate]
+  [TestAdventure.statisticalCandidate]
 
 end Rpg

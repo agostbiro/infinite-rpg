@@ -1,8 +1,10 @@
 // Verified RPG page.
 // The page only draws what the server sends and sends back the Player's clicks.
 // All rules and dice are in Lean. The page never makes up a die face: every face it
-// shows comes from a Report.
-'use strict';
+// shows comes from a Report. The 3D world (world3d.js) makes one object for each input that
+// the server offers, and sends that input unchanged (docs/adr/0006-the-3d-world-shows-the-graph.md).
+import { SpatialGame } from './world3d.js';
+import { playbackView, reportDuration } from './playback.js';
 
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -15,30 +17,24 @@
     return e;
   }
 
-  const SVG = 'http://www.w3.org/2000/svg';
-
-  /** Make an SVG element with attributes. */
-  function svgEl(tag, attrs) {
-    const e = document.createElementNS(SVG, tag);
-    for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, String(v));
-    return e;
-  }
-
   const S = {
     view: null,      // the last view from the server
-    mapView: null,   // the view whose map is on screen (it waits for the playback to end)
+    playbackBase: null, // the view before the last input, while its new Reports play
     shown: 0,        // how many Reports are on screen
     playing: false,  // true while new Reports play one at a time
     skip: false,     // true after a click on "Skip"
     wake: null,      // ends the current pause early
     busy: false,     // true while a request is out
-    aim: null,       // the number of the Maneuver that waits for a target
-    cardsFor: -1,    // the Report number of the Fight whose cards are on screen
+    speed: 1,        // the speed of the dice: 1, 2, or 0 (no wait)
     wishOpen: false, // true while the Wish form is open on the front page
     gridKey: null,   // the cards on screen, as JSON, so a poll can tell if they changed
     starting: null,  // while a click starts an Adventure: { key, text }. `key` names what was clicked
     lost: false,     // true after a poll could not reach the server
   };
+
+  /** The 3D world, or null if this browser cannot draw it (no WebGL 2). Then the page shows the
+   * text controls only. */
+  let spatial = null;
 
   // ---------- Server ----------
 
@@ -216,43 +212,6 @@
 
   // ---------- Story ----------
 
-  const PICTURE_NAME = /^[a-z0-9-]+$/;
-  const PICTURE_BASE = /^\/(pictures|saved\/[A-Za-z0-9_-][A-Za-z0-9._-]*)\/$/;
-
-  /** The address of a Scene's Picture, or null if there is none to show yet.
-   * For the built-in Adventure every Picture is ready. For a live one, only the Pictures
-   * that passed the check on the server. */
-  function pictureUrl(picture) {
-    const P = S.view && S.view.pictures;
-    if (!picture || !PICTURE_NAME.test(picture) || !P || !PICTURE_BASE.test(P.base)) return null;
-    if (P.ready !== null && !P.ready.includes(picture)) return null;
-    return P.base + encodeURIComponent(picture) + '.svg';
-  }
-
-  /** The window with the Scene's Picture, or a plain backdrop. */
-  function windowEl(picture) {
-    const w = el('div', 'window');
-    w.dataset.picture = picture || '';
-    const url = pictureUrl(picture);
-    if (url) {
-      const img = el('img');
-      img.alt = '';
-      img.decoding = 'async';
-      img.addEventListener('error', () => { img.hidden = true; });
-      img.src = url;
-      w.appendChild(img);
-    }
-    return w;
-  }
-
-  /** Show a Picture that finished after its Scene was drawn. */
-  function refreshWindow() {
-    const w = document.querySelector('#scroll .chapter.current .window');
-    if (!w || w.querySelector('img')) return;
-    const fresh = windowEl(w.dataset.picture);
-    if (fresh.querySelector('img')) w.replaceWith(fresh);
-  }
-
   /** Draw the story from the first `n` Reports. */
   function renderStory(n) {
     const reports = S.view.reports;
@@ -272,7 +231,6 @@
     chapters.forEach((ch, ci) => {
       const current = ci === chapters.length - 1;
       const sec = el('section', 'chapter ' + (current ? 'current' : 'past'));
-      if (current) sec.appendChild(windowEl(ch.scene.picture));
       sec.appendChild(el('h2', '', ch.scene.title));
       sec.appendChild(el('p', 'scene-text', ch.scene.text));
       const log = el('ol', 'log');
@@ -308,40 +266,16 @@
 
   // ---------- Fight state, read from the Reports ----------
 
-  /** The Fight after the first `n` Reports: cards and HP, or null if no Fight is open.
-   * Also the Character's HP, from the last hit on the Character. */
-  function fightAt(n) {
-    const reports = S.view.reports;
-    let heroHP = null;
-    let start = -1;
+  /** The Character's HP after the first `n` Reports, from the last hit on the Character, or null
+   * if no hit on the Character is shown yet. */
+  function heroHPAt(n) {
+    let hp = null;
     for (let i = 0; i < n; i++) {
-      const k = kindOf(reports[i]);
-      const d = dataOf(reports[i]);
-      if (k === 'damage' && d.defender === null) heroHP = d.hp;
-      if (k === 'fightStarts') start = i;
+      const r = S.view.reports[i];
+      if (kindOf(r) === 'damage' && dataOf(r).defender === null) hp = dataOf(r).hp;
     }
-    if (start < 0) return { heroHP, fight: null };
-    const fs = dataOf(reports[start]);
-    const hero = Object.assign({}, fs.hero);
-    const foes = fs.foes.map((f) => Object.assign({}, f));
-    let round = 1;
-    let over = false;
-    let lastHit = null;
-    for (let i = start + 1; i < n; i++) {
-      const k = kindOf(reports[i]);
-      const d = dataOf(reports[i]);
-      if (k === 'damage') {
-        if (d.defender === null) hero.hp = d.hp;
-        else if (foes[d.defender]) foes[d.defender].hp = d.hp;
-        lastHit = i;
-      }
-      if (k === 'round') round = d.n;
-      if (k === 'fightWon' || k === 'scene') over = true;
-    }
-    return { heroHP, fight: over ? null : { start, hero, foes, round, lastHit } };
+    return hp;
   }
-
-  // ---------- Cards ----------
 
   /** Set an HP bar to `hp` out of `max`. */
   function setBar(bar, hp, max) {
@@ -357,162 +291,69 @@
     return b;
   }
 
-  /** Make the card of one being. `key` is "hero" or the Creature number. */
-  function cardEl(c, key) {
-    const hero = key === 'hero';
-    const card = el('div', 'card ' + (hero ? 'hero' : 'foe'));
-    card.dataset.key = String(key);
-    card.append(el('span', 'corner'), el('span', 'corner br'));
-    card.append(el('div', 'emblem', hero ? '♦' : '♠'));
-    card.append(el('p', 'cname', c.name));
-    const gear = el('p', 'cgear', c.weapon + ', ' + c.damage);
-    gear.append(document.createElement('br'), 'DR ' + c.dr);
-    card.append(gear, hpBar(), el('div', 'hptext'));
-    const tag = el('span', 'tag');
-    tag.hidden = true;
-    card.append(tag);
-    return card;
-  }
+  // ---------- The text controls: Choices, Maneuvers, and the end ----------
 
-  /** Show the HP of a card. */
-  function updateCard(card, c) {
-    card.querySelectorAll('.corner').forEach((x) => { x.textContent = String(Math.max(c.hp, 0)); });
-    setBar(card.querySelector('.hpbar'), c.hp, c.maxHP);
-    card.querySelector('.hptext').textContent = 'HP ' + c.hp + ' / ' + c.maxHP;
-    card.classList.toggle('down', c.hp <= 0);
-  }
-
-  /** Draw the Fight cards after the first `n` Reports. Returns the Fight, or null. */
-  function renderCards(n) {
-    const { fight } = fightAt(n);
-    if (fight && n === S.view.reports.length && S.view.phase === 'fight') {
-      // An admitted world change can replace equipment without starting a new Fight.
-      fight.hero = S.view.fight.hero;
-      fight.foes = S.view.fight.foes;
-      fight.round = S.view.fight.round;
+  /** One button for each input that the view offers, in the order the server sends them. Each
+   * button sends its input unchanged. The 3D world makes the same list (`portalsForView`). */
+  function inputButtons(v) {
+    if (v.phase === 'scene' && v.scene) {
+      return v.scene.choices.filter((ch) => ch.input !== null).map((ch) => {
+        const b = el('button', 'choice', ch.text);
+        b.type = 'button';
+        b.onclick = () => send(ch.input);
+        return b;
+      });
     }
-    const box = $('cards');
-    if (!fight) {
-      $('fight').hidden = true;
-      S.cardsFor = -1;
-      return null;
+    if (v.phase === 'fight' && v.fight) {
+      return v.fight.maneuvers.flatMap((m) => m.options.map((opt) => {
+        const b = el('button', 'maneuver');
+        b.type = 'button';
+        const target = m.attacks && opt.target !== null ? ' · ' + (v.fight.foes[opt.target]?.name || 'Target') : '';
+        b.append(el('b', '', m.label + target), el('span', '', m.help));
+        (m.effects || []).forEach((effect) => b.append(el('small', 'tactic-effect', effect)));
+        b.onclick = () => send(opt.input);
+        return b;
+      }));
     }
-    $('fight').hidden = false;
-    if (S.cardsFor !== fight.start) {
-      box.textContent = '';
-      box.appendChild(cardEl(fight.hero, 'hero'));
-      fight.foes.forEach((f, i) => box.appendChild(cardEl(f, i)));
-      S.cardsFor = fight.start;
-    }
-    updateCard(box.querySelector('[data-key="hero"]'), fight.hero);
-    fight.foes.forEach((f, i) => updateCard(box.querySelector('[data-key="' + i + '"]'), f));
-    $('round').textContent = 'Round ' + fight.round;
-    return fight;
+    return [];
   }
 
-  /** Shake the card that a hit just landed on. */
-  function strike(defender) {
-    const key = defender === null ? 'hero' : String(defender);
-    const card = document.querySelector('#cards [data-key="' + key + '"]');
-    if (!card) return;
-    card.classList.remove('struck');
-    void card.offsetWidth;
-    card.classList.add('struck');
-  }
-
-  // ---------- The mat: Choices, Maneuvers, and the end ----------
-
-  function clearTargets() {
-    for (const c of document.querySelectorAll('#cards .card')) {
-      c.classList.remove('target');
-      c.removeAttribute('tabindex');
-      c.removeAttribute('role');
-      c.onclick = null;
-      c.onkeydown = null;
+  /** The Fight as text: the round, and the HP of each being. */
+  function renderFight(v) {
+    const box = $('fight');
+    box.hidden = !(v.phase === 'fight' && v.fight);
+    if (box.hidden) return;
+    $('round').textContent = 'Round ' + v.fight.round;
+    const list = $('fighters');
+    list.textContent = '';
+    for (const f of [v.fight.hero, ...v.fight.foes]) {
+      const li = el('li', f.alive === false || f.hp <= 0 ? 'down' : '');
+      li.append(el('b', '', f.name), ' ' + f.weapon + ', ' + f.damage + ', DR ' + f.dr + '. HP ' + f.hp + ' / ' + f.maxHP + '.');
+      list.appendChild(li);
     }
   }
 
-  /** Draw the buttons for the Character's turn. */
-  function renderManeuvers() {
-    const v = S.view;
-    const box = $('maneuvers');
-    box.textContent = '';
-    clearTargets();
-    const hint = $('fight-hint');
-    hint.textContent = '';
-    if (v.phase !== 'fight' || !v.fight || S.playing || S.busy || v.generation.state === 'running') return;
-    const ms = v.fight.maneuvers;
-    // Tags with the last Maneuver of each being.
-    const heroTag = document.querySelector('#cards [data-key="hero"] .tag');
-    if (heroTag) {
-      heroTag.textContent = v.fight.hero.maneuver;
-      heroTag.hidden = v.fight.hero.maneuver === 'Attack';
-    }
-    if (S.aim !== null && ms[S.aim]) {
-      const m = ms[S.aim];
-      hint.textContent = 'Click the Creature to attack.';
-      for (const opt of m.options) {
-        const card = document.querySelector('#cards [data-key="' + opt.target + '"]');
-        if (!card) continue;
-        card.classList.add('target');
-        card.tabIndex = 0;
-        card.setAttribute('role', 'button');
-        card.onclick = () => send(opt.input);
-        card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); send(opt.input); } };
-      }
-      const chosen = el('button', 'maneuver chosen');
-      chosen.type = 'button';
-      chosen.append(el('b', '', m.label), el('span', '', m.help));
-      (m.effects || []).forEach((effect) => chosen.append(el('small', 'tactic-effect', effect)));
-      chosen.disabled = true;
-      const cancel = el('button', 'maneuver cancel');
-      cancel.type = 'button';
-      cancel.append(el('b', '', 'Cancel'), el('span', '', 'Choose another Maneuver.'));
-      cancel.onclick = () => { S.aim = null; renderManeuvers(); };
-      box.append(chosen, cancel);
-      return;
-    }
-    hint.textContent = 'Your turn. Choose a Maneuver.';
-    ms.forEach((m, idx) => {
-      if (m.options.length === 0) return;
-      const b = el('button', 'maneuver');
-      b.type = 'button';
-      b.append(el('b', '', m.label), el('span', '', m.help));
-      (m.effects || []).forEach((effect) => b.append(el('small', 'tactic-effect', effect)));
-      b.onclick = () => {
-        if (m.attacks && m.options.length > 1) {
-          S.aim = idx;
-          renderManeuvers();
-        } else {
-          send(m.options[0].input);
-        }
-      };
-      box.appendChild(b);
-    });
+  /** `true` while the page must not send an input: Reports play, a request is out, or the
+   * Dungeon Master works on a change. */
+  function inputLocked() {
+    return S.playing || S.busy || S.view.generation.state === 'running';
   }
 
-  /** Draw the Choice buttons, or the end of the Adventure. */
+  /** Draw the input buttons, the Fight text, or the end of the Adventure. */
   function renderMat() {
     const v = S.view;
     const choices = $('choices');
     choices.textContent = '';
     $('over').hidden = true;
     $('skip').hidden = !S.playing;
-    $('leave').disabled = S.playing || S.busy || v.generation.state === 'running';
-    renderCards(S.shown);
-    renderManeuvers();
+    $('leave').disabled = inputLocked();
+    renderFight(v);
+    $('fight-hint').textContent = v.phase === 'fight' && !inputLocked() ? 'Your turn. Choose a Maneuver.' : '';
     markState();
-    if (S.playing || S.busy || v.generation.state === 'running') return;
-    if (v.phase === 'scene' && v.scene) {
-      for (const ch of v.scene.choices) {
-        if (ch.input === null) continue;
-        const b = el('button', 'choice', ch.text);
-        b.type = 'button';
-        b.onclick = () => send(ch.input);
-        choices.appendChild(b);
-      }
-    }
-    if (v.phase === 'ended' || v.phase === 'dead' || (v.phase !== 'title' && v.inputs.length === 0)) {
+    syncSpatial();
+    if (inputLocked()) return;
+    for (const b of inputButtons(v)) choices.appendChild(b);
+    if (gameOver(v)) {
       const over = $('over');
       over.hidden = false;
       over.classList.toggle('dead', v.phase === 'dead');
@@ -525,16 +366,47 @@
       }
       // A live change is not saved: "Play again" and leaving start the original Adventure.
       if ((v.worldRules || []).length > 0) {
-        $('over-text').textContent += ' Play again and \u2190 Adventures start the original Adventure, without your rule changes.';
+        $('over-text').textContent += ' Play again and ← Adventures start the original Adventure, without your rule changes.';
       }
     }
+  }
+
+  // ---------- The 3D world ----------
+
+  /** Give the 3D world the view to show. While Reports play, it shows the state at the last Report
+   * on screen, not the final reply. It can send an input only when the page waits for the Player. */
+  function syncSpatial() {
+    if (!spatial || !S.view) return;
+    try {
+      const shown = S.playing ? playbackView(S.playbackBase, S.view, S.shown) : S.view;
+      spatial.update(shown, !inputLocked());
+    } catch (error) {
+      spatial.ready = false;
+      document.body.classList.add('journal-open');
+      toast('The 3D view could not show every choice. Use the journal: ' + error.message);
+    }
+  }
+
+  /** Show a Report with dice or a result over the 3D world, with the same text as the journal. */
+  function showSpatialReport(r) {
+    const tray = $('world-events');
+    const k = kindOf(r);
+    if (['picked', 'round', 'maneuver'].includes(k)) return;
+    if (k === 'scene') { tray.hidden = true; return; }
+    tray.hidden = false;
+    const row = reportEl(r);
+    row.classList.add('world-event');
+    if (S.speed !== 0) for (const die of row.querySelectorAll('.die')) die.classList.add('tumble');
+    $('world-event-list').replaceChildren(row);
+    tray.dataset.report = k;
+    spatial.presentReport(r);
   }
 
   // ---------- Character panel ----------
 
   function renderCharacter() {
     const c = S.view.character;
-    const { heroHP } = fightAt(S.shown);
+    const heroHP = heroHPAt(S.shown);
     const hp = heroHP === null ? c.maxHP : heroHP;
     const p = $('character');
     p.textContent = '';
@@ -576,123 +448,7 @@
     p.appendChild(gear);
   }
 
-  // ---------- Map ----------
-
-  const M = { boxW: 178, boxH: 30, rowH: 60, top: 16, left: 6, qW: 30, qX: 204, qStep: 46 };
-
-  function renderMap() {
-    const svg = $('map');
-    svg.textContent = '';
-    const map = (S.mapView || S.view).map;
-    if (map.nodes.length === 0) {
-      svg.setAttribute('viewBox', '0 0 300 40');
-      const t = svgEl('text', { x: 6, y: 24, class: 'elabel' });
-      t.textContent = 'Nothing yet.';
-      svg.appendChild(t);
-      return;
-    }
-    const pos = {};
-    let maxCol = 0;
-    let maxRow = 0;
-    for (const n of map.nodes) {
-      const y = M.top + n.row * M.rowH;
-      const x = n.visited ? M.left : M.qX + (n.col - 1) * M.qStep;
-      const w = n.visited ? M.boxW : M.qW;
-      pos[n.key] = { x, y, w, h: M.boxH, n };
-      maxCol = Math.max(maxCol, n.col);
-      maxRow = Math.max(maxRow, n.row);
-    }
-    const width = Math.max(290, M.qX + Math.max(0, maxCol - 1) * M.qStep + M.qW + 30);
-    const height = M.top + (maxRow + 1) * M.rowH;
-    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
-    svg.setAttribute('width', String(width));
-
-    const edges = svgEl('g');
-    const labels = svgEl('g');
-    for (const e of map.edges) {
-      const a = pos[e.source];
-      const b = pos[e.target];
-      if (!a || !b) continue;
-      let d;
-      let lx;
-      let ly;
-      let anchor = 'middle';
-      if (b.n.visited && e.style === 'taken') {
-        if (b.n.row > a.n.row) {
-          const x = a.x + a.w / 2;
-          d = 'M' + x + ' ' + (a.y + a.h) + ' L' + x + ' ' + b.y;
-        } else {
-          // A path back up the map: go round the left side.
-          d = 'M' + a.x + ' ' + (a.y + a.h / 2) + ' C' + (a.x - 30) + ' ' + (a.y + a.h / 2) + ' ' +
-            (b.x - 30) + ' ' + (b.y + b.h / 2) + ' ' + b.x + ' ' + (b.y + b.h / 2);
-        }
-      } else if (b.n.visited) {
-        // A dashed branch to a Scene already on the map: go round the right side.
-        const sx = a.x + a.w;
-        const sy = a.y + a.h / 2;
-        const tx = b.x + b.w;
-        const ty = b.y + b.h / 2;
-        const bulge = 24 + 14 * Math.abs(b.n.row - a.n.row);
-        d = 'M' + sx + ' ' + sy + ' C' + (sx + bulge) + ' ' + sy + ' ' + (tx + bulge) + ' ' + ty + ' ' + tx + ' ' + ty;
-        lx = sx + 0.75 * bulge + 4;
-        ly = (sy + ty) / 2 + 3;
-        anchor = 'start';
-      } else {
-        const sx = a.x + a.w;
-        const sy = a.y + a.h / 2;
-        if (b.n.col === 1) {
-          d = 'M' + sx + ' ' + sy + ' L' + b.x + ' ' + sy;
-        } else {
-          // Pass under the boxes before it, and come up into this one.
-          const bx = b.x + b.w / 2;
-          d = 'M' + sx + ' ' + sy + ' C' + (sx + 16) + ' ' + (sy + 24) + ' ' + (bx - 10) + ' ' + (b.y + b.h + 10) +
-            ' ' + bx + ' ' + (b.y + b.h);
-        }
-        lx = b.x + b.w / 2;
-        ly = b.y - 4;
-      }
-      edges.appendChild(svgEl('path', { d, class: 'edge ' + e.style }));
-      if (e.label) {
-        const t = svgEl('text', { x: lx, y: ly, class: 'elabel', 'text-anchor': anchor });
-        t.textContent = e.label;
-        labels.appendChild(t);
-      }
-    }
-    svg.appendChild(edges);
-
-    const nodes = svgEl('g');
-    for (const key of Object.keys(pos)) {
-      const { x, y, w, h, n } = pos[key];
-      const cls = ['node', n.visited ? 'scene' : 'unknown'];
-      if (n.current) cls.push('current');
-      if (n.ending) cls.push('ending');
-      if (n.dead) cls.push('dead');
-      const g = svgEl('g', { class: cls.join(' ') });
-      if (n.current) g.appendChild(svgEl('rect', { x: x - 4, y: y - 4, width: w + 8, height: h + 8, rx: 10, class: 'glow' }));
-      g.appendChild(svgEl('rect', { x, y, width: w, height: h, rx: 7 }));
-      const t = svgEl('text', { x: x + w / 2, y: y + h / 2 + 4, 'text-anchor': 'middle' });
-      const label = n.label.length > 27 ? n.label.slice(0, 26) + '…' : n.label;
-      t.textContent = (n.dead ? '☠ ' : '') + label;
-      const title = svgEl('title');
-      title.textContent = n.visited ? n.label : 'A way you have not taken';
-      g.append(t, title);
-      nodes.appendChild(g);
-    }
-    svg.appendChild(nodes);
-    svg.appendChild(labels);
-  }
-
   // ---------- Whole page ----------
-
-  /** A line about the Pictures of a live Adventure, or null. */
-  function picturesNote(v) {
-    const P = v.pictures;
-    if (!P || P.ready === null) return null;
-    if (P.off) return 'Pictures are off: the Picture check cannot run on this machine.';
-    if (P.drawing > 0) return 'The Dungeon Master is drawing the Pictures: ' + P.ready.length + ' done, ' + P.drawing + ' to go.';
-    if (P.failed > 0) return P.failed + (P.failed === 1 ? ' Picture' : ' Pictures') + ' failed the check or did not come, so ' + (P.failed === 1 ? 'its Scene shows' : 'their Scenes show') + ' a plain backdrop.';
-    return null;
-  }
 
   /** The "New Adventure" tile: a button, or the Wish form, or the steps of the work on a Wish. */
   function renderWish(v) {
@@ -725,12 +481,7 @@
     $('play-now').setAttribute('aria-disabled', String(playNowClicked));
     $('play-now').setAttribute('aria-busy', String(playNowClicked));
     for (const id of ['later', 'retry', 'dismiss', 'wish-send']) $(id).disabled = starting;
-    if (ready) {
-      $('ready-title').textContent = v.adventure;
-      const note = picturesNote(v);
-      $('ready-pictures').hidden = note === null;
-      $('ready-pictures').textContent = note || '';
-    }
+    if (ready) $('ready-title').textContent = v.adventure;
     $('progress-wish').textContent = gen.wish ? 'Your Wish: ' + gen.wish : '';
     const list = $('progress-steps');
     list.textContent = '';
@@ -789,6 +540,7 @@
     card.append(el('span', 'card-title', c.title));
     if (c.world) card.append(el('span', 'card-world', c.world));
     if (c.hero) card.append(el('span', 'card-hero', 'You play ' + c.hero));
+    if (c.difficulty) card.append(el('span', 'card-difficulty', 'Difficulty: ' + c.difficulty));
     if (c.about) card.append(el('span', 'card-about', c.about));
     if (o.why !== undefined) {
       card.append(el('span', 'card-why', 'Fails the checker now, so you cannot play it: ' + o.why));
@@ -825,7 +577,7 @@
   /** The text of the status line while a load checks a saved Adventure again. */
   const checkText = (title) => 'Checking ' + title + ' against the rules and the balance check...';
 
-  /** The grid: the "New Adventure" tile, the saved Adventures (newest first), and the built-in one.
+  /** The grid: the "New Adventure" tile and the saved Adventures (newest first).
    * Each saved Adventure keeps its place when its check ends, so the cards do not move under the
    * pointer. One that the server still checks cannot be clicked yet; one that fails is greyed. */
   function renderGrid(v) {
@@ -834,7 +586,7 @@
     const startKey = S.starting ? S.starting.key : null;
     // A poll every 2 seconds must not rebuild the same cards: that would take away keyboard focus
     // and lose a click. So draw again only when the cards change.
-    const key = JSON.stringify([v.saved, v.builtin, busy, startKey]);
+    const key = JSON.stringify([v.saved, busy, startKey]);
     if (key === S.gridKey && grid.querySelector('.adv-card')) return;
     S.gridKey = key;
     // A card that a check finished on is drawn again. Keep the keyboard focus on the same card.
@@ -860,12 +612,7 @@
         starting: startKey === a.id ? 'Checking it again before you play...' : undefined,
       }));
     }
-    const builtinStart = { key: 'builtin', text: 'Starting ' + v.builtin.title + '...' };
-    grid.appendChild(adventureCard(v.builtin, 'builtin', {
-      onPlay: () => startGame('/api/builtin', undefined, builtinStart),
-      disabled: busy,
-      starting: startKey === 'builtin' ? 'Starting...' : undefined,
-    }));
+    // A built-in default Adventure gets its card here, after the saved ones (docs/follow-ups.md).
     if (focused !== null) {
       const again = Array.from(grid.querySelectorAll('button[data-card]')).find((c) => c.dataset.card === focused);
       if (again && !again.disabled) again.focus();
@@ -972,13 +719,6 @@
     }
   }
 
-  /** In play, a line while the Pictures are still drawing. */
-  function showTopPictures(v) {
-    const note = picturesNote(v);
-    $('top-pictures').hidden = note === null || !(v.pictures && (v.pictures.drawing > 0 || v.pictures.off));
-    $('top-pictures').textContent = note || '';
-  }
-
   function renderAll() {
     const v = S.view;
     $('loading').hidden = true;
@@ -989,21 +729,23 @@
     // The seed belongs to a game, so the front page does not show it.
     $('seed').hidden = title;
     document.title = (title ? 'Choose an Adventure' : v.adventure) + ' · Verified RPG';
+    // Without WebGL the world box holds only the end panel and the notice; it follows the table.
+    if (!spatial) $('world').hidden = title;
     if (title) {
+      syncSpatial();
       renderTitle();
       markState();
       return;
     }
     $('adventure-title').textContent = v.adventure;
-    showTopPictures(v);
     renderStory(S.shown);
     renderMat();
     renderCharacter();
-    renderMap();
     renderChange();
   }
 
   function scrollToMat() {
+    if (spatial) return;
     $('mat').scrollIntoView({ block: 'end', behavior: 'smooth' });
   }
 
@@ -1026,25 +768,19 @@
       const i = S.shown;
       const r = reports[i];
       S.shown = i + 1;
-      appendReport(i, true);
+      appendReport(i, S.speed !== 0);
       renderMat();
       renderCharacter();
-      if (kindOf(r) === 'damage') setTimeout(() => strike(dataOf(r).defender), diceOf(r) && diceOf(r).rolled ? 1000 : 0);
+      if (spatial) showSpatialReport(r);
       scrollToMat();
-      const k = kindOf(r);
-      const dice = diceOf(r);
-      await pause(dice ? (dice.rolled ? 1500 : 900) : k === 'scene' ? 700 : 500);
+      await pause(reportDuration(r, S.speed, !!spatial));
     }
     S.shown = reports.length;
     S.playing = false;
     S.skip = false;
     S.wake = null;
-    S.mapView = S.view;
+    S.playbackBase = null;
     renderAll();
-    const ms = $('maneuvers');
-    ms.classList.remove('lit');
-    void ms.offsetWidth;
-    ms.classList.add('lit');
     scrollToMat();
   }
 
@@ -1062,15 +798,14 @@
   async function send(input) {
     if (S.busy || S.playing) return;
     S.busy = true;
-    S.aim = null;
     if (S.view && S.view.phase !== 'title') renderMat();
     try {
       const { ok, view } = await post('/api/input', input);
+      S.playbackBase = S.view;
       S.view = view;
       if (S.shown > view.reports.length) S.shown = view.reports.length;
       if (!ok) {
         toast(view.error || 'The game refused that input.');
-        S.mapView = view;
         renderAll();
         return;
       }
@@ -1092,9 +827,7 @@
     try {
       const fresh = await post('/api/new');
       S.view = fresh.view;
-      S.mapView = fresh.view;
       S.shown = 0;
-      S.cardsFor = -1;
       S.busy = false;
       if (fresh.view.inputs.length > 0) await send(fresh.view.inputs[0]);
     } catch (e) {
@@ -1106,7 +839,7 @@
 
   /** Send a POST that loads an Adventure, such as a click on its card, then begin it.
    * `start` says what to show while the page waits: `{ key, text }`, where `key` is the id of the
-   * card, "builtin", or "play-now". A load checks the saved
+   * card, or "play-now". A load checks the saved
    * Adventure again, which takes a second or two. Until the reply comes, every card and button
    * that sends a request is disabled. */
   async function startGame(path, body, start) {
@@ -1119,9 +852,7 @@
       const { ok, view } = await post(path, body);
       S.starting = null;
       S.view = view;
-      S.mapView = view;
       S.shown = view.reports.length;
-      S.cardsFor = -1;
       S.wishOpen = false;
       if (!ok || view.phase !== 'title' || view.inputs.length === 0) {
         if (!ok) toast(view.error || 'The game refused that.');
@@ -1169,9 +900,7 @@
     try {
       const v = await fetchView();
       S.view = v;
-      S.mapView = v;
       S.shown = v.reports.length;
-      S.cardsFor = -1;
       renderAll();
       schedulePoll();
     } catch (e) {
@@ -1188,9 +917,7 @@
     try {
       const { ok, view } = await post(path, body);
       S.view = view;
-      S.mapView = view;
       S.shown = view.reports.length;
-      S.cardsFor = -1;
       if (!ok) toast(view.error || 'The game refused that.');
       renderAll();
     } catch (e) {
@@ -1202,10 +929,10 @@
     }
   }
 
-  /** `true` while the server works in the background: the DM writes or draws, or the server
-   * checks the saved Adventures on the Front Page. */
+  /** `true` while the server works in the background: the DM writes, or the server checks the
+   * saved Adventures on the Front Page. */
   function serverWorking(v) {
-    return !!v && (v.generation.state === 'running' || (!!v.pictures && v.pictures.drawing > 0) ||
+    return !!v && (v.generation.state === 'running' ||
       (v.phase === 'title' && v.saved.some((a) => a.checking)));
   }
 
@@ -1225,20 +952,12 @@
       if (S.busy || S.playing) { schedulePoll(); return; }
       const sameGame = S.view && v.seed === S.view.seed &&
         v.reports.length === S.view.reports.length && v.phase === S.view.phase;
-      // Draw everything again only when it changed: during a live change, the steps change. A
-      // redraw on each poll while Pictures draw would rebuild the story every 2 seconds.
+      // Draw everything again only when it changed: during a live change, the steps change.
       const genChanged = JSON.stringify(v.generation) !== JSON.stringify(S.view.generation);
       if (v.phase === 'title' || !sameGame || genChanged) {
         S.view = v;
-        S.mapView = v;
         S.shown = v.reports.length;
-        S.cardsFor = -1;
         renderAll();
-      } else {
-        // In play: take the new list of Pictures, and show a Picture that just finished.
-        S.view.pictures = v.pictures;
-        showTopPictures(v);
-        refreshWindow();
       }
     } catch (e) {
       // Say it once: in the status line on the Front Page, else in a toast. The poll goes on,
@@ -1265,7 +984,8 @@
     }
     const wish = box.value.trim();
     if (!wish) { toast('Type a Wish first.'); return; }
-    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value });
+    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value,
+      difficulty: $('wish-difficulty').value });
   });
   $('cancel').addEventListener('click', async () => {
     try {
@@ -1308,6 +1028,7 @@
     $('wish').value = '';
     $('wish-name').value = '';
     $('wish-gender').value = 'dm';
+    $('wish-difficulty').value = 'medium';
     $('wish-count').textContent = '0 / 500';
   }
 
@@ -1320,7 +1041,6 @@
   $('change-send').addEventListener('click', () => {
     const wish = $('change-request').value.trim();
     if (!wish) { toast('Describe the change you want first.'); return; }
-    S.aim = null;
     action('/api/change', { wish });
   });
   $('change-cancel').addEventListener('click', () => action('/api/cancel'));
@@ -1355,6 +1075,12 @@
     S.skip = true;
     if (S.wake) S.wake();
   });
+  // The dice speed changes only how long a Report stays on screen, never what it says.
+  $('world-speed').addEventListener('click', () => {
+    S.speed = S.speed === 1 ? 2 : S.speed === 2 ? 0 : 1;
+    $('world-speed').textContent = S.speed === 0 ? 'Dice: no wait' : 'Dice ×' + S.speed;
+    if (S.speed === 0 && S.wake) S.wake();
+  });
   // Another tab can move the game on. Catch up when this tab comes back.
   window.addEventListener('focus', async () => {
     if (S.busy || S.playing || !S.view) return;
@@ -1367,9 +1093,7 @@
       if (v.seed !== S.view.seed || v.reports.length !== S.view.reports.length || v.phase !== S.view.phase ||
           wishChanged) {
         S.view = v;
-        S.mapView = v;
         S.shown = v.reports.length;
-        S.cardsFor = -1;
         renderAll();
         schedulePoll();
       }
@@ -1378,5 +1102,14 @@
 
   $('loading-retry').addEventListener('click', load);
 
+  try {
+    spatial = new SpatialGame(send);
+  } catch (error) {
+    // No WebGL 2: the page shows the text controls, and says why.
+    const notice = el('p', 'world-failed', 'This browser cannot show the 3D world, so the page shows the text version. To explore in 3D, turn on WebGL 2.');
+    notice.setAttribute('role', 'status');
+    $('world').appendChild(notice);
+    $('world').dataset.renderer = 'unavailable';
+  }
   load();
 })();

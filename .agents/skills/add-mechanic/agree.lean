@@ -1,17 +1,17 @@
-import Rpg.Adventures.Lighthouse.Story
+import Rpg.Adventures.TestAdventure.Story
 import Rpg.Probability.StatisticalAdmission
 
 /-!
 Check that the model and the simulation agree on one fight.
 The model's death chance comes from `combatDistribution`; the simulation's from
-`validationGames` runs of `Simulation.fight`. Both use the same Player: each maneuver
+`difficultyGames` runs of `Simulation.fight`. Both use the same Player: each maneuver
 with chance 1/3, then a random living target, with the admission round limit.
 The check says `ok` when the model's chance is inside the simulation's exact
 binomial interval at the admission confidence level (`confidenceDelta`).
 `DISAGREE` flags a discrepancy, but sampling alone can also produce it with probability
 at most `confidenceDelta` under the sampling model (currently 5%). Before you conclude,
 run a larger simulation with another seed (for example 20,000 Fights).
-Run as compiled code: `lake exe agree`. The exact model takes minutes for a Lighthouse Fight,
+Run as compiled code: `lake exe agree`. The exact model takes minutes for a Fight of the test Adventure,
 whatever the simulation run count.
 -/
 open Rpg Rpg.Probability Rpg.Probability.Confidence
@@ -25,9 +25,9 @@ structure FightCase where
 
 /-- The fights to check. Add one fight from each target story that has fights. -/
 def cases : List FightCase :=
-  [⟨"Lighthouse: Grey Hollis", Lighthouse.rules, Lighthouse.mara, [Lighthouse.hollis]⟩,
-   ⟨"Lighthouse: two wreckers", Lighthouse.rules, Lighthouse.mara,
-     [Lighthouse.wrecker 1, Lighthouse.wrecker 2]⟩]
+  [⟨"Test Adventure: the bandit chief", TestAdventure.rules, TestAdventure.mara, [TestAdventure.chief]⟩,
+   ⟨"Test Adventure: two bandits", TestAdventure.rules, TestAdventure.mara,
+     [TestAdventure.bandit 1, TestAdventure.bandit 2]⟩]
 
 /-- This check uses its own seed. The validation seed stays held out. -/
 def agreeSeed : Nat := 7
@@ -43,7 +43,7 @@ def simulate (c : FightCase) : Nat × Nat := Id.run do
   let mut rng : Rng := ⟨agreeSeed.toUInt64⟩
   let mut deaths := 0
   let mut timeouts := 0
-  for _ in [:validationGames] do
+  for _ in [:difficultyGames] do
     let hero : Fighter := { being := c.hero, hp := c.rules.maxHP c.hero }
     let foes : List Fighter := c.foes.map fun f => { being := f, hp := c.rules.maxHP f }
     let start : FightState := { hero, foes }
@@ -63,7 +63,7 @@ def percent (r : Rat) : String :=
 
 /-- Print one line per fight in `cases`: `ok`, `DISAGREE`, or `ABORTED`. -/
 def main : IO UInt32 := do
-  IO.println s!"Agreement: {validationGames} simulated fights per case; round limit={validationRoundLimit}; interval failure bound={confidenceDelta}; endpoint steps={intervalSteps}"
+  IO.println s!"Agreement: {difficultyGames} simulated fights per case; round limit={validationRoundLimit}; interval failure bound={confidenceDelta}; endpoint steps={intervalSteps}"
   let mut passed := true
   for c in cases do
     IO.println s!"Checking {c.name} (exact model and simulated fights)..."
@@ -74,9 +74,9 @@ def main : IO UInt32 := do
       IO.println s!"{c.name}: ABORTED: {timeouts} fights hit the round limit"
       passed := false
       continue
-    let interval := confidenceInterval confidenceDelta validationGames deaths
+    let interval := confidenceInterval confidenceDelta difficultyGames deaths
     let ok := decide (interval.Contains model)
     passed := passed && ok
     let verdict := if ok then "ok" else "DISAGREE"
-    IO.println s!"{c.name}: model {percent model}, simulation {deaths}/{validationGames}, interval [{percent interval.lower}, {percent interval.upper}]: {verdict}"
+    IO.println s!"{c.name}: model {percent model}, simulation {deaths}/{difficultyGames}, interval [{percent interval.lower}, {percent interval.upper}]: {verdict}"
   return if passed then 0 else 1

@@ -1,24 +1,41 @@
-import Rpg.Adventures.Lighthouse.Confidence
+import Rpg.Adventures.TestAdventure.Confidence
 
 open Rpg Rpg.Probability Rpg.Probability.Confidence
 
-/-- Run the balance check on the Lighthouse with the fixed validation seed, and print each row. -/
+/-- A rate as a percentage with two decimals, such as "11.13%". -/
+def percent (r : Rat) : String :=
+  let hundredths := (r * 10000).floor
+  let rest := toString (100 + hundredths % 100) |>.drop 1
+  s!"{hundredths / 100}.{rest}%"
+
+/-- Print the target and the allowed range of each row, for each difficulty level. -/
+def printLevels : IO Unit := do
+  IO.println s!"Difficulty levels: shape={difficultyShape}, tolerance={difficultyTolerance}"
+  for level in DifficultyLevel.all do
+    let p := level.policy
+    let rows := (List.finRange (TestAdventure.balanceHorizon + 1)).map fun i =>
+      percent (confidenceBandsFor p TestAdventure.balanceHorizon i).target
+    IO.println s!"  {level.key}: q={p.retention}; alive after 10 turns={percent (p.survival 10)}; row targets={rows}"
+
+/-- Run the balance check on the test Adventure with the fixed validation seed, and print each row. -/
 def main : IO UInt32 := do
-  IO.println "LIGHTHOUSE: EXACT BINOMIAL BALANCE CHECK"
-  IO.println s!"Policy: q={weibullRetention}, shape={weibullShape}, tolerance={balanceTolerance}"
-  IO.println s!"Window: first-turn death and death at t+2 for t < {Lighthouse.balanceHorizon}"
-  IO.println s!"Fixed game batch: {validationGames}; interval failure bound={confidenceDelta}"
+  IO.println "TEST ADVENTURE (THE BANDIT CAMP): EXACT BINOMIAL BALANCE CHECK"
+  printLevels
+  let policy := TestAdventure.statisticalCandidate.policy
+  IO.println s!"Test Adventure policy (exempt from medium): q={policy.retention}, shape={policy.shape}, tolerance={policy.tolerance}"
+  IO.println s!"Window: first-turn death and death at t+2 for t < {TestAdventure.balanceHorizon}"
+  IO.println s!"Fixed game batch: {difficultyGames}; interval failure bound={confidenceDelta}"
   IO.println s!"Validation seed={validationSeed}; round limit={validationRoundLimit}"
   IO.println "Coverage is proved under the accepted binomial sampling model, conditional on each row’s actual qualifying count."
   (← IO.getStdout).flush
   let start ← IO.monoMsNow
-  let (counts, accepted) := admitStatistically Lighthouse.statisticalCandidate
+  let (counts, accepted) := admitStatistically TestAdventure.statisticalCandidate
   IO.println s!"elapsed-ms={(← IO.monoMsNow)-start}; games={counts.games}; aborted={counts.aborted}"
   for row in [:counts.trials.size] do
     let n := counts.trials[row]!
     let k := counts.deaths[row]!
     let interval := confidenceInterval confidenceDelta n k
-    let target := if row = 0 then 1 - defaultPolicy.survival 1 else defaultPolicy.deathAtTwo (row-1)
+    let target := if row = 0 then 1 - policy.survival 1 else policy.deathAtTwo (row-1)
     IO.println s!"row {row}: {k}/{n}; interval=[{interval.lower}, {interval.upper}]; Weibull target={target}"
   if accepted.isSome then
     IO.println "ACCEPTED: every exact-binomial interval enclosure fits the Weibull policy."

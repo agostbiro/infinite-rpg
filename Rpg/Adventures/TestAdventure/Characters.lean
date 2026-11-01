@@ -1,5 +1,5 @@
 import Rpg.Check
-import Rpg.Adventures.Lighthouse.Rules
+import Rpg.Adventures.TestAdventure.Rules
 
 /-!
 # Ready-made Characters
@@ -7,7 +7,7 @@ import Rpg.Adventures.Lighthouse.Rules
 Each Character is a legal 100-point build, proved by the checker.
 -/
 
-namespace Rpg.Lighthouse
+namespace Rpg.TestAdventure
 
 /-- Mara, a sellsword. 100 points: attributes 70, skills 30. -/
 def mara : Being where
@@ -29,9 +29,9 @@ def mara : Being where
 theorem mara_legal : LegalCharacter rules mara :=
   checkCharacter_sound (by decide)
 
-/-- A wrecker: a coastal thug with a knife. -/
-def wrecker (n : Nat) : Being where
-  name := s!"Wrecker {n}"
+/-- A bandit with a knife. -/
+def bandit (n : Nat) : Being where
+  name := s!"Bandit {n}"
   st := 10
   dx := 10
   iq := 9
@@ -40,9 +40,9 @@ def wrecker (n : Nat) : Being where
   weapon := .largeKnife
   armor := .none
 
-/-- Grey Hollis, leader of the wreckers. -/
-def hollis : Being where
-  name := "Grey Hollis"
+/-- The bandit chief, with a sword. -/
+def chief : Being where
+  name := "The Bandit Chief"
   st := 12
   dx := 11
   iq := 11
@@ -51,10 +51,10 @@ def hollis : Being where
   weapon := .broadsword
   armor := .leather
 
-/-- The keeper can knock away Hollis's sword, leaving his less-practiced knife. -/
-def disarmedHollis : Being :=
-  { hollis with
-    name := "Hollis, Sword Lost", weapon := .largeKnife,
+/-- The chief after he loses his sword: he fights with his knife, which he uses less well. -/
+def disarmedChief : Being :=
+  { chief with
+    name := "The Chief, Sword Lost", weapon := .largeKnife,
     skills := [(.knife, 11), (.diplomacy, 9)] }
 
-end Rpg.Lighthouse
+end Rpg.TestAdventure

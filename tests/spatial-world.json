@@ -1,0 +1,318 @@
+{
+ "about": "Test data for the JavaScript tests of the 3D page (tests/*.test.js): a small story graph and its world map. The server never reads it.",
+ "title": "The Old Road",
+ "start": 0,
+ "scenes": [
+  {
+   "id": 0,
+   "title": "The Camp",
+   "text": "A guide waits by the fire.",
+   "choices": [
+    {
+     "text": "Walk to the market",
+     "outcome": {
+      "type": "goto",
+      "next": 1
+     }
+    },
+    {
+     "text": "Read the tracks (Survival)",
+     "outcome": {
+      "type": "roll",
+      "against": "survival",
+      "modifier": 0,
+      "onSuccess": 2,
+      "onFailure": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "title": "The Market",
+   "text": "A merchant stands by his cart.",
+   "choices": [
+    {
+     "text": "Follow the merchant",
+     "outcome": {
+      "type": "goto",
+      "next": 3
+     }
+    },
+    {
+     "text": "Climb the hill",
+     "outcome": {
+      "type": "goto",
+      "next": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "title": "The Hill",
+   "text": "You see the ruins and the river.",
+   "choices": [
+    {
+     "text": "Go down to the ruins",
+     "outcome": {
+      "type": "goto",
+      "next": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "title": "The Ruins",
+   "text": "Something moves in the stones.",
+   "choices": [
+    {
+     "text": "Creep past (Stealth)",
+     "outcome": {
+      "type": "roll",
+      "against": "stealth",
+      "modifier": 0,
+      "onSuccess": 5,
+      "onFailure": 4
+     }
+    },
+    {
+     "text": "Walk in",
+     "outcome": {
+      "type": "goto",
+      "next": 4
+     }
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "title": "Teeth in the Stones",
+   "text": "A grey wolf jumps out.",
+   "choices": [
+    {
+     "text": "Stand and fight",
+     "outcome": {
+      "type": "fight",
+      "foes": [
+       {
+        "name": "Grey Wolf"
+       }
+      ],
+      "onWin": 5
+     }
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "title": "The Ferry",
+   "text": "The ferry waits at the river.",
+   "choices": [
+    {
+     "text": "Swim across (Swimming -2)",
+     "outcome": {
+      "type": "roll",
+      "against": "swimming",
+      "modifier": -2,
+      "onSuccess": 6,
+      "onFailure": 7
+     }
+    },
+    {
+     "text": "Take the ferry",
+     "outcome": {
+      "type": "goto",
+      "next": 7
+     }
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "title": "Ending: Across the River",
+   "text": "You reach the far bank.",
+   "choices": []
+  },
+  {
+   "id": 7,
+   "title": "Ending: The Ferry Home",
+   "text": "The ferry takes you home.",
+   "choices": []
+  }
+ ],
+ "environment": {
+  "theme": "forest",
+  "places": [
+   {
+    "id": 0,
+    "name": "Camp",
+    "kind": "camp",
+    "x": -50,
+    "z": 40
+   },
+   {
+    "id": 1,
+    "name": "Market",
+    "kind": "market",
+    "x": -10,
+    "z": 50
+   },
+   {
+    "id": 2,
+    "name": "Hill",
+    "kind": "outpost",
+    "x": -55,
+    "z": -10
+   },
+   {
+    "id": 3,
+    "name": "Ruins",
+    "kind": "ruins",
+    "x": -10,
+    "z": 0
+   },
+   {
+    "id": 4,
+    "name": "Ferry",
+    "kind": "harbour",
+    "x": 45,
+    "z": -20
+   }
+  ],
+  "paths": [
+   {
+    "fromPlace": 0,
+    "toPlace": 1
+   },
+   {
+    "fromPlace": 0,
+    "toPlace": 2
+   },
+   {
+    "fromPlace": 1,
+    "toPlace": 3
+   },
+   {
+    "fromPlace": 2,
+    "toPlace": 3
+   },
+   {
+    "fromPlace": 3,
+    "toPlace": 4
+   }
+  ],
+  "props": [
+   {
+    "kind": "river",
+    "x": 70,
+    "z": 0,
+    "scale": 100,
+    "heading": 0
+   },
+   {
+    "kind": "tree",
+    "x": -30,
+    "z": 75,
+    "scale": 120,
+    "heading": 0
+   },
+   {
+    "kind": "tree",
+    "x": 20,
+    "z": 70,
+    "scale": 100,
+    "heading": 40
+   },
+   {
+    "kind": "tree",
+    "x": -75,
+    "z": 60,
+    "scale": 140,
+    "heading": 10
+   },
+   {
+    "kind": "tree",
+    "x": 10,
+    "z": -50,
+    "scale": 100,
+    "heading": 0
+   },
+   {
+    "kind": "tree",
+    "x": -40,
+    "z": -50,
+    "scale": 110,
+    "heading": 90
+   },
+   {
+    "kind": "house",
+    "x": -70,
+    "z": 15,
+    "scale": 100,
+    "heading": 90
+   },
+   {
+    "kind": "boat",
+    "x": 60,
+    "z": -35,
+    "scale": 100,
+    "heading": 0
+   },
+   {
+    "kind": "rock",
+    "x": 25,
+    "z": 25,
+    "scale": 100,
+    "heading": 0
+   }
+  ],
+  "scenes": [
+   {
+    "scene": 0,
+    "place": 0,
+    "npcs": [
+     "The guide"
+    ]
+   },
+   {
+    "scene": 1,
+    "place": 1,
+    "npcs": [
+     "The merchant"
+    ]
+   },
+   {
+    "scene": 2,
+    "place": 2,
+    "npcs": []
+   },
+   {
+    "scene": 3,
+    "place": 3,
+    "npcs": []
+   },
+   {
+    "scene": 4,
+    "place": 3,
+    "npcs": []
+   },
+   {
+    "scene": 5,
+    "place": 4,
+    "npcs": []
+   },
+   {
+    "scene": 6,
+    "place": 4,
+    "npcs": []
+   },
+   {
+    "scene": 7,
+    "place": 4,
+    "npcs": []
+   }
+  ]
+ }
+}

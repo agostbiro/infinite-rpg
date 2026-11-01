@@ -2,8 +2,9 @@ import Rpg.Live
 import Rpg.Probability.Retry
 
 /-! In-play changes are checked data, not generated executable code. An accepted
-patch keeps the checkpoint, HP, history, and core rules. Admission samples the
-updated adventure from its beginning before the server can install it. -/
+patch keeps the checkpoint, HP, history, core rules, and balance policy. Admission samples the
+updated adventure from its beginning, against the game's own policy, before the server can
+install it. A proposal has no policy field, so it cannot change the difficulty level. -/
 namespace Rpg.WorldChange
 open Lean Probability Probability.Confidence
 
@@ -16,6 +17,8 @@ structure Proposal where
   requestedRules : List CombatRule := []
   rules : List CombatRule
   scenes : List Scene
+  /-- The place on the world map of each new Scene. The map itself does not change. -/
+  scenePlaces : List ScenePlace := []
   supported : Bool := true
 
 /-- A tuned effect's description states its actual condition and numbers. -/
@@ -86,7 +89,8 @@ def Proposal.parse (owner text : String) : Except String Proposal := do
     equipment := gear
     requestedRules := ← listField j "requestedRules" ruleOfJson
     rules := ← listField j "rules" ruleOfJson
-    scenes := (← listField j "scenes" sceneOfJson).map fun sc => { sc with picture := none }
+    scenes := ← listField j "scenes" sceneOfJson
+    scenePlaces := ← optListField j "scenePlaces" fun x => fromJson? x
     supported := ← j.getObjValAs? Bool "supported" }
 
 /-- A live change can be requested between choices or on the Character's combat turn. -/
@@ -152,11 +156,16 @@ def Proposal.ruleSet (p : Proposal) (g : Game) : RuleSet :=
       | some e => e :: g.rules.equipment.filter (fun old => old.owner != g.hero.name),
     combatRules := g.rules.combatRules ++ p.requestedRules ++ p.rules }
 
-/-- Install or append future scenes, retaining every untouched scene and its picture. -/
+/-- Install or append future scenes, retaining every untouched scene. -/
 def Proposal.story (p : Proposal) (g : Game) : Adventure :=
   let scenes := g.adventure.scenes.map fun sc => (p.scenes.find? (·.id == sc.id)).getD sc
   let added := p.scenes.filter fun sc => (g.adventure.scene? sc.id).isNone
   { g.adventure with scenes := scenes ++ added }
+
+/-- The world map after the change: the same places, paths, and props, and the place of each new
+Scene added. A replaced Scene keeps its place. -/
+def Proposal.map (p : Proposal) (e : WorldEnvironment) : WorldEnvironment :=
+  { e with scenes := e.scenes ++ p.scenePlaces }
 
 /-- A prepared change carries the legality proofs, but cannot yet be installed. -/
 structure Prepared where
@@ -179,7 +188,7 @@ def Prepared.definition (p : Prepared) : AdventureDefinition :=
 def Prepared.game (p : Prepared) : Game :=
   let d := p.definition
   { rules := d.rules, hero := d.hero, heroLegal := d.heroLegal, adventure := d.story, legal := d.legal,
-    hp := p.before.hp, trail := p.before.trail,
+    hp := p.before.hp, trail := p.before.trail, policy := p.before.policy,
     phase := match p.before.phase with
       | .fight f => .fight { f with state := { f.state with hero := { f.state.hero with being := d.hero } } }
       | phase => phase }
@@ -203,10 +212,19 @@ theorem Prepared.preserves_existing_rule (p : Prepared) (r : CombatRule)
     (existing : r ∈ p.before.rules.combatRules) : r ∈ p.game.rules.combatRules := by
   simp [Prepared.game, Prepared.definition, Proposal.ruleSet, existing]
 
-/-- The balance check starts the updated adventure at full initial HP and turn zero.
-The installed game separately retains the player's actual checkpoint. -/
+/-- The balance check starts the updated adventure at full initial HP and turn zero, with the
+game's own policy. The installed game separately retains the player's actual checkpoint. -/
 def Prepared.candidate (p : Prepared) : StatisticalCandidate :=
-  { toAdventureDefinition := p.definition, horizon := liveHorizon, horizonPositive := by decide }
+  { toAdventureDefinition := p.definition, horizon := liveHorizon, horizonPositive := by decide,
+    policy := p.before.policy }
+
+/-- A change keeps the game's balance policy, and the check uses that same policy. So the
+difficulty level of an Adventure stays the same for its whole life. -/
+theorem Prepared.keeps_policy (p : Prepared) :
+    -- The changed game has the policy of the game before the change.
+    p.game.policy = p.before.policy ∧
+    -- The balance check of the change uses that policy.
+    p.candidate.policy = p.before.policy := ⟨rfl, rfl⟩
 
 /-- The admission graph is the entire updated adventure, regardless of the pause point. -/
 theorem Prepared.candidate_from_start (p : Prepared) :
@@ -214,27 +232,32 @@ theorem Prepared.candidate_from_start (p : Prepared) :
     p.candidate.graph = p.definition.graph := by
   exact ⟨rfl, rfl, rfl⟩
 
-/-- Decode limits and legality are checked before any simulation. -/
-def Proposal.prepare (p : Proposal) (g : Game) : Except (List String) Prepared :=
+/-- Decode limits, legality and the short-loop check (`Adventure.noShortLoops`) are checked
+before any simulation. `map` is the world map of the
+Adventure in play, if it has one: the changed Adventure must fit the same map, with a place for each
+new Scene. -/
+def Proposal.prepare (p : Proposal) (g : Game) (map : Option WorldEnvironment := none) :
+    Except (List String) Prepared :=
   let errs := p.errors g
   let rules := p.ruleSet g
   let hero := { g.hero with weapon := p.equipment.map (·.weapon) |>.getD g.hero.weapon }
   let story := p.story g
-  let sizes := sizeErrors { adventure := story, hero, background := "", palette := [] }
+  let sizes := sizeErrors { adventure := story, hero, background := "", environment := map.map p.map }
   if he : errs = [] then
   if sizes != [] then .error sizes else
   if hc : checkCharacter rules hero = [] then
     if ha : check rules hero story = [] then
-      .ok ⟨g, p, he, checkCharacter_sound hc, check_sound ha⟩
-    else .error (check rules hero story)
+      if story.checkShortLoops then .ok ⟨g, p, he, checkCharacter_sound hc, check_sound ha⟩
+      else .error story.shortLoopErrors
+    else .error (check rules hero story ++ story.shortLoopErrors)
   else .error (checkCharacter rules hero)
   else .error errs
 
 /-- Evidence is bound to this updated adventure, seed, and error allowance. -/
 structure Admission (p : Prepared) (seed : Nat) (delta : Rat) where
   counts : ValidationCounts
-  provenance : counts = sampleCounts p.candidate seed validationGames
-  accepted : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed
+  provenance : counts = sampleCounts p.candidate seed difficultyGames
+  accepted : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
 
 -- The fact about one admission is `WorldChange.Admission.intervals_fit`.
@@ -244,7 +267,8 @@ does not say that this change is balanced. -/
 theorem Admission.balanced {p : Prepared} {seed : Nat} {delta : Rat} (a : Admission p seed delta) :
     BalancedAt p.candidate delta := p.candidate.balancedAt delta (Rat.le_of_lt a.riskValid.1)
 
-/-- Every interval that authorized the change fits the adventure's Weibull band from turn zero. -/
+/-- Every interval that authorized the change fits the band of the game's own policy, from turn
+zero. -/
 theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
     (a : Admission p seed delta) (i : Fin (p.candidate.horizon+1)) :
     let obs := a.counts.observation i.val
@@ -256,9 +280,9 @@ theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
 /-- Validate one frozen proposal with a fresh, preassigned batch; every row must pass. -/
 def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option (Admission p seed delta) :=
-  let counts := sampleCounts p.candidate seed validationGames
+  let counts := sampleCounts p.candidate seed difficultyGames
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
-    if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed then
+    if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy then
       (counts, some ⟨counts, rfl, h, hd⟩)
     else (counts, none)
   else (counts, none)

@@ -1,5 +1,6 @@
 import Rpg.Engine
 import Rpg.Spec
+import Rpg.Probability.Weibull
 
 /-!
 # Game
@@ -11,6 +12,9 @@ from the Player. The page sends the inputs; it never changes a `Game` itself.
 Only a Legal Adventure can be played. A `Game` holds a proof that its Adventure is legal for
 its Character, and a proof that the Character is a legal build. So no code can make a `Game`
 from an Adventure that has not passed the checker (or another proof).
+
+A `Game` also holds the balance policy of its Adventure: the curve of its difficulty level.
+A live change is checked against this policy, and it keeps the policy (`Prepared.game`).
 
 This file has only the types. The spec for inputs is in `Rpg/InputSpec.lean`.
 -/
@@ -88,14 +92,18 @@ structure Game where
   phase : Phase
   /-- Every Choice taken so far, oldest first. -/
   trail : List Taken
+  /-- The balance policy of the Adventure: the curve of its difficulty level. A live change is
+  checked against it and cannot change it. -/
+  policy : Probability.BalancePolicy
 
-/-- A new game on the title screen, with the Character at full HP.
+/-- A new game on the title screen, with the Character at full HP and the balance policy `policy`.
 It needs an `AdventureDefinition`, which holds the proofs that the Character and the Adventure
 are legal under the rules. The server gets these proofs only from `checkCharacter_sound` and
-`check_sound`, or from a shipped theorem such as `lighthouse_legal`. -/
-def Game.new (d : AdventureDefinition) : Game :=
+`check_sound`, or from a shipped theorem such as `test_adventure_legal`. -/
+def Game.new (d : AdventureDefinition)
+    (policy : Probability.BalancePolicy := Probability.DifficultyLevel.medium.policy) : Game :=
   { rules := d.rules, hero := d.hero, heroLegal := d.heroLegal, adventure := d.story,
-    legal := d.legal, hp := d.rules.maxHP d.hero, phase := .title, trail := [] }
+    legal := d.legal, hp := d.rules.maxHP d.hero, phase := .title, trail := [], policy }
 
 /-- The Scene that play is in now, if any. In a Fight, this is the Scene where it started. -/
 def Game.sceneId? (g : Game) : Option SceneId :=

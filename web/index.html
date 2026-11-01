@@ -6,7 +6,8 @@
 <title>Verified RPG</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
-<script src="/app.js" defer></script>
+<link rel="stylesheet" href="/world3d.css">
+<script src="/app.js" type="module"></script>
 </head>
 <body>
 <div id="seed" class="seed" title="The dice seed. The same seed and the same clicks give the same game."></div>
@@ -51,6 +52,13 @@
                 <option value="they">they</option>
               </select>
             </label>
+            <label>Difficulty
+              <select id="wish-difficulty">
+                <option value="easy">easy: 50% still alive after 10 turns</option>
+                <option value="medium" selected>medium: 30% still alive after 10 turns</option>
+                <option value="hard">hard: 10% still alive after 10 turns</option>
+              </select>
+            </label>
           </div>
           <div class="wish-buttons">
             <button id="wish-send" class="big-button" type="button">Ask the Dungeon Master</button>
@@ -63,7 +71,6 @@
           <div id="ready" class="ready" hidden>
             <p class="ready-h">Your Adventure is ready</p>
             <p id="ready-title" class="ready-title"></p>
-            <p id="ready-pictures" class="ready-pictures" hidden></p>
           </div>
           <div class="progress-buttons">
             <button id="play-now" class="big-button" type="button">Play it now</button>
@@ -82,53 +89,102 @@
   <header class="top">
     <button id="leave" class="small-button leave" type="button">&larr; Adventures</button>
     <h1 id="adventure-title"></h1>
-    <p id="top-pictures" class="top-pictures" hidden></p>
   </header>
 
-  <section class="story" aria-live="polite">
+  <section id="world" class="world" aria-label="Explore the Adventure in 3D" hidden>
+    <canvas id="world-canvas" tabindex="0" aria-label="The Adventure in 3D. Move with WASD, ZQSD, or the arrow keys. Drag to look. Walk to a marked object or person to choose it, or press E near it. Press Escape to pause, or J for the journal."></canvas>
+    <div id="world-labels" class="world-labels" aria-hidden="true"></div>
+    <div class="world-vignette" aria-hidden="true"></div>
+    <div class="world-heading">
+      <p id="world-mode" class="world-mode"></p>
+      <h2 id="world-location"></h2>
+      <p id="world-description"></p>
+    </div>
+    <div class="world-toolbar">
+      <span id="world-hp" class="world-hp"></span>
+      <button id="world-journal" class="small-button" type="button" aria-expanded="false">Journal · J</button>
+      <button id="world-pause" class="small-button" type="button">Pause</button>
+      <button id="world-speed" class="small-button" type="button" title="Change how long the dice stay on screen">Dice ×1</button>
+      <button id="skip" class="small-button" type="button" hidden>Skip</button>
+    </div>
+    <div class="world-navigation">
+      <canvas id="world-minimap" width="160" height="160" role="img" aria-label="World map"></canvas>
+      <p id="world-objective"></p>
+    </div>
+    <div id="world-travel" class="world-travel" hidden>
+      <p id="world-travel-status" role="status"></p>
+      <span>Move to take control, or wait to arrive.</span>
+      <button id="world-travel-skip" class="small-button" type="button">Skip the walk</button>
+    </div>
+    <div class="world-crosshair" aria-hidden="true">+</div>
+    <div id="world-combat-actions" class="world-combat-actions" aria-label="Maneuvers" hidden></div>
+    <section id="world-events" class="world-events" aria-label="Dice and results" aria-live="polite" hidden>
+      <p class="world-event-heading">Dice and results</p>
+      <ol id="world-event-list"></ol>
+    </section>
+    <div id="world-hit" class="world-hit" aria-hidden="true"></div>
+    <div id="world-prompt" class="world-prompt" hidden>
+      <p id="world-choice"></p>
+      <p id="world-detail"></p>
+      <button id="world-use" type="button">Choose · E</button>
+    </div>
+    <div class="world-controls">
+      <p><kbd>WASD</kbd> / <kbd>ZQSD</kbd> / <kbd>↑↓←→</kbd> move <span>· Drag to look · Shift to run</span></p>
+      <p>Walk to a marked object or person to choose it.</p>
+    </div>
+    <div class="world-touch" aria-label="Movement controls">
+      <button type="button" data-move="arrowup" aria-label="Move forward">↑</button>
+      <button type="button" data-move="arrowleft" aria-label="Move left">←</button>
+      <button type="button" data-move="arrowdown" aria-label="Move back">↓</button>
+      <button type="button" data-move="arrowright" aria-label="Move right">→</button>
+    </div>
+    <div id="world-loading" class="world-loading" role="status" hidden>The game works on your choice...</div>
+    <div id="world-paused" class="world-paused" hidden>
+      <p class="kicker">Paused</p>
+      <h2 id="world-pause-title">Your Adventure is paused</h2>
+      <p id="world-pause-text">Resume when you are ready to choose your next path.</p>
+      <button id="world-resume" class="big-button" type="button">Resume</button>
+    </div>
+    <div id="over" class="over world-over" hidden>
+      <p id="over-title" class="over-title"></p>
+      <p id="over-text" class="over-text"></p>
+      <button id="again" class="big-button" type="button">Play again</button>
+      <button id="to-title" class="small-button" type="button">&larr; Adventures</button>
+    </div>
+  </section>
+
+  <section id="change-panel" class="panel change-panel" aria-labelledby="change-h" hidden>
+    <h2 id="change-h">Change the world</h2>
+    <p class="wish-help">Ask for a new weapon or a twist in the rules. The Dungeon Master grants your wish and gives the world a fun response. Lean checks the rules and the balance before you continue. The balance check plays only the first 6 turns from the start, so a new Scene after turn 6 gets only the rule check. A change is for this game only.</p>
+    <p id="change-off" class="change-off" hidden>Not available: the Dungeon Master is not connected. Set ANTHROPIC_API_KEY, then run the game again.</p>
+    <div id="change-form" class="wish-form">
+      <label class="wish-label" for="change-request">What would you like to change?</label>
+      <textarea id="change-request" maxlength="500" rows="2" placeholder="I want my character to have a flamethrower now"></textarea>
+      <button id="change-send" class="small-button" type="button">Ask for a change</button>
+    </div>
+    <div id="change-progress" hidden aria-live="polite">
+      <p id="change-status" class="wish-help"></p>
+      <ol id="change-steps" class="progress-steps"></ol>
+      <button id="change-cancel" class="small-button" type="button">Cancel and resume</button>
+      <button id="change-retry" class="small-button" type="button" hidden>Try again</button>
+      <button id="change-dismiss" class="small-button" type="button" hidden>Continue playing</button>
+    </div>
+    <div id="active-rules" class="active-rules"></div>
+  </section>
+
+  <section class="story" aria-live="polite" aria-label="Journal">
     <div id="scroll" class="scroll"></div>
     <div id="mat" class="mat">
       <div id="fight" class="fight" hidden>
         <div id="round" class="round-label"></div>
-        <div id="cards" class="cards"></div>
+        <ul id="fighters" class="fighters"></ul>
         <p id="fight-hint" class="fight-hint"></p>
-        <div id="maneuvers" class="maneuvers"></div>
       </div>
       <div id="choices" class="choices"></div>
-      <div id="over" class="over" hidden>
-        <p id="over-title" class="over-title"></p>
-        <p id="over-text" class="over-text"></p>
-        <button id="again" class="big-button" type="button">Play again</button>
-        <button id="to-title" class="small-button" type="button">&larr; Adventures</button>
-      </div>
-      <button id="skip" class="skip" type="button" hidden>Skip</button>
     </div>
-    <section id="change-panel" class="panel change-panel" aria-labelledby="change-h" hidden>
-      <h2 id="change-h">Change the world</h2>
-      <p class="wish-help">Ask for a new weapon or a twist in the rules. The Dungeon Master grants your wish and gives the world a fun response. Lean checks the rules and the balance before you continue. The balance check plays only the first 6 turns from the start, so a new Scene after turn 6 gets only the rule check. A change is for this game only.</p>
-      <p id="change-off" class="change-off" hidden>Not available: the Dungeon Master is not connected. Set ANTHROPIC_API_KEY, then run the game again.</p>
-      <div id="change-form" class="wish-form">
-        <label class="wish-label" for="change-request">What would you like to change?</label>
-        <textarea id="change-request" maxlength="500" rows="2" placeholder="I want my character to have a flamethrower now"></textarea>
-        <button id="change-send" class="small-button" type="button">Ask for a change</button>
-      </div>
-      <div id="change-progress" hidden aria-live="polite">
-        <p id="change-status" class="wish-help"></p>
-        <ol id="change-steps" class="progress-steps"></ol>
-        <button id="change-cancel" class="small-button" type="button">Cancel and resume</button>
-        <button id="change-retry" class="small-button" type="button" hidden>Try again</button>
-        <button id="change-dismiss" class="small-button" type="button" hidden>Continue playing</button>
-      </div>
-      <div id="active-rules" class="active-rules"></div>
-    </section>
   </section>
 
   <aside id="character" class="panel character-panel"></aside>
-
-  <aside class="panel map-panel">
-    <h2>Map</h2>
-    <div class="map-wrap"><svg id="map" class="map" role="img" aria-label="Map of the Scenes you visited"></svg></div>
-  </aside>
 </div>
 
 <dialog id="leave-dialog" class="leave-dialog" aria-labelledby="leave-h">

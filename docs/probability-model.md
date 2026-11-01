@@ -1,13 +1,22 @@
 # Probability and balance
 
-Edit the defaults in `Rpg/Probability/Weibull.lean`:
+Every Adventure has a difficulty level: easy, medium, or hard. An Adventure with no level is
+medium. Each level is a policy in `Rpg/Probability/Weibull.lean` (`DifficultyLevel.policy`):
 
-- `weibullRetention = 19/20` (q).
-- `weibullShape = 2` (positive integer shape; 2 means the danger rises over the turns).
-- `balanceTolerance = 1/5` (twenty percentage points of absolute error).
+- `DifficultyLevel.retention` (q): 993092495/10^9 (easy), 988032459/10^9 (medium),
+  977237220/10^9 (hard). Each q is `p^(1/100)` rounded down to 9 places, where p is the chance to
+  be alive after 10 turns: 50%, 30%, or 10%.
+- `difficultyShape = 2` (positive integer shape; 2 means the danger rises over the turns).
+- `difficultyTolerance = 1/20` (five percentage points of absolute error).
 
-These are design choices, not measured or standard RPG parameters. They were picked
-on the screening seed (1) so that the Lighthouse passes and an Adventure with no deaths
+The old policy, `defaultPolicy`, stays in the same file: `weibullRetention = 19/20`,
+`weibullShape = 2`, and `balanceTolerance = 1/5` (twenty percentage points). Only the test
+Adventure uses it, as an exemption, because it fails the medium curve (see item 1 in
+[follow-ups](follow-ups.md)).
+
+These are design choices, not measured or standard RPG parameters. The old values were picked
+on the screening seed (1) so that the earlier built-in Adventure (now the test Adventure) passes
+and an Adventure with no deaths
 fails; then the fixed validation seed was run once (see ADR 0004). The
 positive-integer type-I discrete Weibull target has `P(T > t) = q^(t^shape)`.
 This is a one-turn shift of the zero-based distribution documented by
@@ -53,7 +62,7 @@ them exactly (Gauss-Jordan elimination over rationals). Every way out of a group
 HP, so the solver recurs on strictly decreasing total living HP. A group that can never
 lose HP is `stalled`. It memoizes solved states. There is no imposed combat round limit.
 With the policy "always Attack" (`attackOnlyPolicy`), the solver gave exactly the odds of the
-old solver on the Lighthouse Fights. This was a one-off check in the merge, not a build test. Exact rational state enumeration is expensive: one Lighthouse
+old solver on the Fights of the earlier built-in Adventure (now the test Adventure). This was a one-off check in the merge, not a build test. Exact rational state enumeration is expensive: one such
 Fight takes minutes in the interpreter. Do not assume large fights are cheap to analyze.
 
 ## Meaning of `balanced`
@@ -68,7 +77,7 @@ w_t = (S(t+1) - S(t+2)) / S(t),  S(t) = q^(t^shape).
 
 The expectation is of a death indicator, not a death time. Completed successful
 games are excluded from the conditioning event. Each row uses its actual
-qualifying count from a fixed batch of 1,000 games to construct an exact binomial
+qualifying count from a fixed batch of 1,200 games (`difficultyGames`) to construct an exact binomial
 interval, enclosed by outward-rounded rational endpoints.
 Admission requires the whole interval inside `[w_t - tolerance, w_t + tolerance]`.
 The first-turn row uses target `1 - S(1)` to reject immediate-death loopholes.
@@ -78,16 +87,17 @@ bound for the entire finite decision under the explicitly accepted binomial
 sampling model. With the current constants, each risk is at most 5%.
 This does not assert simultaneous 95% coverage of all displayed intervals.
 There is no requirement or claim about times beyond the selected horizon.
-Lighthouse and every Wish use `H=5`.
+The test Adventure and every Wish use `H=5`.
 
 Live changes also use `H=5`, starting from the adventure beginning with the updated rules
-and the same original Weibull targets. `StatisticalCandidate.balancedAt` uses the actual per-attempt error allowance.
+and the Weibull targets of the game's own policy. A change cannot change the policy. `StatisticalCandidate.balancedAt` uses the actual per-attempt error allowance.
 `RetryTree.balanced` proves a finite adaptive retry bound with decreasing allowances whose
 total is at most 5%. See [live rule changes](live-rule-changes.md).
 
-With shape 2, the targets rise from 5% on turn 1 to 27% on turn 6. The tolerance is
-20 percentage points, so the first three rows only cap the risk, and from turn 4 on each
-row also has a lower edge above 0. An Adventure where the Character never dies fails. It does not guarantee victory, behavior under
+With shape 2, the targets rise over the turns. On medium they rise from 1.2% on turn 1 to 11.1%
+on turn 6 (easy: 0.7% to 6.9%; hard: 2.3% to 18.2%). The tolerance is 5 percentage points, so the
+first rows only cap the risk, and the later rows also have a lower edge above 0 (from turn 5 on
+easy, turn 3 on medium, and turn 2 on hard). An Adventure where the Character never dies fails. It does not guarantee victory, behavior under
 every player strategy, or closeness of the entire lifetime distribution to a
 Weibull law. `checkBalanceThrough` remains an exact finite diagnostic for small
 graphs; admission uses the proved exact-binomial confidence protocol.
@@ -115,9 +125,9 @@ cutoff must not be reported as the exact expectation without an additional proof
 ## Authoring and enforcement
 
 Each `Rpg/Adventures/<Name>/` folder contains `Rules.lean`, `Characters.lean`,
-`Story.lean`, and its definition or certification. Lighthouse owns Mara, the
-wreckers, and Hollis. The deliberately illegal
-creature and story fixtures also live under Lighthouse, in `NegativeExamples.lean`.
+`Story.lean`, and its definition or certification. The test Adventure (`TestAdventure/`) owns
+Mara, the bandits, and the bandit chief. The deliberately illegal
+creature and story fixtures also live there, in `NegativeExamples.lean`.
 
 `Rpg/RuleSet.lean` defines the common rule interface. `Rpg/Rules.lean` provides
 reusable GURPS Lite defaults. Each adventure owns its selected `RuleSet`, including
@@ -137,14 +147,14 @@ finite horizon, and the specialized theorem `balanced`. Register candidates in
 `Rpg/Catalog.lean`; the runtime `admitStatistically` gate collects source-bound
 counts and requires every interval to fit the shared Weibull band. Its resulting
 `StatisticalAdventure` carries both `balanced` and the passing observation evidence.
-The Lighthouse and every Wish go through the same `admitWithSeed`.
+The test Adventure and every Wish go through the same `admitWithSeed`.
 
 Live changes use `WorldChange.Prepared.admit`. Its certificate also binds the observations
 to the updated adventure from its beginning and the error allowance. `Prepared.preserves_core` proves that the
 patch changes only the adventure equipment/effect fields of `RuleSet`.
 
 See [statistical confidence](statistical-confidence.md) for the theorem, accepted
-sampling assumptions, fixed game batch, and Lighthouse's recorded results. The
+sampling assumptions, fixed game batch, and the recorded results. The
 admission interface has no graph-validity or tail premises. The probability and
 lifetime fixtures remain, along with interval, boundary, censoring, and sampling
 model tests.

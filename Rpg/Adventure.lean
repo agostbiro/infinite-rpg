@@ -66,9 +66,6 @@ structure Scene where
   title : String
   text : String
   choices : List Choice
-  /-- The name of the Picture shown with the Scene: the page shows `web/pictures/<name>.svg`.
-  It changes only what the Player sees. The spec and the checker do not look at it. -/
-  picture : Option String := none
   deriving Repr
 
 /-- The Theme Names of an Adventure: display names for skills, weapons, and armor.

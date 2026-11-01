@@ -14,4 +14,5 @@ The game runs in a browser, but all rules and dice stay in Lean. A Lean program 
 - The page is outside the Engine and can send any input. `step` accepts only inputs that the game offers, and a theorem says any other input changes nothing. Another theorem says the game offers exactly the inputs the rules allow.
 - Other websites in the Player's browser can send requests to `localhost` too. The server refuses every POST that is not JSON, and every POST whose `Origin` is not the game's own page.
 - The page is trusted to show Reports as they are. Reports carry each die face, so the page never makes up dice.
-- Pictures are SVG (Scalable Vector Graphics) files that the DM writes, and an SVG can carry code. The page shows them only through `<img>` tags, the server sends a CSP (Content Security Policy) header, and `make check` runs `scripts/check_pictures.py`. It reads each Picture as XML and rejects scripts, event handlers, `<foreignObject>`, outside links, and other ways to run code or load things. A text search is not enough, because XML can hide a word with an entity such as `&#104;`.
+- The server sends a CSP (Content Security Policy) header: scripts, styles, and images come only from the server.
+- Since ADR 0006, the page draws the Adventure as a 3D world. It still sends only the inputs that the view offers, unchanged.

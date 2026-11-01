@@ -39,11 +39,11 @@ run limits:
 
 | Definition | Source | Use |
 |---|---|---|
-| `validationGames` | `StatisticalAdmission.lean` | Total games per adventure; simulated fights per optional agreement case |
+| `difficultyGames` | `StatisticalAdmission.lean` | Total games per adventure; simulated fights per optional agreement case |
 | `validationRoundLimit` | `StatisticalAdmission.lean` | Maximum simulated rounds per fight |
 | `confidenceDelta` | `Confidence.lean` | Binomial interval failure bound |
 | `intervalSteps` | `Confidence.lean` | Endpoint precision through `confidenceInterval` |
-| `defaultPolicy` | `Weibull.lean` | Targets and tolerance through `confidenceBands` |
+| `DifficultyLevel.policy` | `Weibull.lean` | Targets and tolerance of each level, through the candidate's `policy` and `bands` (medium if not set; the test Adventure is exempt and uses `defaultPolicy`) |
 | Candidate `horizon` | Adventure certification | Conditional death rows to test |
 | `liveHorizon`, `liveRules` | `Rpg/Live.lean` | Horizon and rules for generated Wishes |
 | `heroPolicy`, `Simulation.pickManeuver` | `Combat.lean`, `Simulation.lean` | Matching model/simulator maneuver and target distributions |
@@ -89,8 +89,8 @@ repeating rule to avoid tracking state.
   Its default preserves existing behavior for other adventures. People own the
   rules: `make check-rules` rejects an adventure rules file that is not `{}`
   unless its path is in `RULES_ALLOW`. An authorized adventure-rule change also
-  authorizes that narrowly scoped allow-list update. If Lighthouse's rules
-  change, update `Verified.lighthouse_default_rules` in both
+  authorizes that narrowly scoped allow-list update. If the test Adventure's rules
+  change, update `Verified.test_adventure_default_rules` in both
   `Comparator/Statements.lean` and `Comparator/Proofs.lean` to the approved value.
   Preserve unrelated statements and report the specification change.
 - Add small deterministic tests under `Rpg/` showing the trigger, effect, and
@@ -151,7 +151,7 @@ also invalidate the result. Do not run another Lake process in this checkout at
 the same time.
 
 The runner does not invoke the Makefile's additional guards or Comparator. Run
-`make check-rules check-pictures` as repository checks, and use the final Linux
+`make check-rules` as repository checks, and use the final Linux
 checks below before claiming all required verification is complete. The
 one-minute deadline covers the runner, not these separate repository checks.
 
@@ -182,7 +182,7 @@ proof replay requirements in `CLAUDE.md` still apply. On Linux, also run:
 make check comparator
 ```
 
-`make check` includes the adventure-source, rules, and picture guards; the
+`make check` includes the adventure-source and rules guards; the
 runner's `lake check` alone does not include those guards. `make comparator`
 checks `Comparator/Proofs.lean` against the trusted declarations in
 `Comparator/Statements.lean` using `comparator.json`. The statement file's
@@ -195,7 +195,7 @@ until success; changed mechanics then need an independently precommitted holdout
 Replaying an unchanged seed is reproducibility, not new independent evidence.
 
 The old full-fight diagnostic remains available as `lake exe agree`. It uses
-`validationGames`, `validationRoundLimit`, and `confidenceDelta`, but also exactly
+`difficultyGames`, `validationRoundLimit`, and `confidenceDelta`, but also exactly
 enumerates all combat outcomes, which can exceed a minute. It is a separate deep
 check, not part of the routine deadline or a proof of model equivalence. If work
 changes model/sampler correspondence, additional checks or proofs are necessary;

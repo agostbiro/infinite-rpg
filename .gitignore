@@ -1,3 +1,7 @@
 .lake/
 # Adventures from Wishes, saved by the game server.
 /adventures/
+# Packages and results of the browser test (npm ci, make test-browser).
+node_modules/
+test-results/
+playwright-report/

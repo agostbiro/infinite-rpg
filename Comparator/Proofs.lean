@@ -1,6 +1,8 @@
 import Rpg.Play
-import Rpg.Adventures.Lighthouse.Confidence
+import Rpg.Adventures.TestAdventure.Confidence
 import Rpg.WorldChange
+import Rpg.EventGraph
+import Rpg.Probability.FastBinomial
 
 /-!
 # The main theorems, with proofs
@@ -19,14 +21,15 @@ theorem check_sound {rules : RuleSet} {c : Being} {a : Adventure}
 theorem checkCharacter_sound {rules : RuleSet} {c : Being}
     (h : checkCharacter rules c = []) : LegalCharacter rules c := Rpg.checkCharacter_sound h
 
-/-- The Drowned Lighthouse is legal for Mara under its rules. -/
-theorem lighthouse_legal : LegalAdventure Lighthouse.rules Lighthouse.mara Lighthouse.lighthouse :=
-  Lighthouse.lighthouse_legal
+/-- The test Adventure, The Bandit Camp, is legal for Mara under its rules. This shows that the
+premise of `check_sound` can be met. -/
+theorem test_adventure_legal : LegalAdventure TestAdventure.rules TestAdventure.mara TestAdventure.testAdventure :=
+  TestAdventure.test_adventure_legal
 
-/-- From every Scene of The Drowned Lighthouse, an Ending can be reached. -/
-theorem lighthouse_reaches_ending :
-    ∀ s ∈ Lighthouse.lighthouse.scenes, ReachesEnding Lighthouse.lighthouse s.id :=
-  Lighthouse.lighthouse_reaches_ending
+/-- From every Scene of the test Adventure, an Ending can be reached. -/
+theorem test_adventure_reaches_ending :
+    ∀ s ∈ TestAdventure.testAdventure.scenes, ReachesEnding TestAdventure.testAdventure s.id :=
+  TestAdventure.test_adventure_reaches_ending
 
 /-- An input that the game does not offer changes nothing and rolls no dice. -/
 theorem step_rejects (g : Game) (i : Input) (dice : Rng)
@@ -37,17 +40,17 @@ theorem step_rejects (g : Game) (i : Input) (dice : Rng)
 /-- The game offers exactly the inputs that the rules allow. -/
 theorem mem_inputs_iff {g : Game} {i : Input} : i ∈ g.inputs ↔ AllowedInput g i := Rpg.mem_inputs_iff
 
-/-- The Lighthouse uses the default rules, in every place that play and the balance check read
+/-- The test Adventure uses the default rules, in every place that play and the balance check read
 them. A DM cannot change the rules without breaking this statement. -/
-theorem lighthouse_default_rules :
-    Lighthouse.rules = {} ∧
-    Lighthouse.lighthouseDefinition.rules = {} ∧
-    Lighthouse.statisticalCandidate.rules = {} :=
+theorem test_adventure_default_rules :
+    TestAdventure.rules = {} ∧
+    TestAdventure.testAdventureDefinition.rules = {} ∧
+    TestAdventure.statisticalCandidate.rules = {} :=
   ⟨rfl, rfl, rfl⟩
 
-/-- Built-in and generated adventures both inherit the shared tactical meta rules. -/
+/-- The test Adventure and generated Adventures both inherit the shared tactical meta rules. -/
 theorem shared_tactical_rules :
-    Lighthouse.rules.combatRules = defaultCombatRules ∧
+    TestAdventure.rules.combatRules = defaultCombatRules ∧
     liveRules.combatRules = defaultCombatRules := ⟨rfl, rfl⟩
 
 /-- The balance test is sound for every candidate, under the binomial sampling model. -/
@@ -76,11 +79,52 @@ theorem live_change_from_start (p : WorldChange.Prepared) :
 start. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
 does not say that this change is balanced. -/
 theorem live_change_balanced {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
-    (a : WorldChange.Admission p seed delta) : Probability.BalancedAt p.candidate delta := a.balanced
+    (a : WorldChange.Admission p seed delta) :
+    Probability.BalancedAt p.candidate delta p.candidate.policy := a.balanced
 
 /-- Any finite adaptive series of live-change validations stays within the shared risk budget. -/
 theorem retry_balanced {n : Nat} (tree : Probability.RetryTree n)
     (valid : tree.Valid) : tree.falseAcceptance 0 ≤ Probability.Confidence.confidenceDelta :=
   tree.balanced 0 valid
+
+/-- Every difficulty level is a valid curve: 0 < q < 1, a positive shape, and a tolerance from
+0 to 1. -/
+theorem difficulty_valid (level : Probability.DifficultyLevel) : level.policy.Valid :=
+  Probability.difficulty_valid level
+
+/-- At turn 10, more Characters are alive on easy than on medium, and more on medium than on
+hard. -/
+theorem difficulty_order :
+    -- Hard is more dangerous than medium.
+    Probability.DifficultyLevel.hard.policy.survival 10 <
+      Probability.DifficultyLevel.medium.policy.survival 10 ∧
+    -- Medium is more dangerous than easy.
+    Probability.DifficultyLevel.medium.policy.survival 10 <
+      Probability.DifficultyLevel.easy.policy.survival 10 := Probability.difficulty_order
+
+/-- A live change keeps the difficulty level of the Adventure, and its check uses that level. -/
+theorem live_change_policy (p : WorldChange.Prepared) :
+    -- The changed game has the policy of the game before the change.
+    p.game.policy = p.before.policy ∧
+    -- The balance check of the change uses that policy.
+    p.candidate.policy = p.before.policy := p.keeps_policy
+
+/-- If the short-loop check passes, every loop has at least 4 steps: a path of Choices from a
+Scene back to the same Scene, with at least one step, has 4 steps or more. -/
+theorem noShortLoops (a : Adventure) {s : SceneId} {n : Nat}
+    -- The short-loop check passes.
+    (checked : a.checkShortLoops = true)
+    -- Following `n` Choices leads from `s` back to `s`.
+    (loop : ChoicePath a s s n)
+    -- The path has at least one step.
+    (positive : 0 < n) :
+    4 ≤ n :=
+  a.noShortLoops checked loop positive
+
+/-- The fast binomial expectation that the compiled balance check runs is equal to
+`exactExpectation`, the function that the balance proofs are about. -/
+theorem exactExpectation_eq_fast :
+    @Probability.Confidence.exactExpectation = @Probability.Confidence.Fast.fastExactExpectation :=
+  Probability.Confidence.Fast.exactExpectation_eq_fast
 
 end Verified

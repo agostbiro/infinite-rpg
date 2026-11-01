@@ -51,7 +51,7 @@ def Game.enter (g : Game) (id : SceneId) : Game × List Report :=
   match g.adventure.scene? id with
   | some sc =>
     let ending := sc.choices.isEmpty
-    let report := Report.scene id sc.title sc.text ending (sc.picture.filter safePicture)
+    let report := Report.scene id sc.title sc.text ending
     ({ g with phase := if ending then .ended id else .scene id }, [report])
   -- A Legal Adventure has no missing Scenes. The game offers no inputs here.
   | none => ({ g with phase := .scene id }, [])
@@ -281,23 +281,23 @@ theorem mem_inputs_iff {g : Game} {i : Input} : i ∈ g.inputs ↔ AllowedInput 
 -- Seed 7 gives the faces 4, 1, 1 for the first 3d6.
 #guard ((rollDice 3).run' ⟨7⟩).run == [4, 1, 1]
 
--- The hypothesis of `inputs_allowed` can hold: The Shore offers its second Choice.
-example : AllowedInput shoreGame (.choose 1) := inputs_allowed (by decide)
+-- The hypothesis of `inputs_allowed` can hold: The Road offers its second Choice.
+example : AllowedInput roadGame (.choose 1) := inputs_allowed (by decide)
 
 -- The hypothesis of `step_rejects` can hold: the title screen does not offer a Choice.
 -- A refused input leaves the game and the dice as they were.
 example : (step titleGame (.choose 0)).run ⟨7⟩ = ((titleGame, [.rejected rejectedWhy]), ⟨7⟩) :=
   step_rejects _ _ _ (by decide)
 
--- `begin` goes to The Shore and rolls no dice.
+-- `begin` goes to The Road and rolls no dice.
 #guard
   let ((g, reports), dice) := (step titleGame .begin).run ⟨7⟩
   g.phase.name == "scene" && g.sceneId? == some 0 && dice.state == 7 &&
     reports.map (·.isRejected) == [false]
 
--- With seed 7, the goat path (DX -2, so 10 or less) rolls 4, 1, 1 = 6: a success. Mara reaches The Gallery.
+-- With seed 7, the bank (DX -2, so 10 or less) rolls 4, 1, 1 = 6: a success. Mara reaches The Wall Top.
 #guard
-  let (g, reports) := (step shoreGame (.choose 1)).run' ⟨7⟩
+  let (g, reports) := (step roadGame (.choose 1)).run' ⟨7⟩
   g.sceneId? == some 2 && g.trail.map (·.rolled) == [some true] &&
     reports.contains (.successRoll "Mara" (.attribute .dx) (-2) ⟨[4, 1, 1], 6, 10, .success⟩)
 

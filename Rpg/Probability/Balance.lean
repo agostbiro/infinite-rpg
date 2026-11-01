@@ -81,7 +81,7 @@ inductive BalanceViolation where
   deriving Repr, DecidableEq
 
 /-- An exact check for small graphs: the policy, the start state, and the death chance of each row.
-It is a test tool. Admission before play uses the 1,000-game check instead. -/
+It is a test tool. Admission before play uses the `difficultyGames`-game check instead. -/
 def checkBalanceThrough (policy : BalancePolicy) (g : Graph) (horizon : Nat) : List BalanceViolation :=
   let policyErrors := if policy.Valid then [] else [.invalidPolicy]
   let initialErrors := if g.activeAt 0 = 1 then [] else [.notInitiallyActive]

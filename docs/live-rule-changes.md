@@ -46,8 +46,9 @@ The combat preview uses the same trigger function as the Engine.
   visited scenes, remove past choices, move the Character, heal anyone, or revive defeated foes.
 
 The proposal is JSON data. It cannot write Lean, change the dice, invent arbitrary actions or
-persistent state, or alter core rules, point budgets, the Weibull curve, tolerance, or sample
-count. Unsupported requests receive an explanation. Extending this language requires a
+persistent state, or alter core rules, point budgets, the difficulty level, the Weibull curve,
+tolerance, or sample count. A proposal has no field for the level, and `Prepared.keeps_policy`
+(`live_change_policy`) proves that a change keeps the game's policy. Unsupported requests receive an explanation. Extending this language requires a
 development change and its proofs; runtime does not execute the development skill.
 
 ## Checking and installation
@@ -58,10 +59,11 @@ development change and its proofs; runtime does not execute the development skil
    armor and negative hit/damage effect, without relying on positive offensive bonuses.
    This prevents a grant from silently invalidating that check, but can reject playable
    fights whose harmful effects cannot all trigger together.
-3. The compiled simulator plays 1,000 games from the adventure beginning on screening seed 1. All Fights use
-   the same effects and equipment as play. Failed rows guide revisions to the world's response.
+3. The compiled simulator plays 1,200 games from the adventure beginning on screening seed 1. All Fights use
+   the same effects and equipment as play. The rows are compared with the curve of the game's own
+   difficulty level. Failed rows guide revisions to the world's response.
 4. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
-   and plays a separate 1,000-game validation batch. Only a source-bound `Admission` value
+   and plays a separate 1,200-game validation batch against the same curve. Only a source-bound `Admission` value
    permits installation. Failure returns to revision with a smaller remaining allowance.
 5. Installation preserves play RNG, reports, trail, HP, and current scene. A Fight also keeps
    enemy HP, last maneuvers, turn order, and round number. Changes take effect on the next action.
@@ -117,7 +119,7 @@ uses the whole adventure graph at turn zero. `Prepared.preserves_core` and
 Repeated fresh 95% tests until one passes would lose the overall 95% guarantee. Instead,
 validation attempt `n` spends `confidenceDelta / 2^(n+1)`. The server never refunds a spent
 allowance, including after cancellation or a later request. With the shared 5% allowance,
-the first validation uses 97.5% intervals, the next 98.75%, and so on. All use 1,000 games.
+the first validation uses 97.5% intervals, the next 98.75%, and so on. All use 1,200 games.
 `RetryTree.balanced` proves false-acceptance risk is at most the remaining budget for any finite
 adaptive sequence, including subsequent requests after a successful change.
 
@@ -140,7 +142,8 @@ refining as soon as their outcome is determined; `lowerMeets_correct` and
 `upperMeets_correct` prove equality with the original eight-step endpoint comparisons.
 The confidence level, batch sizes, precision, horizon, and rejection rules are unchanged.
 On the development Mac, the screening fixture took 14 ms for 1,000 games; exact admission
-comparisons fell from 2,960 ms to 625 ms. Two real requests through the Codex CLI (since removed) after the change took
+comparisons fell from 2,960 ms to 625 ms. With 1,200 games on the Linux VM, the same fixture
+took about 12 ms to sample and 600 ms to compare (`lake exe change-check --timing`). Two real requests through the Codex CLI (since removed) after the change took
 17.1 seconds (weapon) and 19.1 seconds (armor in the Lamp Room), including both batches.
 The preceding real request took 156 seconds and needed a second DM proposal. These are
 individual measurements, not a latency guarantee across requests.

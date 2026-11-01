@@ -8,10 +8,10 @@ open TestStory
 
 -- A safe ending occurs on its actual scene-choice turn.
 #guard ((trajectory safeDefinition 2 6
-  safeStory.start (({} : RuleSet).maxHP Lighthouse.mara) 0).run ⟨7⟩).1 == ⟨.ended, 1⟩
+  safeStory.start (({} : RuleSet).maxHP TestAdventure.mara) 0).run ⟨7⟩).1 == ⟨.ended, 1⟩
 -- Fuel exhaustion is recorded as unknown, not as an ending or death.
 #guard ((trajectory safeDefinition 2 0
-  safeStory.start (({} : RuleSet).maxHP Lighthouse.mara) 0).run ⟨7⟩).1 == ⟨.censored, 1⟩
+  safeStory.start (({} : RuleSet).maxHP TestAdventure.mara) 0).run ⟨7⟩).1 == ⟨.censored, 1⟩
 -- A completed fight is recognized even when no further round budget remains.
 #guard ((fight fixtureRules pickManeuver [] 0
   { hero := { being := strongHero, hp := 3 }, foes := [] }).run ⟨7⟩).1.isSome
@@ -29,19 +29,19 @@ private def playToEnd : Nat → Game → Roll Game
       playToEnd n g
     | _ => pure g
 
-/-- The Character's HP at the end of the Fight with Grey Hollis, played as on the page. -/
+/-- The Character's HP at the end of the Fight with the bandit chief, played as on the page. -/
 private def playedHP (seed : Nat) : Int :=
-  let g := Game.new Lighthouse.lighthouseDefinition
+  let g := Game.new TestAdventure.testAdventureDefinition
   ((do
-    let (g, _) ← g.startFight 6 0 [Lighthouse.hollis] 8
+    let (g, _) ← g.startFight 6 0 [TestAdventure.chief] 8
     playToEnd 200 g).run' ⟨seed.toUInt64⟩).hp
 
 /-- The Character's HP at the end of the same Fight in the simulator, with the same Player. -/
 private def simulatedHP (seed : Nat) : Option Int :=
-  let r := Lighthouse.rules
-  let hero : Fighter := { being := Lighthouse.mara, hp := r.maxHP Lighthouse.mara }
-  let foes : List Fighter := [{ being := Lighthouse.hollis, hp := r.maxHP Lighthouse.hollis }]
-  ((fight r (fun _ => pure (.attack, 0)) (turnOrder r Lighthouse.mara [Lighthouse.hollis]) 200
+  let r := TestAdventure.rules
+  let hero : Fighter := { being := TestAdventure.mara, hp := r.maxHP TestAdventure.mara }
+  let foes : List Fighter := [{ being := TestAdventure.chief, hp := r.maxHP TestAdventure.chief }]
+  ((fight r (fun _ => pure (.attack, 0)) (turnOrder r TestAdventure.mara [TestAdventure.chief]) 200
     { hero, foes }).run' ⟨seed.toUInt64⟩).map (·.hero.hp)
 
 -- Play and the simulator use the same turn order and the same dice: from the same seed, the

@@ -1,5 +1,7 @@
 import Rpg.View
+import Rpg.EventGraph
 import Rpg.Probability.StatisticalAdmission
+import Rpg.Environment
 
 /-!
 # Live Adventures
@@ -14,13 +16,16 @@ Character and on the Adventure. A `Game` needs the proofs `LegalCharacter` and `
 (see `Game.new`), and `Draft.toGame` gets them only from `checkCharacter_sound` and `check_sound`.
 So a Draft that the checker rejects can never be played.
 
-Then `Draft.toGame` runs the balance check (admission): 1,000 games from a seed, with
-horizon 5. A Draft that fails a row is not played either. The server picks a fresh random seed for
-each try and saves it with the Adventure, so a saved Adventure gives the same result when it loads.
+Then `Draft.toGame` runs the balance check (admission): `difficultyGames` games from a seed, with
+horizon 5, against the curve of the Draft's difficulty level. A Draft that fails a row is not
+played either. The server picks a fresh random seed for each try and saves it with the Adventure,
+so a saved Adventure gives the same result when it loads.
 A Wish uses the default rules (`liveRules`). The DM cannot change them.
+The Player picks the level. The server sets it on the Draft, so the DM cannot change it either.
 
 Before the checker runs, `sizeErrors` refuses a Draft that is too large to show well, for
-example more than 40 Scenes. These limits are not part of the spec.
+example more than 40 Scenes, and a world map that the 3D page cannot draw
+(`WorldEnvironment.errors`). These limits are not part of the spec.
 
 The JSON here has no proofs. A wrong decoder can only give the checker a different Adventure,
 and the checker then checks that Adventure.
@@ -96,18 +101,17 @@ structure Draft where
   hero : Being
   /-- A short story of the Character, for the Character panel. -/
   background : String
-  /-- The colors for the Pictures, such as "#0b1220". -/
-  palette : List String
   /-- The World of the Adventure in a few words, such as "Middle-earth, the Shire". An older save
   has none: then it is empty. -/
   world : String := ""
   /-- The Intro: the text the Player reads before the first Scene. An older save has none: then it
   is empty. -/
   intro : String := ""
+  /-- The world map for the 3D page. An older save has none: then the page draws a default map. -/
+  environment : Option WorldEnvironment := none
+  /-- The difficulty level that the Player picked. An older save has none: then it is medium. -/
+  difficulty : Probability.DifficultyLevel := .medium
   deriving Repr
-
-/-- The Picture name of a Scene in a live Adventure. -/
-def pictureName (id : SceneId) : String := s!"scene-{id}"
 
 /-- Add a context, such as "Scene 3", to the front of an error. -/
 def inCtx (ctx : String) : Except String α → Except String α
@@ -159,12 +163,12 @@ def outcomeOfJson (j : Json) : Except String Outcome := do
 def choiceOfJson (j : Json) : Except String Choice := do
   return { text := ← j.getObjValAs? String "text", outcome := ← inCtx "outcome" (outcomeOfJson (← j.getObjVal? "outcome")) }
 
-/-- Read a Scene. Its Picture is `scene-<id>`. -/
+/-- Read a Scene. -/
 def sceneOfJson (j : Json) : Except String Scene := do
   let id ← j.getObjValAs? Nat "id"
   inCtx s!"Scene {id}" do
     return { id, title := ← j.getObjValAs? String "title", text := ← j.getObjValAs? String "text",
-             choices := ← listField j "choices" choiceOfJson, picture := some (pictureName id) }
+             choices := ← listField j "choices" choiceOfJson }
 
 /-- Read a list from field `k` of an object, or the empty list if there is no such field. -/
 def optListField (j : Json) (k : String) (f : Json → Except String α) : Except String (List α) :=
@@ -188,6 +192,17 @@ def optStrField (j : Json) (k : String) : Except String String :=
   | .ok v => inCtx k (fromJson? v)
   | .error _ => pure ""
 
+/-- Read the difficulty level from field `difficulty`. A missing field is medium. A field that
+is not "easy", "medium", or "hard" is an error. -/
+def difficultyOfJson (j : Json) : Except String Probability.DifficultyLevel :=
+  match j.getObjVal? "difficulty" with
+  | .error _ => pure .medium
+  | .ok v => do
+    let key ← inCtx "difficulty" (fromJson? (α := String) v)
+    match Probability.DifficultyLevel.ofKey? key with
+    | some level => pure level
+    | none => throw s!"difficulty: \"{key}\" is not easy, medium, or hard"
+
 /-- Read a Draft from the DM's JSON. -/
 def Draft.ofJson (j : Json) : Except String Draft := do
   let title ← j.getObjValAs? String "title"
@@ -201,10 +216,12 @@ def Draft.ofJson (j : Json) : Except String Draft := do
   let c ← inCtx "character" (j.getObjVal? "character")
   let hero ← inCtx "character" (beingOfJson c)
   let background ← inCtx "character" (c.getObjValAs? String "background")
-  let palette ← match j.getObjVal? "palette" with
-    | .ok p => inCtx "palette" (fromJson? p)
-    | .error _ => pure []
-  return { adventure := { title, start, scenes, themes }, hero, background, palette, world, intro }
+  let environment ← match j.getObjVal? "environment" with
+    | .ok v => inCtx "environment" (fromJson? v : Except String (Option WorldEnvironment))
+    | .error _ => pure none
+  let difficulty ← difficultyOfJson j
+  return { adventure := { title, start, scenes, themes }, hero, background, world, intro, environment,
+           difficulty }
 
 /-- Read a Draft from JSON text. -/
 def Draft.parse (s : String) : Except String Draft := do
@@ -229,12 +246,14 @@ def outcomeToJson : Outcome → Json
   | .roll t m s f => json% { type: "roll", against: $(t.key), modifier: $(m), onSuccess: $(s), onFailure: $(f) }
   | .fight foes w => json% { type: "fight", foes: $(foes.map beingToJson), onWin: $(w) }
 
-/-- A Draft as JSON, in the same form that `Draft.ofJson` reads. -/
+/-- A Draft as JSON, in the same form that `Draft.ofJson` reads. A Draft with no world map has no
+`environment` field. -/
 def Draft.toJson (d : Draft) : Json :=
   let a := d.adventure
   let th := a.themes
-  json% {
+  let j := json% {
     title: $(a.title),
+    difficulty: $(d.difficulty.key),
     world: $(d.world),
     intro: $(d.intro),
     character: $((beingToJson d.hero).setObjVal! "background" (Json.str d.background)),
@@ -243,13 +262,15 @@ def Draft.toJson (d : Draft) : Json :=
       weapons: $(th.weapons.map fun (w, n) => json% { weapon: $(w.key), name: $(n) }),
       armor: $(th.armor.map fun (x, n) => json% { armor: $(x.key), name: $(n) })
     },
-    palette: $(d.palette),
     start: $(a.start),
     scenes: $(a.scenes.map fun sc => json% {
       id: $(sc.id), title: $(sc.title), text: $(sc.text),
       choices: $(sc.choices.map fun ch => json% { text: $(ch.text), outcome: $(outcomeToJson ch.outcome) })
     })
   }
+  match d.environment with
+  | some e => j.setObjVal! "environment" (Lean.toJson e)
+  | none => j
 
 /-! ## Size limits
 
@@ -287,6 +308,9 @@ def Draft.beingNames (d : Draft) : List String :=
 def sizeErrors (d : Draft) : List String :=
   let a := d.adventure
   let th := a.themes
+  (match d.environment with
+    | some e => e.errors a
+    | none => []) ++
   (if a.scenes.length > maxScenes then
     [s!"the Adventure has {a.scenes.length} Scenes, but the limit is {maxScenes}"] else []) ++
   tooLong "the title" maxShortText a.title ++
@@ -310,46 +334,56 @@ def liveRules : RuleSet := {}
 def liveHorizon : Nat := 5
 
 /-- All errors in a Draft: the size errors, or else the checker's errors for the Character and
-for the Adventure. An empty list means the Draft passes the checker. -/
+for the Adventure, and the short loops (see `Adventure.noShortLoops`). An empty list means the
+Draft passes the checker. -/
 def Draft.errors (d : Draft) : List String :=
   match sizeErrors d with
-  | [] => checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure
+  | [] => checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure ++
+      d.adventure.shortLoopErrors
   | errs => errs
 
-/-- Run the size limits and the checker on a Draft. If both find no errors, the soundness theorems
-give the proofs that an `AdventureDefinition` needs. Else it returns the errors. -/
+/-- Run the size limits, the short-loop check and the checker on a Draft. If all find no errors,
+the soundness theorems give the proofs that an `AdventureDefinition` needs. Else it returns the
+errors. -/
 private def Draft.checked (d : Draft) : Except (List String) AdventureDefinition :=
   if sizeErrors d ≠ [] then .error (sizeErrors d) else
   if hc : checkCharacter liveRules d.hero = [] then
     if ha : check liveRules d.hero d.adventure = [] then
-      .ok ⟨liveRules, d.hero, checkCharacter_sound hc, d.adventure, check_sound ha⟩
-    else .error (check liveRules d.hero d.adventure)
-  else .error (checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure)
+      if d.adventure.checkShortLoops then
+        .ok ⟨liveRules, d.hero, checkCharacter_sound hc, d.adventure, check_sound ha⟩
+      else .error d.adventure.shortLoopErrors
+    else .error (check liveRules d.hero d.adventure ++ d.adventure.shortLoopErrors)
+  else .error (checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure ++
+    d.adventure.shortLoopErrors)
 
-/-- A Draft that passed the checker, as a candidate for the balance check. -/
-def liveCandidate (defn : AdventureDefinition) : Probability.StatisticalCandidate where
+/-- A Draft that passed the checker, as a candidate for the balance check with `policy`. -/
+def liveCandidate (defn : AdventureDefinition) (policy : Probability.BalancePolicy) :
+    Probability.StatisticalCandidate where
   toAdventureDefinition := defn
   horizon := liveHorizon
   horizonPositive := by decide
+  policy
 
 /-- A Game from a Draft that this build of the server already admitted: it runs the size limits and
 the checker again, but not the balance check. Use it only when a saved verdict for this exact
-text and this build says that the Draft passed both checks (see `loadSaved` in `Main.lean`). -/
+text and this build says that the Draft passed both checks (see `loadSaved` in `Main.lean`).
+The Game gets the policy of the Draft's level. -/
 def Draft.toGameAdmitted (d : Draft) : Except (List String) Game :=
-  d.checked.map Game.new
+  d.checked.map (Game.new · d.difficulty.policy)
 
 /-- **The only way in this code from a Draft to a Game that runs the balance check.** It runs the
-checker, then the balance check with
-1,000 games from `seed`. If both pass, it returns the Game. Else it returns the errors. Each
-balance error starts with "balance:" and names the row that failed. -/
+checker, then the balance check with `difficultyGames` games from `seed`, against the curve of the
+Draft's level. If both pass, it returns the Game, with that policy. Else it returns the errors.
+Each balance error starts with "balance:" and names the row that failed. -/
 def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
   match d.checked with
   | .error errs => .error errs
   | .ok defn =>
-    match Probability.admitWithSeed (liveCandidate defn) seed with
-    | (_, some a) => .ok (Game.new a.candidate.toAdventureDefinition)
+    match Probability.admitWithSeed (liveCandidate defn d.difficulty.policy) seed with
+    | (_, some a) => .ok (Game.new a.candidate.toAdventureDefinition a.candidate.policy)
     | (counts, none) =>
-      .error ((Probability.failedRows liveHorizon counts).map ("balance: " ++ ·))
+      .error ((Probability.failedRows liveHorizon counts Probability.Confidence.confidenceDelta 0
+        d.difficulty.policy).map ("balance: " ++ ·))
 
 /-- How the points of a being add up, such as "ST 11: 10, DX 12: 40, ... Total: 100". The DM
 gets this with the errors, so it can fix a build. -/
@@ -378,7 +412,6 @@ def fixtureLegal : String := r##"{
     "weapon": "quarterstaff", "armor": "none"},
   "themeNames": {"skills": [{"skill": "staff", "name": "Stick-fighting"}],
                  "weapons": [{"weapon": "quarterstaff", "name": "Ash Pole"}], "armor": []},
-  "palette": ["#0b1220", "#2c4a66", "#f2b35b"],
   "start": 0,
   "scenes": [
     {"id": 0, "title": "The Pond", "text": "The water is black and still.",
@@ -397,6 +430,13 @@ def fixtureIllegal : String :=
   (fixtureLegal.replace "\"st\": 10, \"dx\": 11," "\"st\": 12, \"dx\": 11,").replace
     "{\"text\": \"Fight it\", \"outcome\": {\"type\": \"fight\", \"onWin\": 2,"
     "{\"text\": \"Fight it\", \"outcome\": {\"type\": \"fight\", \"onWin\": 1,"
+
+/-- Fixture: the same Draft, but winning the Fight in Scene 1 goes back to Scene 0. This makes a
+loop of 2 steps. -/
+def fixtureShortLoop : String :=
+  fixtureLegal.replace
+    "{\"text\": \"Fight it\", \"outcome\": {\"type\": \"fight\", \"onWin\": 2,"
+    "{\"text\": \"Fight it\", \"outcome\": {\"type\": \"fight\", \"onWin\": 0,"
 
 /-- Fixture: the same Draft, but the text of Scene 2 is 2,001 characters long. -/
 def fixtureTooLong : String :=
@@ -422,11 +462,10 @@ def draftErrors (s : String) : List String :=
 -- The legal fixture reads and passes the checker.
 #guard passesChecker fixtureLegal
 #guard draftErrors fixtureLegal == []
--- Its Theme Names are read, and its Scenes get Picture names.
+-- Its Theme Names are read.
 #guard match Draft.parse fixtureLegal with
   | .ok d => d.adventure.themes.weapon .quarterstaff == "Ash Pole" &&
       d.adventure.themes.skill .swimming == "Swimming" &&
-      d.adventure.scenes.map (·.picture) == [some "scene-0", some "scene-1", some "scene-2"] &&
       d.hero.points == liveRules.characterPoints
   | .error _ => false
 -- Writing a Draft as JSON and reading it back gives the same Draft.
@@ -451,6 +490,12 @@ def draftErrors (s : String) : List String :=
 #guard !passesChecker fixtureIllegal
 #guard (draftErrors fixtureIllegal).any (·.startsWith "Wren: costs 120 points")
 #guard (draftErrors fixtureIllegal).any (·.startsWith "Scene 1 (The Otter) has no way to an Ending")
+-- The short-loop fixture fails only the short-loop check. The error names the Scenes of the loop.
+#guard !passesChecker fixtureShortLoop
+#guard draftErrors fixtureShortLoop ==
+  ["the loop Scene 0 -> Scene 1 -> Scene 0 has 2 steps, but a loop needs at least 4 steps: make it longer or remove it"]
+-- The illegal fixture also has a loop of 1 step: winning the Fight in Scene 1 goes back to Scene 1.
+#guard (draftErrors fixtureIllegal).any (·.startsWith "the loop Scene 1 -> Scene 1 has 1 step")
 -- The long fixture fails the size limit, and the checker does not run.
 #guard draftErrors fixtureTooLong == ["the text of Scene 2 has 2001 characters, but the limit is 2000"]
 #guard !passesChecker fixtureTooLong
@@ -462,6 +507,61 @@ def draftErrors (s : String) : List String :=
 #guard match Draft.parse fixtureLegal with
   | .ok d => pointsBreakdown d.hero ==
       "ST 10: 0, DX 11: 20, IQ 12: 40, HT 12: 20, Staff 13: 8, Swimming 12: 1, Naturalist 12: 4, Survival 12: 2, First Aid 13: 2, Climbing 11: 2, Fast-Talk 11: 1. Total: 100"
+  | .error _ => false
+
+-- A Draft with a world map passes, saves its map, and reads it back. The map of the legal fixture
+-- has a place for each of its 3 Scenes.
+#guard match Draft.parse fixtureLegal with
+  | .ok d =>
+    let withMap := { d with environment := some testMap }
+    withMap.errors == [] &&
+      (Draft.ofJson withMap.toJson).toOption.map (fun saved => saved.environment == some testMap) == some true
+  | .error _ => false
+-- A Draft with no map has no `environment` field, so an older save keeps its text.
+#guard match Draft.parse fixtureLegal with
+  | .ok d => (d.toJson.getObjVal? "environment").toOption.isNone
+  | .error _ => false
+-- A bad map is a size error, so the checker does not run, and the error names the Scene.
+#guard match Draft.parse fixtureLegal with
+  | .ok d => { d with environment := some { testMap with scenes := testMap.scenes.drop 1 } }.errors ==
+      ["environment: Scene 0 needs exactly one place"]
+  | .error _ => false
+
+/-- Fixture: the legal Draft, saved at difficulty level `key`. -/
+def fixtureAt (key : String) : String :=
+  fixtureLegal.replace "\"start\": 0," s!"\"start\": 0, \"difficulty\": \"{key}\","
+
+-- A Draft with no `difficulty` field is medium. Each level reads back from its JSON name.
+#guard (Draft.parse fixtureLegal).toOption.map (·.difficulty) == some .medium
+#guard (Draft.parse fixtureOld).toOption.map (·.difficulty) == some .medium
+#guard (Draft.parse (fixtureAt "easy")).toOption.map (·.difficulty) == some .easy
+#guard (Draft.parse (fixtureAt "hard")).toOption.map (·.difficulty) == some .hard
+-- A level that does not exist is an error, not medium.
+#guard draftErrors (fixtureAt "extreme") == ["difficulty: \"extreme\" is not easy, medium, or hard"]
+-- A saved level reads back the same.
+#guard match Draft.parse (fixtureAt "hard") with
+  | .ok d => (Draft.ofJson d.toJson).toOption.map (·.difficulty) == some .hard
+  | .error _ => false
+-- A Game from an admitted Draft has the policy of the Draft's level.
+#guard match Draft.parse (fixtureAt "hard") with
+  | .ok d => (d.toGameAdmitted.toOption.map (·.policy)) == some Probability.DifficultyLevel.hard.policy
+  | .error _ => false
+#guard match Draft.parse fixtureOld with
+  | .ok d => (d.toGameAdmitted.toOption.map (·.policy)) == some Probability.DifficultyLevel.medium.policy
+  | .error _ => false
+
+-- The balance check uses the curve of the Draft's level. On turn 6 the allowed range is
+-- 6.1% to 16.1% on medium (the default), and 13.1% to 23.1% on hard.
+#guard match Draft.parse fixtureLegal with
+  | .ok d => match d.toGame 1 with
+    | .ok _ => false
+    | .error errs => errs.any (·.endsWith "the allowed range is 6.1% to 16.1%")
+  | .error _ => false
+#guard match Draft.parse (fixtureAt "hard") with
+  | .ok d => match d.toGame 1 with
+    | .ok _ => false
+    | .error errs => errs.any (·.endsWith "the allowed range is 13.1% to 23.1%") &&
+      !errs.any (·.endsWith "the allowed range is 6.1% to 16.1%")
   | .error _ => false
 
 -- The legal fixture passes the checker but fails the balance check: it is too short and too safe.

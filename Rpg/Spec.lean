@@ -38,7 +38,7 @@ Rules 1, 2, and 4 to 7, and the point caps, are design rules of this game, not G
 They put limits on Creatures and rolls. They do not stop a strong Creature:
 low attributes give points back, so a 150-point Creature can still be one the Character cannot hurt.
 
-Theme Names (`Adventure.themes`) and Pictures change only what the Player sees. No rule here looks at them.
+Theme Names (`Adventure.themes`) change only what the Player sees. No rule here looks at them.
 -/
 
 namespace Rpg

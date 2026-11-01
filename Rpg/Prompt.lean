@@ -10,7 +10,6 @@ requests with `curl`.
 * `adventureRequest`: ask for an Adventure and a Character for a Wish. The reply must follow
   `adventureSchema`, a JSON schema, so it always reads as JSON.
 * `fixMessage`: the next turn after a failed try. It lists the checker's errors.
-* `pictureRequest`: ask for one Picture (an SVG file) for one Scene.
 * `rebuildStream`: every request streams its reply as SSE (server-sent events). This joins the
   events into the message that a request without streaming would get.
 
@@ -69,35 +68,50 @@ def rulesText : String :=
     "- Attributes start at 10 for 0 points. ST and HT cost 10 points per level above 10, DX and IQ cost 20. A level below 10 gives the same points back.",
     "- A skill level is counted from its attribute. The lowest level you can buy is the attribute +0 for Easy, -1 for Average, -2 for Hard. In total, that lowest level costs 1 point, one level above it costs 2, two levels above cost 4, three above cost 8, and each further level adds 4 (four above cost 12, five above cost 16).",
     "- A skill may be listed only once, and never below the lowest level you can buy.",
-    s!"- Example, Mara: {pointsBreakdown Lighthouse.mara}."])
+    s!"- Example, Mara: {pointsBreakdown TestAdventure.mara}."])
 
-/-- The allowed death range of one row of the balance check, as text. -/
-def bandText (row : Nat) : String :=
+/-- The allowed death range of one row of the balance check at level `level`, as text. -/
+def bandText (level : Probability.DifficultyLevel) (row : Nat) : String :=
   let pct (r : Rat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   if h : row < liveHorizon + 1 then
-    let band := Probability.confidenceBands liveHorizon ⟨row, h⟩
+    let band := Probability.confidenceBandsFor level.policy liveHorizon ⟨row, h⟩
     let what := if row = 0 then "Death on turn 1"
       else s!"Death on turn {row + 1}, of the Characters alive at turn {row - 1}"
     s!"  - {what}: {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}."
   else ""
 
-/-- The part of the DM prompt about the balance check.
-The numbers come from the shared balance and confidence settings. -/
-def dangerText : String :=
+/-- The part of the DM prompt about the balance check, for the level that the Player picked.
+The numbers come from the curve of that level and the shared confidence settings. -/
+def dangerText (level : Probability.DifficultyLevel) : String :=
   "\n".intercalate ([
     "## Danger (the balance check)",
-    "- After the checker, a program plays your Adventure 1,000 times. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
-    s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range, with {(100 * (1 - Probability.Confidence.confidenceDelta)).floor}% confidence:"] ++
-    (List.range (liveHorizon + 1)).map bandText ++ [
+    s!"- The Player picked the {level.key} difficulty level. On this level, about {(100 * level.survivalAtTen).floor}% of Characters are still alive after 10 turns.",
+    s!"- After the checker, a program plays your Adventure {Probability.difficultyGames} times. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
+    s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range for the {level.key} level, with {(100 * (1 - Probability.Confidence.confidenceDelta)).floor}% confidence:"] ++
+    (List.range (liveHorizon + 1)).map (bandText level) ++ [
     "- So the first turns can be safe, but the danger must rise. From turn 4 on, some Fights must be able to kill the Character.",
     s!"- Most paths must be at least {liveHorizon + 2} Choices long. A turn that too few games reach fails.",
     "- If the check fails, you get the numbers for each turn that failed. Make Fights harder or easier, or move them earlier or later. The rules cannot change."])
 
-/-- The DM's instructions for an Adventure. They are the same on every try and every Wish, and
-`requestBody` marks them for the prompt cache. -/
-def dmSystemPrompt : String :=
+/-- The part of the DM prompt about the world map. The lists of themes and models come from
+`Rpg/Environment.lean`, so the prompt cannot drift from the check. -/
+def mapText : String :=
+  "\n".intercalate [
+    "## The world map",
+    "- The Player explores the Adventure as a 3D world. `environment` is one map for the whole Adventure: a few named places, paths between them, and props. It changes only what the Player sees. It adds no Choice, no roll, and no danger.",
+    s!"- `theme`: one of {", ".intercalate worldThemes}.",
+    s!"- `places`: 2 to {maxWorldPlaces} places. Each has a different whole-number `id`, a `name` in 1 to 60 characters, a `kind` ({", ".intercalate worldPlaceKinds}), and whole-number `x` and `z` from -85 to 85 metres. Keep places at least 24 metres apart.",
+    "- `paths`: at most 30 paths `{fromPlace, toPlace}` between two different places. The paths must connect every place. Walking on a path never picks a Choice.",
+    s!"- `props`: at most 80 props `\{kind, x, z, scale, heading}`. `kind` is one of {", ".intercalate worldPropKinds}. `x` and `z` are from -100 to 100, `scale` is 50 to 200 (percent), and `heading` is 0 to 359 (degrees). Use them to show the world of the Wish.",
+    "- A solid prop has a radius of 3 metres times its scale (12 for a pyramid, 5 for a house). Keep 10 metres plus that radius clear around each place, and the radius plus 2 metres clear along each path. A river is shallow water: it needs no clear space.",
+    "- `scenes`: exactly one `{scene, place, npcs}` for each Scene, Endings too. `npcs` names at most 4 people that the Player sees in that Scene (each name 1 to 60 characters), or is [].",
+    "- A Scene can have at most 4 Choices, so the 3D world can show each one. Spread the Scenes over the places, and use every place."]
+
+/-- The DM's instructions for an Adventure at difficulty level `level`. They are the same on every
+try and every Wish at that level, and `requestBody` marks them for the prompt cache. -/
+def dmSystemPrompt (level : Probability.DifficultyLevel) : String :=
   "\n".intercalate [
     "You are the DM (Dungeon Master) of a single-player game based on GURPS Lite.",
     "The Player sends a Wish. You write one Adventure and its Character as JSON.",
@@ -123,6 +137,7 @@ def dmSystemPrompt : String :=
     "- Every Scene that an outcome names must exist.",
     "- Every Scene must be reachable from the start Scene.",
     "- From every Scene, some path of Choices must lead to an Ending. Count every outcome target, whatever the dice do.",
+    "- Every loop must have at least 4 steps: a path of Choices that comes back to the same Scene must pass 3 other Scenes first. Count every outcome target, whatever the dice do.",
     "",
     "## Rolls",
     "- The modifier is from -10 to +10.",
@@ -142,14 +157,13 @@ def dmSystemPrompt : String :=
     "- The Player picks a maneuver on each turn of a Fight: Attack; All-Out Attack (+4 to hit, but no Dodge until the next turn); or All-Out Defense (no attack, but +2 to Dodge). Creatures always Attack.",
     "- Make most Fights winnable: 1 to 3 Creatures, each with a weapon skill of 9 to 13.",
     "",
-    dangerText,
+    dangerText level,
     "",
     "## Theme Names",
     "- `themeNames` gives display names that fit the world to the Character's skills, weapon, and armor. For example, in a school for wizards, Broadsword could show as \"Wand Duelling\" and the broadsword as \"Holly Wand\".",
     "- The Player sees only the Theme Name. The rules stay the same.",
     "",
-    "## Pictures",
-    "- `palette` lists 8 to 14 colors (such as \"#0b1220\") that fit the world. An artist will draw one Picture for each Scene with these colors.",
+    mapText,
     "",
     rulesText]
 
@@ -221,18 +235,29 @@ def outcomeSchema : Json :=
       ("foes", arrSchema (objSchema (beingFields ++ [("naturalDR", intSchema)]))), ("onWin", intSchema)])
   ] }
 
+/-- The schema of a world map: what `WorldEnvironment` reads. -/
+def environmentSchema : Json := objSchema [
+  ("theme", enumSchema worldThemes),
+  ("places", arrSchema (objSchema [("id", intSchema), ("name", strSchema),
+    ("kind", enumSchema worldPlaceKinds), ("x", intSchema), ("z", intSchema)])),
+  ("paths", arrSchema (objSchema [("fromPlace", intSchema), ("toPlace", intSchema)])),
+  ("props", arrSchema (objSchema [("kind", enumSchema worldPropKinds), ("x", intSchema),
+    ("z", intSchema), ("scale", intSchema), ("heading", intSchema)])),
+  ("scenes", arrSchema (objSchema [("scene", intSchema), ("place", intSchema),
+    ("npcs", arrSchema strSchema)]))]
+
 /-- The schema of a whole reply: what `Draft.ofJson` reads. -/
 def adventureSchema : Json :=
   objSchema [
     ("title", strSchema),
     ("world", strSchema),
     ("intro", strSchema),
+    ("environment", environmentSchema),
     ("character", objSchema (beingFields ++ [("background", strSchema)])),
     ("themeNames", objSchema [
       ("skills", arrSchema (objSchema [("skill", enumSchema (Skill.all.map Skill.key)), ("name", strSchema)])),
       ("weapons", arrSchema (objSchema [("weapon", enumSchema (Weapon.all.map Weapon.key)), ("name", strSchema)])),
       ("armor", arrSchema (objSchema [("armor", enumSchema (Armor.all.map Armor.key)), ("name", strSchema)]))]),
-    ("palette", arrSchema strSchema),
     ("start", intSchema),
     ("scenes", arrSchema (objSchema [
       ("id", intSchema), ("title", strSchema), ("text", strSchema),
@@ -240,7 +265,7 @@ def adventureSchema : Json :=
 
 /-! ## Requests -/
 
-/-- The model that writes Adventures and Pictures. -/
+/-- The model that writes Adventures and live changes. -/
 def dmModel : String := "claude-opus-5-5"
 
 /-- A request body for the Messages API. It asks for JSON that follows `schema`, sets the effort,
@@ -266,39 +291,10 @@ def userTurn (text : String) : Json := json% { role: "user", content: $(text) }
 /-- An assistant turn, with the content blocks exactly as the API sent them. -/
 def assistantTurn (content : Json) : Json := json% { role: "assistant", content: $(content) }
 
-/-- The request for an Adventure, with the turns so far. Thinking cannot be turned off on this
-model, and it counts against `max_tokens`, so the limit is 64,000. -/
-def adventureRequest (messages : List Json) : Json :=
-  requestBody dmSystemPrompt messages adventureSchema "medium" 64000
-
-/-! ## Pictures -/
-
-/-- The schema of a Picture reply. -/
-def pictureSchema : Json := objSchema [("svg", strSchema)]
-
-/-- The instructions for drawing a Picture. -/
-def pictureSystemPrompt : String :=
-  "\n".intercalate [
-    "You draw one Picture for a Scene of an adventure game, as an SVG (Scalable Vector Graphics) file.",
-    "- Size: viewBox=\"0 0 1200 400\" with width=\"1200\" height=\"400\". Keep the main shapes in the middle 800 by 300.",
-    "- Style: simple, flat shapes: polygons, rectangles, circles, and paths. A gradient is fine for a glow or a sky. Silhouettes, not faces.",
-    "- No text in the drawing.",
-    "- Use only the colors of the palette you get.",
-    "- Forbidden: <script>, <foreignObject>, <iframe>, <object>, <embed>, <a>, any on...= attribute, DOCTYPE or ENTITY, any href that does not start with #, and CSS that loads anything. A gradient used as fill=\"url(#name)\" is fine.",
-    "- Keep the file under 20,000 characters.",
-    "Put the whole SVG file, starting with <svg, in the `svg` field."]
-
-/-- The user turn for the Picture of one Scene. -/
-def pictureMessage (a : Adventure) (palette : List String) (sc : Scene) : String :=
-  "\n".intercalate [
-    s!"Adventure: {a.title}",
-    s!"Palette: {", ".intercalate palette}",
-    s!"Scene: {sc.title}",
-    sc.text]
-
-/-- The request for the Picture of one Scene. -/
-def pictureRequest (a : Adventure) (palette : List String) (sc : Scene) : Json :=
-  requestBody pictureSystemPrompt [userTurn (pictureMessage a palette sc)] pictureSchema "low" 16000
+/-- The request for an Adventure at level `level`, with the turns so far. Thinking cannot be turned
+off on this model, and it counts against `max_tokens`, so the limit is 64,000. -/
+def adventureRequest (level : Probability.DifficultyLevel) (messages : List Json) : Json :=
+  requestBody (dmSystemPrompt level) messages adventureSchema "medium" 64000
 
 /-! ## Replies -/
 
@@ -569,9 +565,21 @@ def sseFixtureMessage : String :=
 
 -- The fix turn counts the errors.
 #guard (fixMessage ["a", "b"] none).startsWith "The checker found 2 errors:\n- a\n- b"
--- The prompt gives the range of every row of the balance check.
-#guard (List.range (liveHorizon + 1)).all fun row => (dmSystemPrompt.splitOn (bandText row)).length == 2
+-- The prompt gives the range of every row of the balance check, for the level that the Player
+-- picked.
+#guard Probability.DifficultyLevel.all.all fun level => (List.range (liveHorizon + 1)).all fun row =>
+  ((dmSystemPrompt level).splitOn (bandText level row)).length == 2
+-- The ranges differ between levels: the hard prompt does not show the medium range of turn 6.
+#guard bandText .hard 5 != bandText .medium 5 &&
+  ((dmSystemPrompt .hard).splitOn (bandText .medium 5)).length == 1
+#guard bandText .hard 5 == "  - Death on turn 6, of the Characters alive at turn 4: 13.1% to 23.1%."
+#guard bandText .medium 0 == "  - Death on turn 1: 0.0% to 6.1%."
+-- The prompt names the level.
+#guard ((dmSystemPrompt .easy).splitOn "The Player picked the easy difficulty level.").length == 2
+-- The prompt names every theme and kind of prop that the map check accepts.
+#guard (worldThemes ++ worldPropKinds).all fun k => (mapText.splitOn k).length ≥ 2
+#guard ((dmSystemPrompt .medium).splitOn "## The world map").length == 2
 -- The schema names every skill, and the prompt has a line for each one.
-#guard Skill.all.all fun s => (dmSystemPrompt.splitOn s!"- {s.key} (").length == 2
+#guard Skill.all.all fun s => ((dmSystemPrompt .medium).splitOn s!"- {s.key} (").length == 2
 
 end Rpg

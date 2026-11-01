@@ -162,7 +162,7 @@ All authored and generated adventures now inherit `defaultCombatRules`: Committe
 adds 1 damage to the Character's All-Out Attack; Guard Feint reduces enemy hit level by 1
 against All-Out Defense; Cornered Fury adds 2 to enemy hit level at half HP or less; and
 Punish the Opening adds 1 enemy damage against All-Out Attack. These extend the shared
-GURPS-derived rules, rather than being Lighthouse-only effects. The original maneuver costs,
+GURPS-derived rules, rather than being effects of one Adventure. The original maneuver costs,
 Dodge restrictions, dice, HP, damage types, and character budgets remain in force.
 
 The player decision is whether to commit to a finishing blow, guard against retaliation,
@@ -170,7 +170,7 @@ or finish a wounded enemy before it rallies. The log names each effect when it f
 the buttons preview relevant effects. Fun is a design judgment; the balance theorem checks
 the conditional death intervals under the fixed random-player policy.
 
-Lighthouse's environmental tactics use the existing roll/fight graph language. A successful
-cargo-net roll leads to a one-wrecker fight; a successful keeper-rescue roll leads to a fight
-against knife-armed Hollis or a flare bluff. Failed attempts lead to ordinary confrontation.
+The test Adventure's environmental tactics use the existing roll/fight graph language. A successful
+cargo-net roll leads to a one-bandit fight; a successful roll to free the prisoner leads to a fight
+against the knife-armed chief or a bluff. Failed attempts lead to ordinary confrontation.
 The shared GM prompt requests comparable real branches in newly generated adventures.

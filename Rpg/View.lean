@@ -134,7 +134,6 @@ def sceneJson (g : Game) (id : SceneId) : Json :=
       json% { text: $(ch.text), input: $(if i ∈ offered then toJson i else Json.null) }
     json% {
       id: $(id), title: $(sc.title), text: $(sc.text),
-      picture: $(sc.picture.filter safePicture),
       ending: $(sc.choices.isEmpty), choices: $(choices)
     }
 

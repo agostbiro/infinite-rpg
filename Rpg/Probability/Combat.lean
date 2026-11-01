@@ -53,7 +53,7 @@ def heroPolicy (s : FightState) : Distribution (Maneuver × Nat) :=
 
 /-- A Player that always Attacks a living target, with equal chances. The old model (before
 maneuvers) used this Player. With it, the new solver gave exactly the old solver's odds on the
-Lighthouse Fights. That was a one-off check in the merge (ADR 0004), not a build test, because
+Fights of the earlier built-in Adventure. That was a one-off check in the merge (ADR 0004), not a build test, because
 those Fights take minutes to solve. -/
 def attackOnlyPolicy (s : FightState) : Distribution (Maneuver × Nat) :=
   (uniform (livingTargets s)).bind fun t => pure (.attack, t)

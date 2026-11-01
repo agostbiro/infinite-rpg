@@ -1,12 +1,10 @@
 {
   "purpose": "Exploratory sensitivity study, not admission or a replacement balance proof",
   "variants": [
-    "original_lighthouse",
-    "meta_rules_only",
-    "expanded_lighthouse",
+    "test_adventure",
     "unchecked_power",
     "harsh_opposition",
-    "peaceful_lighthouse",
+    "peaceful",
     "silver_acorn"
   ],
   "admission_games_per_batch": 1000,
