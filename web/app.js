@@ -36,12 +36,22 @@
     cardsFor: -1,    // the Report number of the Fight whose cards are on screen
     wishOpen: false, // true while the Wish form is open on the front page
     gridKey: null,   // the cards on screen, as JSON, so a poll can tell if they changed
+    starting: null,  // while a click starts an Adventure: { key, text }. `key` names what was clicked
+    lost: false,     // true after a poll could not reach the server
   };
 
   // ---------- Server ----------
 
+  /** The server sent a reply, so it can be reached. Clear the line that says it cannot. */
+  function reached() {
+    if (!S.lost) return;
+    S.lost = false;
+    if (S.view && S.view.phase === 'title') renderFrontStatus(S.view);
+  }
+
   async function fetchView() {
     const r = await fetch('/api/view', { cache: 'no-store' });
+    reached();
     return r.json();
   }
 
@@ -50,7 +60,15 @@
 
   /** The text for a toast after a failed request: the server's reason, if it gave one. */
   function failText(e) {
-    return e instanceof ServerRefused ? e.message : 'Cannot reach the game server.';
+    return e instanceof ServerRefused ? e.message : 'Cannot reach the game server. Check that it still runs.';
+  }
+
+  /** A small turning ring that shows the page waits. Screen readers skip it: the text next to it
+   * says what the page waits for. */
+  function spinnerEl() {
+    const s = el('span', 'spinner');
+    s.setAttribute('aria-hidden', 'true');
+    return s;
   }
 
   async function post(path, body) {
@@ -59,6 +77,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: body === undefined ? '' : JSON.stringify(body),
     });
+    reached();
     const type = r.headers.get('Content-Type') || '';
     if (!type.startsWith('application/json')) {
       // A refusal such as 403, 404, or 413 comes as plain text, not as a view.
@@ -668,7 +687,7 @@
     const open = showSteps || (S.wishOpen && gen.available);
     $('new-tile').classList.toggle('open', open);
     $('new-open').hidden = open;
-    $('new-open').disabled = !gen.available;
+    $('new-open').disabled = !gen.available || S.starting !== null;
     $('new-sub').textContent = gen.available
       ? 'Tell an AI Dungeon Master what you want to play'
       : 'Not available: the server has no API key. Set ANTHROPIC_API_KEY and run the game again.';
@@ -682,6 +701,15 @@
     $('ready').hidden = !ready;
     $('play-now').hidden = !ready;
     $('later').hidden = !ready;
+    // While a click starts an Adventure, no other button may send a request. The button that was
+    // clicked is only marked disabled (`aria-disabled`), so it keeps the keyboard focus. Its click
+    // does nothing while the page waits (`startGame` returns at once).
+    const starting = S.starting !== null;
+    const playNowClicked = starting && S.starting.key === 'play-now';
+    $('play-now').disabled = starting && !playNowClicked;
+    $('play-now').setAttribute('aria-disabled', String(playNowClicked));
+    $('play-now').setAttribute('aria-busy', String(playNowClicked));
+    for (const id of ['later', 'retry', 'dismiss', 'wish-send']) $(id).disabled = starting;
     if (ready) {
       $('ready-title').textContent = v.adventure;
       const note = picturesNote(v);
@@ -703,49 +731,157 @@
         li.classList.add('good');
       } else if (last && running) {
         li.classList.add('now');
+        li.prepend(spinnerEl());
       } else if (last) {
         li.classList.add('bad');
       }
       list.appendChild(li);
     });
+    // Until the first poll brings the first step, say that the Wish is on its way.
+    if (running && gen.steps.length === 0) {
+      const li = el('li', 'now', 'Sending your Wish to the Dungeon Master...');
+      li.prepend(spinnerEl());
+      list.appendChild(li);
+    }
   }
 
-  /** One Adventure card. With `onPlay`, a click starts play; without it, the card is greyed. */
-  function adventureCard(c, onPlay, busy, why) {
-    const card = el(onPlay ? 'button' : 'div', 'tile adv-card' + (onPlay ? '' : ' failed'));
-    if (onPlay) {
+  /** A line at the foot of a card that says the server works on it. */
+  function busyLine(text) {
+    const line = el('span', 'card-busy');
+    line.append(spinnerEl(), el('span', '', text));
+    return line;
+  }
+
+  /** One Adventure card. Options: `onPlay` makes a click start play; `why` greys the card and
+   * says why it cannot be played; `onRecheck` adds a "Check again" button to such a card;
+   * `checking` says the server still checks it, so it cannot be clicked yet; `starting` is the
+   * text while the page waits for the click to start play. */
+  function adventureCard(c, key, o) {
+    const button = !!o.onPlay || !!o.checking;
+    const cls = 'tile adv-card' + (o.why !== undefined ? ' failed' : '') +
+      (o.checking ? ' checking' : '') + (o.starting ? ' starting' : '');
+    const card = el(button ? 'button' : 'div', cls);
+    card.dataset.card = key;
+    if (button) {
       card.type = 'button';
-      card.disabled = busy;
-      card.onclick = onPlay;
+      // The card that was clicked is only marked disabled, so it keeps the keyboard focus. Its
+      // click does nothing while the page waits (`startGame` returns at once).
+      card.disabled = !!o.checking || (!!o.disabled && !o.starting);
+      if (o.starting) card.setAttribute('aria-disabled', 'true');
+      if (o.onPlay) card.onclick = o.onPlay;
     }
+    if (o.checking || o.starting) card.setAttribute('aria-busy', 'true');
     card.append(el('span', 'card-title', c.title));
     if (c.world) card.append(el('span', 'card-world', c.world));
     if (c.hero) card.append(el('span', 'card-hero', 'You play ' + c.hero));
     if (c.about) card.append(el('span', 'card-about', c.about));
-    if (why !== undefined) {
-      card.append(el('span', 'card-why', 'Fails the checker now, so you cannot play it: ' + why));
+    if (o.why !== undefined) {
+      card.append(el('span', 'card-why', 'Fails the checker now, so you cannot play it: ' + o.why));
+      if (o.onRecheck) card.append(recheckButton(key, o));
+    } else if (o.starting) {
+      card.append(busyLine(o.starting));
+    } else if (o.checking) {
+      card.append(busyLine('Checking it against the rules...'));
     } else {
       card.append(el('span', 'card-source', c.source));
     }
     return card;
   }
 
-  /** The grid: the "New Adventure" tile, the saved Adventures (newest first), the built-in one,
-   * and last the saved Adventures that fail the checker now. */
+  /** The "Check again" button of a card that fails. It sends a load, which checks the save again:
+   * if it passes now, play starts; if not, the card shows the new reason. Like a clicked card, the
+   * clicked button is only marked disabled while the page waits, so it keeps the keyboard focus. */
+  function recheckButton(key, o) {
+    const b = el('button', 'small-button recheck');
+    b.type = 'button';
+    b.dataset.card = 'recheck:' + key;
+    b.disabled = !!o.disabled && !o.starting;
+    if (o.starting) {
+      b.setAttribute('aria-disabled', 'true');
+      b.setAttribute('aria-busy', 'true');
+      b.append(spinnerEl(), ' ' + o.starting);
+    } else {
+      b.textContent = 'Check again';
+    }
+    b.onclick = o.onRecheck;
+    return b;
+  }
+
+  /** The text of the status line while a load checks a saved Adventure again. */
+  const checkText = (title) => 'Checking ' + title + ' against the rules and the fairness check...';
+
+  /** The grid: the "New Adventure" tile, the saved Adventures (newest first), and the built-in one.
+   * Each saved Adventure keeps its place when its check ends, so the cards do not move under the
+   * pointer. One that the server still checks cannot be clicked yet; one that fails is greyed. */
   function renderGrid(v) {
     const grid = $('grid');
-    const busy = v.generation.state === 'running';
+    const busy = v.generation.state === 'running' || S.starting !== null;
+    const startKey = S.starting ? S.starting.key : null;
     // A poll every 2 seconds must not rebuild the same cards: that would take away keyboard focus
     // and lose a click. So draw again only when the cards change.
-    const key = JSON.stringify([v.saved, v.builtin, busy]);
+    const key = JSON.stringify([v.saved, v.builtin, busy, startKey]);
     if (key === S.gridKey && grid.querySelector('.adv-card')) return;
     S.gridKey = key;
+    // A card that a check finished on is drawn again. Keep the keyboard focus on the same card.
+    const active = document.activeElement;
+    const focused = active && active.dataset && active.dataset.card ? active.dataset.card : null;
     for (const old of grid.querySelectorAll('.adv-card')) old.remove();
-    const ok = v.saved.filter((a) => a.ok);
-    const bad = v.saved.filter((a) => !a.ok);
-    for (const a of ok) grid.appendChild(adventureCard(a, () => startGame('/api/load', { id: a.id }), busy));
-    grid.appendChild(adventureCard(v.builtin, () => startGame('/api/builtin'), busy));
-    for (const a of bad) grid.appendChild(adventureCard(a, null, busy, a.why || 'it does not read'));
+    for (const a of v.saved) {
+      const start = { key: a.id, text: checkText(a.title) };
+      if (!a.ok && !a.checking) {
+        grid.appendChild(adventureCard(a, a.id, {
+          why: a.why || 'it does not read',
+          onRecheck: () => startGame('/api/load', { id: a.id }, start),
+          disabled: busy,
+          starting: startKey === a.id ? 'Checking again...' : undefined,
+        }));
+        continue;
+      }
+      grid.appendChild(adventureCard(a, a.id, {
+        onPlay: () => startGame('/api/load', { id: a.id }, start),
+        disabled: busy,
+        checking: a.checking,
+        starting: startKey === a.id ? 'Checking it again before you play...' : undefined,
+      }));
+    }
+    const builtinStart = { key: 'builtin', text: 'Starting ' + v.builtin.title + '...' };
+    grid.appendChild(adventureCard(v.builtin, 'builtin', {
+      onPlay: () => startGame('/api/builtin', undefined, builtinStart),
+      disabled: busy,
+      starting: startKey === 'builtin' ? 'Starting...' : undefined,
+    }));
+    if (focused !== null) {
+      const again = Array.from(grid.querySelectorAll('button[data-card]')).find((c) => c.dataset.card === focused);
+      if (again && !again.disabled) again.focus();
+    }
+  }
+
+  /** What the Front Page waits for now, as one line, or null. */
+  function frontStatus(v) {
+    if (S.starting) return { text: S.starting.text, busy: true };
+    if (S.lost) return { text: 'Cannot reach the game server. Check that it still runs.', bad: true };
+    const checking = v.saved.filter((a) => a.checking).length;
+    if (checking === 0) return null;
+    const done = v.saved.length - checking;
+    return {
+      text: 'Checking the saved Adventures again: ' + done + ' of ' + v.saved.length + ' done.',
+      busy: true,
+    };
+  }
+
+  /** Show the status line of the Front Page. It keeps its height when it is empty, so the cards
+   * do not move under the pointer. It changes only when its text changes, so a screen reader does
+   * not read the same line again on each poll. */
+  function renderFrontStatus(v) {
+    const box = $('front-status');
+    const st = frontStatus(v);
+    const text = st ? st.text : '';
+    if (box.dataset.text === text) return;
+    box.dataset.text = text;
+    box.classList.toggle('bad', !!(st && st.bad));
+    box.textContent = '';
+    if (st && st.busy) box.append(spinnerEl());
+    box.append(text);
   }
 
   function renderTitle() {
@@ -753,6 +889,7 @@
     $('busy-note').hidden = v.generation.state !== 'running';
     renderWish(v);
     renderGrid(v);
+    renderFrontStatus(v);
   }
 
   /** Tell tests and screen readers whether the page waits for the Player. */
@@ -771,6 +908,7 @@
 
   function renderAll() {
     const v = S.view;
+    $('loading').hidden = true;
     $('seed').textContent = 'seed ' + v.seed;
     const title = v.phase === 'title';
     $('title-screen').hidden = !title;
@@ -842,7 +980,8 @@
     t.textContent = text;
     t.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+    // A long reason, such as the errors of a check, stays longer, so the Player can read it.
+    toastTimer = setTimeout(() => { t.hidden = true; }, Math.min(12000, Math.max(4000, 60 * text.length)));
   }
 
   /** Send one input, exactly as the server offered it. */
@@ -891,12 +1030,20 @@
     }
   }
 
-  /** Send a POST that loads an Adventure, such as a click on its card, then begin it. */
-  async function startGame(path, body) {
+  /** Send a POST that loads an Adventure, such as a click on its card, then begin it.
+   * `start` says what to show while the page waits: `{ key, text }`, where `key` is the id of the
+   * card, "builtin", or "play-now". A load checks the saved
+   * Adventure again, which takes a second or two. Until the reply comes, every card and button
+   * that sends a request is disabled. */
+  async function startGame(path, body, start) {
     if (S.busy || S.playing) return;
     S.busy = true;
+    S.starting = start || null;
+    if (S.view && S.view.phase === 'title') renderTitle();
+    markState();
     try {
       const { ok, view } = await post(path, body);
+      S.starting = null;
       S.view = view;
       S.mapView = view;
       S.shown = view.reports.length;
@@ -905,8 +1052,8 @@
       if (!ok || view.phase !== 'title' || view.inputs.length === 0) {
         if (!ok) toast(view.error || 'The game refused that.');
         renderAll();
-        // A refused card is drawn again as a grey card, so the focused element is gone.
-        if (!ok) focusFront();
+        // A refused card is drawn again as a grey card, so the focused element can be gone.
+        keepFocus();
         return;
       }
       S.busy = false;
@@ -915,6 +1062,12 @@
       toast(failText(e));
     } finally {
       S.busy = false;
+      if (S.starting !== null) {
+        // The request failed with no reply: enable the cards and buttons again.
+        S.starting = null;
+        if (S.view && S.view.phase === 'title') renderTitle();
+        keepFocus();
+      }
       markState();
       schedulePoll();
     }
@@ -932,8 +1085,13 @@
     $('leave-dialog').showModal();
   }
 
-  /** Load the game from the server and show it all at once. */
+  /** Load the game from the server and show it all at once. Until the view comes, the page says
+   * that it loads. If the server cannot be reached, it says so and offers "Try again". */
   async function load() {
+    $('loading').hidden = false;
+    $('loading-spinner').hidden = false;
+    $('loading-text').textContent = 'Loading the game...';
+    $('loading-retry').hidden = true;
     try {
       const v = await fetchView();
       S.view = v;
@@ -943,7 +1101,9 @@
       renderAll();
       schedulePoll();
     } catch (e) {
-      toast(failText(e));
+      $('loading-spinner').hidden = true;
+      $('loading-text').textContent = failText(e) + ' Then click Try again.';
+      $('loading-retry').hidden = false;
     }
   }
 
@@ -968,9 +1128,11 @@
     }
   }
 
-  /** `true` while the server works in the background: the DM writes or draws. */
+  /** `true` while the server works in the background: the DM writes or draws, or the server
+   * checks the saved Adventures on the Front Page. */
   function serverWorking(v) {
-    return !!v && (v.generation.state === 'running' || (!!v.pictures && v.pictures.drawing > 0));
+    return !!v && (v.generation.state === 'running' || (!!v.pictures && v.pictures.drawing > 0) ||
+      (v.phase === 'title' && v.saved.some((a) => a.checking)));
   }
 
   let pollTimer = null;
@@ -1001,7 +1163,15 @@
         showTopPictures(v);
         refreshWindow();
       }
-    } catch (e) { /* The server is gone; the next click says so. */ }
+    } catch (e) {
+      // Say it once: in the status line on the Front Page, else in a toast. The poll goes on,
+      // and the next reply clears the line.
+      if (!S.lost) {
+        S.lost = true;
+        if (S.view && S.view.phase === 'title') renderFrontStatus(S.view);
+        else toast(failText(e));
+      }
+    }
     schedulePoll();
   }
 
@@ -1043,6 +1213,16 @@
     if (target) target.focus();
   }
 
+  /** On the Front Page, keep the keyboard focus where it is if it is still on a control that can
+   * be used. Else put it on the Front Page (`focusFront`). */
+  function keepFocus() {
+    if (!S.view || S.view.phase !== 'title') return;
+    const a = document.activeElement;
+    const usable = a && a !== document.body && a.isConnected && !a.disabled &&
+      a.getAttribute('aria-disabled') !== 'true' && a.offsetParent !== null;
+    if (!usable) focusFront();
+  }
+
   $('dismiss').addEventListener('click', async () => { await action('/api/dismiss'); focusFront(); });
   // Load the Adventure that passed by its folder name, not whatever is loaded now: another tab
   // may have loaded another Adventure since.
@@ -1058,7 +1238,7 @@
     const id = S.view && S.view.generation.readyId;
     if (!id) return;
     clearWish();
-    startGame('/api/load', { id });
+    startGame('/api/load', { id }, { key: 'play-now', text: checkText(S.view.adventure) });
   });
   $('later').addEventListener('click', async () => {
     clearWish();
@@ -1094,9 +1274,11 @@
     if (S.busy || S.playing || !S.view) return;
     try {
       const v = await fetchView();
-      // On the Front Page, another tab may have sent a Wish: then the Wish state changed.
+      // On the Front Page, another tab may have sent a Wish: then the Wish state changed. Or a
+      // saved Adventure changed, so the server checks it again.
       const wishChanged = v.phase === 'title' &&
-        JSON.stringify(v.generation) !== JSON.stringify(S.view.generation);
+        (JSON.stringify(v.generation) !== JSON.stringify(S.view.generation) ||
+         JSON.stringify(v.saved) !== JSON.stringify(S.view.saved));
       if (v.seed !== S.view.seed || v.reports.length !== S.view.reports.length || v.phase !== S.view.phase ||
           wishChanged) {
         S.view = v;
@@ -1108,6 +1290,8 @@
       }
     } catch (e) { /* The server is gone; the next click says so. */ }
   });
+
+  $('loading-retry').addEventListener('click', load);
 
   load();
 })();

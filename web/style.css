@@ -98,6 +98,37 @@ button { font: inherit; color: inherit; }
   font-size: 14px;
 }
 
+/* A line that says what the page waits for, such as the checks of the saved Adventures. */
+.front-status { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 1.5em; }
+.front-status.bad { color: #e8857c; }
+
+/* The first load of the page, before the server sends the view. */
+.loading {
+  max-width: 60ch;
+  margin: 30vh auto 0;
+  padding: 0 16px;
+  text-align: center;
+  color: var(--ink-dim);
+  font-family: var(--serif);
+  font-size: 18px;
+}
+.loading p { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 16px; }
+
+/* A small turning ring. With reduced motion it stands still. */
+.spinner {
+  display: inline-block;
+  flex: none;
+  width: 0.9em;
+  height: 0.9em;
+  border: 2px solid rgba(242, 179, 91, 0.25);
+  border-top-color: var(--lamp);
+  border-radius: 50%;
+  vertical-align: -0.12em;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.progress-steps > li.now .spinner { margin-right: 8px; }
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
@@ -119,7 +150,7 @@ button { font: inherit; color: inherit; }
 }
 
 button.adv-card { cursor: pointer; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
-button.adv-card:hover:not(:disabled) {
+button.adv-card:hover:not(:disabled):not([aria-disabled="true"]) {
   border-color: var(--lamp);
   transform: translateY(-2px);
   box-shadow: 0 0 40px rgba(242, 179, 91, 0.15), 0 16px 40px rgba(0, 0, 0, 0.5);
@@ -142,7 +173,19 @@ button.adv-card:focus-visible { outline: 3px solid var(--lamp-hot); outline-offs
 }
 .card-source { margin-top: auto; padding-top: 10px; color: var(--ink-faint); font-size: 12px; }
 .card-why { margin-top: auto; padding-top: 10px; color: var(--blood); font-size: 12px; }
-.adv-card.failed { opacity: 0.55; }
+.card-busy { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 10px; color: var(--lamp); font-size: 12px; }
+/* A card that the server still checks, and the card that the Player clicked, wait for the server. */
+button.adv-card.checking:disabled { opacity: 0.7; cursor: progress; }
+button.adv-card.starting {
+  opacity: 1;
+  cursor: progress;
+  border-color: var(--lamp);
+  box-shadow: 0 0 40px rgba(242, 179, 91, 0.15), 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+/* A card that fails is dim, but its "Check again" button is not. */
+.adv-card.failed > :not(.recheck) { opacity: 0.55; }
+.recheck { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 6px 14px; font-size: 13px; }
+.recheck[aria-disabled="true"] { cursor: progress; border-color: var(--lamp); color: var(--lamp); }
 .adv-card.failed .card-title { color: var(--ink-dim); }
 
 .new-tile { padding: 0; border-style: dashed; border-color: #3a4c6c; background: rgba(12, 19, 32, 0.6); }
@@ -720,7 +763,13 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01s !important; transition-duration: 0.01s !important; }
+  /* Each animation runs once, so a loop such as the pulse of a Wish step does not flicker. */
+  *, *::before, *::after {
+    animation-duration: 0.01s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01s !important;
+  }
+  .spinner { animation: none !important; border-color: var(--lamp); }
 }
 
 /* ---------- Narrow windows ---------- */

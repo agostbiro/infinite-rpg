@@ -11,6 +11,11 @@
 <body>
 <div id="seed" class="seed" title="The dice seed. The same seed and the same clicks give the same game."></div>
 
+<div id="loading" class="loading">
+  <p role="status" aria-live="polite"><span id="loading-spinner" class="spinner" aria-hidden="true"></span><span id="loading-text">Loading the game...</span></p>
+  <button id="loading-retry" class="small-button" type="button" hidden>Try again</button>
+</div>
+
 <main id="title-screen" class="front" hidden>
   <header class="front-head">
     <p class="kicker">GURPS Lite adventures, checked by Lean</p>
@@ -19,6 +24,7 @@
   </header>
 
   <p id="busy-note" class="busy-note" hidden>Wait for the Dungeon Master, or click Cancel.</p>
+  <p id="front-status" class="busy-note front-status" role="status" aria-live="polite"></p>
 
   <div id="grid" class="grid">
     <section id="new-tile" class="tile new-tile" aria-labelledby="new-h">

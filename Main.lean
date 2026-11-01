@@ -19,7 +19,9 @@ Adventures that pass are saved under `adventures/<id>/`.
 
 Routes:
 
-* `GET /api/view`: the current view, with the state of the Wish and the saved Adventures.
+* `GET /api/view`: the current view, with the state of the Wish and the saved Adventures. It does
+  not wait for the checks of the saved Adventures: these run in the background, and an entry that
+  is not checked yet has `checking: true`.
 * `POST /api/input`: apply one input (JSON). A refused input gives status 400, an error, and the
   view, and changes nothing.
 * `POST /api/new`: start the same Adventure again, in the `title` phase (before the first Scene), with a
@@ -158,7 +160,19 @@ structure SavedEntry where
   card : AdventureCard
   why : Option String
 
-/-- Settings that do not change while the server runs. -/
+/-- The state of the background check of the saved Adventures. -/
+inductive CheckerState where
+  /-- No check runs. -/
+  | idle
+  /-- A check runs. -/
+  | running
+  /-- A check runs, and a view found an entry that is not checked since the check began. So the
+  check makes one more pass before it stops. -/
+  | again
+  deriving BEq
+
+/-- Settings that do not change while the server runs, and two references that the server shares
+between requests: the cache of checked saved Adventures and the state of their background check. -/
 structure GameConfig where
   host : String
   port : Nat
@@ -167,8 +181,18 @@ structure GameConfig where
   /-- Test hook: a folder of recorded API replies to use instead of calling the API
   (`RPG_FAKE_API`). -/
   fake : Option System.FilePath
-  /-- The saved list, checked once per version of each file, so the Front Page stays fast. -/
+  /-- The saved list, checked once per version of each file, so the Front Page stays fast.
+  A background task fills it (see `checkSavedInBackground`). -/
   savedCache : IO.Ref (List SavedEntry)
+  /-- The state of the background check of the saved Adventures. At most one such check runs. -/
+  checker : IO.Ref CheckerState
+  /-- The build key: the size and a hash of the running program file, read first at start-up (see
+  `buildKey`). A saved verdict counts only if it has this key (see `Verdict`). `none` if the file
+  could not be read, or the program is the `lean` interpreter: then the server does not read or
+  write verdicts. -/
+  build : Option String
+  /-- A counter for the names of temporary files, so two writers never share a name. -/
+  tempCount : IO.Ref Nat
   /-- `true` if the Picture check (`scripts/check_pictures.py`) could run when the server started.
   If it is `false`, Pictures are off: the server never asks the DM for a Picture, because it could
   never serve one. -/
@@ -274,12 +298,18 @@ def newSavedId (title : String) : IO String := do
 def readText (p : System.FilePath) : IO (Except String String) := do
   try return .ok (← IO.FS.readFile p) catch e => return .error (toString e)
 
-/-- A stamp of a file that changes when its content changes: its length and a hash of its content.
+/-- The stamp of a file text: its length and a hash of it. It changes when the content changes.
 The time of the file is not used, because it can be set back (`touch -r`). -/
-def fileStamp (p : System.FilePath) : IO String := do
-  match ← readText p with
-  | .ok text => return s!"{text.length}/{hash text}"
-  | .error _ => return ""
+def textStamp (text : String) : String := s!"{text.length}/{hash text}"
+
+/-- The stamp of a read result: the stamp of the text, or "" if the file could not be read. -/
+def readStamp (r : Except String String) : String :=
+  match r with
+  | .ok text => textStamp text
+  | .error _ => ""
+
+#guard readStamp (.error "no file") == ""
+#guard readStamp (.ok "abc") == textStamp "abc" && readStamp (.ok "abc") != readStamp (.ok "abd")
 
 /-- The fairness seed saved with an Adventure, or `none` if it has none (it was saved before
 the fairness check). -/
@@ -294,22 +324,202 @@ def checkSavedText (text : String) : Except (List String) (Draft × Game) := do
   let g ← d.toGame seed
   return (d, g)
 
-/-- Check one saved Adventure for the list: its card, and `none` if it passes the checker and
-the fairness check, or else the first error. The Pictures are checked only on load. -/
-def checkSavedEntry (id : String) : IO (AdventureCard × Option String) := do
-  match ← readText (savedRoot / id / "adventure.json") with
-  | .error e => return ({ title := id }, some e)
+/-- The card of a saved Adventure, read from its file, without the checks. The second part is the
+error if the file does not read as a Draft, else `none`. This is fast. -/
+def savedCard (id : String) (read : Except String String) : AdventureCard × Option String :=
+  match read with
+  | .error e => ({ title := id }, some e)
   | .ok text =>
     let title := (Json.parse text >>= (·.getObjValAs? String "title")).toOption.getD id
     match Draft.parse text with
-    | .error e => return ({ title }, some e)
+    | .error e => ({ title }, some e)
     | .ok d =>
       let src := savedSource id d (savedWish text)
-      let card := { title, world := src.world, hero := d.hero.name, about := d.background,
-                    source := "From a Wish" }
-      match checkSavedText text with
-      | .ok _ => return (card, none)
-      | .error errs => return (card, some (errs.headD "it fails the checker"))
+      ({ title, world := src.world, hero := d.hero.name, about := d.background,
+         source := "From a Wish" }, none)
+
+/-- Check one saved Adventure for the list: its card, and `none` if it passes the checker and
+the fairness check, or else the first error. The Pictures are checked only on load.
+The fairness check plays 1,000 games, so this takes a second or two. -/
+def checkSavedEntry (id : String) (read : Except String String) : AdventureCard × Option String :=
+  match read, savedCard id read with
+  | .ok text, (card, none) =>
+    match checkSavedText text with
+    | .ok _ => (card, none)
+    | .error errs => (card, some (errs.headD "it fails the checker"))
+  -- The file does not read, or it is not a Draft: `savedCard` already gives the error.
+  | _, other => other
+
+/-! ## Saved verdicts
+
+A check of a saved Adventure runs the fairness check, so it takes a second or two. So the server
+saves each result in `adventures/<id>/verdict.json`, and uses it again after a restart.
+A verdict counts only if its stamp is the stamp of `adventure.json` now, and its build key is the
+key of the running program. Every new build of the server makes all verdicts old, because the
+checker, the rules, the fairness check, the simulator, and the Draft reader are compiled into it.
+
+A verdict is for display only: it says what the card on the Front Page shows. `/api/load` never
+reads it, and always runs the checker and the fairness check before play. So a wrong, broken, or
+edited verdict cannot make a save playable. At worst a card shows the wrong state until a load
+checks the save again and writes a new verdict. A card that shows "fails" has a "Check again"
+button for this: it sends the same load. -/
+
+/-- The saved result of a check of a saved Adventure. -/
+structure Verdict where
+  /-- The stamp (`textStamp`) of the `adventure.json` text that was checked. -/
+  stamp : String
+  /-- The build key (`GameConfig.build`) of the program that checked it. -/
+  build : String
+  /-- `none` if the save passed the checker and the fairness check, or else the first error. -/
+  why : Option String
+  deriving BEq
+
+/-- A verdict as JSON. `ok` is `true` exactly when `why` is `null`. -/
+def Verdict.toJson (v : Verdict) : Json :=
+  json% { stamp: $(v.stamp), build: $(v.build), ok: $(v.why.isNone), why: $(v.why) }
+
+/-- Read a verdict from the text of `verdict.json`. Returns `none` if the text is not a verdict:
+not JSON, a field is missing or has the wrong type, or `ok` does not agree with `why`. -/
+def Verdict.parse (text : String) : Option Verdict := do
+  let j ← (Json.parse text).toOption
+  let stamp ← (j.getObjValAs? String "stamp").toOption
+  let build ← (j.getObjValAs? String "build").toOption
+  let ok ← (j.getObjValAs? Bool "ok").toOption
+  -- `why` must be there: `null` or a string. A missing field is not read as `null`.
+  let why ← ((j.getObjVal? "why") >>= fromJson? (α := Option String)).toOption
+  if ok != why.isNone then none
+  return { stamp, build, why }
+
+/-- `true` if verdict `v` is about the file with stamp `stamp`, and the program with build key
+`build` made it. Only then does the server use it. A file that does not read has stamp "", and no
+verdict applies to it. -/
+def Verdict.applies (v : Verdict) (stamp build : String) : Bool :=
+  !stamp.isEmpty && v.stamp == stamp && v.build == build
+
+#guard Verdict.parse ({ stamp := "5/1", build := "b", why := none } : Verdict).toJson.compress ==
+  some { stamp := "5/1", build := "b", why := none }
+#guard
+  Verdict.parse ({ stamp := "5/1", build := "b", why := some "no seed" } : Verdict).toJson.pretty ==
+    some { stamp := "5/1", build := "b", why := some "no seed" }
+#guard (Verdict.parse "{\"stamp\": \"5/1\", \"build\": \"b\", \"ok\": true, \"why\": \"x\"}").isNone
+#guard (Verdict.parse "{\"stamp\": \"5/1\", \"build\": \"b\", \"ok\": false, \"why\": null}").isNone
+#guard (Verdict.parse "{\"stamp\": \"5/1\", \"ok\": true, \"why\": null}").isNone
+#guard (Verdict.parse "not json").isNone
+-- A missing `why` or `ok`, or a field of the wrong type, is not a verdict.
+#guard (Verdict.parse "{\"stamp\": \"5/1\", \"build\": \"b\", \"ok\": true}").isNone
+#guard (Verdict.parse "{\"stamp\": \"5/1\", \"build\": \"b\", \"why\": null}").isNone
+#guard (Verdict.parse "{\"stamp\": \"5/1\", \"build\": \"b\", \"ok\": \"true\", \"why\": null}").isNone
+#guard (Verdict.parse "{\"stamp\": \"5/1\", \"build\": \"b\", \"ok\": false, \"why\": 5}").isNone
+#guard (Verdict.parse "{\"stamp\": 5, \"build\": \"b\", \"ok\": true, \"why\": null}").isNone
+#guard ({ stamp := "5/1", build := "b", why := none } : Verdict).applies "5/1" "b"
+#guard !({ stamp := "5/1", build := "b", why := none } : Verdict).applies "6/1" "b"
+#guard !({ stamp := "5/1", build := "b", why := none } : Verdict).applies "5/1" "c"
+#guard !({ stamp := "", build := "b", why := none } : Verdict).applies "" "b"
+
+/-- The verdict file of saved Adventure `id`. -/
+def verdictFile (id : String) : System.FilePath := savedRoot / id / "verdict.json"
+
+/-- `true` for the name of a temporary file that `writeAtomic` makes, such as
+"verdict.json.tmp-3-1234". -/
+def isTempFile (name : String) : Bool := (name.splitOn ".tmp-").length > 1
+
+#guard isTempFile "verdict.json.tmp-3-1234" && isTempFile "adventure.json.tmp-0-9" &&
+  !isTempFile "verdict.json" && !isTempFile "scene-1.svg"
+
+/-- Write `text` to the file `path`. It goes to a temporary file in the same folder first, and then
+a rename puts it in place, so a reader sees the old file or the new one, never half a file. The
+temporary name has a counter and the time, so two writers never share it. -/
+def writeAtomic (cfg : GameConfig) (path : System.FilePath) (text : String) : IO Unit := do
+  let n ← cfg.tempCount.modifyGet fun n => (n, n + 1)
+  let tmp : System.FilePath := s!"{path}.tmp-{n}-{← IO.monoNanosNow}"
+  try
+    IO.FS.writeFile tmp text
+    IO.FS.rename tmp path
+  catch e =>
+    try IO.FS.removeFile tmp catch _ => pure ()
+    throw e
+
+/-- Remove the temporary files that `writeAtomic` left in the folders of saved Adventures, for
+example after a crash. Run it only at start-up, before anything writes. -/
+def removeTempFiles : IO Unit := do
+  if !(← savedRoot.isDir) then return
+  for d in ← savedRoot.readDir do
+    if !safeSegment d.fileName then continue
+    if !(← d.path.isDir) then continue
+    for f in ← (try d.path.readDir catch _ => pure #[]) do
+      if isTempFile f.fileName then
+        try IO.FS.removeFile f.path catch _ => pure ()
+
+/-- Write the verdict of saved Adventure `id`, atomically (`writeAtomic`). An error is only logged:
+a verdict is for display only. -/
+def writeVerdict (cfg : GameConfig) (id stamp : String) (why : Option String) : IO Unit := do
+  let some build := cfg.build | return
+  try writeAtomic cfg (verdictFile id) ({ stamp, build, why } : Verdict).toJson.pretty
+  catch e => IO.eprintln s!"Cannot write the verdict of {id}: {e}"
+
+/-- The saved verdict of saved Adventure `id`, if it applies to the file with stamp `stamp` and to
+this build. -/
+def readVerdict (cfg : GameConfig) (id stamp : String) : IO (Option Verdict) := do
+  let some build := cfg.build | return none
+  let .ok text ← readText (verdictFile id) | return none
+  return (Verdict.parse text).filter (·.applies stamp build)
+
+/-- Put an entry in the cache. It takes the place of an older entry for the same save. -/
+def remember (cfg : GameConfig) (e : SavedEntry) : IO Unit :=
+  cfg.savedCache.modify fun c => c.filter (·.id != e.id) ++ [e]
+
+/-- Put the result of a check of saved Adventure `id`, for the file with stamp `stamp`, in the
+cache, and save it as the verdict of the save. -/
+def recordChecked (cfg : GameConfig) (id stamp : String) (card : AdventureCard)
+    (why : Option String) : IO Unit := do
+  remember cfg { id, stamp, card, why }
+  writeVerdict cfg id stamp why
+
+/-- The checked entry of saved Adventure `id`, whose file read gave `read`, without a new check:
+from the cache, or else from a saved verdict that applies (which then goes into the cache).
+`none` if neither has one, so the save must be checked. -/
+def knownEntry (cfg : GameConfig) (id : String) (read : Except String String) :
+    IO (Option SavedEntry) := do
+  let stamp := readStamp read
+  if let some e := (← cfg.savedCache.get).find? fun e => e.id == id && e.stamp == stamp then
+    return some e
+  let some v ← readVerdict cfg id stamp | return none
+  let e : SavedEntry := { id, stamp, card := (savedCard id read).1, why := v.why }
+  remember cfg e
+  return some e
+
+/-- Check, one at a time, each saved Adventure that has no entry in `GameConfig.savedCache` and no
+saved verdict for its file as it is now, and put the result in the cache and in its verdict.
+This runs in the background, so the Front Page does not wait for it. If a check already runs, it
+makes one more pass before it stops. -/
+def checkSavedInBackground (cfg : GameConfig) : IO Unit := do
+  let start ← cfg.checker.modifyGet fun st =>
+    if st == .idle then (true, .running) else (false, .again)
+  if !start then return
+  let _ ← IO.asTask (prio := .dedicated) do
+    try
+      -- Go again until a pass finds nothing new and no view asked for more, because a Wish can
+      -- save an Adventure meanwhile.
+      let mut more := true
+      while more do
+        let mut found := false
+        let ids ← savedIds
+        for id in ids do
+          let read ← readText (savedRoot / id / "adventure.json")
+          if (← knownEntry cfg id read).isSome then continue
+          let (card, why) := checkSavedEntry id read
+          recordChecked cfg id (readStamp read) card why
+          found := true
+        -- Forget the folders that are gone.
+        cfg.savedCache.modify fun c => c.filter fun e => ids.contains e.id
+        -- The decision to stop and the change to `idle` are one atomic step. So a view that comes
+        -- later sees `idle` and starts a new check.
+        more ← cfg.checker.modifyGet fun st =>
+          if found || st == .again then (true, .running) else (false, .idle)
+    catch e =>
+      IO.eprintln s!"The check of the saved Adventures stopped: {e}"
+      cfg.checker.set .idle
+  return
 
 /-- A card as JSON for the page. -/
 def AdventureCard.toJson (c : AdventureCard) : Json :=
@@ -317,36 +527,59 @@ def AdventureCard.toJson (c : AdventureCard) : Json :=
 
 /-- The list of saved Adventures for the Front Page: each id, title, and whether it passes the
 checker now. A saved Adventure that fails is listed with `ok: false` and the reason, and the page
-does not let the Player play it. Each file is checked once per version (see `GameConfig.savedCache`). 
-Each check also runs the fairness check (1,000 games), so the first view after start can take
-a second or two for each saved Adventure. -/
+does not let the Player play it. Each file is checked once per version and build (see
+`GameConfig.savedCache` and `Verdict`).
+The list does not wait for a check. An entry that is not checked yet has `checking: true` and
+`ok: false`, and this starts the background check (`checkSavedInBackground`). -/
 def savedList (cfg : GameConfig) : IO Json := do
-  let cache ← cfg.savedCache.get
-  let mut fresh : List SavedEntry := []
   let mut out := #[]
+  let mut missing := false
   for id in ← savedIds do
-    let stamp ← fileStamp (savedRoot / id / "adventure.json")
-    let (card, why) ← match cache.find? fun e => e.id == id && e.stamp == stamp with
-      | some e => pure (e.card, e.why)
-      | none => checkSavedEntry id
-    fresh := fresh ++ [{ id, stamp, card, why }]
-    out := out.push ((card.toJson.setObjVal! "id" (toJson id)).setObjVal! "ok" (toJson why.isNone)
-      |>.setObjVal! "why" (toJson why))
-  cfg.savedCache.set fresh
+    let read ← readText (savedRoot / id / "adventure.json")
+    let (card, why, checking) := match ← knownEntry cfg id read with
+      | some e => (e.card, e.why, false)
+      | none => ((savedCard id read).1, none, true)
+    if checking then missing := true
+    out := out.push ((card.toJson.setObjVal! "id" (toJson id))
+      |>.setObjVal! "ok" (toJson (why.isNone && !checking))
+      |>.setObjVal! "why" (toJson why)
+      |>.setObjVal! "checking" (toJson checking))
+  if missing then checkSavedInBackground cfg
   return Json.arr out
 
-/-- Record in the cache that saved Adventure `id`, as its file is now, was refused on load. -/
-def markRefused (cfg : GameConfig) (id : String) (why : String) : IO Unit := do
-  let stamp ← fileStamp (savedRoot / id / "adventure.json")
-  cfg.savedCache.modify fun c =>
-    c.map fun e => if e.id == id then { e with stamp, why := some why } else e
+/-- Record that saved Adventure `id`, with the file text `text` that the load read, was refused on
+load: in the cache and in its verdict. -/
+def markRefused (cfg : GameConfig) (id text why : String) : IO Unit :=
+  recordChecked cfg id (textStamp text) (savedCard id (.ok text)).1 (some why)
 
-/-- Save a Draft that passed the checker and the fairness check with seed `seed`. -/
-def saveDraft (id : String) (d : Draft) (wish : String) (seed : Nat) : IO Unit := do
+/-- The text of `adventure.json` for a Draft, its Wish, and its fairness seed. -/
+def savedText (d : Draft) (wish : String) (seed : Nat) : String :=
+  ((d.toJson.setObjVal! "wish" (Json.str wish)).setObjVal! "fairnessSeed" (toJson seed)).pretty
+
+/-- `true` if the saved text of the Draft in `text` reads back as the same Draft. `saveDraft`
+records `ok` for the saved text without a new check, so it needs this. -/
+def savedTextRoundTrips (text : String) : Bool :=
+  match Draft.parse text with
+  | .error _ => false
+  | .ok d =>
+    match Draft.parse (savedText d "a Wish" 7) with
+    | .ok d' => reprStr d' == reprStr d && savedSeed (savedText d "a Wish" 7) == some 7
+    | .error _ => false
+
+#guard savedTextRoundTrips fixtureLegal
+#guard savedTextRoundTrips fixtureOld
+
+/-- Save a Draft that passed the checker and the fairness check with seed `seed`. The verdict
+(`ok`) and the cache entry are written first, from the same text, and then `adventure.json` is
+written atomically. So the background check does not check this save again. This trusts that the
+saved text reads back as the same Draft (see `savedTextRoundTrips`). -/
+def saveDraft (cfg : GameConfig) (id : String) (d : Draft) (wish : String) (seed : Nat) :
+    IO Unit := do
   let dir := savedRoot / id
   IO.FS.createDirAll dir
-  let j := (d.toJson.setObjVal! "wish" (Json.str wish)).setObjVal! "fairnessSeed" (toJson seed)
-  IO.FS.writeFile (dir / "adventure.json") j.pretty
+  let text := savedText d wish seed
+  recordChecked cfg id (textStamp text) (savedCard id (.ok text)).1 none
+  writeAtomic cfg (dir / "adventure.json") text
 
 /-! ## Pictures -/
 
@@ -617,7 +850,7 @@ asks the Player to play it now or later (state `ready`). -/
 def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
     (d : Draft) (g : Game) (wish : String) (fairnessSeed : Nat) : IO Unit := do
   let id ← newSavedId d.adventure.title
-  saveDraft id d wish fairnessSeed
+  saveDraft cfg id d wish fairnessSeed
   let seed := (← IO.monoNanosNow) % 1000000
   let res ← ref.modifyGet fun s =>
     if s.gen.job != job || s.gen.state != .running then (none, s) else
@@ -858,17 +1091,20 @@ def parseWish (body : String) : Except String (String × String × String) := do
 #guard (parseWish "{\"wish\": \"  \"}").toOption.isNone
 #guard (parseWish ("{\"wish\": \"" ++ "".pushn 'a' 501 ++ "\"}")).toOption.isNone
 
-/-- Load a saved Adventure: read it, check it again, and check its Pictures again. -/
-def loadSaved (id : String) : IO (Except String (Game × Source × Draft)) := do
-  if !safeSegment id then return .error "There is no saved Adventure with that name."
+/-- Load a saved Adventure: read it, check it again, and check its Pictures again. Also returns
+the file text it read, if it read one, so the caller can record the result for that text.
+This never reads the saved verdict or the cache: a save is played only if this check passes. -/
+def loadSaved (id : String) : IO (Option String × Except String (Game × Source × Draft)) := do
+  if !safeSegment id then return (none, .error "There is no saved Adventure with that name.")
   let path := savedRoot / id / "adventure.json"
-  if !(← path.pathExists) then return .error "There is no saved Adventure with that name."
+  if !(← path.pathExists) then return (none, .error "There is no saved Adventure with that name.")
   let text ← IO.FS.readFile path
   match checkSavedText text with
-  | .error errs => return .error s!"The saved Adventure failed the check: {"; ".intercalate errs}"
+  | .error errs =>
+    return (some text, .error s!"The saved Adventure failed the check: {"; ".intercalate errs}")
   | .ok (d, g) =>
       let pictures ← checkedPictures id d.adventure
-      return .ok (g, { savedSource id d (savedWish text) with pictures }, d)
+      return (some text, .ok (g, { savedSource id d (savedWish text) with pictures }, d))
 
 /-- Change the server state with `f`, but only if the DM is not writing. The check and the change
 are one atomic step, so a Wish that finishes in between is never overwritten. Returns `none`, and
@@ -964,10 +1200,11 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       replyJson .ok (← view)
     | ["api", "load"] =>
       let id := (Json.parse body >>= (·.getObjValAs? String "id")).toOption.getD ""
-      match ← loadSaved id with
+      let (text?, result) ← loadSaved id
+      match result with
       | .error e =>
         -- The list shows this refusal too, until the file changes.
-        if safeSegment id then markRefused cfg id e
+        if let some text := text? then markRefused cfg id text e
         -- If this is the Adventure that "Play it now" offers, stop offering it: it would fail again.
         state.modify fun s =>
           if s.gen.state == .ready && s.gen.readyId == some id then
@@ -975,6 +1212,9 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
           else s
         replyJson .badRequest (← view (error := some e))
       | .ok (g, src, d) =>
+        -- The list shows that this file passed, so the background check does not run it again.
+        if let some text := text? then
+          recordChecked cfg id (textStamp text) (savedCard id (.ok text)).1 none
         let seed ← freshSeed
         -- Pictures with no file and no refusal on record are drawn now (if the DM can be asked).
         let missing ← if cfg.canWish && cfg.picturesOn then missingPictures id d.adventure else pure []
@@ -1026,11 +1266,29 @@ def parseIPv4 (s : String) : Option Net.IPv4Addr :=
 #guard (parseIPv4 "10.211.55").isNone
 #guard (parseIPv4 "10.211.55.256").isNone
 
+/-- The build key of the running program: its size and a hash of its file. It reads
+`/proc/self/exe` (the running image on Linux), or else `IO.appPath`. Returns `none`, and says why,
+if the program is the `lean` interpreter (then the file is not this server's code) or cannot be
+read. -/
+def buildKey : IO (Option String) := do
+  try
+    let app ← IO.appPath
+    if app.fileStem == some "lean" then
+      IO.eprintln "The server runs in the lean interpreter, so saved verdicts are off."
+      return none
+    let bytes ← try IO.FS.readBinFile "/proc/self/exe" catch _ => IO.FS.readBinFile app
+    return some s!"{bytes.size}-{hash bytes}"
+  catch e =>
+    IO.eprintln s!"Cannot read the program file, so saved verdicts are off: {e}"
+    return none
+
 /-- Check the Adventure, then serve the game until Ctrl-C. Options: `--seed N` for the first
 game, `--port N` (default 8080), `--host A.B.C.D` (default 127.0.0.1). The environment variable
 `ANTHROPIC_API_KEY` turns on Wishes. `RPG_FAKE_API=<folder>` is a test hook: the server reads
 recorded API replies from the folder and never calls the API. -/
 def main (args : List String) : IO UInt32 := do
+  -- The build key comes first, so it is the key of the code that runs the checks below.
+  let build ← buildKey
   -- Check the Adventure again, on the value the program will play.
   -- The theorem covers the value Lean proved things about. A trick such as `implemented_by`
   -- can make the compiled value different, and this check catches that.
@@ -1067,7 +1325,14 @@ def main (args : List String) : IO UInt32 := do
       "Pictures are off: live Adventures show a plain backdrop, and the DM is not asked to draw.")
   let apiKey := (← IO.getEnv "ANTHROPIC_API_KEY").filter (!·.isEmpty)
   let fake := (← IO.getEnv "RPG_FAKE_API").filter (!·.isEmpty) |>.map System.FilePath.mk
-  let cfg : GameConfig := { host, port, apiKey, fake, savedCache := ← IO.mkRef [], picturesOn }
+  let cfg : GameConfig :=
+    { host, port, apiKey, fake, savedCache := ← IO.mkRef [], checker := ← IO.mkRef .idle, build,
+      tempCount := ← IO.mkRef 0, picturesOn }
+  -- Nothing writes yet, so the temporary files left in the save folders can go.
+  removeTempFiles
+  -- Check the saved Adventures now, in the background, so the Front Page is ready sooner. A save
+  -- with a saved verdict for its file and this build is not checked again.
+  checkSavedInBackground cfg
   let state ← IO.mkRef ({ session := Session.start builtinGame seed, source := builtinSource } : ServerState)
   let children ← IO.mkRef #[]
   let addr : Net.SocketAddress := .v4 ⟨ip, port.toUInt16⟩
