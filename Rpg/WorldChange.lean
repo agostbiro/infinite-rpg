@@ -4,7 +4,7 @@ import Rpg.Probability.Retry
 /-! In-play changes are checked data, not generated executable code. An accepted
 patch keeps the checkpoint, HP, history, core rules, and balance policy. Admission samples the
 updated adventure from its beginning, against the game's own policy, before the server can
-install it. A proposal has no policy field, so it cannot change the difficulty level. -/
+install it. A proposal has no policy field, so it cannot change the balance curve. -/
 namespace Rpg.WorldChange
 open Lean Probability Probability.Confidence
 
@@ -219,7 +219,7 @@ def Prepared.candidate (p : Prepared) : StatisticalCandidate :=
     policy := p.before.policy }
 
 /-- A change keeps the game's balance policy, and the check uses that same policy. So the
-difficulty level of an Adventure stays the same for its whole life. -/
+balance curve of an Adventure stays the same for its whole life. -/
 theorem Prepared.keeps_policy (p : Prepared) :
     -- The changed game has the policy of the game before the change.
     p.game.policy = p.before.policy ∧
@@ -256,7 +256,7 @@ def Proposal.prepare (p : Proposal) (g : Game) (map : Option WorldEnvironment :=
 /-- Evidence is bound to this updated adventure, seed, and error allowance. -/
 structure Admission (p : Prepared) (seed : Nat) (delta : Rat) where
   counts : ValidationCounts
-  provenance : counts = sampleCounts p.candidate seed difficultyGames
+  provenance : counts = sampleCounts p.candidate seed validationGames
   accepted : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
 
@@ -280,7 +280,7 @@ theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
 /-- Validate one frozen proposal with a fresh, preassigned batch; every row must pass. -/
 def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option (Admission p seed delta) :=
-  let counts := sampleCounts p.candidate seed difficultyGames
+  let counts := sampleCounts p.candidate seed validationGames
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
     if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy then
       (counts, some ⟨counts, rfl, h, hd⟩)

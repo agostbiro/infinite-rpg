@@ -162,7 +162,6 @@ button.adv-card:focus-visible { outline: 3px solid var(--lamp-hot); outline-offs
 .card-title { font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--lamp-hot); line-height: 1.2; }
 .card-world { color: var(--lamp); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
 .card-hero { margin-top: 8px; font-family: var(--serif); font-size: 16px; color: var(--ink); }
-.card-difficulty { font-size: 12px; color: var(--ink-dim); }
 .card-about {
   display: -webkit-box;
   -webkit-box-orient: vertical;

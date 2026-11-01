@@ -197,23 +197,26 @@ private def fixedRoll (n : Nat) : Id (List Nat) := pure (List.replicate n 1)
 
 -- A missing late row and an aborted combat batch cannot be admitted.
 #guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,0,0], #[0,0,0,0,0,0],1200,false⟩ (attemptRisk 0) 3
-  DifficultyLevel.medium.policy)
+  defaultPolicy)
 #guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,1200,1200], #[0,0,0,0,0,0],1200,true⟩ (attemptRisk 0) 0
-  DifficultyLevel.medium.policy)
+  defaultPolicy)
 
-/-- The road checkpoint of an Adventure at the hard level. -/
-def hardRoad : Game := { roadGame with policy := DifficultyLevel.hard.policy }
+/-- A policy that is not the default, only to test that a change keeps the policy of its game. -/
+def otherPolicy : BalancePolicy := ⟨9 / 10, 2, 1 / 10⟩
 
--- A change to a hard game is checked against the hard curve, and the changed game stays hard.
-#guard match proposal.prepare hardRoad with
+/-- The road checkpoint, with `otherPolicy`. -/
+def otherRoad : Game := { roadGame with policy := otherPolicy }
+
+-- A change is checked against the policy of its game, and the changed game keeps that policy.
+#guard match proposal.prepare otherRoad with
   | .error _ => false
-  | .ok p => p.candidate.policy == DifficultyLevel.hard.policy &&
-    p.game.policy == DifficultyLevel.hard.policy &&
+  | .ok p => p.candidate.policy == otherPolicy &&
+    p.game.policy == otherPolicy &&
     (List.finRange (liveHorizon + 1)).all fun i =>
-      let band := confidenceBandsFor DifficultyLevel.hard.policy liveHorizon i
+      let band := confidenceBandsFor otherPolicy liveHorizon i
       (p.candidate.bands i).target == band.target && (p.candidate.bands i).tolerance == band.tolerance
 
--- A proposal cannot pick another level: a `difficulty` field in its JSON is not read.
+-- A proposal cannot pick another policy: a `difficulty` field in its JSON is not read.
 #guard
   let text := (Lean.Json.mkObj [
     ("supported", true), ("summary", proposal.summary), ("moment", proposal.moment),
@@ -222,15 +225,15 @@ def hardRoad : Game := { roadGame with policy := DifficultyLevel.hard.policy }
     ("difficulty", "easy")]).compress
   match Proposal.parse "Mara" text with
   | .error _ => false
-  | .ok q => match q.prepare hardRoad with
+  | .ok q => match q.prepare otherRoad with
     | .error _ => false
-    | .ok p => p.game.policy == DifficultyLevel.hard.policy && p.candidate.policy == DifficultyLevel.hard.policy
+    | .ok p => p.game.policy == otherPolicy && p.candidate.policy == otherPolicy
 
--- The Dungeon Master gets the bands of the game's own level.
+-- The Dungeon Master gets the bands of the game's own policy.
 #guard
   let ranges (g : Game) := ((Lean.Json.parse (context g "Give me iron skin" (attemptRisk 0))).toOption.get!).getObjValD "ranges"
-  ranges hardRoad != ranges roadGame &&
-    ranges hardRoad == ranges { hardRoad with phase := fightGame.phase }
+  ranges otherRoad != ranges roadGame &&
+    ranges otherRoad == ranges { otherRoad with phase := fightGame.phase }
 
 /-- Play from a checkpoint with the simulator's maneuver policy and actual `step` function. -/
 def finishPlayed : Nat → Game → Roll Game

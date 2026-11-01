@@ -540,7 +540,6 @@ import { playbackView, reportDuration } from './playback.js';
     card.append(el('span', 'card-title', c.title));
     if (c.world) card.append(el('span', 'card-world', c.world));
     if (c.hero) card.append(el('span', 'card-hero', 'You play ' + c.hero));
-    if (c.difficulty) card.append(el('span', 'card-difficulty', 'Difficulty: ' + c.difficulty));
     if (c.about) card.append(el('span', 'card-about', c.about));
     if (o.why !== undefined) {
       card.append(el('span', 'card-why', 'Fails the checker now, so you cannot play it: ' + o.why));
@@ -984,8 +983,7 @@ import { playbackView, reportDuration } from './playback.js';
     }
     const wish = box.value.trim();
     if (!wish) { toast('Type a Wish first.'); return; }
-    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value,
-      difficulty: $('wish-difficulty').value });
+    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value });
   });
   $('cancel').addEventListener('click', async () => {
     try {
@@ -1028,7 +1026,6 @@ import { playbackView, reportDuration } from './playback.js';
     $('wish').value = '';
     $('wish-name').value = '';
     $('wish-gender').value = 'dm';
-    $('wish-difficulty').value = 'medium';
     $('wish-count').textContent = '0 / 500';
   }
 

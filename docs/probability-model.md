@@ -1,20 +1,13 @@
 # Probability and balance
 
-Every Adventure has a difficulty level: easy, medium, or hard. An Adventure with no level is
-medium. Each level is a policy in `Rpg/Probability/Weibull.lean` (`DifficultyLevel.policy`):
+Every Adventure uses one policy, `defaultPolicy`. Edit its values in
+`Rpg/Probability/Weibull.lean`:
 
-- `DifficultyLevel.retention` (q): 993092495/10^9 (easy), 988032459/10^9 (medium),
-  977237220/10^9 (hard). Each q is `p^(1/100)` rounded down to 9 places, where p is the chance to
-  be alive after 10 turns: 50%, 30%, or 10%.
-- `difficultyShape = 2` (positive integer shape; 2 means the danger rises over the turns).
-- `difficultyTolerance = 1/20` (five percentage points of absolute error).
+- `weibullRetention = 19/20` (q).
+- `weibullShape = 2` (positive integer shape; 2 means the danger rises over the turns).
+- `balanceTolerance = 1/5` (twenty percentage points of absolute error).
 
-The old policy, `defaultPolicy`, stays in the same file: `weibullRetention = 19/20`,
-`weibullShape = 2`, and `balanceTolerance = 1/5` (twenty percentage points). Only the test
-Adventure uses it, as an exemption, because it fails the medium curve (see item 1 in
-[follow-ups](follow-ups.md)).
-
-These are design choices, not measured or standard RPG parameters. The old values were picked
+These are design choices, not measured or standard RPG parameters. The values were picked
 on the screening seed (1) so that the earlier built-in Adventure (now the test Adventure) passes
 and an Adventure with no deaths
 fails; then the fixed validation seed was run once (see ADR 0004). The
@@ -77,7 +70,7 @@ w_t = (S(t+1) - S(t+2)) / S(t),  S(t) = q^(t^shape).
 
 The expectation is of a death indicator, not a death time. Completed successful
 games are excluded from the conditioning event. Each row uses its actual
-qualifying count from a fixed batch of 1,200 games (`difficultyGames`) to construct an exact binomial
+qualifying count from a fixed batch of 1,200 games (`validationGames`) to construct an exact binomial
 interval, enclosed by outward-rounded rational endpoints.
 Admission requires the whole interval inside `[w_t - tolerance, w_t + tolerance]`.
 The first-turn row uses target `1 - S(1)` to reject immediate-death loopholes.
@@ -94,10 +87,9 @@ and the Weibull targets of the game's own policy. A change cannot change the pol
 `RetryTree.balanced` proves a finite adaptive retry bound with decreasing allowances whose
 total is at most 5%. See [live rule changes](live-rule-changes.md).
 
-With shape 2, the targets rise over the turns. On medium they rise from 1.2% on turn 1 to 11.1%
-on turn 6 (easy: 0.7% to 6.9%; hard: 2.3% to 18.2%). The tolerance is 5 percentage points, so the
-first rows only cap the risk, and the later rows also have a lower edge above 0 (from turn 5 on
-easy, turn 3 on medium, and turn 2 on hard). An Adventure where the Character never dies fails. It does not guarantee victory, behavior under
+With shape 2, the targets rise from 5% on turn 1 to 27% on turn 6. The tolerance is
+20 percentage points, so the first three rows only cap the risk, and from turn 4 on each
+row also has a lower edge above 0. An Adventure where the Character never dies fails. It does not guarantee victory, behavior under
 every player strategy, or closeness of the entire lifetime distribution to a
 Weibull law. `checkBalanceThrough` remains an exact finite diagnostic for small
 graphs; admission uses the proved exact-binomial confidence protocol.

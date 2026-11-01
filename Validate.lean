@@ -8,23 +8,19 @@ def percent (r : Rat) : String :=
   let rest := toString (100 + hundredths % 100) |>.drop 1
   s!"{hundredths / 100}.{rest}%"
 
-/-- Print the target and the allowed range of each row, for each difficulty level. -/
-def printLevels : IO Unit := do
-  IO.println s!"Difficulty levels: shape={difficultyShape}, tolerance={difficultyTolerance}"
-  for level in DifficultyLevel.all do
-    let p := level.policy
-    let rows := (List.finRange (TestAdventure.balanceHorizon + 1)).map fun i =>
-      percent (confidenceBandsFor p TestAdventure.balanceHorizon i).target
-    IO.println s!"  {level.key}: q={p.retention}; alive after 10 turns={percent (p.survival 10)}; row targets={rows}"
+/-- Print the balance curve and the target of each row. -/
+def printPolicy (p : BalancePolicy) : IO Unit := do
+  let rows := (List.finRange (TestAdventure.balanceHorizon + 1)).map fun i =>
+    percent (confidenceBandsFor p TestAdventure.balanceHorizon i).target
+  IO.println s!"Policy: q={p.retention}, shape={p.shape}, tolerance={p.tolerance}; alive after 10 turns={percent (p.survival 10)}; row targets={rows}"
 
 /-- Run the balance check on the test Adventure with the fixed validation seed, and print each row. -/
 def main : IO UInt32 := do
   IO.println "TEST ADVENTURE (THE BANDIT CAMP): EXACT BINOMIAL BALANCE CHECK"
-  printLevels
   let policy := TestAdventure.statisticalCandidate.policy
-  IO.println s!"Test Adventure policy (exempt from medium): q={policy.retention}, shape={policy.shape}, tolerance={policy.tolerance}"
+  printPolicy policy
   IO.println s!"Window: first-turn death and death at t+2 for t < {TestAdventure.balanceHorizon}"
-  IO.println s!"Fixed game batch: {difficultyGames}; interval failure bound={confidenceDelta}"
+  IO.println s!"Fixed game batch: {validationGames}; interval failure bound={confidenceDelta}"
   IO.println s!"Validation seed={validationSeed}; round limit={validationRoundLimit}"
   IO.println "Coverage is proved under the accepted binomial sampling model, conditional on each row’s actual qualifying count."
   (← IO.getStdout).flush

@@ -39,11 +39,11 @@ run limits:
 
 | Definition | Source | Use |
 |---|---|---|
-| `difficultyGames` | `StatisticalAdmission.lean` | Total games per adventure; simulated fights per optional agreement case |
+| `validationGames` | `StatisticalAdmission.lean` | Total games per adventure; simulated fights per optional agreement case |
 | `validationRoundLimit` | `StatisticalAdmission.lean` | Maximum simulated rounds per fight |
 | `confidenceDelta` | `Confidence.lean` | Binomial interval failure bound |
 | `intervalSteps` | `Confidence.lean` | Endpoint precision through `confidenceInterval` |
-| `DifficultyLevel.policy` | `Weibull.lean` | Targets and tolerance of each level, through the candidate's `policy` and `bands` (medium if not set; the test Adventure is exempt and uses `defaultPolicy`) |
+| `defaultPolicy` | `Weibull.lean` | Targets and tolerance of every adventure, through the candidate's `policy` and `bands` |
 | Candidate `horizon` | Adventure certification | Conditional death rows to test |
 | `liveHorizon`, `liveRules` | `Rpg/Live.lean` | Horizon and rules for generated Wishes |
 | `heroPolicy`, `Simulation.pickManeuver` | `Combat.lean`, `Simulation.lean` | Matching model/simulator maneuver and target distributions |
@@ -195,7 +195,7 @@ until success; changed mechanics then need an independently precommitted holdout
 Replaying an unchanged seed is reproducibility, not new independent evidence.
 
 The old full-fight diagnostic remains available as `lake exe agree`. It uses
-`difficultyGames`, `validationRoundLimit`, and `confidenceDelta`, but also exactly
+`validationGames`, `validationRoundLimit`, and `confidenceDelta`, but also exactly
 enumerates all combat outcomes, which can exceed a minute. It is a separate deep
 check, not part of the routine deadline or a proof of model equivalence. If work
 changes model/sampler correspondence, additional checks or proofs are necessary;

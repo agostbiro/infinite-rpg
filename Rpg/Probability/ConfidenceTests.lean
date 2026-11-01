@@ -41,9 +41,9 @@ example : ¬ acceptsCount ⟨1/20, 1/10⟩ (1/100) ⟨20, 0⟩ := by decide +ker
 
 /-- An incomplete batch cannot be substituted for the precommitted game count. -/
 example : ¬ ValidationAccepted 1 ⟨#[10, 10], #[0, 0], 10, false⟩ confidenceDelta 0
-    DifficultyLevel.medium.policy := by decide +kernel
+    defaultPolicy := by decide +kernel
 example : ¬ ValidationAccepted 1 ⟨#[1200, 1200], #[0, 0], 1200, true⟩ confidenceDelta 0
-    DifficultyLevel.medium.policy := by decide +kernel
+    defaultPolicy := by decide +kernel
 
 /-- Unresolved outcomes inside the tested window abort; later ones do not. -/
 example : observationsComplete 6 ⟨.censored, 7⟩ = false := by decide
@@ -63,7 +63,7 @@ theorem zero_sampling (n : Nat) (f : Nat → Rat) : binomialExpectation 0 n f = 
 theorem safe_truth_zero : ∀ i, TestStory.safeCandidate.truth i = 0 := by decide +kernel
 
 /-- The safe story's actual deterministic observation law for the fixed game batch. -/
-def zeroLaw : Distribution (Fin (TestStory.safeCandidate.horizon+1) → Observation) := pure (fun _ => ⟨difficultyGames, 0⟩)
+def zeroLaw : Distribution (Fin (TestStory.safeCandidate.horizon+1) → Observation) := pure (fun _ => ⟨validationGames, 0⟩)
 
 /-- A concrete normalized law discharges the main theorem's probability premise. -/
 theorem zeroLaw_valid : zeroLaw.Valid := by
@@ -72,7 +72,7 @@ theorem zeroLaw_valid : zeroLaw.Valid := by
 
 /-- The safe story supplies an actual instance of the conditional-binomial sampling model. -/
 def zeroLaw_sampling : BinomialSampling zeroLaw TestStory.safeCandidate.truth where
-  sizes := fun _ => pure difficultyGames
+  sizes := fun _ => pure validationGames
   sizesValid := by
     intro i
     simp [Distribution.Valid, pure, Pure.pure]
@@ -127,10 +127,9 @@ open Confidence
 def noDeathCounts : ValidationCounts :=
   ⟨#[1200, 1200, 1200, 1200, 1135, 800], #[0, 0, 0, 0, 0, 0], 1200, false⟩
 
--- With horizon 5 (every Wish), the check rejects these counts at every level: on medium,
--- rows 2 to 5 have a lower edge above 0.
-#guard DifficultyLevel.all.all fun level =>
-  !decide (ValidationAccepted 5 noDeathCounts confidenceDelta 0 level.policy)
+-- With horizon 5 (every Wish), the check rejects these counts: rows 3 to 5 have a lower edge
+-- above 0.
+#guard !decide (ValidationAccepted 5 noDeathCounts confidenceDelta 0 defaultPolicy)
 -- The same counts with one game too few are rejected for that reason alone, even with no
 -- tolerance band to fit (`noBands`).
 #guard

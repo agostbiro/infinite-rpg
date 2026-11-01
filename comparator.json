@@ -19,9 +19,9 @@
     "Verified.retry_balanced",
     "Verified.noShortLoops",
     "Verified.exactExpectation_eq_fast",
-    "Verified.difficulty_valid",
-    "Verified.difficulty_order",
-    "Verified.live_change_policy"
+    "Verified.live_change_policy",
+    "Verified.default_policy",
+    "Verified.draft_game_policy"
   ],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
 }

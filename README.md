@@ -53,35 +53,13 @@ The check counts every outcome, also an unlikely roll, and every Wish and every 
 #### Balance
 
 A consistent adventure with no dead ends or infinite loops can be still be too easy or too hard.
-Therefore, we run a [statistical test](./Rpg/Probability/StatisticalAdmission.lean#L206) after verification to check that the death rate on each turn fits the rising curve of the adventure's [difficulty level](#adjustable-difficulty), within 5 percentage points, so the adventure is balanced.
+Therefore, we run a [statistical test](./Rpg/Probability/StatisticalAdmission.lean#L221) after verification to check that the death rate on each turn fits a rising curve, within 20 percentage points, so the adventure is balanced.
 The test plays the adventure 1,200 times.
 
-Lean [proves](./Rpg/Probability/StatisticalAdmission.lean#L156) that the test is sound: it accepts an unbalanced adventure at most 5% of the time.
+Lean [proves](./Rpg/Probability/StatisticalAdmission.lean#L154) that the test is sound: it accepts an unbalanced adventure at most 5% of the time.
 A Wish gets 3 tries, each with a fresh test, so an unbalanced adventure from a Wish passes at most 15% of the time (a union bound; Lean proves only the bound for one try).
 All the changes during play in one server run share one more 5% (`RetryTree.balanced`), so an adventure from a Wish that then gets changes passes unbalanced at most 15% + 5% = 20% of the time.
 These bounds hold under the sampling model, as [statistical confidence](docs/statistical-confidence.md) explains.
-
-#### Adjustable Difficulty
-
-The player picks a difficulty level in the Wish form: easy, medium (the default), or hard.
-Each level is its own balance curve. The curves differ in how many characters are still alive after 10 turns:
-
-| Level  | Alive after 10 turns | Death on turn 1 | Death on turn 6, given alive at turn 4 |
-|--------|----------------------|-----------------|----------------------------------------|
-| easy   | 50%                  | 0.7%            | 6.9%                                   |
-| medium | 30%                  | 1.2%            | 11.1%                                  |
-| hard   | 10%                  | 2.3%            | 18.2%                                  |
-
-The balance test checks every row against the curve of the chosen level, with a tolerance of 5 percentage points.
-The DM prompt gives the DM the allowed range of each row for that level.
-`make validate` prints the target of every row for each level.
-
-The level is saved with the adventure (`difficulty` in `adventure.json`) and shown on its card.
-It stays the same for the life of the adventure: a change during play is checked against the same curve, and Lean [proves](./Rpg/WorldChange.lean) that a change cannot change the level (`live_change_policy`).
-Lean also proves that the levels are valid curves (`difficulty_valid`), and that hard < medium < easy in survival at turn 10 (`difficulty_order`).
-
-An adventure saved before the levels existed counts as medium, so it is checked again at medium on load.
-The test Adventure (The Bandit Camp) fails medium. It keeps the old curve with a tolerance of 20 points until a new default Adventure that passes medium takes its place (see [follow-ups](docs/follow-ups.md)).
 
 ## How a change during play becomes part of the game
 
@@ -123,7 +101,6 @@ Each one is a real roll, with a way to fail.
 - Each proof is about one character, so the same adventure can fail for another character.
 - The balance test plays with a model player who picks choices and maneuvers at random, not like a real player.
 - The 5% bound assumes that the seeded random generator acts like fair dice, and this is not proved.
-- The test Adventure is exempt from the medium curve: it uses the old curve with a tolerance of 20 points.
 - An AI-generated adventure gets up to 3 tries, so the chance to accept an unbalanced one is at most 15%.
 - A saved adventure skips the balance test on load if its cached verdict file says it passed, so an edited verdict file can skip the test.
 - Live adventures trust that the compiled checker gives the same answer as the checker in the proofs.
@@ -131,6 +108,4 @@ Each one is a real roll, with a way to fail.
 - Nothing proves that the game engine follows the rules during a fight.
 - The server, the view, and the AI prompt code have no proofs.
 - The game covers only part of GURPS Lite: there are no items, no parry, no spells, and creatures always attack.
-- The only ranged weapon is the flamethrower, and it has no range rules.
 
-Work that is still open is in the [follow-ups](docs/follow-ups.md).

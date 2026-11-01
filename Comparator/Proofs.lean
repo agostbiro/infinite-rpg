@@ -87,27 +87,38 @@ theorem retry_balanced {n : Nat} (tree : Probability.RetryTree n)
     (valid : tree.Valid) : tree.falseAcceptance 0 ≤ Probability.Confidence.confidenceDelta :=
   tree.balanced 0 valid
 
-/-- Every difficulty level is a valid curve: 0 < q < 1, a positive shape, and a tolerance from
-0 to 1. -/
-theorem difficulty_valid (level : Probability.DifficultyLevel) : level.policy.Valid :=
-  Probability.difficulty_valid level
-
-/-- At turn 10, more Characters are alive on easy than on medium, and more on medium than on
-hard. -/
-theorem difficulty_order :
-    -- Hard is more dangerous than medium.
-    Probability.DifficultyLevel.hard.policy.survival 10 <
-      Probability.DifficultyLevel.medium.policy.survival 10 ∧
-    -- Medium is more dangerous than easy.
-    Probability.DifficultyLevel.medium.policy.survival 10 <
-      Probability.DifficultyLevel.easy.policy.survival 10 := Probability.difficulty_order
-
-/-- A live change keeps the difficulty level of the Adventure, and its check uses that level. -/
+/-- A live change keeps the balance policy of the Adventure, and its check uses that policy. -/
 theorem live_change_policy (p : WorldChange.Prepared) :
     -- The changed game has the policy of the game before the change.
     p.game.policy = p.before.policy ∧
     -- The balance check of the change uses that policy.
     p.candidate.policy = p.before.policy := p.keeps_policy
+
+/-- The default balance curve: Weibull with q = 19/20 and shape 2, and a tolerance of 20 points. It
+has valid parameters. Every Adventure uses it. -/
+theorem default_policy :
+    -- The curve has valid Weibull parameters and a tolerance that is not vacuous.
+    Probability.defaultPolicy.Valid ∧
+    -- The Weibull retention q is 19/20.
+    Probability.defaultPolicy.retention = 19 / 20 ∧
+    -- The Weibull shape is 2.
+    Probability.defaultPolicy.shape = 2 ∧
+    -- The tolerance is 20 points.
+    Probability.defaultPolicy.tolerance = 1 / 5 := ⟨Probability.defaultPolicy_valid, rfl, rfl, rfl⟩
+
+/-- A Game from a Draft uses the default balance curve. After the balance check, the check
+admitted the Draft as a candidate with the default curve. On the fast load of an admitted Draft,
+no check runs, and the Game has the default curve. -/
+theorem draft_game_policy (d : Draft) (seed : Nat) (g : Game) :
+    -- A Game that passed the balance check comes from a check with the default curve.
+    (d.toGame seed = .ok g →
+      ∃ (defn : AdventureDefinition) (counts : Probability.ValidationCounts)
+        (a : Probability.StatisticalAdventure),
+        Probability.admitWithSeed (liveCandidate defn) seed = (counts, some a) ∧
+        a.candidate.policy = Probability.defaultPolicy ∧
+        g = Game.new a.candidate.toAdventureDefinition Probability.defaultPolicy) ∧
+    -- A Game from the fast load has the default curve.
+    (d.toGameAdmitted = .ok g → g.policy = Probability.defaultPolicy) := ⟨Draft.toGame_admitted, Draft.toGameAdmitted_policy⟩
 
 /-- If the short-loop check passes, every loop has at least 4 steps: a path of Choices from a
 Scene back to the same Scene, with at least one step, has 4 steps or more. -/

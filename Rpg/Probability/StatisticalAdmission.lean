@@ -5,7 +5,7 @@ import Rpg.Probability.Simulation
 Finite confidence intervals compare the adventure's conditional death expectations
 with the Weibull targets of its own policy. The theorem `balanced` proves interval coverage and
 bounds false acceptance under the explicitly assumed binomial sampling model.
-Each candidate carries its policy. A candidate with no explicit policy uses the medium level.
+Each candidate carries its policy. Every candidate in the game uses `defaultPolicy`.
 -/
 namespace Rpg.Probability
 open Confidence
@@ -18,18 +18,16 @@ structure StatisticalCandidate extends AdventureDefinition where
   resume : Option ResumePoint := none
   /-- Elapsed scene turns for optional continuation analysis; admission starts at zero. -/
   elapsed : Nat := 0
-  /-- The target curve and tolerance that this candidate must fit. An Adventure with no
-  difficulty level uses the medium level. -/
-  policy : BalancePolicy := DifficultyLevel.medium.policy
+  /-- The target curve and tolerance that this candidate must fit. The game always uses
+  `defaultPolicy`. -/
+  policy : BalancePolicy := defaultPolicy
 
 /-- The fixed, independently chosen validation seed. Never search seeds for a favorable result. -/
 def validationSeed : Nat := 20261103
 
-/-- The number of games in one balance check, at every difficulty level. It is a precommitted
-batch size, not a number of qualifying observations per row. A measurement chose 1,200: at this
-size, an Adventure on its curve passes the 5-point tolerance even when its counts are 2 standard
-deviations off. -/
-def difficultyGames : Nat := 1200
+/-- The number of games in one balance check. It is a precommitted batch size, not a number of
+qualifying observations per row. -/
+def validationGames : Nat := 1200
 
 /-- Combat timeouts abort validation rather than selecting only completed fights. -/
 def validationRoundLimit : Nat := 200
@@ -73,7 +71,7 @@ def sampleCounts (a : StatisticalCandidate) (seed games : Nat) : ValidationCount
 
 /-- Admission uses only the precommitted seed and fixed total game count. -/
 def validateCounts (a : StatisticalCandidate) : ValidationCounts :=
-  sampleCounts a validationSeed difficultyGames
+  sampleCounts a validationSeed validationGames
 
 /-- Policy parameters change the target bands, never the simulated game or combat. -/
 def confidenceBandsFor (policy : BalancePolicy) (horizon : Nat) (i : Fin (horizon+1)) : Band :=
@@ -97,7 +95,7 @@ def ValidationCounts.observation (c : ValidationCounts) (row : Nat) : Observatio
 The policy has no default value, so each caller names the curve that it checks against. -/
 def ValidationAccepted (horizon : Nat) (c : ValidationCounts)
     (delta : Rat) (elapsed : Nat) (policy : BalancePolicy) : Prop :=
-  c.aborted = false ∧ c.games = difficultyGames ∧
+  c.aborted = false ∧ c.games = validationGames ∧
   c.trials.size = horizon+1 ∧ c.deaths.size = horizon+1 ∧
   ∀ i : Fin (horizon+1), c.trials[i.val]! ≤ c.games ∧
     acceptsCount (continuationBandsFor policy elapsed horizon i) delta (c.observation i.val)
@@ -163,7 +161,7 @@ structure StatisticalAdventure where
   candidate : StatisticalCandidate
   /-- The test is sound for this candidate (true for every candidate). -/
   balanced : Balanced candidate
-  /-- The seed of the `difficultyGames` games. -/
+  /-- The seed of the `validationGames` games. -/
   seed : Nat
   /-- The counts from those games. -/
   counts : ValidationCounts
@@ -174,7 +172,7 @@ structure StatisticalAdventure where
   /-- The proof also covers the actual error allowance used by this admission. -/
   confidence : BalancedAt candidate delta
   /-- The counts come from this candidate's own games with this seed. -/
-  provenance : counts = sampleCounts candidate seed difficultyGames
+  provenance : counts = sampleCounts candidate seed validationGames
   /-- Every row passed, against the candidate's own policy. -/
   accepted : ValidationAccepted candidate.horizon counts delta candidate.elapsed candidate.policy
 
@@ -190,17 +188,34 @@ theorem StatisticalAdventure.intervals_fit (a : StatisticalAdventure) (i : Fin (
       (a.candidate.bands i).target + (a.candidate.bands i).tolerance :=
   (a.accepted.2.2.2.2 i).2.2.2
 
-/-- Play `difficultyGames` games of `candidate` from `seed`, and admit it only if every row
+/-- Play `validationGames` games of `candidate` from `seed`, and admit it only if every row
 fits the candidate's own policy. Returns the counts, and the admitted adventure if it passed. -/
 def admitWithRisk (candidate : StatisticalCandidate) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option StatisticalAdventure :=
-  let counts := sampleCounts candidate seed difficultyGames
+  let counts := sampleCounts candidate seed validationGames
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
     if h : ValidationAccepted candidate.horizon counts delta candidate.elapsed candidate.policy then
       (counts, some ⟨candidate, candidate.balanced, seed, counts, delta, hd,
         candidate.balancedAt delta (Rat.le_of_lt hd.1), rfl, h⟩)
     else (counts, none)
   else (counts, none)
+
+/-- An admitted Adventure is about the candidate that was checked. -/
+theorem admitWithRisk_candidate {c : StatisticalCandidate} {seed : Nat} {delta : Rat}
+    {counts : ValidationCounts} {a : StatisticalAdventure}
+    -- The check admitted `a`.
+    (h : admitWithRisk c seed delta = (counts, some a)) :
+    -- `a` is about the candidate `c`.
+    a.candidate = c := by
+  unfold admitWithRisk at h
+  dsimp only at h
+  by_cases hd : 0 < delta ∧ delta ≤ confidenceDelta
+  · by_cases hv : ValidationAccepted c.horizon (sampleCounts c seed validationGames) delta
+        c.elapsed c.policy
+    · simp only [hd, hv, and_self, ↓reduceDIte, Prod.mk.injEq, Option.some.injEq] at h
+      rw [← h.2]
+    · simp [hd, hv] at h
+  · simp [hd] at h
 
 /-- A single admission attempt uses the shared confidence setting. -/
 def admitWithSeed (candidate : StatisticalCandidate) (seed : Nat) :
@@ -221,7 +236,7 @@ def failedRows (horizon : Nat) (c : ValidationCounts)
     s!"{tenths / 10}.{tenths % 10}%"
   let general :=
     (if c.aborted then ["a game did not finish inside the window (a Fight went on too long)"] else []) ++
-    (if c.games != difficultyGames then [s!"only {c.games} of {difficultyGames} games were played"] else [])
+    (if c.games != validationGames then [s!"only {c.games} of {validationGames} games were played"] else [])
   general ++ (List.range (horizon + 1)).filterMap fun row =>
     if h : row < horizon + 1 then
       let i : Fin (horizon + 1) := ⟨row, h⟩

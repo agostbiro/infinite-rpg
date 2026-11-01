@@ -69,7 +69,7 @@ def makeVariant (name label : String) (rules : RuleSet) (hero : Being) (story : 
   if hc : checkCharacter rules hero = [] then
     if ha : check rules hero story = [] then
       .ok ⟨name, label, ⟨⟨rules, hero, checkCharacter_sound hc, story, check_sound ha⟩,
-        liveHorizon, by decide, none, 0, DifficultyLevel.medium.policy⟩⟩
+        liveHorizon, by decide, none, 0, defaultPolicy⟩⟩
     else .error s!"{name}: {check rules hero story}"
   else .error s!"{name}: {checkCharacter rules hero}"
 
@@ -131,7 +131,7 @@ def main (args : List String) : IO Unit := do
   let games ← require (plan.getObjValAs? Nat "lifetime_games_per_variant")
   let lifeSeed ← require (plan.getObjValAs? Nat "lifetime_seed")
   let turnLimit ← require (plan.getObjValAs? Nat "lifetime_turn_limit")
-  if (← require (plan.getObjValAs? Nat "admission_games_per_batch")) != difficultyGames ||
+  if (← require (plan.getObjValAs? Nat "admission_games_per_batch")) != validationGames ||
       (← require (plan.getObjValAs? Nat "combat_round_limit")) != validationRoundLimit ||
       (← require (plan.getObjValAs? Nat "balance_horizon")) != liveHorizon then
     throw (IO.userError "The study plan disagrees with the shared admission parameters")
@@ -141,7 +141,7 @@ def main (args : List String) : IO Unit := do
     throw (IO.userError "The planned variants differ from the compiled variants")
   if args.contains "--screen" then
     for v in cases do
-      let counts := sampleCounts v.candidate 1 difficultyGames
+      let counts := sampleCounts v.candidate 1 validationGames
       IO.println s!"{v.name}: {decide (ValidationAccepted liveHorizon counts confidenceDelta 0 v.candidate.policy)}; deaths={counts.deaths}"
     return
   let selected := (args.find? (·.startsWith "--variant=")).map (fun s => (s.drop 10).toString)
@@ -153,8 +153,8 @@ def main (args : List String) : IO Unit := do
     let life := lifetimes v.candidate.toAdventureDefinition lifeSeed games turnLimit
     let mut batches : Array Json := #[]
     for seed in seeds do
-      IO.eprintln s!"  fixed admission batch {seed}: {difficultyGames} games, {policies.length} policies"
-      let counts := sampleCounts v.candidate seed difficultyGames
+      IO.eprintln s!"  fixed admission batch {seed}: {validationGames} games, {policies.length} policies"
+      let counts := sampleCounts v.candidate seed validationGames
       let comparisons := policies.map (policyResult v.candidate counts)
       batches := batches.push (json% { seed: $(seed), games: $(counts.games), aborted: $(counts.aborted),
         trials: $(counts.trials), deaths: $(counts.deaths), policies: $(comparisons) })

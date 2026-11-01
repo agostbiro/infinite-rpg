@@ -26,8 +26,7 @@ Routes:
   view, and changes nothing.
 * `POST /api/new`: start the same Adventure again, in the `title` phase (before the first Scene), with a
   new seed. The page then shows the Front Page.
-* `POST /api/wish`: ask the DM for an Adventure. The body is `{"wish", "name", "gender",
-  "difficulty"}`. The difficulty is "easy", "medium", or "hard"; with no difficulty it is medium.
+* `POST /api/wish`: ask the DM for an Adventure. The body is `{"wish", "name", "gender"}`.
 * `POST /api/change`: request an adventure rule change at the current checkpoint, with `{"wish"}`.
 * `POST /api/retry`: ask again with the last Wish after 3 failed tries, or with the last live change
   after it failed.
@@ -67,10 +66,9 @@ def Session.start (g : Game) (seed : Nat) : Session :=
 /-- The game that the server holds while no Adventure is loaded, so that the Front Page shows. It
 is the test Adventure. The Player cannot play it: `/api/input` refuses every input until a saved
 Adventure is loaded. A built-in default Adventure can take this place later (see
-`docs/follow-ups.md`). It has the policy of the test Adventure candidate, which is exempt from the
-medium curve (see `TestAdventure.statisticalCandidate`). -/
+`docs/follow-ups.md`). -/
 def homeGame : Game :=
-  Game.new TestAdventure.testAdventureDefinition TestAdventure.statisticalCandidate.policy
+  Game.new TestAdventure.testAdventureDefinition
 
 /-- Apply one input. Returns the new session, or the reason the input was refused.
 A refused input leaves the session as it was. -/
@@ -133,11 +131,10 @@ structure Generation where
   /-- In state `ready`: the folder of the saved Adventure that passed, so "Play it now" loads
   that one, even if another Adventure was loaded since. -/
   readyId : Option String := none
-  /-- The last Wish, name, gender, and difficulty level, for "Try again". -/
+  /-- The last Wish, name, and gender, for "Try again". -/
   wish : String := ""
   name : String := ""
   gender : String := ""
-  difficulty : Probability.DifficultyLevel := .medium
   /-- Wishes create games; changes revise the paused game. -/
   mode : String := "wish"
 
@@ -170,8 +167,6 @@ structure AdventureCard where
   about : String := ""
   /-- Where the Adventure comes from, such as "From a Wish". -/
   source : String := ""
-  /-- The difficulty level, such as "hard", or "" for an Adventure with no level. -/
-  difficulty : String := ""
 
 /-- A checked entry of the saved list: the folder, a stamp of its content (length and hash), what
 its card shows, and `none` if the Adventure passes the checker, or else the first error. -/
@@ -354,11 +349,11 @@ def savedCard (id : String) (read : Except String String) : AdventureCard × Opt
     | .ok d =>
       let src := savedSource id d (savedWish text)
       ({ title, world := src.world, hero := d.hero.name, about := d.background,
-         source := "From a Wish", difficulty := d.difficulty.key }, none)
+         source := "From a Wish" }, none)
 
 /-- Check one saved Adventure for the list: its card, and `none` if it passes the checker and
 the balance check, or else the first error.
-The balance check plays `difficultyGames` games, so this takes about a second. -/
+The balance check plays `validationGames` games, so this takes about a second. -/
 def checkSavedEntry (id : String) (read : Except String String) : AdventureCard × Option String :=
   match read, savedCard id read with
   | .ok text, (card, none) =>
@@ -543,8 +538,7 @@ def checkSavedInBackground (cfg : GameConfig) : IO Unit := do
 
 /-- A card as JSON for the page. -/
 def AdventureCard.toJson (c : AdventureCard) : Json :=
-  json% { title: $(c.title), world: $(c.world), hero: $(c.hero), about: $(c.about), source: $(c.source),
-          difficulty: $(c.difficulty) }
+  json% { title: $(c.title), world: $(c.world), hero: $(c.hero), about: $(c.about), source: $(c.source) }
 
 /-- The list of saved Adventures for the Front Page: each id, title, and whether it passes the
 checker now. A saved Adventure that fails is listed with `ok: false` and the reason, and the page
@@ -762,18 +756,17 @@ def addMap (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (
     return none
   return some d
 
-/-- Ask the DM for an Adventure for a Wish at difficulty level `level`: up to 3 tries. After a
-failed try, the DM gets the errors and sends a fixed version. -/
+/-- Ask the DM for an Adventure for a Wish: up to 3 tries. After a failed try, the DM gets the
+errors and sends a fixed version. -/
 def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
-    (wish name gender : String) (level : Probability.DifficultyLevel) : IO Unit := do
+    (wish name gender : String) : IO Unit := do
   let mut messages := [userTurn (wishMessage wish name gender)]
   let mut lastErrors : List String := []
   for attempt in [1, 2, 3] do
     let text := if attempt == 1 then "The Dungeon Master is writing..." else "The Dungeon Master is fixing them..."
     if !(← addStep ref job { text }) then return
-    -- In test mode, a recorded reply for this level comes first, if there is one.
-    let reply ← callApi cfg children (jobOwner job) (jobWanted ref job) (adventureRequest level messages)
-      [s!"adventure-{level.key}-{attempt}", s!"adventure-{attempt}"]
+    let reply ← callApi cfg children (jobOwner job) (jobWanted ref job) (adventureRequest messages)
+      [s!"adventure-{attempt}"]
     if !(← jobWanted ref job) then return
     let (errors, hero?, content) ← match reply with
       | .refused =>
@@ -789,8 +782,6 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
         match Draft.parse text with
         | .error e => pure ([s!"the JSON does not read: {e}"], none, content)
         | .ok d =>
-          -- The Player picks the level, not the DM.
-          let d := { d with difficulty := level }
           -- A fresh random seed for each try, so the DM cannot tune its story to one batch of games.
           -- In test mode (`RPG_FAKE_API`) the seed is fixed, so `make run-fake` gives the same result each time.
           let balanceSeed ← if cfg.fake.isSome then pure 1 else randomSeed
@@ -802,7 +793,7 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
           let checked := if wideErrors.isEmpty then d.toGame balanceSeed else .error wideErrors
           match checked with
           | .ok g =>
-            if !(← addStep ref job { text := s!"The Adventure passed the checker and the balance check at the {level.key} level." }) then return
+            if !(← addStep ref job { text := "The Adventure passed the checker and the balance check." }) then return
             let some d ← addMap cfg children ref job d | return
             adopt cfg ref job d g wish balanceSeed
             return
@@ -816,14 +807,14 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
 /-- Start the work on a Wish in the background. Returns `false`, and does nothing, if the DM is
 already writing. The check and the start are one atomic step. -/
 def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
-    (wish name gender : String) (difficulty : Probability.DifficultyLevel) : IO Bool := do
+    (wish name gender : String) : IO Bool := do
   let job? ← ref.modifyGet fun s =>
     if s.gen.state == .running then (none, s) else
     let job := s.gen.job + 1
-    (some job, { s with gen := { job, state := .running, wish, name, gender, difficulty } })
+    (some job, { s with gen := { job, state := .running, wish, name, gender } })
   let some job := job? | return false
   let _ ← IO.asTask (prio := .dedicated) do
-    try generate cfg children ref job wish name gender difficulty
+    try generate cfg children ref job wish name gender
     catch e =>
       endJob ref job .failed { text := "Something went wrong.", errors := [toString e] }
   return true
@@ -855,21 +846,11 @@ def tuneChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
     match proposal.prepare p.before map with
     | .error _ => continue
     | .ok candidate =>
-      let counts := Probability.sampleCounts candidate.candidate 1 Probability.difficultyGames
+      let counts := Probability.sampleCounts candidate.candidate 1 Probability.validationGames
       if decide (Probability.ValidationAccepted candidate.candidate.horizon counts delta
           candidate.candidate.elapsed candidate.candidate.policy) then
         return some candidate
   return none
-
-/-- The curve of a policy in words, for the steps of a live change: "the hard curve", or "the old
-curve" for a policy that is not a level (the test Adventure exemption). -/
-def curveName (policy : Probability.BalancePolicy) : String :=
-  match Probability.DifficultyLevel.ofPolicy? policy with
-  | some level => s!"the {level.key} curve"
-  | none => "the old curve"
-
-#guard curveName Probability.DifficultyLevel.hard.policy == "the hard curve"
-#guard curveName homeGame.policy == "the old curve"
 
 /-- The most calls to the Dungeon Master for one live change. Each call can cost money. -/
 def maxChangeCalls : Nat := 6
@@ -1004,8 +985,8 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
             else
               let index := (← ref.get).changeChecks
               let delta := Probability.attemptRisk index
-              if !(← addStep ref job { text := s!"Checking the updated adventure from the beginning, including combat, against {curveName prepared.candidate.policy}..." }) then return
-              let screen := Probability.sampleCounts prepared.candidate 1 Probability.difficultyGames
+              if !(← addStep ref job { text := "Checking the updated adventure from the beginning, including combat, against the balance curve..." }) then return
+              let screen := Probability.sampleCounts prepared.candidate 1 Probability.validationGames
               if !(← jobWanted ref job) then return
               let picked ← if decide (Probability.ValidationAccepted prepared.candidate.horizon screen delta
                   prepared.candidate.elapsed prepared.candidate.policy) then
@@ -1089,8 +1070,7 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
   let base := (viewJson g.game g.seed g.reports fresh error)
   let gen := json% {
     available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps), readyId: $(s.gen.readyId),
-    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender), mode: $(s.gen.mode),
-    difficulty: $(s.gen.difficulty.key)
+    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender), mode: $(s.gen.mode)
   }
   let saved ← if g.game.phase.name == "title" then savedList cfg else pure (Json.arr #[])
   let v := base.setObjVal! "generation" gen
@@ -1102,8 +1082,6 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "environment" (toJson s.source.environment)
     |>.setObjVal! "canChange" (toJson (WorldChange.available g.game))
     |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map WorldChange.ruleJson))
-    -- The level of the game in play, or `null` for a policy that is not a level (the test Adventure).
-    |>.setObjVal! "difficulty" (toJson ((Probability.DifficultyLevel.ofPolicy? g.game.policy).map (·.key)))
   return v.compress
 
 /-! ## Responses -/
@@ -1196,34 +1174,22 @@ def postAllowed (host : String) (port : Nat) (headers : Headers) : Bool :=
     | some vs => vs.all fun v => ours.contains (toString v)
   isJson && originOk
 
-/-- Read a Wish from a request body. Returns the Wish, the name, the gender, and the difficulty
-level, or an error. With no `difficulty` field, the level is medium. -/
-def parseWish (body : String) :
-    Except String (String × String × String × Probability.DifficultyLevel) := do
+/-- Read a Wish from a request body. Returns the Wish, the name, and the gender, or an error.
+It ignores other fields, such as a `difficulty` field from an older page. -/
+def parseWish (body : String) : Except String (String × String × String) := do
   let j ← Json.parse body
   let wish := (j.getObjValAs? String "wish").toOption.getD "" |>.trimAscii.toString
   let name := (j.getObjValAs? String "name").toOption.getD "" |>.trimAscii.toString
   let gender := (j.getObjValAs? String "gender").toOption.getD "dm"
-  -- A missing field is medium. A field that is not a string is refused below.
-  let level := match j.getObjVal? "difficulty" with
-    | .error _ => "medium"
-    | .ok v => v.getStr?.toOption.getD ""
   if wish.isEmpty then throw "Type a Wish first."
   if wish.length > maxWish then throw s!"A Wish can have at most {maxWish} characters."
   if name.length > maxName then throw s!"A name can have at most {maxName} characters."
   if !["she", "he", "they", "dm"].contains gender then throw "Pick she, he, they, or let the Dungeon Master choose."
-  let some difficulty := Probability.DifficultyLevel.ofKey? level
-    | throw "Pick easy, medium, or hard."
-  return (wish, name, gender, difficulty)
+  return (wish, name, gender)
 
-#guard (parseWish "{\"wish\": \"the Shire\", \"name\": \"Pip\", \"gender\": \"he\"}").toOption == some ("the Shire", "Pip", "he", .medium)
-#guard (parseWish "{\"wish\": \"the Shire\", \"difficulty\": \"hard\"}").toOption == some ("the Shire", "", "dm", .hard)
-#guard (parseWish "{\"wish\": \"the Shire\", \"difficulty\": \"easy\"}").toOption.map (·.2.2.2) == some .easy
--- A level that does not exist, or a level that is not a string, is refused.
-#guard (match parseWish "{\"wish\": \"the Shire\", \"difficulty\": \"deadly\"}" with
-  | .error e => e == "Pick easy, medium, or hard."
-  | .ok _ => false)
-#guard (parseWish "{\"wish\": \"the Shire\", \"difficulty\": 3}").toOption.isNone
+#guard (parseWish "{\"wish\": \"the Shire\", \"name\": \"Pip\", \"gender\": \"he\"}").toOption == some ("the Shire", "Pip", "he")
+-- A `difficulty` field from an older page is ignored.
+#guard (parseWish "{\"wish\": \"the Shire\", \"difficulty\": \"hard\"}").toOption == some ("the Shire", "", "dm")
 #guard (parseWish "{\"wish\": \"  \"}").toOption.isNone
 #guard (parseWish ("{\"wish\": \"" ++ "".pushn 'a' 501 ++ "\"}")).toOption.isNone
 
@@ -1339,8 +1305,8 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
         return ← replyJson .badRequest (← view (error := some "The Dungeon Master needs ANTHROPIC_API_KEY."))
       match parseWish body with
       | .error e => replyJson .badRequest (← view (error := some e))
-      | .ok (wish, name, gender, difficulty) =>
-        if !(← startWish cfg children state wish name gender difficulty) then return ← busy
+      | .ok (wish, name, gender) =>
+        if !(← startWish cfg children state wish name gender) then return ← busy
         replyJson .ok (← view)
     | ["api", "change"] =>
       if !cfg.canWish then
@@ -1363,7 +1329,7 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
         match ← startChange cfg children state g.wish with
         | .error why => return ← replyJson .conflict (← view (error := some why))
         | .ok () => return ← replyJson .ok (← view)
-      if !(← startWish cfg children state g.wish g.name g.gender g.difficulty) then return ← busy
+      if !(← startWish cfg children state g.wish g.name g.gender) then return ← busy
       replyJson .ok (← view)
     | ["api", "load"] =>
       let id := (Json.parse body >>= (·.getObjValAs? String "id")).toOption.getD ""

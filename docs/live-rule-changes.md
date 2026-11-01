@@ -46,8 +46,8 @@ The combat preview uses the same trigger function as the Engine.
   visited scenes, remove past choices, move the Character, heal anyone, or revive defeated foes.
 
 The proposal is JSON data. It cannot write Lean, change the dice, invent arbitrary actions or
-persistent state, or alter core rules, point budgets, the difficulty level, the Weibull curve,
-tolerance, or sample count. A proposal has no field for the level, and `Prepared.keeps_policy`
+persistent state, or alter core rules, point budgets, the Weibull curve,
+tolerance, or sample count. A proposal has no field for the policy, and `Prepared.keeps_policy`
 (`live_change_policy`) proves that a change keeps the game's policy. Unsupported requests receive an explanation. Extending this language requires a
 development change and its proofs; runtime does not execute the development skill.
 
@@ -61,7 +61,7 @@ development change and its proofs; runtime does not execute the development skil
    fights whose harmful effects cannot all trigger together.
 3. The compiled simulator plays 1,200 games from the adventure beginning on screening seed 1. All Fights use
    the same effects and equipment as play. The rows are compared with the curve of the game's own
-   difficulty level. Failed rows guide revisions to the world's response.
+   policy (`defaultPolicy`). Failed rows guide revisions to the world's response.
 4. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
    and plays a separate 1,200-game validation batch against the same curve. Only a source-bound `Admission` value
    permits installation. Failure returns to revision with a smaller remaining allowance.

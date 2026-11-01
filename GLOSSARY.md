@@ -51,12 +51,8 @@ The property that the balance check tests: the deaths on each turn of an Adventu
 _Avoid_: fairness
 
 **Admission**:
-The balance check that an Adventure must pass after the checker, before play and before a World change is installed. It plays the Adventure 1,200 times from its start with a seed, and compares the deaths on each turn with the target curve of its Difficulty level.
+The balance check that an Adventure must pass after the checker, before play and before a World change is installed. It plays the Adventure 1,200 times from its start with a seed, and compares the deaths on each turn with the target curve.
 _Avoid_: certification, validation (except for the run with the fixed seed)
-
-**Difficulty level**:
-How dangerous an Adventure is: easy, medium, or hard. The Player picks it before a Wish. Each level is a target curve for the balance check, with a tolerance of 5 percentage points. An Adventure keeps its level for its whole life. An Adventure with no level is medium.
-_Avoid_: difficulty profile, mode
 
 **Horizon**:
 How many turns after the first one the balance check looks at. With horizon 5, it looks at turns 1 to 6.
