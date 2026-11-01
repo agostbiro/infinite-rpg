@@ -52,7 +52,7 @@ check: build
 # unless a person puts its path on RULES_ALLOW. No other Adventure file may name `RuleSet` or
 # change a rules value with `{ ... with ... }`.
 RULES_ALLOW ?=
-RULES_LINE = ^(import Rpg\.RuleSet|namespace Rpg\.[A-Za-z]+|end Rpg\.[A-Za-z]+|def rules : RuleSet := \{\}|/--.*-/|)$$
+RULES_LINE = ^(import Rpg\.RuleSet|namespace Rpg\.[A-Za-z]+|end Rpg\.[A-Za-z]+|def rules : RuleSet := \{\}|/--.*-/)?$$
 check-rules:
 	@bad=0; for f in $$(find Rpg/Adventures -name Rules.lean); do \
 	  case " $(RULES_ALLOW) " in *" $$f "*) continue;; esac; \

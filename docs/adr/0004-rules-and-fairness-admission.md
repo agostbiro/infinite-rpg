@@ -12,7 +12,7 @@ Each Adventure has its own rules value, a `RuleSet` (`Rpg/RuleSet.lean`). The sp
 - **People own the rules.** `make check-rules` fails if a `Rules.lean` is not `{}`, unless a person puts it on an allow list. That grep is a first guard only. The statement `lighthouse_default_rules` in the person-owned `Comparator/Statements.lean` pins the rules that play and the fairness check use, and `make comparator` checks it. Wishes always use `{}`. So the DM still cannot change a roll.
 - **The model's Player picks maneuvers at random**, each with chance 1/3. A round can then change the state with no HP loss, so the exact Fight solver solves the states with the same HP together, as a system of at most 3 linear equations.
 - **The curve rejects Adventures that are too easy.** Shape 2 (the danger rises), q = 19/20, tolerance 1/5, horizon 5. The values were picked on the screening seed, then the fixed seed was run once.
-- **Wishes must pass admission too.** Each of the 3 tries uses a fresh random seed, saved with the Adventure. The false-acceptance bound for a Wish is at most 30%, not 10%.
+- **Wishes must pass admission too.** Each of the 3 tries uses a fresh random seed, saved with the Adventure. At the current 95% confidence level, a union bound gives at most 15% false acceptance over the 3 tries if the sampling assumptions hold conditional on each try's history. Lean proves the 5% per-try bound, not the retry bound.
 - **Harbor is removed.** The Lighthouse is the one built-in Adventure. A small safe story stays in the tests (`Rpg/Probability/TestStory.lean`) to show that the hypotheses of `fair` can be met.
 
 ## Considered options

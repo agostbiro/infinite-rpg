@@ -31,6 +31,7 @@ def lethalGraph : Graph where
     | .dead => pure .dead
     | .ended => pure .ended
     | .stalled => pure .stalled
+    | .resuming => pure .stalled
 
 /-- Exact two-turn death is certain in the bad graph. -/
 theorem lethalGraph_death : lethalGraph.deathAtTwo 0 = some 1 := by decide +kernel

@@ -1,5 +1,6 @@
 import Rpg.Play
 import Rpg.Adventures.Lighthouse.Confidence
+import Rpg.WorldChange
 
 /-!
 # The main theorems, with proofs
@@ -46,5 +47,28 @@ theorem lighthouse_default_rules :
 
 /-- The fairness test is sound for every candidate, under the binomial sampling model. -/
 theorem fair (a : Probability.StatisticalCandidate) : Probability.Fair a := a.fair
+
+/-- An in-play change cannot replace any of the core rules. -/
+theorem live_change_core (p : WorldChange.Prepared) :
+    p.game.rules.core = p.before.rules.core := p.preserves_core
+
+/-- Changes preserve HP, completed choices, and the current scene. -/
+theorem live_change_checkpoint (p : WorldChange.Prepared) :
+    p.game.hp = p.before.hp ∧ p.game.trail = p.before.trail ∧
+    p.game.sceneId? = p.before.sceneId? := p.preserves_checkpoint
+
+/-- Checking starts at the updated adventure's beginning; play retains its checkpoint. -/
+theorem live_change_from_start (p : WorldChange.Prepared) :
+    p.candidate.resume = none ∧ p.candidate.elapsed = 0 ∧
+    p.candidate.graph = p.definition.graph := p.candidate_from_start
+
+/-- Admission supplies fairness for the updated adventure from its beginning. -/
+theorem live_change_fair {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
+    (a : WorldChange.Admission p seed delta) : Probability.FairAt p.candidate delta := a.fair
+
+/-- Any finite adaptive series of live-change validations stays within the shared risk budget. -/
+theorem retry_fair {n : Nat} (tree : Probability.RetryTree n)
+    (valid : tree.Valid) : tree.falseAcceptance 0 ≤ Probability.Confidence.confidenceDelta :=
+  tree.fair 0 valid
 
 end Verified

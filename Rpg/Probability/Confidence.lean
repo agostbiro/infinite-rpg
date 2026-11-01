@@ -195,6 +195,104 @@ structure Band where
   target : Rat
   tolerance : Rat
 
+/-- Every lower endpoint stays inside the search bracket. -/
+theorem lowerSearch_bounds (alpha : Rat) (n k fuel : Nat) (lo hi : Rat)
+    (ordered : lo ≤ hi) :
+    lo ≤ lowerSearch alpha n k fuel lo hi ∧ lowerSearch alpha n k fuel lo hi ≤ hi := by
+  induction fuel generalizing lo hi with
+  -- The terminal endpoint lies in its bracket.
+  | zero => simp [lowerSearch, ordered]
+  -- Refine one half of the ordered bracket.
+  | succ fuel ih =>
+    simp only [lowerSearch]
+    split
+    -- The upper half retains the original bounds.
+    · have h := ih ((lo+hi)/2) hi (by grind)
+      grind
+    -- The lower half retains the original bounds.
+    · have h := ih lo ((lo+hi)/2) (by grind)
+      grind
+
+/-- Every upper endpoint stays inside the search bracket. -/
+theorem upperSearch_bounds (alpha : Rat) (n k fuel : Nat) (lo hi : Rat)
+    (ordered : lo ≤ hi) :
+    lo ≤ upperSearch alpha n k fuel lo hi ∧ upperSearch alpha n k fuel lo hi ≤ hi := by
+  induction fuel generalizing lo hi with
+  -- The terminal endpoint lies in its bracket.
+  | zero => simp [upperSearch, ordered]
+  -- Refine one half of the ordered bracket.
+  | succ fuel ih =>
+    simp only [upperSearch]
+    split
+    -- The lower half retains the original bounds.
+    · have h := ih lo ((lo+hi)/2) (by grind)
+      grind
+    -- The upper half retains the original bounds.
+    · have h := ih ((lo+hi)/2) hi (by grind)
+      grind
+
+/-- Stop refining once the bracket decides whether the lower endpoint meets a bound. -/
+def lowerMeets (alpha : Rat) (n k : Nat) (bound : Rat) : Nat → Rat → Rat → Bool
+  | 0, lo, _ => decide (bound ≤ lo)
+  | fuel+1, lo, hi =>
+    if bound ≤ lo then true else if hi < bound then false else
+    let mid := (lo+hi)/2
+    if upperTail mid n k < alpha then lowerMeets alpha n k bound fuel mid hi
+    else lowerMeets alpha n k bound fuel lo mid
+
+/-- Stop refining once the bracket decides whether the upper endpoint meets a bound. -/
+def upperMeets (alpha : Rat) (n k : Nat) (bound : Rat) : Nat → Rat → Rat → Bool
+  | 0, _, hi => decide (hi ≤ bound)
+  | fuel+1, lo, hi =>
+    if hi ≤ bound then true else if bound < lo then false else
+    let mid := (lo+hi)/2
+    if lowerTail mid n k < alpha then upperMeets alpha n k bound fuel lo mid
+    else upperMeets alpha n k bound fuel mid hi
+
+/-- Early stopping gives exactly the original lower-endpoint comparison. -/
+theorem lowerMeets_correct (alpha : Rat) (n k : Nat) (bound : Rat) (fuel : Nat)
+    (lo hi : Rat) (ordered : lo ≤ hi) :
+    lowerMeets alpha n k bound fuel lo hi = true ↔ bound ≤ lowerSearch alpha n k fuel lo hi := by
+  induction fuel generalizing lo hi with
+  -- The terminal endpoint lies in its bracket.
+  | zero => simp [lowerMeets, lowerSearch]
+  -- Refine one half of the ordered bracket.
+  | succ fuel ih =>
+    have bounds := lowerSearch_bounds alpha n k (fuel+1) lo hi ordered
+    rw [lowerMeets]
+    split
+    -- The whole bracket already satisfies the comparison.
+    · simp only [true_iff]
+      grind
+    -- Otherwise reject a disjoint bracket or refine it.
+    · split
+      · simp only [Bool.false_eq_true, false_iff]
+        grind
+      · rw [lowerSearch]
+        split <;> rename_i branch <;> simp only [branch, ↓reduceIte] <;> apply ih <;> grind
+
+/-- Early stopping gives exactly the original upper-endpoint comparison. -/
+theorem upperMeets_correct (alpha : Rat) (n k : Nat) (bound : Rat) (fuel : Nat)
+    (lo hi : Rat) (ordered : lo ≤ hi) :
+    upperMeets alpha n k bound fuel lo hi = true ↔ upperSearch alpha n k fuel lo hi ≤ bound := by
+  induction fuel generalizing lo hi with
+  -- The terminal endpoint lies in its bracket.
+  | zero => simp [upperMeets, upperSearch]
+  -- Refine one half of the ordered bracket.
+  | succ fuel ih =>
+    have bounds := upperSearch_bounds alpha n k (fuel+1) lo hi ordered
+    rw [upperMeets]
+    split
+    -- The whole bracket already satisfies the comparison.
+    · simp only [true_iff]
+      grind
+    -- Otherwise reject a disjoint bracket or refine it.
+    · split
+      · simp only [Bool.false_eq_true, false_iff]
+        grind
+      · rw [upperSearch]
+        split <;> rename_i branch <;> simp only [branch, ↓reduceIte] <;> apply ih <;> grind
+
 /-- Admission requires data and the entire interval inside its policy band. -/
 def acceptsCount (band : Band) (delta : Rat) (count : Observation) : Prop :=
   let interval := confidenceInterval delta count.trials count.deaths
@@ -203,8 +301,13 @@ def acceptsCount (band : Band) (delta : Rat) (count : Observation) : Prop :=
   interval.upper ≤ band.target+band.tolerance
 
 instance (band : Band) (delta : Rat) (count : Observation) : Decidable (acceptsCount band delta count) := by
-  unfold acceptsCount
-  infer_instance
+  let fast := 0 < count.trials ∧ count.deaths ≤ count.trials ∧
+    lowerMeets (delta/2) count.trials count.deaths (band.target-band.tolerance) intervalSteps 0 1 = true ∧
+    upperMeets (delta/2) count.trials count.deaths (band.target+band.tolerance) intervalSteps 0 1 = true
+  have same : fast ↔ acceptsCount band delta count := by
+    simp only [fast, acceptsCount, confidenceInterval,
+      lowerMeets_correct _ _ _ _ _ 0 1 (by decide), upperMeets_correct _ _ _ _ _ 0 1 (by decide)]
+  exact decidable_of_iff fast same
 
 /-- A falsely accepted row must have missed the true probability. -/
 theorem false_accept_misses (band : Band) (delta p : Rat) (count : Observation)
@@ -364,8 +467,8 @@ theorem familyFalseAcceptance_bound
     exact Rat.le_trans bound (rowConfidence law truth delta i sampling
       (probabilities i).1 (probabilities i).2 hd)
 
-/-- The fixed confidence level is 90%; each interval has failure probability at most 10%. -/
-def confidenceDelta : Rat := 1/10
+/-- The fixed confidence level is 95%; each interval has failure probability at most 5%. -/
+def confidenceDelta : Rat := 1/20
 
 /-- The configurable confidence level must remain strictly between zero and one. -/
 theorem confidenceLevel_valid :

@@ -41,7 +41,7 @@
       </div>
       <button id="wish-send" class="big-button" type="button">Ask the DM</button>
     </div>
-    <p id="wish-off" class="wish-off" hidden>Generation is unavailable: the server has no API key. Set ANTHROPIC_API_KEY and run the game again. You can still play the built-in Adventure.</p>
+    <p id="wish-off" class="wish-off" hidden>The GM is not connected. Sign in with Codex or Claude Code, or set ANTHROPIC_API_KEY, then restart the game. You can still play the built-in Adventure.</p>
     <div id="progress" class="progress" hidden aria-live="polite">
       <p id="progress-wish" class="wish-help"></p>
       <ol id="progress-steps" class="progress-steps"></ol>
@@ -85,6 +85,24 @@
       </div>
       <button id="skip" class="skip" type="button" hidden>Skip</button>
     </div>
+    <section id="change-panel" class="panel change-panel" aria-labelledby="change-h" hidden>
+      <h2 id="change-h">Change the world</h2>
+      <p class="wish-help">Ask for a new weapon or a twist in the rules. The GM grants your wish, gives the world a fun response, and checks the balance before you continue.</p>
+      <p id="change-off" class="wish-off" hidden>The GM is not connected. Sign in with Codex or Claude Code, or set ANTHROPIC_API_KEY, then restart the game to request changes.</p>
+      <div id="change-form" class="wish-form">
+        <label class="wish-label" for="change-request">What would you like to change?</label>
+        <textarea id="change-request" maxlength="500" rows="2" placeholder="I want my character to have a flamethrower now"></textarea>
+        <button id="change-send" class="small-button" type="button">Ask for a change</button>
+      </div>
+      <div id="change-progress" hidden aria-live="polite">
+        <p id="change-status" class="wish-help"></p>
+        <ol id="change-steps" class="progress-steps"></ol>
+        <button id="change-cancel" class="small-button" type="button">Cancel and resume</button>
+        <button id="change-retry" class="small-button" type="button" hidden>Try again</button>
+        <button id="change-dismiss" class="small-button" type="button" hidden>Continue playing</button>
+      </div>
+      <div id="active-rules" class="active-rules"></div>
+    </section>
   </section>
 
   <aside id="character" class="panel character-panel"></aside>

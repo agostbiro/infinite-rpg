@@ -5,8 +5,8 @@ A single-player tabletop role-playing game (RPG) based on GURPS. An AI writes th
 ## People and parts
 
 **DM** (Dungeon Master):
-The AI that writes an Adventure, and for an Adventure from a Wish, also its Character. It works before play and takes no part in play.
-_Avoid_: GM, narrator, agent
+The AI that writes an Adventure and its Character, and proposes checked changes during play. It never rolls dice. Also called the GM.
+_Avoid_: narrator, agent
 
 **Player**:
 The human who plays an Adventure.
@@ -23,7 +23,7 @@ _Avoid_: event, log line, message
 ## Adventures
 
 **Adventure**:
-A complete scenario the DM writes before play, as a graph of Scenes. It cannot change once play starts.
+A scenario represented as a graph of Scenes. Checked live changes can revise its future scenes and local rules.
 _Avoid_: module, campaign, scenario
 
 **Wish**:
@@ -35,11 +35,11 @@ An Adventure that obeys every rule in the spec, under its RuleSet. Only a Legal 
 _Avoid_: valid adventure, verified adventure
 
 **RuleSet**:
-The rules of one Adventure: limits such as the point budget, and the rule functions such as the success roll. Each field defaults to the GURPS Lite rule. People own the RuleSet; every Adventure in this repo uses the defaults.
+The rules of one Adventure: core limits and functions, plus local equipment and combat effects. Live changes can modify the local data; core limits and functions remain fixed.
 _Avoid_: ruleset config, house rules
 
 **Admission**:
-The fairness check that an Adventure must pass after the checker and before play. It plays the Adventure 1,000 times from a seed, and compares the deaths on each turn with a target curve.
+The fairness check before play or a live change. It plays 1,000 games or continuations from a separate seed and compares death probabilities with the target curve.
 _Avoid_: certification, validation (except for the run with the fixed seed)
 
 **Horizon**:
@@ -71,8 +71,14 @@ A story thing the Character carries from Scene to Scene, such as a key or a lett
 _Avoid_: object, loot, inventory entry
 
 **Gear**:
-The weapon and armor a Character or Creature uses. Gear does not change during an Adventure.
+The weapon and armor a Character or Creature uses. A checked live change can grant new weapon Gear.
 _Avoid_: equipment, kit, loadout
+
+**World change**:
+A requested adventure change and a fun counter-rule, installed together only after legality and continuation fairness checks pass.
+
+**Counter-rule**:
+A named, visible response to a requested change that adds a tactical choice. The DM proposes one from the first attempt, even if the gift would already pass fairness.
 
 **Flag**:
 A record that an event happened, such as "the guard is bribed". A Scene can set a Flag, and a Choice can require one.

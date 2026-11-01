@@ -71,4 +71,22 @@ def trajectory (a : AdventureDefinition) (roundLimit : Nat) :
           if !state.hero.alive then return ⟨.dead, turns + 1⟩
           trajectory a roundLimit fuel next state.hero.hp (turns + 1)
 
+/-- Resume at the Character's turn; already completed enemy turns and wounds stay completed. -/
+def resumeFight (rules : RuleSet) (f : FightPhase) (roundLimit : Nat) : Roll (Option FightState) := do
+  if roundLimit = 0 then return none
+  let (next, _) ← remainingRoundWith (attack rules) pickManeuver f.order f.state
+  fight rules pickManeuver f.order (roundLimit - 1) next
+
+/-- Sample a continuation from the same checkpoint used by `continuationGraph`. -/
+def fromPoint (a : AdventureDefinition) (roundLimit fuel : Nat) (point : ResumePoint) : Roll Trace := do
+  match point with
+  | .scene id hp => trajectory a roundLimit fuel id hp 0
+  | .fight f =>
+    if fuel = 0 then return ⟨.censored, 1⟩
+    match ← resumeFight a.rules f roundLimit with
+    | none => return ⟨.censored, 1⟩
+    | some s =>
+      if !s.hero.alive then return ⟨.dead, 1⟩
+      trajectory a roundLimit (fuel - 1) f.onWin s.hero.hp 1
+
 end Rpg.Probability.Simulation

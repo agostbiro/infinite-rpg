@@ -13,6 +13,10 @@ open Confidence
 structure StatisticalCandidate extends AdventureDefinition where
   horizon : Nat
   horizonPositive : 0 < horizon
+  /-- Absent for adventure admission; optional for separate continuation analysis. -/
+  resume : Option ResumePoint := none
+  /-- Elapsed scene turns for optional continuation analysis; admission starts at zero. -/
+  elapsed : Nat := 0
 
 /-- The fixed, independently chosen validation seed. Never search seeds for a favorable result. -/
 def validationSeed : Nat := 20261103
@@ -48,8 +52,8 @@ def sampleCounts (a : StatisticalCandidate) (seed games : Nat) : ValidationCount
   let mut counts : ValidationCounts := ⟨Array.replicate (h+1) 0, Array.replicate (h+1) 0, 0, false⟩
   let mut rng : Rng := ⟨seed.toUInt64⟩
   for _ in [:games] do
-    let (trace, next) := (Simulation.trajectory a.toAdventureDefinition validationRoundLimit (h+1)
-      a.story.start (a.rules.maxHP a.hero) 0).run rng
+    let point := a.resume.getD (.scene a.story.start (a.rules.maxHP a.hero))
+    let (trace, next) := (Simulation.fromPoint a.toAdventureDefinition validationRoundLimit (h+1) point).run rng
     rng := next
     counts := { counts with games := counts.games + 1 }
     if !observationsComplete h trace then
@@ -69,53 +73,78 @@ def confidenceBands (horizon : Nat) (i : Fin (horizon+1)) : Band :=
   ⟨if i.val = 0 then 1 - defaultPolicy.survival 1 else defaultPolicy.deathAtTwo (i.val-1),
    defaultPolicy.tolerance⟩
 
+/-- Later checkpoints use the same Weibull curve at the actual elapsed turn. -/
+def continuationBands (elapsed horizon : Nat) (i : Fin (horizon+1)) : Band :=
+  if elapsed = 0 then confidenceBands horizon i else
+  ⟨if i.val = 0 then 1 - defaultPolicy.survival (elapsed+1) / defaultPolicy.survival elapsed
+   else defaultPolicy.deathAtTwo (elapsed+i.val-1), defaultPolicy.tolerance⟩
+
+/-- The policy bands for this candidate's finite continuation window. -/
+def StatisticalCandidate.bands (a : StatisticalCandidate) : Fin (a.horizon+1) → Band :=
+  continuationBands a.elapsed a.horizon
+
 /-- A row's actual denominator and observed death count. -/
 def ValidationCounts.observation (c : ValidationCounts) (row : Nat) : Observation :=
   ⟨c.trials[row]!, c.deaths[row]!⟩
 
 /-- Every interval from the complete fixed batch must fit its Weibull tolerance band. -/
-def ValidationAccepted (horizon : Nat) (c : ValidationCounts) : Prop :=
+def ValidationAccepted (horizon : Nat) (c : ValidationCounts)
+    (delta : Rat := confidenceDelta) (elapsed : Nat := 0) : Prop :=
   c.aborted = false ∧ c.games = validationGames ∧
   c.trials.size = horizon+1 ∧ c.deaths.size = horizon+1 ∧
   ∀ i : Fin (horizon+1), c.trials[i.val]! ≤ c.games ∧
-    acceptsCount (confidenceBands horizon i) confidenceDelta (c.observation i.val)
+    acceptsCount (continuationBands elapsed horizon i) delta (c.observation i.val)
 
-instance (horizon : Nat) (c : ValidationCounts) : Decidable (ValidationAccepted horizon c) := by
+instance (horizon : Nat) (c : ValidationCounts) (delta : Rat) (elapsed : Nat) :
+    Decidable (ValidationAccepted horizon c delta elapsed) := by
   unfold ValidationAccepted
   infer_instance
 
 /-- The true tested probabilities come from this candidate's own graph, not caller-supplied odds.
 Zero-probability conditioning uses zero; the batch has no observations for such a row and will not admit it. -/
+def StatisticalCandidate.graph (a : StatisticalCandidate) : Graph :=
+  match a.resume with
+  | none => a.toAdventureDefinition.graph
+  | some point => continuationGraph a.toAdventureDefinition point
+
+/-- Tested probabilities are derived from the exact starting checkpoint and rules. -/
 def StatisticalCandidate.truth (a : StatisticalCandidate) (i : Fin (a.horizon+1)) : Rat :=
-  if i.val = 0 then a.toAdventureDefinition.graph.deadBy 1
-  else (a.toAdventureDefinition.graph.deathAtTwo (i.val-1)).getD 0
+  if i.val = 0 then a.graph.deadBy 1
+  else (a.graph.deathAtTwo (i.val-1)).getD 0
 
 /-- Finite statistical fairness under the accepted sampling model.
 Each interval covers its true expectation with risk at most delta, and accepting all
 Weibull comparisons when any tested comparison is false also has risk at most delta. -/
-def Fair (a : StatisticalCandidate) : Prop :=
+def FairAt (a : StatisticalCandidate) (delta : Rat) : Prop :=
   ∀ (law : Distribution (Fin (a.horizon+1) → Observation)),
     law.Valid →
     BinomialSampling law a.truth →
     (∀ i, 0 ≤ a.truth i ∧ a.truth i ≤ 1) →
     -- Coverage holds separately for each tested conditional expectation.
-    (∀ i, intervalMissProbability law a.truth confidenceDelta i ≤ confidenceDelta) ∧
+    (∀ i, intervalMissProbability law a.truth delta i ≤ delta) ∧
     -- Accepting the entire finite window has false-acceptance risk at most delta.
-    familyFalseAcceptance law a.truth (confidenceBands a.horizon)
-      confidenceDelta ≤ confidenceDelta
+    familyFalseAcceptance law a.truth a.bands delta ≤ delta
+
+/-- The public fairness property uses the shared confidence level. -/
+def Fair (a : StatisticalCandidate) : Prop := FairAt a confidenceDelta
 
 /-- The main fairness theorem: finite confidence intervals and Weibull-band admission are sound.
 Only the stated sampling-model hypotheses are required; there are no graph or tail premises. -/
-theorem StatisticalCandidate.fair (a : StatisticalCandidate) : Fair a := by
+theorem StatisticalCandidate.fairAt (a : StatisticalCandidate) (delta : Rat)
+    -- Error allowances are nonnegative.
+    (hd : 0 ≤ delta) : FairAt a delta := by
   intro law valid sampling probabilities
   constructor
   -- Each interval approximates its graph-derived death-indicator expectation.
   · intro i
-    exact rowConfidence law a.truth confidenceDelta i sampling
-      (probabilities i).1 (probabilities i).2 (Rat.le_of_lt confidenceLevel_valid.1)
+    exact rowConfidence law a.truth delta i sampling
+      (probabilities i).1 (probabilities i).2 hd
   -- Every row must pass; a violated row bounds false acceptance of the entire decision.
-  · exact familyFalseAcceptance_bound law a.truth (confidenceBands a.horizon)
-      confidenceDelta valid sampling probabilities (Rat.le_of_lt confidenceLevel_valid.1)
+  · exact familyFalseAcceptance_bound law a.truth a.bands delta valid sampling probabilities hd
+
+/-- Every candidate has the shared fairness guarantee under the stated sampling assumptions. -/
+theorem StatisticalCandidate.fair (a : StatisticalCandidate) : Fair a :=
+  a.fairAt confidenceDelta (Rat.le_of_lt confidenceLevel_valid.1)
 
 /-- An adventure that passed admission. It holds the counts, the seed they came from, and the
 proof that every row passed. `fair` says the test itself is sound; it holds for every candidate. -/
@@ -128,31 +157,45 @@ structure StatisticalAdventure where
   seed : Nat
   /-- The counts from those games. -/
   counts : ValidationCounts
+  /-- Retries can spend a smaller part of the shared error allowance. -/
+  delta : Rat
+  /-- A retry can strengthen confidence, but cannot weaken it. -/
+  riskValid : 0 < delta ∧ delta ≤ confidenceDelta
+  /-- The proof also covers the actual error allowance used by this admission. -/
+  confidence : FairAt candidate delta
   /-- The counts come from this candidate's own games with this seed. -/
   provenance : counts = sampleCounts candidate seed validationGames
   /-- Every row passed. -/
-  accepted : ValidationAccepted candidate.horizon counts
+  accepted : ValidationAccepted candidate.horizon counts delta candidate.elapsed
 
 /-- Every admitted interval fits its shared Weibull tolerance band. -/
 theorem StatisticalAdventure.intervals_fit (a : StatisticalAdventure) (i : Fin (a.candidate.horizon+1)) :
     let count := a.counts.observation i.val
-    let interval := confidenceInterval confidenceDelta count.trials count.deaths
+    let interval := confidenceInterval a.delta count.trials count.deaths
     -- The entire interval is above the band's lower bound.
-    (confidenceBands a.candidate.horizon i).target - (confidenceBands a.candidate.horizon i).tolerance ≤
+    (a.candidate.bands i).target - (a.candidate.bands i).tolerance ≤
       interval.lower ∧
     -- The entire interval is below the band's upper bound.
     interval.upper ≤
-      (confidenceBands a.candidate.horizon i).target + (confidenceBands a.candidate.horizon i).tolerance :=
+      (a.candidate.bands i).target + (a.candidate.bands i).tolerance :=
   (a.accepted.2.2.2.2 i).2.2.2
 
 /-- Play 1,000 games of `candidate` from `seed`, and admit it only if every row passes.
 Returns the counts, and the admitted adventure if it passed. -/
-def admitWithSeed (candidate : StatisticalCandidate) (seed : Nat) :
+def admitWithRisk (candidate : StatisticalCandidate) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option StatisticalAdventure :=
   let counts := sampleCounts candidate seed validationGames
-  if h : ValidationAccepted candidate.horizon counts then
-    (counts, some ⟨candidate, candidate.fair, seed, counts, rfl, h⟩)
+  if hd : 0 < delta ∧ delta ≤ confidenceDelta then
+    if h : ValidationAccepted candidate.horizon counts delta candidate.elapsed then
+      (counts, some ⟨candidate, candidate.fair, seed, counts, delta, hd,
+        candidate.fairAt delta (Rat.le_of_lt hd.1), rfl, h⟩)
+    else (counts, none)
   else (counts, none)
+
+/-- A single admission attempt uses the shared confidence setting. -/
+def admitWithSeed (candidate : StatisticalCandidate) (seed : Nat) :
+    ValidationCounts × Option StatisticalAdventure :=
+  admitWithRisk candidate seed confidenceDelta
 
 /-- Admission with the fixed `validationSeed`, for the Adventures shipped in this repo. -/
 def admitStatistically (candidate : StatisticalCandidate) :
@@ -161,7 +204,8 @@ def admitStatistically (candidate : StatisticalCandidate) :
 
 /-- One line for each row that failed, in plain words, for the DM and the server log.
 An empty list means that every row passed. -/
-def failedRows (horizon : Nat) (c : ValidationCounts) : List String :=
+def failedRows (horizon : Nat) (c : ValidationCounts)
+    (delta : Rat := confidenceDelta) (elapsed : Nat := 0) : List String :=
   let pct (r : Rat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
@@ -171,12 +215,12 @@ def failedRows (horizon : Nat) (c : ValidationCounts) : List String :=
   general ++ (List.range (horizon + 1)).filterMap fun row =>
     if h : row < horizon + 1 then
       let i : Fin (horizon + 1) := ⟨row, h⟩
-      let band := confidenceBands horizon i
+      let band := continuationBands elapsed horizon i
       let obs := c.observation row
-      if acceptsCount band confidenceDelta obs then none else
-      let name := if row = 0 then "death on turn 1"
-        else s!"death on turn {row + 1}, given alive at turn {row - 1}"
-      let iv := confidenceInterval confidenceDelta obs.trials obs.deaths
+      if acceptsCount band delta obs then none else
+      let name := if row = 0 then s!"death on turn {elapsed + 1}"
+        else s!"death on turn {elapsed + row + 1}, given alive at turn {elapsed + row - 1}"
+      let iv := confidenceInterval delta obs.trials obs.deaths
       some s!"{name}: {obs.deaths} of {obs.trials} games, so {pct iv.lower} to {pct iv.upper}, but the allowed range is {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}"
     else none
 

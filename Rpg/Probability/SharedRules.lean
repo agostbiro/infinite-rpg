@@ -55,4 +55,17 @@ theorem simulation_step (rules : RuleSet) (pick : FightState → Roll (Maneuver 
       let (next, _) ← roundWith (attack rules) pick order state
       Simulation.fight rules pick order fuel next) := rfl
 
+/-- Continuation simulation finishes the saved round with the shared Engine turns. -/
+theorem resumed_simulation (rules : RuleSet) (f : FightPhase) (limit : Nat) :
+    Simulation.resumeFight rules f limit = (do
+      if limit = 0 then return none
+      let (next, _) ← remainingRoundWith (attack rules) Simulation.pickManeuver f.order f.state
+      Simulation.fight rules Simulation.pickManeuver f.order (limit-1) next) := rfl
+
+/-- Continuation graph odds use the same remaining-round code, with exact dice. -/
+theorem resumed_model (rules : RuleSet) (f : FightPhase) :
+    remainingCombat rules f =
+      (((Prod.fst <$> remainingRoundWith (attackDistribution rules) heroPolicy f.order f.state).collect).bind
+        fun s => (solveCombat rules heroPolicy f.order s).run' []).collect := rfl
+
 end Rpg.Probability.SharedRules

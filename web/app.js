@@ -184,6 +184,9 @@
         li.textContent = d.who + ' dies. The Adventure is over.';
         li.classList.add('died');
         break;
+      case 'worldRule':
+        li.append(el('strong', '', d.name + ': '), document.createTextNode(d.text));
+        break;
       default:
         li.textContent = k;
     }
@@ -355,6 +358,12 @@
   /** Draw the Fight cards after the first `n` Reports. Returns the Fight, or null. */
   function renderCards(n) {
     const { fight } = fightAt(n);
+    if (fight && n === S.view.reports.length && S.view.phase === 'fight') {
+      // An admitted world change can replace equipment without starting a new Fight.
+      fight.hero = S.view.fight.hero;
+      fight.foes = S.view.fight.foes;
+      fight.round = S.view.fight.round;
+    }
     const box = $('cards');
     if (!fight) {
       $('fight').hidden = true;
@@ -404,7 +413,7 @@
     clearTargets();
     const hint = $('fight-hint');
     hint.textContent = '';
-    if (v.phase !== 'fight' || !v.fight || S.playing || S.busy) return;
+    if (v.phase !== 'fight' || !v.fight || S.playing || S.busy || v.generation.state === 'running') return;
     const ms = v.fight.maneuvers;
     // Tags with the last Maneuver of each being.
     const heroTag = document.querySelector('#cards [data-key="hero"] .tag');
@@ -463,7 +472,7 @@
     renderCards(S.shown);
     renderManeuvers();
     markState();
-    if (S.playing || S.busy) return;
+    if (S.playing || S.busy || v.generation.state === 'running') return;
     if (v.phase === 'scene' && v.scene) {
       for (const ch of v.scene.choices) {
         if (ch.input === null) continue;
@@ -747,9 +756,66 @@
 
   /** Tell tests and screen readers whether the page waits for the Player. */
   function markState() {
-    const ready = !S.playing && !S.busy;
+    const ready = !S.playing && !S.busy && S.view?.generation.state !== 'running';
     document.body.dataset.state = ready ? 'ready' : 'busy';
     document.body.dataset.shown = String(S.shown);
+    $('change-send').disabled = !ready || !S.view?.canChange;
+  }
+
+  /** Describe the actual numeric effect alongside the GM's fiction. */
+  function ruleEffect(rule) {
+    const triggers = {
+      always: 'always', wounded: 'at half HP or less', desperate: 'at one third HP or less',
+      reckless: 'while using All-Out Attack', guarding: 'while using All-Out Defense',
+      againstReckless: 'against All-Out Attack', againstGuarding: 'against All-Out Defense',
+      againstFlame: 'against a flamethrower'
+    };
+    const signed = (n) => n > 0 ? '+' + n : String(n);
+    const effects = [];
+    if (rule.hitBonus) effects.push(signed(rule.hitBonus) + ' to hit');
+    if (rule.damageBonus) effects.push(signed(rule.damageBonus) + ' damage');
+    if (rule.armorBonus) effects.push('+' + rule.armorBonus + ' armor');
+    return (rule.side === 'hero' ? 'You' : 'Enemies') + ', ' + triggers[rule.trigger] + ': ' + effects.join(', ') + '.';
+  }
+
+  /** The game stays paused while a proposed rule change is being checked. */
+  function renderChange() {
+    const v = S.view;
+    const gen = v.generation;
+    const changing = gen.mode === 'change' && gen.state !== 'idle';
+    const running = changing && gen.state === 'running';
+    $('change-panel').hidden = !v.canChange && !(v.worldRules || []).length && !changing;
+    $('change-off').hidden = gen.available;
+    $('change-form').hidden = !v.canChange || !gen.available || changing;
+    $('change-send').disabled = S.busy || S.playing || gen.state === 'running';
+    $('change-progress').hidden = !changing;
+    $('change-status').textContent = running ? 'Your game is paused. The GM is working on: ' + gen.wish : 'Your game is unchanged.';
+    $('change-cancel').hidden = !running;
+    $('change-retry').hidden = !changing || running;
+    $('change-dismiss').hidden = !changing || running;
+    const steps = $('change-steps');
+    steps.textContent = '';
+    for (const step of gen.steps.slice(-4)) {
+      const item = el('li', '', step.text);
+      if (step.errors.length) {
+        const detail = el('details');
+        detail.append(el('summary', '', 'What needs adjusting'));
+        const errors = el('ul');
+        step.errors.forEach((error) => errors.append(el('li', '', error)));
+        detail.append(errors);
+        item.append(detail);
+      }
+      steps.append(item);
+    }
+    const rules = $('active-rules');
+    rules.textContent = '';
+    if ((v.worldRules || []).length) rules.append(el('h3', '', 'Rules of this world'));
+    for (const rule of v.worldRules || []) {
+      const entry = el('p');
+      entry.append(el('strong', '', rule.name + '. '), document.createTextNode(rule.description));
+      entry.append(el('br'), el('small', '', ruleEffect(rule)));
+      rules.append(entry);
+    }
   }
 
   /** In play, a line while the Pictures are still drawing. */
@@ -777,6 +843,7 @@
     renderMat();
     renderCharacter();
     renderMap();
+    renderChange();
   }
 
   function scrollToMat() {
@@ -894,7 +961,7 @@
     }
   }
 
-  /** Send a POST that changes the title screen, such as a Wish or "Play" on a saved Adventure. */
+  /** Send a session action, including an in-play change or cancellation. */
   async function action(path, body) {
     if (S.busy || S.playing) return;
     S.busy = true;
@@ -910,7 +977,7 @@
       toast(failText(e));
     } finally {
       S.busy = false;
-      markState();
+      renderAll();
       schedulePoll();
     }
   }
@@ -936,7 +1003,7 @@
       if (S.busy || S.playing) { schedulePoll(); return; }
       const sameGame = S.view && v.seed === S.view.seed &&
         v.reports.length === S.view.reports.length && v.phase === S.view.phase;
-      if (v.phase === 'title' || !sameGame) {
+      if (v.phase === 'title' || !sameGame || v.generation.mode === 'change' || S.view.generation.mode === 'change') {
         S.view = v;
         S.mapView = v;
         S.shown = v.reports.length;
@@ -981,6 +1048,16 @@
   $('to-builtin').addEventListener('click', () => action('/api/builtin'));
   $('dismiss').addEventListener('click', () => action('/api/dismiss'));
   $('to-title').addEventListener('click', () => action('/api/new'));
+
+  $('change-send').addEventListener('click', () => {
+    const wish = $('change-request').value.trim();
+    if (!wish) { toast('Describe the change you want first.'); return; }
+    S.aim = null;
+    action('/api/change', { wish });
+  });
+  $('change-cancel').addEventListener('click', () => action('/api/cancel'));
+  $('change-retry').addEventListener('click', () => action('/api/retry'));
+  $('change-dismiss').addEventListener('click', () => action('/api/dismiss'));
 
   $('begin').addEventListener('click', () => {
     const begin = S.view && S.view.inputs[0];

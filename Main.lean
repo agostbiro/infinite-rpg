@@ -1,4 +1,5 @@
-import Rpg.Prompt
+import Rpg.WorldChangePrompt
+import Rpg.GmCli
 import Rpg.Catalog
 import Std.Http
 
@@ -25,8 +26,9 @@ Routes:
 * `POST /api/new`: start the same Adventure again, on the title screen, with a new seed.
 * `POST /api/builtin`: go back to The Drowned Lighthouse.
 * `POST /api/wish`: ask the DM for an Adventure. The body is `{"wish", "name", "gender"}`.
-* `POST /api/retry`: ask again with the last Wish, after 3 failed tries.
-* `POST /api/dismiss`: hide the result of a failed or refused Wish.
+* `POST /api/change`: request an adventure rule change at the current checkpoint, with `{"wish"}`.
+* `POST /api/retry`: retry the last Wish or live change after failure.
+* `POST /api/dismiss`: hide the result of a failed or refused request.
 * `POST /api/cancel`: stop the DM.
 * `POST /api/load`: play a saved Adventure. The body is `{"id"}`. It is checked again first.
 * `GET /saved/<id>/<name>.svg`: a Picture of the saved Adventure in play, if it passed the check.
@@ -117,6 +119,8 @@ structure Generation where
   wish : String := ""
   name : String := ""
   gender : String := ""
+  /-- Wishes create games; changes revise the paused game. -/
+  mode : String := "wish"
 
 /-- Everything the server keeps. -/
 structure ServerState where
@@ -125,6 +129,8 @@ structure ServerState where
   runs : Nat := 0
   source : Source := {}
   gen : Generation := {}
+  /-- Validation attempts for live changes. Cancellation never refunds their error budget. -/
+  changeChecks : Nat := 0
 
 /-- A checked entry of the saved list: the folder, a stamp of its content (length and hash), the title,
 and `none` if the Adventure passes the checker, or else the first error. -/
@@ -136,6 +142,10 @@ structure GameConfig where
   port : Nat
   /-- The Claude API key, from `ANTHROPIC_API_KEY`. -/
   apiKey : Option String
+  /-- Use the installed, signed-in Claude CLI when there is no API key. -/
+  claudeCode : Bool := false
+  /-- A signed-in Codex CLI can also generate the same checked game data. -/
+  codex : Bool := false
   /-- Test hook: a folder of recorded API replies to use instead of calling the API
   (`RPG_FAKE_API`). -/
   fake : Option System.FilePath
@@ -147,7 +157,22 @@ structure GameConfig where
   picturesOn : Bool
 
 /-- `true` if the server can ask the DM for an Adventure. -/
-def GameConfig.canWish (c : GameConfig) : Bool := c.apiKey.isSome || c.fake.isSome
+def GameConfig.canWish (c : GameConfig) : Bool := c.apiKey.isSome || c.codex || c.claudeCode || c.fake.isSome
+
+/-- Check the existing Codex login without extracting its credentials. -/
+def codexReady : IO Bool := do
+  try
+    let out ← IO.Process.output { cmd := "codex", args := #["login", "status"] }
+    return out.exitCode == 0
+  catch _ => return false
+
+/-- Detect an existing login without reading or copying its credentials. -/
+def claudeCodeReady : IO Bool := do
+  try
+    let out ← IO.Process.output { cmd := "claude", args := #["--safe-mode", "auth", "status"] }
+    return out.exitCode == 0 &&
+      (Json.parse out.stdout >>= (·.getObjValAs? Bool "loggedIn")).toOption.getD false
+  catch _ => return false
 
 /-- The running `curl` processes. Each has an owner, such as "job-3" for a Wish or
 "pictures-2-the-shire" for the Pictures of a saved Adventure, so the server can stop them. -/
@@ -392,6 +417,65 @@ def curlOnce (children : Children) (owner : String) (wanted : IO Bool) (key : St
 /-- The reply when the work was stopped, for example by Cancel. -/
 def stoppedReply : Reply := .failed "stopped"
 
+/-- Generate data through the local login. Cancel kills this child just like an API request. -/
+def callClaudeCode (children : Children) (owner : String) (wanted : IO Bool) (req : Json) : IO Reply := do
+  try
+    let child ← IO.Process.spawn {
+      cmd := "claude", args := GmCli.claudeArgs req,
+      stdin := .piped, stdout := .piped, stderr := .piped }
+    let (stdin, child) ← child.takeStdin
+    let uid ← IO.monoNanosNow
+    children.modify (·.push (owner, uid, child.kill))
+    try
+      if !(← wanted) then
+        child.kill
+        return stoppedReply
+      -- The scoped handle closes before waiting, so print mode receives EOF.
+      (do stdin.putStr (GmCli.prompt req); stdin.flush : IO Unit)
+      let out ← IO.asTask child.stdout.readToEnd .dedicated
+      let err ← child.stderr.readToEnd
+      let code ← child.wait
+      let body ← IO.ofExcept out.get
+      if !(← wanted) then return stoppedReply
+      if code != 0 && body.trimAscii.isEmpty then
+        return .failed s!"The local Claude command failed ({code}): {err.take 400}"
+      return GmCli.parseClaudeReply body
+    finally
+      children.modify (·.filter (·.2.1 != uid))
+  catch e => return .failed s!"The local Claude command could not run: {e}"
+
+/-- Generate a proposal with the existing Codex login, without access to the repository. -/
+def callCodex (children : Children) (owner : String) (wanted : IO Bool) (req : Json) : IO Reply := do
+  try
+    IO.FS.withTempDir fun dir => do
+      let schema := dir / "schema.json"
+      let result := dir / "proposal.json"
+      IO.FS.writeFile schema (req.getObjValD "output_config" |>.getObjValD "format" |>.getObjValD "schema").compress
+      let child ← IO.Process.spawn {
+        cmd := "codex", args := GmCli.codexArgs schema result, cwd := some dir,
+        stdin := .piped, stdout := .piped, stderr := .piped }
+      let (stdin, child) ← child.takeStdin
+      let uid ← IO.monoNanosNow
+      children.modify (·.push (owner, uid, child.kill))
+      try
+        if !(← wanted) then
+          child.kill
+          return stoppedReply
+        stdin.putStr ("Act only as a game master producing JSON data. Do not use tools.\n" ++
+          GmCli.textContent (req.getObjValD "system") ++ "\n" ++ GmCli.prompt req)
+        stdin.flush
+        let out ← IO.asTask child.stdout.readToEnd .dedicated
+        let err ← child.stderr.readToEnd
+        let code ← child.wait
+        let _ ← IO.ofExcept out.get
+        if !(← wanted) then return stoppedReply
+        if code != 0 then return .failed s!"Codex could not generate the proposal ({code}): {err.takeEnd 1200}"
+        if !(← result.pathExists) then return .failed "Codex returned no game proposal."
+        return GmCli.parseCodexReply (← IO.FS.readFile result)
+      finally
+        children.modify (·.filter (·.2.1 != uid))
+  catch e => return .failed s!"The local Codex command could not run: {e}"
+
 /-- Send one request to the API, or read a recorded reply in test mode. `fixtures` names the
 recorded replies to try, such as "adventure-2". Busy or failing servers get two more tries.
 `wanted` says if the work is still wanted. It is checked before each try and after each try,
@@ -407,7 +491,10 @@ def callApi (cfg : GameConfig) (children : Children) (owner : String) (wanted : 
       let p := dir / s!"{f}.sse"
       if ← p.pathExists then return (parseStreamReply (← IO.FS.readFile p)).2
     return .failed s!"test mode: no recorded reply {fixtures.headD ""}.sse in {dir}"
-  let some key := cfg.apiKey | return .failed "ANTHROPIC_API_KEY is not set"
+  let some key := cfg.apiKey |
+    if cfg.codex then return ← callCodex children owner wanted req
+    else if cfg.claudeCode then return ← callClaudeCode children owner wanted req
+    else return .failed "The GM needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."
   let body := req.compress
   let mut last := Reply.failed "no reply"
   for wait in [0, 5000, 20000] do
@@ -451,7 +538,9 @@ def endJob (ref : IO.Ref ServerState) (job : Nat) (st : GenState) (last : Step) 
 
 /-- Add a step to job `job`. -/
 def addStep (ref : IO.Ref ServerState) (job : Nat) (st : Step) : IO Bool :=
-  updateJob ref job fun g => { g with steps := g.steps.push st }
+  updateJob ref job fun g =>
+    let steps := g.steps.push st
+    { g with steps := steps.extract (steps.size - 40) steps.size }
 
 /-- The folder where drawing run `run` writes a Picture before the check. Each run has its own
 folder, so one run never deletes another run's file. The name is "drawing-" and digits only. -/
@@ -622,6 +711,143 @@ def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState
       endJob ref job .failed { text := "Something went wrong.", errors := [toString e] }
   return true
 
+/-- Install only a source-bound admitted adventure. The original session dice and log stay. -/
+def applyChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
+    (seed : Nat) (delta : Rat) (_accepted : WorldChange.Admission p seed delta) : IO Unit := do
+  ref.modify fun s =>
+    if s.gen.job != job || s.gen.state != .running then s else
+    let report := Report.worldRule "The world answers" (p.proposal.summary ++ " " ++ p.proposal.moment)
+    { s with
+      session := { s.session with game := p.game, reports := s.session.reports.push report }
+      gen := { s.gen with state := .idle, steps := #[] } }
+
+/-- Try bounded numeric counter adjustments on screening data only, for at most six seconds.
+Every chosen variant still needs an independent, source-bound admission certificate. -/
+def tuneChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
+    (delta : Rat) (validated : List String) : IO (Option WorldChange.Prepared) := do
+  let started ← IO.monoMsNow
+  let mut seen := reprStr (p.proposal.equipment, p.proposal.requestedRules, p.proposal.rules, p.proposal.scenes) :: validated
+  for quarters in [2, 1, 3, 5, 6, 8, 12, 16] do
+    if !(← jobWanted ref job) || (← IO.monoMsNow) - started > 6000 then return none
+    let proposal := p.proposal.tune quarters
+    let signature := reprStr (proposal.equipment, proposal.requestedRules, proposal.rules, proposal.scenes)
+    if seen.contains signature then continue
+    seen := signature :: seen
+    match proposal.prepare p.before with
+    | .error _ => continue
+    | .ok candidate =>
+      let counts := Probability.sampleCounts candidate.candidate 1 Probability.validationGames
+      if decide (Probability.ValidationAccepted candidate.candidate.horizon counts delta candidate.candidate.elapsed) then
+        return some candidate
+  return none
+
+/-- Generate a fun patch, screen local counter variants, then validate a frozen proposal. -/
+def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
+    (job : Nat) (before : Game) (wish : String) : IO Unit := do
+  let initial := WorldChange.context before wish (Probability.attemptRisk (← ref.get).changeChecks)
+  let mut messages := [userTurn initial]
+  let mut revision := 0
+  let mut gift : Option (Option EquipmentRule × List CombatRule) := none
+  let mut validated : List String := []
+  let mut supportReviewed := false
+  while ← jobWanted ref job do
+    revision := revision + 1
+    if !(← addStep ref job { text := s!"The GM is shaping your change and its counter-rule (proposal {revision})..." }) then return
+    let reply ← callApi cfg children (jobOwner job) (jobWanted ref job)
+      (WorldChange.request messages) [s!"change-{revision}", "change"]
+    if !(← jobWanted ref job) then return
+    let (errors, content) ← match reply with
+      | .refused =>
+        endJob ref job .refused { text := "The GM cannot grant that request. Your game is unchanged." }
+        return
+      | .failed why =>
+        endJob ref job .failed { text := "The GM could not be reached. Your game is unchanged.", errors := [why] }
+        return
+      | .cutOff content => pure (["The patch was cut off. Send a smaller patch."], content)
+      | .ok text content =>
+        match WorldChange.Proposal.parse before.hero.name text with
+        | .error why => pure ([why], content)
+        | .ok proposal =>
+          if !proposal.supported then
+            if !supportReviewed then
+              supportReviewed := true
+              if !(← addStep ref job { text := "The GM is looking for another way to make your mechanic work..." }) then return
+              pure ([WorldChange.supportReview], content)
+            else
+              endJob ref job .refused { text := proposal.summary.take 800 |>.toString }
+              return
+          else if gift.isSome && gift.getD (none, []) != (proposal.equipment, proposal.requestedRules) then
+            pure (["Keep the requested equipment and requested rules exactly as first proposed. Balance the counter-rules and future encounters instead."], content)
+          else match proposal.prepare before with
+          | .error errs => pure (errs, content)
+          | .ok prepared =>
+            gift := some (proposal.equipment, proposal.requestedRules)
+            let signature := reprStr (proposal.equipment, proposal.requestedRules, proposal.rules, proposal.scenes)
+            if validated.contains signature then
+              pure (["This proposal already failed validation. Make an actual revision; do not ask for new dice."], content)
+            else
+              let index := (← ref.get).changeChecks
+              let delta := Probability.attemptRisk index
+              if !(← addStep ref job { text := "Checking the updated adventure from the beginning, including combat..." }) then return
+              let screen := Probability.sampleCounts prepared.candidate 1 Probability.validationGames
+              if !(← jobWanted ref job) then return
+              let picked ← if decide (Probability.ValidationAccepted prepared.candidate.horizon screen delta prepared.candidate.elapsed) then
+                  pure (some prepared)
+                else do
+                  if !(← addStep ref job { text := "Balancing the counter-rule while keeping your requested mechanic..." }) then pure none
+                  else tuneChange ref job prepared delta validated
+              match picked with
+              | none =>
+                pure (Probability.failedRows prepared.candidate.horizon screen delta prepared.candidate.elapsed, content)
+              | some prepared =>
+                let signature := reprStr (prepared.proposal.equipment, prepared.proposal.requestedRules,
+                  prepared.proposal.rules, prepared.proposal.scenes)
+                let spent ← ref.modifyGet fun s =>
+                  if s.gen.job != job || s.gen.state != .running || s.changeChecks != index then (false, s)
+                  else (true, { s with changeChecks := index + 1 })
+                if !spent then return
+                if !(← addStep ref job { text := "The screen passed. Checking a fresh validation batch..." }) then return
+                let seed ← if cfg.fake.isSome then pure Probability.validationSeed else randomSeed
+                validated := signature :: validated
+                let (counts, accepted) := prepared.admit seed delta
+                if !(← jobWanted ref job) then return
+                match accepted with
+                | some proof =>
+                  applyChange ref job prepared seed delta proof
+                  return
+                | none =>
+                  let feedback := Probability.failedRows prepared.candidate.horizon counts delta prepared.candidate.elapsed ++
+                    ["The validated counter-rules were: " ++
+                      (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress]
+                  pure (feedback, content)
+    if !(← addStep ref job { text := "The GM is revising the world's response; your game is still paused.", errors := errors.take 20 }) then return
+    let risk := Probability.attemptRisk (← ref.get).changeChecks
+    let locked := match gift with
+      | none => ""
+      | some (equipment, requested) =>
+        "\nKeep these requested effects exactly: " ++ (json% {
+          equipment: $(equipment.map WorldChange.equipmentJson),
+          requestedRules: $(requested.map WorldChange.ruleJson) }).compress
+    messages := [userTurn initial, assistantTurn content, userTurn (WorldChange.correction errors risk ++ locked)]
+
+/-- Freeze an active session atomically before asking the GM for a rule change. -/
+def startChange (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
+    (wish : String) : IO (Except String Unit) := do
+  let result : Except String (Nat × Game) ← ref.modifyGet fun s =>
+    if s.gen.state == .running then (.error "The GM is already working.", s)
+    else if !WorldChange.available s.session.game then
+      (.error "Start an Adventure first. Changes need a living Character in a Scene or Fight.", s)
+    else
+      let job := s.gen.job + 1
+      (.ok (job, s.session.game), { s with gen := { job, state := .running, wish, mode := "change" } })
+  match result with
+  | .error why => return .error why
+  | .ok (job, before) =>
+    let _ ← IO.asTask (prio := .dedicated) do
+      try generateChange cfg children ref job before wish
+      catch e => endJob ref job .failed { text := "The change could not finish. Your game is unchanged.", errors := [toString e] }
+    return .ok ()
+
 /-- Stop the work on the current Wish, and kill its `curl` processes. -/
 def cancelWish (children : Children) (ref : IO.Ref ServerState) : IO Unit := do
   -- First move the job on, so the old job sees that it is not wanted. Then kill its processes.
@@ -651,7 +877,9 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
                          drawing: $(s.source.drawing.length), failed: $(failedPictures cfg s), off: $(!cfg.picturesOn) }
   let gen := json% {
     available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps),
-    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender)
+    provider: $(if cfg.fake.isSome then "recorded" else if cfg.apiKey.isSome then "api"
+      else if cfg.codex then "codex" else if cfg.claudeCode then "claude-code" else "unavailable"),
+    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender), mode: $(s.gen.mode)
   }
   let saved ← if g.game.phase.name == "title" then savedList cfg else pure (Json.arr #[])
   let v := base.setObjVal! "pictures" pictures
@@ -659,6 +887,8 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "saved" saved
     |>.setObjVal! "live" (toJson s.source.savedId.isSome)
     |>.setObjVal! "background" (toJson s.source.background)
+    |>.setObjVal! "canChange" (toJson (WorldChange.available g.game))
+    |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map WorldChange.ruleJson))
   return v.compress
 
 /-! ## Responses -/
@@ -865,16 +1095,29 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       replyJson .ok (← view)
     | ["api", "wish"] =>
       if !cfg.canWish then
-        return ← replyJson .badRequest (← view (error := some "Generation is unavailable: no API key."))
+        return ← replyJson .badRequest (← view (error := some "The GM needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."))
       match parseWish body with
       | .error e => replyJson .badRequest (← view (error := some e))
       | .ok (wish, name, gender) =>
         if !(← startWish cfg children state wish name gender) then return ← busy
         replyJson .ok (← view)
+    | ["api", "change"] =>
+      if !cfg.canWish then
+        return ← replyJson .badRequest (← view (error := some "The GM needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."))
+      match parseWish body with
+      | .error e => replyJson .badRequest (← view (error := some e))
+      | .ok (wish, _, _) =>
+        match ← startChange cfg children state wish with
+        | .error why => replyJson .conflict (← view (error := some why))
+        | .ok () => replyJson .ok (← view)
     | ["api", "retry"] =>
       let g := (← state.get).gen
       if !cfg.canWish || g.wish.isEmpty then
         return ← replyJson .badRequest (← view (error := some "There is no Wish to try again."))
+      if g.mode == "change" then
+        match ← startChange cfg children state g.wish with
+        | .error why => return ← replyJson .conflict (← view (error := some why))
+        | .ok () => return ← replyJson .ok (← view)
       if !(← startWish cfg children state g.wish g.name g.gender) then return ← busy
       replyJson .ok (← view)
     | ["api", "load"] =>
@@ -977,7 +1220,9 @@ def main (args : List String) : IO UInt32 := do
       "Pictures are off: live Adventures show a plain backdrop, and the DM is not asked to draw.")
   let apiKey := (← IO.getEnv "ANTHROPIC_API_KEY").filter (!·.isEmpty)
   let fake := (← IO.getEnv "RPG_FAKE_API").filter (!·.isEmpty) |>.map System.FilePath.mk
-  let cfg : GameConfig := { host, port, apiKey, fake, savedCache := ← IO.mkRef [], picturesOn }
+  let codex ← if apiKey.isNone && fake.isNone then codexReady else pure false
+  let claudeCode ← if apiKey.isNone && fake.isNone && !codex then claudeCodeReady else pure false
+  let cfg : GameConfig := { host, port, apiKey, codex, claudeCode, fake, savedCache := ← IO.mkRef [], picturesOn }
   let state ← IO.mkRef ({ session := Session.start builtinGame seed } : ServerState)
   let children ← IO.mkRef #[]
   let addr : Net.SocketAddress := .v4 ⟨ip, port.toUInt16⟩
@@ -986,8 +1231,12 @@ def main (args : List String) : IO UInt32 := do
     IO.println s!"The game is ready at http://{host}:{port}/ (first seed {seed})."
     if let some dir := fake then
       IO.println s!"TEST MODE: Wishes read recorded replies from {dir}. The API is not called."
+    else if codex then
+      IO.println "The GM uses your signed-in Codex CLI. Wishes and in-game rule changes are available."
+    else if claudeCode then
+      IO.println "The GM uses your signed-in Claude CLI. Wishes and in-game rule changes are available."
     else if apiKey.isNone then
-      IO.println "No ANTHROPIC_API_KEY is set, so Wishes are off. The built-in Adventure works."
+      IO.println "The GM needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY. The built-in Adventure works."
     IO.println "Press Ctrl-C to stop."
     (← IO.getStdout).flush
     server.waitShutdown

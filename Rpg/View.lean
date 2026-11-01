@@ -49,7 +49,11 @@ def withWeaponText (th : ThemeNames) (w : Weapon) : String :=
 
 /-- The damage of a being's weapon as text, such as "1d+2 cutting". -/
 def damageText (rules : RuleSet) (b : Being) : String :=
-  s!"{(rules.damage b.weapon b.st).show} {b.weapon.damageType.name}"
+  s!"{(rules.weaponDice b).show} {b.weapon.damageType.name}"
+
+/-- Local equipment names apply to their owner, without renaming other beings' weapons. -/
+def weaponText (rules : RuleSet) (th : ThemeNames) (b : Being) : String :=
+  ((rules.equipmentFor b).map (·.name)).getD (th.weapon b.weapon)
 
 /-- The Character panel: attributes, skills, Gear, and HP. Names are Theme Names. -/
 def characterJson (rules : RuleSet) (th : ThemeNames) (b : Being) (hp : Int) : Json :=
@@ -57,9 +61,9 @@ def characterJson (rules : RuleSet) (th : ThemeNames) (b : Being) (hp : Int) : J
     name: $(b.name), st: $(b.st), dx: $(b.dx), iq: $(b.iq), ht: $(b.ht),
     hp: $(hp), maxHP: $(rules.maxHP b), dodge: $(rules.dodge b), speed: $(speedText rules b),
     skills: $(b.skills.map fun (s, l) => json% { name: $(th.skill s), level: $(l) }),
-    weapon: $(th.weapon b.weapon),
+    weapon: $(weaponText rules th b),
     damage: $(damageText rules b),
-    attack: $(rules.attackLevel b),
+    attack: $(rules.weaponLevel b),
     armor: $(th.armorName b.armor), dr: $(rules.dr b)
   }
 
@@ -67,15 +71,15 @@ def characterJson (rules : RuleSet) (th : ThemeNames) (b : Being) (hp : Int) : J
 def fighterJson (rules : RuleSet) (th : ThemeNames) (who : Actor) (f : Fighter) : Json :=
   json% {
     actor: $(who), name: $(f.being.name), hp: $(f.hp), maxHP: $(rules.maxHP f.being),
-    alive: $(f.alive), maneuver: $(f.maneuver.label), weapon: $(th.weapon f.being.weapon),
+    alive: $(f.alive), maneuver: $(f.maneuver.label), weapon: $(weaponText rules th f.being),
     damage: $(damageText rules f.being),
-    attack: $(rules.attackLevel f.being), dodge: $(f.dodge rules), dr: $(rules.dr f.being)
+    attack: $(rules.weaponLevel f.being), dodge: $(f.dodge rules), dr: $(rules.dr f.being)
   }
 
 /-- A card at the start of a Fight, with the weapon's Theme Name. -/
 def cardJson (th : ThemeNames) (c : Card) : Json :=
   json% {
-    name: $(c.name), hp: $(c.hp), maxHP: $(c.maxHP), weapon: $(th.weapon c.weapon),
+    name: $(c.name), hp: $(c.hp), maxHP: $(c.maxHP), weapon: $(c.equipmentName.getD (th.weapon c.weapon)),
     damage: $(c.damage), dr: $(c.dr)
   }
 
@@ -86,10 +90,11 @@ def reportJson (th : ThemeNames) : Report → Json
     json% { successRoll: { who: $(who), what: $(rollText th t m), roll: $(roll) } }
   | .cannotTry who t m level =>
     json% { cannotTry: { who: $(who), what: $(rollText th t m), level: $(level) } }
-  | .attack attacker attackerName defender defenderName w roll =>
+  | .attack attacker attackerName defender defenderName w equipmentName roll =>
     json% { attack: {
       attacker: $(attacker), attackerName: $(attackerName), defender: $(defender),
-      defenderName: $(defenderName), weapon: $(th.weapon w), withWeapon: $(withWeaponText th w),
+      defenderName: $(defenderName), weapon: $(equipmentName.getD (th.weapon w)),
+      withWeapon: $(equipmentName.map (fun name => s!"with {name}") |>.getD (withWeaponText th w)),
       roll: $(roll) } }
   | .fightStarts hero foes =>
     json% { fightStarts: { hero: $(cardJson th hero), foes: $(foes.map (cardJson th)) } }

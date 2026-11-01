@@ -116,3 +116,33 @@ svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="12
 write("picture", stream(json.dumps({"svg": svg})))
 write("picture-4", stream(json.dumps({"svg": svg.replace("</svg>", "<script>alert(1)</script></svg>")})))
 write("refusal", stream(None, stop="refusal"))
+
+# A live rule change for Mara at the Shore. The first reply wrongly claims it is
+# unsupported, the second omits a counter-rule, and the third implements the grant.
+change = {
+    "supported": True,
+    "summary": "You catch a Stormglass Flamethrower, its enchanted sight guiding your aim.",
+    "moment": "Wounded wreckers rally through the smoke. Finish them or guard behind a Cinder Veil.",
+    "equipment": {"weapon": "flamethrower", "name": "Stormglass Flamethrower",
+                  "attackLevel": 12, "dice": 3, "add": 0},
+    "requestedRules": [],
+    "rules": [
+        {"name": "Scorched Fury", "description": "Enemies at half HP or less gain +3 to hit and +2 damage. Finish them before they rally!",
+         "side": "foes", "trigger": "wounded", "hitBonus": 3, "damageBonus": 2, "armorBonus": 0},
+        {"name": "Cinder Veil", "description": "All-Out Defense wraps you in ash: +2 armor until your next maneuver.",
+         "side": "hero", "trigger": "guarding", "hitBonus": 0, "damageBonus": 0, "armorBonus": 2},
+    ],
+    "scenes": [],
+}
+bad_change = copy.deepcopy(change)
+bad_change["rules"] = []
+unsupported_change = {
+    "supported": False, "summary": "I cannot represent that equipment.",
+    "moment": "", "equipment": None, "requestedRules": [], "rules": [], "scenes": [],
+}
+write("change-1", stream(json.dumps(unsupported_change)))
+write("change-2", stream(json.dumps(bad_change)))
+if "--tuning" in sys.argv[2:]:
+    change["rules"][0].update(trigger="againstFlame", hitBonus=4, damageBonus=6, armorBonus=2)
+    change["rules"][0]["description"] = "Enemies facing your flame gain +4 to hit, +6 damage, and 2 armor."
+write("change-3", stream(json.dumps(change)))

@@ -72,13 +72,13 @@ inductive Phase where
 
 /-- One game of an Adventure, played by one Character. -/
 structure Game where
-  /-- The rules of the Adventure. They do not change during play. -/
+  /-- The rules of the Adventure. Checked live changes can replace local equipment and effects. -/
   rules : RuleSet
   /-- The Character. -/
   hero : Being
   /-- The Character is a legal build under `rules`. -/
   heroLegal : LegalCharacter rules hero
-  /-- The Adventure. It does not change during play. -/
+  /-- The Adventure. Checked live changes can replace future scenes. -/
   adventure : Adventure
   /-- The Adventure is legal for the Character under `rules`. -/
   legal : LegalAdventure rules hero adventure

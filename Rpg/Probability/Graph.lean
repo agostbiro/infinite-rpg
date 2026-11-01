@@ -1,4 +1,5 @@
 import Rpg.Probability.Combat
+import Rpg.Game
 
 /-!
 An adventure and a character determine one graph. One turn is one scene choice,
@@ -14,6 +15,7 @@ inductive Node where
   | ended
   | dead
   | stalled
+  | resuming
   deriving DecidableEq, Repr
 
 /-- A finitely supported rational transition kernel with a distinguished initial state. -/
@@ -54,6 +56,7 @@ def adventureGraph (rules : RuleSet) (hero : Being) (a : Adventure) : Graph wher
     | .dead => pure .dead
     | .ended => pure .ended
     | .stalled => pure .stalled
+    | .resuming => pure .stalled
     | .scene id hp => match a.scene? id with
       | none => pure .stalled
       | some scene => if scene.choices.isEmpty then pure .ended
@@ -75,7 +78,30 @@ def Graph.endedBy (g : Graph) (n : Nat) : Rat :=
 /-- Probability of remaining in play; a stalled fight never terminates. -/
 def Graph.activeAt (g : Graph) (n : Nat) : Rat :=
   (g.after n).mass fun node => match node with
-    | .scene _ _ | .stalled => true
+    | .scene _ _ | .stalled | .resuming => true
     | _ => false
+
+/-- An exact checkpoint between choices or at the Character's turn in a Fight. -/
+inductive ResumePoint where
+  | scene (id : SceneId) (hp : Int)
+  | fight (phase : FightPhase)
+
+/-- Resolve the unfinished round, then the remaining full rounds with exact odds. -/
+def remainingCombat (rules : RuleSet) (f : FightPhase) : Distribution CombatResult :=
+  let next := (Prod.fst <$> remainingRoundWith (attackDistribution rules) heroPolicy f.order f.state).collect
+  (next.bind fun s => (solveCombat rules heroPolicy f.order s).run' []).collect
+
+/-- The continuation graph starts at the saved HP and position, including a paused Fight. -/
+def continuationGraph (a : AdventureDefinition) (point : ResumePoint) : Graph :=
+  let base := adventureGraph a.rules a.hero a.story
+  match point with
+  | .scene id hp => { base with start := arrive a.story id hp }
+  | .fight f =>
+    { start := .resuming, step := fun node => match node with
+      | .resuming => (remainingCombat a.rules f).bind fun result => pure (match result with
+        | .won hp => arrive a.story f.onWin hp
+        | .died => .dead
+        | .stalled => .stalled)
+      | n => base.step n }
 
 end Rpg.Probability
