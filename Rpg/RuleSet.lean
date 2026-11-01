@@ -1,4 +1,4 @@
-import Rpg.Rules
+import Rpg.Mechanic
 
 /-!
 # The rules of one adventure
@@ -66,25 +66,62 @@ structure RuleSet where
   halveDodgeBelowThird : Bool := true
   /-- `true`: the Character wins a tie in turn order that is left after Speed and DX. -/
   heroWinsInitiativeTies : Bool := true
+  /-- Equipment granted inside this Adventure, including its actual attack and damage values. -/
+  equipment : List EquipmentRule := []
+  /-- Named conditional effects active only in this Adventure. -/
+  combatRules : List CombatRule := []
+
+/-- Equipment affects only its named owner using its specified weapon. -/
+def RuleSet.equipmentFor (rules : RuleSet) (b : Being) : Option EquipmentRule :=
+  rules.equipment.find? fun e => e.owner == b.name && e.weapon == b.weapon
+
+/-- The attack level of the equipped weapon, before maneuvers and conditional effects. -/
+def RuleSet.weaponLevel (rules : RuleSet) (b : Being) : Int :=
+  match rules.equipmentFor b with
+  | some e => e.attackLevel
+  | none => rules.attackLevel b
+
+/-- Equipment damage uses the same dice in play, simulation, and the graph. -/
+def RuleSet.weaponDice (rules : RuleSet) (b : Being) : Dice :=
+  match rules.equipmentFor b with
+  | some e => ⟨e.dice, e.add⟩
+  | none => rules.damage b.weapon b.st
+
+/-- Remove the two data fields that an in-play proposal is allowed to change. -/
+def RuleSet.core (rules : RuleSet) : RuleSet :=
+  { rules with equipment := [], combatRules := [] }
 
 /-- Every possible sum of n fair d6, including zero when n is zero. -/
 def possibleDiceSums (n : Nat) : List Nat :=
   (List.range (5 * n + 1)).map (· + n)
 
-/-- Being `a` can hurt being `b`: `a` can try an attack roll, and some dice results give
-an attack that hits, gets past the Dodge of `b`, and does injury. The test uses this
-adventure's rules for success, Dodge, damage, DR, and injury. -/
+/-- Use every negative hit effect for the state-independent fight legality check. -/
+def RuleSet.checkedAttackLevel (rules : RuleSet) (b : Being) : Int :=
+  rules.weaponLevel b + (rules.combatRules.map fun r => min 0 r.hitBonus).sum
+
+/-- Use every negative damage effect for the state-independent fight legality check. -/
+def RuleSet.checkedDamage (rules : RuleSet) (b : Being) : Dice :=
+  let dice := rules.weaponDice b
+  { dice with add := dice.add + (rules.combatRules.map fun r => min 0 r.damageBonus).sum }
+
+/-- Include all possible extra armor, even when some triggers or sides cannot coincide. -/
+def RuleSet.checkedArmor (rules : RuleSet) (b : Being) : Nat :=
+  rules.dr b + (rules.combatRules.map (·.armorBonus)).sum
+
+/-- Check for an attack that can hit, pass Dodge, and cause injury with conservative effects.
+Negative hit/damage effects and all extra armor count regardless of their side or trigger;
+positive offensive effects do not help this check. This can reject some playable fights. -/
 def RuleSet.canHurt (rules : RuleSet) (a b : Being) : Prop :=
-  rules.minimumRollLevel ≤ rules.attackLevel a ∧
+  rules.minimumRollLevel ≤ rules.checkedAttackLevel a ∧
   ∃ roll ∈ possibleDiceSums 3,
-    (rules.successRoll (rules.attackLevel a) roll).succeeded = true ∧
-    ((rules.successRoll (rules.attackLevel a) roll) = .criticalSuccess ∨
+    (rules.successRoll (rules.checkedAttackLevel a) roll).succeeded = true ∧
+    ((rules.successRoll (rules.checkedAttackLevel a) roll) = .criticalSuccess ∨
       ∃ defense ∈ possibleDiceSums 3,
         (rules.successRoll (rules.dodge b) defense).succeeded = false) ∧
-    ∃ damageRoll ∈ (if roll = 3 then [6 * (rules.damage a.weapon a.st).count]
-        else possibleDiceSums (rules.damage a.weapon a.st).count),
-      0 < rules.injury a.weapon.damageType (rules.dr b)
-        (rules.basicDamage (rules.damage a.weapon a.st) a.weapon.damageType damageRoll)
+    ∃ damageRoll ∈ (if roll = 3 then [6 * (rules.checkedDamage a).count]
+        else possibleDiceSums (rules.checkedDamage a).count),
+      0 < rules.injury a.weapon.damageType (rules.checkedArmor b)
+        (rules.basicDamage (rules.checkedDamage a) a.weapon.damageType damageRoll)
 
 instance (rules : RuleSet) (a b : Being) : Decidable (rules.canHurt a b) := by
   unfold RuleSet.canHurt

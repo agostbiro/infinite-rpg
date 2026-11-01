@@ -1,4 +1,5 @@
-import Rpg.Prompt
+import Rpg.WorldChangePrompt
+import Rpg.GmCli
 import Rpg.Catalog
 import Std.Http
 
@@ -26,8 +27,11 @@ Routes:
   new seed. The page then shows the Front Page.
 * `POST /api/builtin`: go back to The Drowned Lighthouse.
 * `POST /api/wish`: ask the DM for an Adventure. The body is `{"wish", "name", "gender"}`.
-* `POST /api/retry`: ask again with the last Wish, after 3 failed tries.
-* `POST /api/dismiss`: hide the result of a Wish: failed, refused, or ready to play.
+* `POST /api/change`: request an adventure rule change at the current checkpoint, with `{"wish"}`.
+* `POST /api/retry`: ask again with the last Wish after 3 failed tries, or with the last live change
+  after it failed.
+* `POST /api/dismiss`: hide the result of a Wish (failed, refused, or ready to play), or of a failed
+  or refused live change.
 * `POST /api/cancel`: stop the DM.
 * `POST /api/load`: play a saved Adventure. The body is `{"id"}`. It is checked again first.
 * `GET /saved/<id>/<name>.svg`: a Picture of the saved Adventure in play, if it passed the check.
@@ -129,6 +133,18 @@ structure Generation where
   wish : String := ""
   name : String := ""
   gender : String := ""
+  /-- Wishes create games; changes revise the paused game. -/
+  mode : String := "wish"
+
+/-- The work state after the Player leaves the game in play. A live change belongs to the game
+that it changed, so its result goes away. The result of a Wish stays. -/
+def Generation.afterLeave (g : Generation) : Generation :=
+  if g.mode == "change" then { g with state := .idle, steps := #[], mode := "wish", wish := "" } else g
+
+-- A failed live change does not show on the Front Page. A failed Wish still shows.
+#guard ({ state := .failed, mode := "change", wish := "a flamethrower" } : Generation).afterLeave.state == .idle
+#guard ({ state := .failed, mode := "change", wish := "a flamethrower" } : Generation).afterLeave.wish == ""
+#guard ({ state := .failed, mode := "wish", wish := "the Shire" } : Generation).afterLeave.state == .failed
 
 /-- Everything the server keeps. -/
 structure ServerState where
@@ -137,6 +153,8 @@ structure ServerState where
   runs : Nat := 0
   source : Source := {}
   gen : Generation := {}
+  /-- Validation attempts for live changes. Cancellation never refunds their error budget. -/
+  changeChecks : Nat := 0
 
 /-- What an Adventure card on the front page shows. -/
 structure AdventureCard where
@@ -158,24 +176,52 @@ structure SavedEntry where
   card : AdventureCard
   why : Option String
 
+/-- The most time for one live change, in milliseconds (3 minutes). -/
+def maxChangeMs : Nat := 180000
+
 /-- Settings that do not change while the server runs. -/
 structure GameConfig where
   host : String
   port : Nat
   /-- The Claude API key, from `ANTHROPIC_API_KEY`. -/
   apiKey : Option String
+  /-- Use the installed, signed-in Claude CLI when there is no API key. -/
+  claudeCode : Bool := false
+  /-- A signed-in Codex CLI can also generate the same checked game data. -/
+  codex : Bool := false
   /-- Test hook: a folder of recorded API replies to use instead of calling the API
   (`RPG_FAKE_API`). -/
   fake : Option System.FilePath
   /-- The saved list, checked once per version of each file, so the Front Page stays fast. -/
   savedCache : IO.Ref (List SavedEntry)
+  /-- The time limit of one live change, in milliseconds. Only the test hook can make it shorter
+  (`RPG_CHANGE_LIMIT_MS`, read only with `RPG_FAKE_API`). -/
+  changeLimitMs : Nat := maxChangeMs
   /-- `true` if the Picture check (`scripts/check_pictures.py`) could run when the server started.
   If it is `false`, Pictures are off: the server never asks the DM for a Picture, because it could
   never serve one. -/
   picturesOn : Bool
 
 /-- `true` if the server can ask the DM for an Adventure. -/
-def GameConfig.canWish (c : GameConfig) : Bool := c.apiKey.isSome || c.fake.isSome
+def GameConfig.canWish (c : GameConfig) : Bool := c.apiKey.isSome || c.codex || c.claudeCode || c.fake.isSome
+
+/-- Check the existing Codex login without extracting its credentials. -/
+def codexReady : IO Bool := do
+  try
+    let out ← IO.Process.output { cmd := "codex", args := #["login", "status"] }
+    return out.exitCode == 0
+  catch _ => return false
+
+/-- Detect an existing login without reading or copying its credentials. The CLI runs in an
+empty temporary folder, so it does not read this repository's settings. -/
+def claudeCodeReady : IO Bool := do
+  try
+    IO.FS.withTempDir fun dir => do
+      let out ← IO.Process.output
+        { cmd := "claude", args := #["--safe-mode", "auth", "status"], cwd := some dir }
+      return out.exitCode == 0 &&
+        (Json.parse out.stdout >>= (·.getObjValAs? Bool "loggedIn")).toOption.getD false
+  catch _ => return false
 
 /-- The running `curl` processes. Each has an owner, such as "job-3" for a Wish or
 "pictures-2-the-shire" for the Pictures of a saved Adventure, so the server can stop them. -/
@@ -438,7 +484,9 @@ def curlOnce (children : Children) (owner : String) (wanted : IO Bool) (key : St
   h.putStr body
   h.flush
   try
+    -- A new process group, so `kill` also ends any helper process.
     let child ← IO.Process.spawn {
+      setsid := true,
       cmd := "curl",
       -- The reply streams, so it is rarely idle for long. Stop if it sends less than 1 byte a
       -- second for 10 minutes (a long, quiet think can be slow), and stop after 30 minutes in all.
@@ -446,13 +494,16 @@ def curlOnce (children : Children) (owner : String) (wanted : IO Bool) (key : St
         "https://api.anthropic.com/v1/messages",
         "-H", "@-", "--data-binary", s!"@{bodyPath}", "-w", "\n%{http_code}"],
       stdin := .piped, stdout := .piped, stderr := .piped }
+    -- Keep the kill of the spawned child: in Lean 4.35, `takeStdin` drops the `setsid` flag, so
+    -- `kill` on the child it returns ends only the one process, not its process group.
+    let killGroup := child.kill
     let (stdin, child) ← child.takeStdin
     stdin.putStr (apiHeaders key)
     stdin.flush
     let uid ← IO.monoNanosNow
-    children.modify (·.push (owner, uid, child.kill))
+    children.modify (·.push (owner, uid, killGroup))
     -- A Cancel between the check in `callApi` and the line above did not see this process.
-    if !(← wanted) then try child.kill catch _ => pure ()
+    if !(← wanted) then try killGroup catch _ => pure ()
     let out ← IO.asTask child.stdout.readToEnd .dedicated
     let err ← child.stderr.readToEnd
     let code ← child.wait
@@ -469,6 +520,78 @@ def curlOnce (children : Children) (owner : String) (wanted : IO Bool) (key : St
 /-- The reply when the work was stopped, for example by Cancel. -/
 def stoppedReply : Reply := .failed "stopped"
 
+/-- Generate data through the local login. Cancel kills this child just like an API request.
+The CLI runs in an empty temporary folder, as Codex does, so it never reads this repository. -/
+def callClaudeCode (children : Children) (owner : String) (wanted : IO Bool) (req : Json) : IO Reply := do
+  try
+    IO.FS.withTempDir fun dir => do
+      -- A new process group, so Cancel and the time limit also end any helper that the CLI
+      -- starts. Otherwise a helper that keeps the output pipes open blocks `readToEnd`.
+      let child ← IO.Process.spawn {
+        setsid := true,
+        cmd := "claude", args := GmCli.claudeArgs req, cwd := some dir,
+        stdin := .piped, stdout := .piped, stderr := .piped }
+      -- Keep the kill of the spawned child: in Lean 4.35, `takeStdin` drops the `setsid` flag, so
+      -- `kill` on the child it returns ends only the one process, not its process group.
+      let killGroup := child.kill
+      let (stdin, child) ← child.takeStdin
+      let uid ← IO.monoNanosNow
+      children.modify (·.push (owner, uid, killGroup))
+      try
+        if !(← wanted) then
+          killGroup
+          return stoppedReply
+        -- The scoped handle closes before waiting, so print mode receives EOF.
+        (do stdin.putStr (GmCli.prompt req); stdin.flush : IO Unit)
+        let out ← IO.asTask child.stdout.readToEnd .dedicated
+        let err ← child.stderr.readToEnd
+        let code ← child.wait
+        let body ← IO.ofExcept out.get
+        if !(← wanted) then return stoppedReply
+        if code != 0 && body.trimAscii.isEmpty then
+          return .failed s!"The local Claude command failed ({code}): {err.take 400}"
+        return GmCli.parseClaudeReply body
+      finally
+        children.modify (·.filter (·.2.1 != uid))
+  catch e => return .failed s!"The local Claude command could not run: {e}"
+
+/-- Generate a proposal with the existing Codex login, without access to the repository. -/
+def callCodex (children : Children) (owner : String) (wanted : IO Bool) (req : Json) : IO Reply := do
+  try
+    IO.FS.withTempDir fun dir => do
+      let schema := dir / "schema.json"
+      let result := dir / "proposal.json"
+      IO.FS.writeFile schema (req.getObjValD "output_config" |>.getObjValD "format" |>.getObjValD "schema").compress
+      -- A new process group, as for the Claude CLI.
+      let child ← IO.Process.spawn {
+        setsid := true,
+        cmd := "codex", args := GmCli.codexArgs schema result, cwd := some dir,
+        stdin := .piped, stdout := .piped, stderr := .piped }
+      -- Keep the kill of the spawned child: in Lean 4.35, `takeStdin` drops the `setsid` flag, so
+      -- `kill` on the child it returns ends only the one process, not its process group.
+      let killGroup := child.kill
+      let (stdin, child) ← child.takeStdin
+      let uid ← IO.monoNanosNow
+      children.modify (·.push (owner, uid, killGroup))
+      try
+        if !(← wanted) then
+          killGroup
+          return stoppedReply
+        stdin.putStr ("Act only as a game master producing JSON data. Do not use tools.\n" ++
+          GmCli.textContent (req.getObjValD "system") ++ "\n" ++ GmCli.prompt req)
+        stdin.flush
+        let out ← IO.asTask child.stdout.readToEnd .dedicated
+        let err ← child.stderr.readToEnd
+        let code ← child.wait
+        let _ ← IO.ofExcept out.get
+        if !(← wanted) then return stoppedReply
+        if code != 0 then return .failed s!"Codex could not generate the proposal ({code}): {err.takeEnd 1200}"
+        if !(← result.pathExists) then return .failed "Codex returned no game proposal."
+        return GmCli.parseCodexReply (← IO.FS.readFile result)
+      finally
+        children.modify (·.filter (·.2.1 != uid))
+  catch e => return .failed s!"The local Codex command could not run: {e}"
+
 /-- Send one request to the API, or read a recorded reply in test mode. `fixtures` names the
 recorded replies to try, such as "adventure-2". Busy or failing servers get two more tries.
 `wanted` says if the work is still wanted. It is checked before each try and after each try,
@@ -484,7 +607,10 @@ def callApi (cfg : GameConfig) (children : Children) (owner : String) (wanted : 
       let p := dir / s!"{f}.sse"
       if ← p.pathExists then return (parseStreamReply (← IO.FS.readFile p)).2
     return .failed s!"test mode: no recorded reply {fixtures.headD ""}.sse in {dir}"
-  let some key := cfg.apiKey | return .failed "ANTHROPIC_API_KEY is not set"
+  let some key := cfg.apiKey |
+    if cfg.codex then return ← callCodex children owner wanted req
+    else if cfg.claudeCode then return ← callClaudeCode children owner wanted req
+    else return .failed "The Dungeon Master needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."
   let body := req.compress
   let mut last := Reply.failed "no reply"
   for wait in [0, 5000, 20000] do
@@ -528,7 +654,9 @@ def endJob (ref : IO.Ref ServerState) (job : Nat) (st : GenState) (last : Step) 
 
 /-- Add a step to job `job`. -/
 def addStep (ref : IO.Ref ServerState) (job : Nat) (st : Step) : IO Bool :=
-  updateJob ref job fun g => { g with steps := g.steps.push st }
+  updateJob ref job fun g =>
+    let steps := g.steps.push st
+    { g with steps := steps.extract (steps.size - 40) steps.size }
 
 /-- The folder where drawing run `run` writes a Picture before the check. Each run has its own
 folder, so one run never deletes another run's file. The name is "drawing-" and digits only. -/
@@ -700,6 +828,233 @@ def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState
       endJob ref job .failed { text := "Something went wrong.", errors := [toString e] }
   return true
 
+/-- Install only a source-bound admitted adventure. The original session dice and log stay. -/
+def applyChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
+    (seed : Nat) (delta : Rat) (_accepted : WorldChange.Admission p seed delta) : IO Unit := do
+  ref.modify fun s =>
+    if s.gen.job != job || s.gen.state != .running then s else
+    let report := Report.worldRule "The world answers" (p.proposal.summary ++ " " ++ p.proposal.moment)
+    { s with
+      session := { s.session with game := p.game, reports := s.session.reports.push report }
+      gen := { s.gen with state := .idle, steps := #[] } }
+
+/-- Try bounded numeric counter adjustments on screening data only, for at most six seconds.
+Every chosen variant still needs an independent, source-bound admission certificate. -/
+def tuneChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
+    (delta : Rat) (validated : List String) : IO (Option WorldChange.Prepared) := do
+  let started ← IO.monoMsNow
+  let mut seen := reprStr (p.proposal.equipment, p.proposal.requestedRules, p.proposal.rules, p.proposal.scenes) :: validated
+  for quarters in [2, 1, 3, 5, 6, 8, 12, 16] do
+    if !(← jobWanted ref job) || (← IO.monoMsNow) - started > 6000 then return none
+    let proposal := p.proposal.tune quarters
+    let signature := reprStr (proposal.equipment, proposal.requestedRules, proposal.rules, proposal.scenes)
+    if seen.contains signature then continue
+    seen := signature :: seen
+    match proposal.prepare p.before with
+    | .error _ => continue
+    | .ok candidate =>
+      let counts := Probability.sampleCounts candidate.candidate 1 Probability.validationGames
+      if decide (Probability.ValidationAccepted candidate.candidate.horizon counts delta candidate.candidate.elapsed) then
+        return some candidate
+  return none
+
+/-- The most calls to the Dungeon Master for one live change. Each call can cost money. -/
+def maxChangeCalls : Nat := 6
+
+/-- The most fresh validation batches for one live change. Each one uses a part of the risk budget. -/
+def maxChangeValidations : Nat := 3
+
+/-- `true` if a live change can ask the Dungeon Master again, after `calls` calls and `validations`
+validation batches. The time limit is not here: `watchChange` owns it. -/
+def changeBudgetLeft (calls validations : Nat) : Bool :=
+  calls < maxChangeCalls && validations < maxChangeValidations
+
+#guard changeBudgetLeft 1 0
+#guard changeBudgetLeft 5 2
+#guard !changeBudgetLeft 6 0
+#guard !changeBudgetLeft 1 3
+
+/-- `n` and a unit, singular for 1: "1 minute", "2 minutes". -/
+def countText (n : Nat) (unit : String) : String :=
+  if n == 1 then s!"1 {unit}" else s!"{n} {unit}s"
+
+/-- A time limit in words: whole minutes, else seconds, with decimals when needed, such as
+"3 minutes", "1 second", or "1.5 seconds". -/
+def limitText (ms : Nat) : String :=
+  if ms % 60000 == 0 && ms > 0 then countText (ms / 60000) "minute"
+  else if ms % 1000 == 0 then countText (ms / 1000) "second"
+  else
+    -- Three digits after the point, without the zeros at the end.
+    let frac := (toString (1000 + ms % 1000)).drop 1 |>.toString
+    let frac := (frac.toList.reverse.dropWhile (· == '0')).reverse
+    s!"{ms / 1000}.{String.ofList frac} seconds"
+
+#guard limitText 180000 == "3 minutes"
+#guard limitText 60000 == "1 minute"
+#guard limitText 2000 == "2 seconds"
+#guard limitText 1000 == "1 second"
+#guard limitText 1500 == "1.5 seconds"
+#guard limitText 1250 == "1.25 seconds"
+#guard limitText 1 == "0.001 seconds"
+#guard limitText 90000 == "90 seconds"
+
+/-- Read the test-only time limit of a live change: a number of milliseconds, 1 or more. -/
+def parseLimitMs (s : String) : Option Nat :=
+  match s.trimAscii.toString.toNat? with
+  | some n => if n ≥ 1 then some n else none
+  | none => none
+
+#guard parseLimitMs "2000" == some 2000
+#guard parseLimitMs "0" == none
+#guard parseLimitMs "abc" == none
+#guard parseLimitMs "-5" == none
+
+/-- The last step of a live change that reached its time limit `ms`. -/
+def changeTimedOut (ms : Nat) : Step :=
+  { text := s!"The change reached its time limit of {limitText ms}. Your game is unchanged." }
+
+#guard (changeTimedOut 180000).text == "The change reached its time limit of 3 minutes. Your game is unchanged."
+
+/-- Watch live change `job` for `limitMs` milliseconds. If the job still runs then, end it as failed
+and kill its processes, as Cancel does. The watch stops early when the job ends. It never touches
+another job: `updateJob` acts only on job `job` while it runs, and the processes it kills have the
+owner name of job `job` only. -/
+def watchChange (children : Children) (ref : IO.Ref ServerState) (job limitMs : Nat) : IO Unit := do
+  let started ← IO.monoMsNow
+  while ← jobWanted ref job do
+    let elapsed := (← IO.monoMsNow) - started
+    if elapsed >= limitMs then
+      -- End the job first, so its own thread sees that it is not wanted. Then kill its processes.
+      let ended ← updateJob ref job fun g =>
+        { g with state := .failed, steps := g.steps.push (changeTimedOut limitMs) }
+      if ended then killOwner children (jobOwner job)
+      return
+    IO.sleep (min 500 (limitMs - elapsed)).toUInt32
+
+/-- The last step of a live change that used all its calls, validations, or time. It says how many
+proposals the Dungeon Master made, and keeps the last errors. -/
+def changeOutOfBudget (calls : Nat) (errors : List String) : Step :=
+  { text := s!"The Dungeon Master stopped after {calls} proposals and could not find a fair version. " ++
+      "Your game is unchanged.",
+    errors := errors.take 20 }
+
+#guard (changeOutOfBudget 6 ["a row failed"]).text ==
+  "The Dungeon Master stopped after 6 proposals and could not find a fair version. Your game is unchanged."
+
+/-- Generate a fun patch, screen local counter variants, then validate a frozen proposal. Stop
+after `maxChangeCalls` calls, `maxChangeValidations` validations, or `maxChangeMs`. -/
+def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
+    (job : Nat) (before : Game) (wish : String) : IO Unit := do
+  let initial := WorldChange.context before wish (Probability.attemptRisk (← ref.get).changeChecks)
+  let mut messages := [userTurn initial]
+  let mut revision := 0
+  let mut gift : Option (Option EquipmentRule × List CombatRule) := none
+  let mut validated : List String := []
+  let mut supportReviewed := false
+  while ← jobWanted ref job do
+    revision := revision + 1
+    if !(← addStep ref job { text := s!"The Dungeon Master is shaping your change and its counter-rule (proposal {revision})..." }) then return
+    let reply ← callApi cfg children (jobOwner job) (jobWanted ref job)
+      (WorldChange.request messages) [s!"change-{revision}", "change"]
+    if !(← jobWanted ref job) then return
+    let (errors, content) ← match reply with
+      | .refused =>
+        endJob ref job .refused { text := "The Dungeon Master cannot grant that request. Your game is unchanged." }
+        return
+      | .failed why =>
+        endJob ref job .failed { text := "The Dungeon Master could not be reached. Your game is unchanged.", errors := [why] }
+        return
+      | .cutOff content => pure (["The patch was cut off. Send a smaller patch."], content)
+      | .ok text content =>
+        match WorldChange.Proposal.parse before.hero.name text with
+        | .error why => pure ([why], content)
+        | .ok proposal =>
+          if !proposal.supported then
+            if !supportReviewed then
+              supportReviewed := true
+              if !(← addStep ref job { text := "The Dungeon Master is looking for another way to make your mechanic work..." }) then return
+              pure ([WorldChange.supportReview], content)
+            else
+              endJob ref job .refused { text := proposal.summary.take 800 |>.toString }
+              return
+          else if gift.isSome && gift.getD (none, []) != (proposal.equipment, proposal.requestedRules) then
+            pure (["Keep the requested equipment and requested rules exactly as first proposed. Balance the counter-rules and future encounters instead."], content)
+          else match proposal.prepare before with
+          | .error errs => pure (errs, content)
+          | .ok prepared =>
+            gift := some (proposal.equipment, proposal.requestedRules)
+            let signature := reprStr (proposal.equipment, proposal.requestedRules, proposal.rules, proposal.scenes)
+            if validated.contains signature then
+              pure (["This proposal already failed validation. Make an actual revision; do not ask for new dice."], content)
+            else
+              let index := (← ref.get).changeChecks
+              let delta := Probability.attemptRisk index
+              if !(← addStep ref job { text := "Checking the updated adventure from the beginning, including combat..." }) then return
+              let screen := Probability.sampleCounts prepared.candidate 1 Probability.validationGames
+              if !(← jobWanted ref job) then return
+              let picked ← if decide (Probability.ValidationAccepted prepared.candidate.horizon screen delta prepared.candidate.elapsed) then
+                  pure (some prepared)
+                else do
+                  if !(← addStep ref job { text := "Balancing the counter-rule while keeping your requested mechanic..." }) then pure none
+                  else tuneChange ref job prepared delta validated
+              match picked with
+              | none =>
+                pure (Probability.failedRows prepared.candidate.horizon screen delta prepared.candidate.elapsed, content)
+              | some prepared =>
+                let signature := reprStr (prepared.proposal.equipment, prepared.proposal.requestedRules,
+                  prepared.proposal.rules, prepared.proposal.scenes)
+                let spent ← ref.modifyGet fun s =>
+                  if s.gen.job != job || s.gen.state != .running || s.changeChecks != index then (false, s)
+                  else (true, { s with changeChecks := index + 1 })
+                if !spent then return
+                if !(← addStep ref job { text := "The screen passed. Checking a fresh validation batch..." }) then return
+                let seed ← if cfg.fake.isSome then pure Probability.validationSeed else randomSeed
+                validated := signature :: validated
+                let (counts, accepted) := prepared.admit seed delta
+                if !(← jobWanted ref job) then return
+                match accepted with
+                | some proof =>
+                  applyChange ref job prepared seed delta proof
+                  return
+                | none =>
+                  let feedback := Probability.failedRows prepared.candidate.horizon counts delta prepared.candidate.elapsed ++
+                    ["The validated counter-rules were: " ++
+                      (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress]
+                  pure (feedback, content)
+    -- `validated` gets one entry for each fresh validation batch.
+    if !changeBudgetLeft revision validated.length then
+      endJob ref job .failed (changeOutOfBudget revision errors)
+      return
+    if !(← addStep ref job { text := "The Dungeon Master is revising the world's response; your game is still paused.", errors := errors.take 20 }) then return
+    let risk := Probability.attemptRisk (← ref.get).changeChecks
+    let locked := match gift with
+      | none => ""
+      | some (equipment, requested) =>
+        "\nKeep these requested effects exactly: " ++ (json% {
+          equipment: $(equipment.map WorldChange.equipmentJson),
+          requestedRules: $(requested.map WorldChange.ruleJson) }).compress
+    messages := [userTurn initial, assistantTurn content, userTurn (WorldChange.correction errors risk ++ locked)]
+
+/-- Freeze an active session atomically before asking the Dungeon Master for a rule change. -/
+def startChange (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
+    (wish : String) : IO (Except String Unit) := do
+  let result : Except String (Nat × Game) ← ref.modifyGet fun s =>
+    if s.gen.state == .running then (.error "The Dungeon Master is already working.", s)
+    else if !WorldChange.available s.session.game then
+      (.error "Start an Adventure first. Changes need a living Character in a Scene or Fight.", s)
+    else
+      let job := s.gen.job + 1
+      (.ok (job, s.session.game), { s with gen := { job, state := .running, wish, mode := "change" } })
+  match result with
+  | .error why => return .error why
+  | .ok (job, before) =>
+    -- The watch ends the change at its time limit, even while one call to the Dungeon Master hangs.
+    let _ ← IO.asTask (prio := .dedicated) (watchChange children ref job cfg.changeLimitMs)
+    let _ ← IO.asTask (prio := .dedicated) do
+      try generateChange cfg children ref job before wish
+      catch e => endJob ref job .failed { text := "The change could not finish. Your game is unchanged.", errors := [toString e] }
+    return .ok ()
+
 /-- Stop the work on the current Wish, and kill its `curl` processes. -/
 def cancelWish (children : Children) (ref : IO.Ref ServerState) : IO Unit := do
   -- First move the job on, so the old job sees that it is not wanted. Then kill its processes.
@@ -729,7 +1084,9 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
                          drawing: $(s.source.drawing.length), failed: $(failedPictures cfg s), off: $(!cfg.picturesOn) }
   let gen := json% {
     available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps), readyId: $(s.gen.readyId),
-    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender)
+    provider: $(if cfg.fake.isSome then "recorded" else if cfg.apiKey.isSome then "api"
+      else if cfg.codex then "codex" else if cfg.claudeCode then "claude-code" else "unavailable"),
+    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender), mode: $(s.gen.mode)
   }
   let saved ← if g.game.phase.name == "title" then savedList cfg else pure (Json.arr #[])
   let v := base.setObjVal! "pictures" pictures
@@ -740,6 +1097,8 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "world" (toJson s.source.world)
     |>.setObjVal! "intro" (toJson s.source.intro)
     |>.setObjVal! "builtin" builtinCard.toJson
+    |>.setObjVal! "canChange" (toJson (WorldChange.available g.game))
+    |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map WorldChange.ruleJson))
   return v.compress
 
 /-! ## Responses -/
@@ -858,6 +1217,20 @@ def parseWish (body : String) : Except String (String × String × String) := do
 #guard (parseWish "{\"wish\": \"  \"}").toOption.isNone
 #guard (parseWish ("{\"wish\": \"" ++ "".pushn 'a' 501 ++ "\"}")).toOption.isNone
 
+/-- Read a live change request from a request body (`{"wish"}`). Returns the request, or an error. -/
+def parseChange (body : String) : Except String String := do
+  let j ← Json.parse body
+  let text := (j.getObjValAs? String "wish").toOption.getD "" |>.trimAscii.toString
+  if text.isEmpty then throw "Describe the change you want first."
+  if text.length > maxWish then throw s!"A change request can have at most {maxWish} characters."
+  return text
+
+#guard (parseChange "{\"wish\": \" a flamethrower \"}").toOption == some "a flamethrower"
+#guard (match parseChange "{\"wish\": \"  \"}" with
+  | .error e => e == "Describe the change you want first."
+  | .ok _ => false)
+#guard (parseChange ("{\"wish\": \"" ++ "".pushn 'a' 501 ++ "\"}")).toOption.isNone
+
 /-- Load a saved Adventure: read it, check it again, and check its Pictures again. -/
 def loadSaved (id : String) : IO (Except String (Game × Source × Draft)) := do
   if !safeSegment id then return .error "There is no saved Adventure with that name."
@@ -932,14 +1305,15 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
         | some (none, fresh) => replyJson .ok (← view fresh)
     | ["api", "new"] =>
       let seed ← freshSeed
-      let r ← whenIdle state fun s => ((), { s with session := Session.start s.session.fresh seed })
+      let r ← whenIdle state fun s =>
+        ((), { s with session := Session.start s.session.fresh seed, gen := s.gen.afterLeave })
       if r.isNone then return ← busy
       replyJson .ok (← view)
     | ["api", "builtin"] =>
       let seed ← freshSeed
       let r ← whenIdle state fun s =>
         (s.source.savedId, { s with session := Session.start builtinGame seed, source := builtinSource,
-                                    gen := { s.gen with state := .idle, steps := #[] } })
+                                    gen := { s.gen.afterLeave with state := .idle, steps := #[] } })
       let some old := r | busy
       stopOldPictures children old none
       replyJson .ok (← view)
@@ -950,16 +1324,29 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       replyJson .ok (← view)
     | ["api", "wish"] =>
       if !cfg.canWish then
-        return ← replyJson .badRequest (← view (error := some "Generation is unavailable: no API key."))
+        return ← replyJson .badRequest (← view (error := some "The Dungeon Master needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."))
       match parseWish body with
       | .error e => replyJson .badRequest (← view (error := some e))
       | .ok (wish, name, gender) =>
         if !(← startWish cfg children state wish name gender) then return ← busy
         replyJson .ok (← view)
+    | ["api", "change"] =>
+      if !cfg.canWish then
+        return ← replyJson .badRequest (← view (error := some "The Dungeon Master needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."))
+      match parseChange body with
+      | .error e => replyJson .badRequest (← view (error := some e))
+      | .ok wish =>
+        match ← startChange cfg children state wish with
+        | .error why => replyJson .conflict (← view (error := some why))
+        | .ok () => replyJson .ok (← view)
     | ["api", "retry"] =>
       let g := (← state.get).gen
       if !cfg.canWish || g.wish.isEmpty then
         return ← replyJson .badRequest (← view (error := some "There is no Wish to try again."))
+      if g.mode == "change" then
+        match ← startChange cfg children state g.wish with
+        | .error why => return ← replyJson .conflict (← view (error := some why))
+        | .ok () => return ← replyJson .ok (← view)
       if !(← startWish cfg children state g.wish g.name g.gender) then return ← busy
       replyJson .ok (← view)
     | ["api", "load"] =>
@@ -985,7 +1372,7 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
           let run := s.runs + 1
           let source := if keep then s.source else
             { src with drawing := missing.filterMap (·.picture), drawRun := run }
-          let gen := { s.gen with state := .idle, steps := #[] }
+          let gen := { s.gen.afterLeave with state := .idle, steps := #[] }
           ((s.source.savedId, keep, run),
             { s with session := Session.start g seed, source, gen, runs := if keep then s.runs else run })
         let some (old, keep, run) := r | busy
@@ -1067,7 +1454,18 @@ def main (args : List String) : IO UInt32 := do
       "Pictures are off: live Adventures show a plain backdrop, and the DM is not asked to draw.")
   let apiKey := (← IO.getEnv "ANTHROPIC_API_KEY").filter (!·.isEmpty)
   let fake := (← IO.getEnv "RPG_FAKE_API").filter (!·.isEmpty) |>.map System.FilePath.mk
-  let cfg : GameConfig := { host, port, apiKey, fake, savedCache := ← IO.mkRef [], picturesOn }
+  let codex ← if apiKey.isNone && fake.isNone then codexReady else pure false
+  let claudeCode ← if apiKey.isNone && fake.isNone && !codex then claudeCodeReady else pure false
+  -- Test hook only: a shorter time limit for a live change, so a test can reach it offline.
+  let limitEnv := (← IO.getEnv "RPG_CHANGE_LIMIT_MS").filter (!·.isEmpty)
+  let testLimit := if fake.isSome then limitEnv.bind parseLimitMs else none
+  if let some raw := limitEnv then
+    if fake.isNone then
+      IO.eprintln "WARNING: RPG_CHANGE_LIMIT_MS is read only with RPG_FAKE_API. The limit stays 3 minutes."
+    else if testLimit.isNone then
+      IO.eprintln s!"WARNING: RPG_CHANGE_LIMIT_MS must be a whole number of milliseconds, 1 or more, not {raw}. The limit stays 3 minutes."
+  let cfg : GameConfig := { host, port, apiKey, codex, claudeCode, fake, savedCache := ← IO.mkRef [], picturesOn,
+                            changeLimitMs := testLimit.getD maxChangeMs }
   let state ← IO.mkRef ({ session := Session.start builtinGame seed, source := builtinSource } : ServerState)
   let children ← IO.mkRef #[]
   let addr : Net.SocketAddress := .v4 ⟨ip, port.toUInt16⟩
@@ -1075,9 +1473,13 @@ def main (args : List String) : IO UInt32 := do
     let server ← Server.serve addr (Handler.ofFn (route cfg webRoot children state))
     IO.println s!"The game is ready at http://{host}:{port}/ (first seed {seed})."
     if let some dir := fake then
-      IO.println s!"TEST MODE: Wishes read recorded replies from {dir}. The API is not called."
+      IO.println s!"TEST MODE: Wishes read recorded replies from {dir}. The API is not called. A live change stops after {limitText cfg.changeLimitMs}."
+    else if codex then
+      IO.println "The Dungeon Master uses your signed-in Codex CLI. Wishes and in-game rule changes are available."
+    else if claudeCode then
+      IO.println "The Dungeon Master uses your signed-in Claude CLI. Wishes and in-game rule changes are available."
     else if apiKey.isNone then
-      IO.println "No ANTHROPIC_API_KEY is set, so Wishes are off. The built-in Adventure works."
+      IO.println "The Dungeon Master needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY. The built-in Adventure works."
     IO.println "Press Ctrl-C to stop."
     (← IO.getStdout).flush
     server.waitShutdown

@@ -141,3 +141,17 @@ These entries describe the full v1 design. The current v0 version leaves out mor
 **This game:** This is not a change to play. The Player in the browser picks each maneuver. The fairness check (`Rpg/Probability/`) needs a model of a Player, so its Player picks Attack, All-Out Attack, or All-Out Defense with chance 1/3 each, and then a living target at random. It also picks each Choice in a Scene at random.
 
 **Reason:** A fixed and simple model of the Player keeps the fairness check exact and easy to review. Real Players can do better or worse than it.
+
+## 15. Adventure rules can change during play
+
+**This game:** A Player can request an adventure-local rule change. The DM can grant a named
+weapon profile or combat effect, add conditional counter-rules, and revise unvisited scenes.
+Weapon profiles specify attack level and damage dice. Combat effects can add to hit rolls,
+damage, or armor when an HP, maneuver, or equipment condition holds. These effects are
+house rules, not a claim to implement GURPS equipment construction or advantages.
+
+**Reason:** Player requests should create new tactical decisions in the current world.
+The shared Engine applies the same effects in play and fairness sampling. The fixed core
+rules, wounds, history, and unfinished Fight remain. A source-bound check from the updated adventure beginning must
+pass before any change applies. See [live rule changes](live-rule-changes.md) for the supported
+language, retry theorem, and limits.

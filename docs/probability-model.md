@@ -38,6 +38,13 @@ separate edges for different remaining HP. Death and successful endings are
 separate absorbing nodes. Nonterminating combat has its own absorbing `stalled`
 node, counted as still active rather than as a win or death.
 
+For a change during play, the admission graph starts at the updated adventure's original
+start and full initial HP, with all new equipment and combat effects applied from turn zero.
+The played game keeps its actual checkpoint. The separate `continuationGraph` and
+`remainingRoundWith` helpers can analyze or simulate a paused Fight without repeating
+completed enemy turns; they are not the starting point for live-change admission.
+No new probabilities are supplied by the DM.
+
 A round can change the Character's maneuver with no HP loss. So the combat solver
 works on a group: every state that rounds reach from a state with no HP loss. The
 states of a group differ only in the Character's last maneuver, so a group has at most
@@ -68,10 +75,15 @@ The first-turn row uses target `1 - S(1)` to reject immediate-death loopholes.
 
 `StatisticalCandidate.fair` proves per-row interval coverage and a false-acceptance
 bound for the entire finite decision under the explicitly accepted binomial
-sampling model. With the current constants, each risk is at most 10%.
-This does not assert simultaneous 90% coverage of all displayed intervals.
+sampling model. With the current constants, each risk is at most 5%.
+This does not assert simultaneous 95% coverage of all displayed intervals.
 There is no requirement or claim about times beyond the selected horizon.
 Lighthouse and every Wish use `H=5`.
+
+Live changes also use `H=5`, starting from the adventure beginning with the updated rules
+and the same original Weibull targets. `StatisticalCandidate.fairAt` uses the actual per-attempt error allowance.
+`RetryTree.fair` proves a finite adaptive retry bound with decreasing allowances whose
+total is at most 5%. See [live rule changes](live-rule-changes.md).
 
 With shape 2, the targets rise from 5% on turn 1 to 27% on turn 6. The tolerance is
 20 percentage points, so the first three rows only cap the risk, and from turn 4 on each
@@ -126,6 +138,10 @@ finite horizon, and the specialized theorem `fair`. Register candidates in
 counts and requires every interval to fit the shared Weibull band. Its resulting
 `StatisticalAdventure` carries both `fair` and the passing observation evidence.
 The Lighthouse and every Wish go through the same `admitWithSeed`.
+
+Live changes use `WorldChange.Prepared.admit`. Its certificate also binds the observations
+to the updated adventure from its beginning and the error allowance. `Prepared.preserves_core` proves that the
+patch changes only the adventure equipment/effect fields of `RuleSet`.
 
 See [statistical confidence](statistical-confidence.md) for the theorem, accepted
 sampling assumptions, fixed game batch, and Lighthouse's recorded results. The

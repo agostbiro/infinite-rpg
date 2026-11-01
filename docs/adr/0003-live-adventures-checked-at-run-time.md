@@ -4,7 +4,7 @@ status: accepted
 
 # Live Adventures, checked at run time
 
-This replaces ADR 0001. The Player types a Wish in the GUI (graphical user interface), and the server asks an LLM (large language model) for an Adventure and a Character as JSON. The server plays them only if the proved checker finds no errors. `Game.new` takes `{a // LegalAdventure c a}` and a proof of `LegalCharacter c` (since ADR 0004 it takes an `AdventureDefinition`, which holds both proofs, and a Wish must also pass the fairness check), and the server can build these only from `check_sound` and `checkCharacter_sound`, so no unchecked Adventure can be played. The DM still works only before play, so it still has no way to change a roll.
+This replaces ADR 0001. The Player types a Wish in the GUI (graphical user interface), and the server asks an LLM (large language model) for an Adventure and a Character as JSON. The server plays them only if the proved checker finds no errors. `Game.new` takes `{a // LegalAdventure c a}` and a proof of `LegalCharacter c` (since ADR 0004 it takes an `AdventureDefinition`, which holds both proofs, and a Wish must also pass the fairness check), and the server can build these only from `check_sound` and `checkCharacter_sound`, so no unchecked Adventure can be played. The DM still works only before play, so it still has no way to change a roll. (Since ADR 0005, the DM can propose a checked rule change during play. It still never picks a die face.)
 
 ## Considered options
 

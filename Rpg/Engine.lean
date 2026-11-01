@@ -100,6 +100,20 @@ def Fighter.dodge (rules : RuleSet) (f : Fighter) : Option Nat :=
   let base := if rules.halveDodgeBelowThird && 3 * f.hp < rules.maxHP f.being then (d + 1) / 2 else d
   f.maneuver.dodgeBonus.map (base + ·)
 
+/-- A rule fires for its side when the stated combat condition holds. -/
+def CombatRule.active (r : CombatRule) (rules : RuleSet) (actor : Actor)
+    (self other : Fighter) : Bool :=
+  r.forHero actor.isNone && match r.trigger with
+  | "always" => true
+  | "wounded" => 2 * self.hp ≤ rules.maxHP self.being
+  | "desperate" => 3 * self.hp ≤ rules.maxHP self.being
+  | "reckless" => self.maneuver == .allOutAttack
+  | "guarding" => self.maneuver == .allOutDefense
+  | "againstReckless" => other.maneuver == .allOutAttack
+  | "againstGuarding" => other.maneuver == .allOutDefense
+  | "againstFlame" => other.being.weapon == .flamethrower
+  | _ => false
+
 /-- The damage dice for a hit. After an attack roll of 3, every die counts as 6 and no dice
 are rolled. Returns the faces and `true` if they are the maximum. -/
 def damageFacesWith [Monad m] (roll : Nat → m (List Nat)) (count : Nat) (attackTotal : Nat) :
@@ -114,14 +128,19 @@ Reports. The dice come in this order: 3 for the attack, then 3 for the Dodge unl
 a critical success or the defender cannot defend, then the damage dice unless the attack roll is 3. -/
 def attackWith [Monad m] (rules : RuleSet) (roll : Nat → m (List Nat))
     (attId : Actor) (att : Fighter) (dfnId : Actor) (dfn : Fighter) : m (Nat × List Report) := do
-  let level := rules.attackLevel att.being + att.maneuver.hitBonus
+  let offense := rules.combatRules.filter fun r => r.active rules attId att dfn &&
+    (r.hitBonus != 0 || r.damageBonus != 0)
+  let defense := rules.combatRules.filter fun r => r.active rules dfnId dfn att && r.armorBonus > 0
+  let effectReports := (offense ++ defense).map fun r => Report.worldRule r.name r.description
+  let level := rules.weaponLevel att.being + att.maneuver.hitBonus + (offense.map (·.hitBonus)).sum
   if level < rules.minimumRollLevel then
     return (0, [.cannotAttack att.being.name level])
   let r ← rollAgainstWith rules roll level
-  let line := Report.attack attId att.being.name dfnId dfn.being.name att.being.weapon r
+  let line := Report.attack attId att.being.name dfnId dfn.being.name att.being.weapon
+    ((rules.equipmentFor att.being).map (·.name)) r
   if !r.result.succeeded then
-    return (0, [line])
-  let mut reports := [line]
+    return (0, effectReports ++ [line])
+  let mut reports := effectReports ++ [line]
   if r.result != .criticalSuccess then
     match dfn.dodge rules with
     | none =>
@@ -133,11 +152,12 @@ def attackWith [Monad m] (rules : RuleSet) (roll : Nat → m (List Nat))
       reports := reports ++ [.dodge dfn.being.name { d with result := if dodged then .success else .failure }]
       if dodged then
         return (0, reports)
-  let dice := rules.damage att.being.weapon att.being.st
+  let baseDice := rules.weaponDice att.being
+  let dice := { baseDice with add := baseDice.add + (offense.map (·.damageBonus)).sum }
   let kind := att.being.weapon.damageType
   let (faces, maxed) ← damageFacesWith roll dice.count r.total
   let basic := rules.basicDamage dice kind faces.sum
-  let dr := rules.dr dfn.being
+  let dr := rules.dr dfn.being + (defense.map (·.armorBonus)).sum
   let inj := rules.injury kind dr basic
   let hpLeft := dfn.hp - inj
   reports := reports ++
@@ -244,6 +264,16 @@ def beforeCharacter (order : List Actor) : List Actor :=
 def afterCharacter (order : List Actor) : List Actor :=
   (order.dropWhile (· != none)).drop 1
 
+/-- Finish a round paused at the Character's turn. Earlier enemy turns are not repeated. -/
+def remainingRoundWith [Monad m] (attackFn : AttackFn m)
+    (pick : FightState → m (Maneuver × Nat)) (order : List Actor) (s : FightState) :
+    m (FightState × List Report) := do
+  if s.over then return (s, [])
+  let (choice, target) ← pick s
+  let (s, mine) ← heroTurnWith attackFn s choice target
+  let (s, after) ← foeTurnsWith attackFn s (afterCharacter order)
+  return (s, mine ++ after)
+
 /-- One round of a Fight in turn order `order`: the Creatures before the Character, then the
 Character, then the Creatures after it. On its turn, the Character uses `pick` to choose a
 maneuver and a target. Play, the simulator, and the fairness model all use this order. -/
@@ -321,7 +351,7 @@ private def attackAfterAllOut : Roll (List Report) := do
 
 /-- The target number of the first attack roll in a list of Reports. -/
 private def firstAttackTarget : List Report → Option Int
-  | .attack _ _ _ _ _ r :: _ => some r.target
+  | .attack _ _ _ _ _ _ r :: _ => some r.target
   | _ :: rest => firstAttackTarget rest
   | [] => none
 

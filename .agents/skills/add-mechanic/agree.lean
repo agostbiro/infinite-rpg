@@ -8,9 +8,9 @@ The model's death chance comes from `combatDistribution`; the simulation's from
 with chance 1/3, then a random living target, with the admission round limit.
 The check says `ok` when the model's chance is inside the simulation's exact
 binomial interval at the admission confidence level (`confidenceDelta`).
-`DISAGREE` flags a discrepancy, but sampling alone can also produce it: the interval is a 90%
-one, so about 1 check in 10 says `DISAGREE` by chance. Before you conclude, run a larger
-simulation with another seed (for example 20,000 Fights).
+`DISAGREE` flags a discrepancy, but sampling alone can also produce it with probability
+at most `confidenceDelta` under the sampling model (currently 5%). Before you conclude,
+run a larger simulation with another seed (for example 20,000 Fights).
 Run as compiled code: `lake exe agree`. The exact model takes minutes for a Lighthouse Fight,
 whatever the simulation run count.
 -/

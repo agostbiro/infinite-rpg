@@ -81,13 +81,13 @@ def bandText (row : Nat) : String :=
     s!"  - {what}: {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}."
   else ""
 
-/-- The part of the DM prompt about the fairness check. The numbers come from the policy in
-`Rpg/Probability/Weibull.lean`, so the prompt cannot drift from the check. -/
+/-- The part of the DM prompt about the fairness check.
+The numbers come from the shared fairness and confidence settings. -/
 def dangerText : String :=
   "\n".intercalate ([
     "## Danger (the fairness check)",
     "- After the checker, a program plays your Adventure 1,000 times. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
-    s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range, with 90% confidence:"] ++
+    s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range, with {(100 * (1 - Probability.Confidence.confidenceDelta)).floor}% confidence:"] ++
     (List.range (liveHorizon + 1)).map bandText ++ [
     "- So the first turns can be safe, but the danger must rise. From turn 4 on, some Fights must be able to kill the Character.",
     s!"- Most paths must be at least {liveHorizon + 2} Choices long. A turn that too few games reach fails.",

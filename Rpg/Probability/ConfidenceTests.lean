@@ -12,10 +12,10 @@ example : confidenceInterval confidenceDelta 0 0 = ⟨0, 1⟩ := by decide +kern
 example : ¬ acceptsCount ⟨4/25, 1/5⟩ confidenceDelta ⟨0, 0⟩ := by decide +kernel
 
 /-- Zero observed deaths retains an exact-binomial upper limit. -/
-example : confidenceInterval confidenceDelta 10 0 = ⟨0, 67/256⟩ := by decide +kernel
+example : confidenceInterval confidenceDelta 10 0 = ⟨0, 79/256⟩ := by decide +kernel
 
 /-- All observed deaths retains an exact-binomial lower limit. -/
-example : confidenceInterval confidenceDelta 10 10 = ⟨189/256, 1⟩ := by decide +kernel
+example : confidenceInterval confidenceDelta 10 10 = ⟨177/256, 1⟩ := by decide +kernel
 
 /-- A small safe sample can pass the band, but one observation is insufficient. -/
 example : acceptsCount ⟨4/25, 1/5⟩ confidenceDelta ⟨10, 0⟩ := by decide +kernel

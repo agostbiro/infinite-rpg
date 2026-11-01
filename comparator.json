@@ -9,7 +9,12 @@
     "Verified.step_rejects",
     "Verified.mem_inputs_iff",
     "Verified.lighthouse_default_rules",
-    "Verified.fair"
+    "Verified.fair",
+    "Verified.live_change_core",
+    "Verified.live_change_checkpoint",
+    "Verified.live_change_from_start",
+    "Verified.live_change_fair",
+    "Verified.retry_fair"
   ],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
 }

@@ -22,7 +22,7 @@ def main : IO UInt32 := do
     IO.println s!"row {row}: {k}/{n}; interval=[{interval.lower}, {interval.upper}]; Weibull target={target}"
   if accepted.isSome then
     IO.println "ACCEPTED: every exact-binomial interval enclosure fits the Weibull policy."
-    IO.println "The fair theorem gives per-row interval coverage and at most 10% false acceptance for this finite window under the sampling model."
+    IO.println s!"The fair theorem gives per-row interval coverage and at most {100 * confidenceDelta}% false acceptance for this finite window under the sampling model."
     return 0
   IO.println "NOT ADMITTED: an interval failed, sampling was incomplete, or an outcome inside the window was unresolved."
   return 1

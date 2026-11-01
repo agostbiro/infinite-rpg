@@ -43,3 +43,8 @@ root = "screen"
 [[lean_lib]]
 name = "Comparator"
 globs = ["Comparator.+"]
+
+# Compiled screening and continuation regressions for changes during play.
+[[lean_exe]]
+name = "change-check"
+root = "ChangeCheck"

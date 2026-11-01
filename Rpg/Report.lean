@@ -58,6 +58,8 @@ structure Card where
   hp : Int
   maxHP : Nat
   weapon : Weapon
+  /-- Snapshot the local equipment name so later changes do not rename earlier reports. -/
+  equipmentName : Option String := none
   /-- The damage roll and type, such as "1d+2 cutting". -/
   damage : String
   dr : Nat
@@ -66,7 +68,8 @@ structure Card where
 /-- The card of a being with `hp` HP, under `rules`. -/
 def Being.card (rules : RuleSet) (b : Being) (hp : Int) : Card :=
   { name := b.name, hp, maxHP := rules.maxHP b, weapon := b.weapon,
-    damage := s!"{(rules.damage b.weapon b.st).show} {b.weapon.damageType.name}", dr := rules.dr b }
+    equipmentName := (rules.equipmentFor b).map (·.name),
+    damage := s!"{(rules.weaponDice b).show} {b.weapon.damageType.name}", dr := rules.dr b }
 
 /-- One thing the Engine did or found out during play. -/
 inductive Report where
@@ -88,7 +91,7 @@ inductive Report where
   | maneuver (who : String) (m : Maneuver)
   /-- An attack roll by `attacker` on `defender`. -/
   | attack (attacker : Actor) (attackerName : String) (defender : Actor) (defenderName : String)
-      (weapon : Weapon) (roll : DiceRoll)
+      (weapon : Weapon) (equipmentName : Option String) (roll : DiceRoll)
   /-- `who` cannot attack, because its effective skill `level` is below 3. -/
   | cannotAttack (who : String) (level : Int)
   /-- `who` cannot defend, because its last Maneuver was an All-Out Attack. -/
@@ -106,6 +109,8 @@ inductive Report where
   | fightWon
   /-- The Character died. The Adventure is over, but this is not an Ending. -/
   | died (who : String)
+  /-- An adventure rule fires, or an admitted world change is announced. -/
+  | worldRule (name : String) (text : String)
   /-- The Engine refused an input. Nothing changed. -/
   | rejected (why : String)
   deriving ToJson, BEq

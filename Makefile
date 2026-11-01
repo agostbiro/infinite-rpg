@@ -13,7 +13,8 @@ install:
 	$(MAKE) check
 
 # Build, start the game server on $(HOST), and open the page in the browser. Ctrl-C stops it.
-# Set ANTHROPIC_API_KEY to let the Player ask the DM for an Adventure with a Wish.
+# Set ANTHROPIC_API_KEY, or sign in to Codex or Claude Code, to let the Player ask the DM for an
+# Adventure with a Wish, or for a rule change during play.
 # Pass a seed to replay the first game with the same dice: make run SEED=7
 run: build
 	@URL=http://$(HOST):$(PORT)/; \
@@ -47,12 +48,15 @@ check: build
 	@$(MAKE) --no-print-directory check-rules
 	@$(MAKE) --no-print-directory check-pictures
 
-# People own the rules of each Adventure. A DM may not change them.
+# People own the rules files of each Adventure. A DM may not change them.
+# During play, the DM can propose a live change: equipment, combat effects, and new or replaced
+# Scenes that are not visited yet. The core rules stay the same. The server installs a change only
+# after the checker and the fairness check pass (docs/adr/0005-live-rule-changes.md).
 # Each Rules.lean under Rpg/Adventures may only say `def rules : RuleSet := {}` (the default rules),
 # unless a person puts its path on RULES_ALLOW. No other Adventure file may name `RuleSet` or
 # change a rules value with `{ ... with ... }`.
 RULES_ALLOW ?=
-RULES_LINE = ^(import Rpg\.RuleSet|namespace Rpg\.[A-Za-z]+|end Rpg\.[A-Za-z]+|def rules : RuleSet := \{\}|/--.*-/|)$$
+RULES_LINE = ^(import Rpg\.RuleSet|namespace Rpg\.[A-Za-z]+|end Rpg\.[A-Za-z]+|def rules : RuleSet := \{\}|/--.*-/)?$$
 check-rules:
 	@bad=0; for f in $$(find Rpg/Adventures -name Rules.lean); do \
 	  case " $(RULES_ALLOW) " in *" $$f "*) continue;; esac; \
