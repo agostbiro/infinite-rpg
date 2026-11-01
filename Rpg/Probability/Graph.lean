@@ -1,0 +1,88 @@
+import Rpg.Probability.Combat
+
+/-!
+An adventure and a character determine one graph. One turn is one scene choice,
+including its entire fight. Scene states retain HP; terminal success, death,
+and nonterminating combat are distinct. The dice model is independent fair d6,
+not a claim that the finite seeded PRNG is an IID source.
+-/
+namespace Rpg.Probability
+
+/-- Graph states preserve HP after every fight. -/
+inductive Node where
+  | scene (id : SceneId) (hp : Int)
+  | ended
+  | dead
+  | stalled
+  deriving DecidableEq, Repr
+
+/-- A finitely supported rational transition kernel with a distinguished initial state. -/
+structure Graph where
+  start : Node
+  step : Node → Distribution Node
+
+/-- Resolve zero-HP and ending states without spending another player turn. -/
+def arrive (a : Adventure) (id : SceneId) (hp : Int) : Node :=
+  if hp ≤ 0 then .dead
+  else match a.scene? id with
+    | none => .stalled
+    | some scene => if scene.choices.isEmpty then .ended else .scene id hp
+
+/-- Exact success probability, including untrained skills and automatic failures. -/
+def rollProbability (rules : RuleSet) (hero : Being) (target : RollTarget) (modifier : Int) : Rat :=
+  match (hero.rollLevel rules target).map (· + modifier) with
+  | none => 0
+  | some level => if level < rules.minimumRollLevel then 0
+      else (dice 3).mass fun roll => (rules.successRoll level roll).succeeded
+
+/-- The edges of a choice are derived from its actual outcome and combat rules. -/
+def outcomeEdges (rules : RuleSet) (hero : Being) (a : Adventure) (hp : Int) : Outcome → Distribution Node
+  | .goto id => pure (arrive a id hp)
+  | .roll target modifier onSuccess onFailure =>
+    let p := rollProbability rules hero target modifier
+    ⟨[(arrive a onSuccess hp, p), (arrive a onFailure hp, 1 - p)]⟩
+  | .fight foes onWin =>
+    (combatDistribution rules hero hp foes).bind fun result => pure (match result with
+      | .won remaining => arrive a onWin remaining
+      | .died => .dead
+      | .stalled => .stalled)
+
+/-- Derive a graph; authors cannot supply independent, invented fight odds. -/
+def adventureGraph (rules : RuleSet) (hero : Being) (a : Adventure) : Graph where
+  start := arrive a a.start (rules.maxHP hero)
+  step node := match node with
+    | .dead => pure .dead
+    | .ended => pure .ended
+    | .stalled => pure .stalled
+    | .scene id hp => match a.scene? id with
+      | none => pure .stalled
+      | some scene => if scene.choices.isEmpty then pure .ended
+        else ((uniform scene.choices).bind fun choice => outcomeEdges rules hero a hp choice.outcome).collect
+
+/-- State distribution after n scene choices. Death and success are absorbing. -/
+def Graph.after (g : Graph) : Nat → Distribution Node
+  | 0 => pure g.start
+  | n + 1 => ((g.after n).bind g.step).collect
+
+/-- Probability of death by turn n. -/
+def Graph.deadBy (g : Graph) (n : Nat) : Rat :=
+  (g.after n).mass fun node => decide (node = .dead)
+
+/-- Probability of successful termination by turn n. -/
+def Graph.endedBy (g : Graph) (n : Nat) : Rat :=
+  (g.after n).mass fun node => decide (node = .ended)
+
+/-- Probability of remaining in play; a stalled fight never terminates. -/
+def Graph.activeAt (g : Graph) (n : Nat) : Rat :=
+  (g.after n).mass fun node => match node with
+    | .scene _ _ | .stalled => true
+    | _ => false
+
+/-- Basic probability and absorption obligations for a graph certificate. -/
+def Graph.Valid (g : Graph) : Prop :=
+  (∀ node, (g.step node).Valid) ∧
+  g.step .dead = pure .dead ∧
+  g.step .ended = pure .ended ∧
+  g.step .stalled = pure .stalled
+
+end Rpg.Probability

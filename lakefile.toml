@@ -9,3 +9,11 @@ globs = ["Rpg.+"]
 [[lean_exe]]
 name = "rpg"
 root = "Main"
+
+[[lean_exe]]
+name = "audit"
+root = "Audit"
+
+[[lean_exe]]
+name = "validate"
+root = "Validate"

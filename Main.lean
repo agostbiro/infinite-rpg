@@ -1,4 +1,5 @@
 import Rpg.Engine
+import Rpg.Catalog
 import Rpg.Adventures.Illegal
 
 /-!
@@ -39,13 +40,13 @@ def withDice (g : IO.Ref Rng) (x : Roll α) : IO α := do
   return a
 
 /-- One line that shows the HP of every being in a Fight. -/
-def status (s : FightState) : String :=
-  let show1 (f : Fighter) := s!"{f.being.name} {max f.hp 0}/{f.being.maxHP}"
+def status (rules : RuleSet) (s : FightState) : String :=
+  let show1 (f : Fighter) := s!"{f.being.name} {max f.hp 0}/{rules.maxHP f.being}"
   " | ".intercalate (show1 s.hero :: s.foes.map show1)
 
 /-- Run a Fight. Returns the Character's HP after a win, or `none` if the Character dies or input ends. -/
-partial def runFight (g : IO.Ref Rng) (hero : Fighter) (foes : List Being) : IO (Option Int) := do
-  let order := turnOrder hero.being foes
+partial def runFight (rules : RuleSet) (g : IO.Ref Rng) (hero : Fighter) (foes : List Being) : IO (Option Int) := do
+  let order := turnOrder rules hero.being foes
   let rec loop (s : FightState) (round : Nat) : IO (Option Int) := do
     if !s.hero.alive then
       say s!"{s.hero.being.name} falls. The Adventure is over."
@@ -53,7 +54,7 @@ partial def runFight (g : IO.Ref Rng) (hero : Fighter) (foes : List Being) : IO 
     if s.foes.all (!·.alive) then
       say "You win the Fight."
       return some s.hero.hp
-    IO.println s!"\n-- Round {round}: {status s}"
+    IO.println s!"\n-- Round {round}: {status rules s}"
     let living := (s.foes.zipIdx.filter fun (f, _) => f.alive).map (·.2)
     let target ← if living.length = 1 then pure (living.getD 0 0) else do
       IO.println "Attack whom?"
@@ -62,16 +63,16 @@ partial def runFight (g : IO.Ref Rng) (hero : Fighter) (foes : List Being) : IO 
       match ← askChoice living.length with
       | some k => pure (living.getD k 0)
       | none => return none
-    let (s', log) ← withDice g (fightRound order s target)
+    let (s', log) ← withDice g (fightRound rules order s target)
     for l in log do IO.println l
     loop s' (round + 1)
-  loop ⟨hero, foes.map fun b => ⟨b, b.maxHP⟩⟩ 1
+  loop ⟨hero, foes.map fun b => ⟨b, rules.maxHP b⟩⟩ 1
 
 /-- Play an Adventure from a Scene, with the Character at the given HP. -/
-partial def play (g : IO.Ref Rng) (hero : Being) (a : Adventure) (hp : Int) (id : SceneId) : IO Unit := do
+private partial def play (rules : RuleSet) (g : IO.Ref Rng) (hero : Being) (a : Adventure) (hp : Int) (id : SceneId) : IO Unit := do
   let some scene := a.scene? id
     | say s!"(Scene {id} is missing. This cannot happen in a Legal Adventure.)"
-  IO.println s!"\n== {scene.title} ==   [{hero.name} HP {hp}/{hero.maxHP}]"
+  IO.println s!"\n== {scene.title} ==   [{hero.name} HP {hp}/{rules.maxHP hero}]"
   say scene.text
   if scene.choices.isEmpty then
     IO.println "\n*** THE END ***"
@@ -81,29 +82,42 @@ partial def play (g : IO.Ref Rng) (hero : Being) (a : Adventure) (hp : Int) (id 
   let some k ← askChoice scene.choices.length | return
   let some ch := scene.choices[k]? | return
   match ch.outcome with
-  | .goto n => play g hero a hp n
+  | .goto n => play rules g hero a hp n
   | .roll t m onS onF =>
-    let level := (hero.rollLevel t).map (· + m)
+    let level := (hero.rollLevel rules t).map (· + m)
     let label := if m = 0 then t.name else if m > 0 then s!"{t.name} +{m}" else s!"{t.name} {m}"
-    let (res, line) ← withDice g (makeRoll label level)
+    let (res, line) ← withDice g (makeRoll rules label level)
     IO.println line
-    play g hero a hp (if res.succeeded then onS else onF)
+    play rules g hero a hp (if res.succeeded then onS else onF)
   | .fight foes onWin =>
-    match ← runFight g ⟨hero, hp⟩ foes with
-    | some hp' => play g hero a hp' onWin
+    match ← runFight rules g ⟨hero, hp⟩ foes with
+    | some hp' => play rules g hero a hp' onWin
     | none => return
+
+/-- Start only an adventure carrying both required proofs. -/
+def playCertified (g : IO.Ref Rng) (a : Probability.CertifiedAdventure) : IO Unit := do
+  let hero := a.hero
+  let rules := a.rules
+  say s!"\n{hero.name}: ST {hero.st}, DX {hero.dx}, IQ {hero.iq}, HT {hero.ht}, HP {rules.maxHP hero}, Dodge {rules.dodge hero}."
+  play rules g hero a.story (rules.maxHP hero) a.story.start
+
+/-- Start a story admitted by the source-bound statistical confidence protocol. -/
+def playStatistical (g : IO.Ref Rng) (a : Probability.StatisticalAdventure) : IO Unit := do
+  let candidate := a.candidate
+  say s!"\n{candidate.hero.name}: HP {candidate.rules.maxHP candidate.hero}, Dodge {candidate.rules.dodge candidate.hero}."
+  play candidate.rules g candidate.hero candidate.story (candidate.rules.maxHP candidate.hero) candidate.story.start
 
 /-- Show the checker catching each cheating Adventure. -/
 def showCheats : IO Unit := do
   say "\nA cheating DM wrote these Adventures. The checker rejects each one, and a proof in Rpg/Adventures/Illegal.lean shows the spec rejects it too."
-  for a in cheats do
+  for a in Lighthouse.Tests.cheats do
     IO.println s!"\n* {a.title}"
-    for e in check mara a do
+    for e in check Lighthouse.rules Lighthouse.mara a do
       say s!"  ERROR: {e}"
-  IO.println s!"\n* {lighthouse.title}"
-  let errs := check mara lighthouse
+  IO.println s!"\n* {Lighthouse.lighthouse.title}"
+  let errs := check Lighthouse.rules Lighthouse.mara Lighthouse.lighthouse
   if errs.isEmpty then
-    say "  No errors. The theorem `lighthouse_legal` proves it is legal."
+    say "  Legality passes. Lighthouse must also pass the statistical confidence protocol before play."
 
 /-- Read `--seed N` from the command line. -/
 def seedArg : List String → Option Nat
@@ -112,17 +126,37 @@ def seedArg : List String → Option Nat
   | [] => none
 
 def main (args : List String) : IO Unit := do
+  if args.contains "--cheats" then
+    showCheats
+    return
   let seed ← match seedArg args with
     | some s => pure s
     | none => IO.monoNanosNow
   let g ← IO.mkRef (Rng.mk seed.toUInt64)
-  IO.println "VERIFIED RPG: a GURPS Lite adventure where the DM cannot cheat."
+  IO.println "VERIFIED RPG: adventures checked for legality and fairness."
   IO.println s!"(dice seed {seed}; replay with --seed {seed})"
-  IO.println "\n  1. Play The Drowned Lighthouse, as Mara the sellsword"
-  IO.println "  2. Watch the checker catch a cheating DM"
-  match ← askChoice 2 with
-  | some 0 =>
-    say s!"\nMara: ST {mara.st}, DX {mara.dx}, IQ {mara.iq}, HT {mara.ht}, HP {mara.maxHP}, Dodge {mara.dodge}. Broadsword-14, leather armor (DR 2)."
-    play g mara lighthouse mara.maxHP lighthouse.start
-  | some _ => showCheats
+  let mut choices : List (Sum Probability.CertifiedAdventure Probability.StatisticalAdventure) := []
+  for candidate in statisticalCandidates do
+    IO.println s!"Checking {candidate.story.title} with the fixed confidence protocol..."
+    (← IO.getStdout).flush
+    let (counts, admitted) := Probability.admitStatistically candidate
+    match admitted with
+    | some evidence =>
+      say s!"{candidate.story.title}: passed the 99.9% statistical confidence check under the independent-sampling model ({counts.games} validation games)."
+      choices := choices ++ [.inr evidence]
+    | none =>
+      say s!"{candidate.story.title}: not admitted; validation failed or was incomplete. Run make validate for details."
+  choices := choices ++ playableAdventures.map Sum.inl
+  for (entry, i) in choices.zipIdx do
+    match entry with
+    | .inl a => IO.println s!"  {i + 1}. Play {a.story.title}, as {a.hero.name} [exact proof]"
+    | .inr a => IO.println s!"  {i + 1}. Play {a.candidate.story.title}, as {a.candidate.hero.name} [statistical confidence]"
+  let demo := choices.length + 1
+  IO.println s!"  {demo}. Watch the checker catch a cheating DM"
+  match ← askChoice demo with
+  | some k =>
+    match choices[k]? with
+    | some (.inl a) => playCertified g a
+    | some (.inr a) => playStatistical g a
+    | none => showCheats
   | none => pure ()

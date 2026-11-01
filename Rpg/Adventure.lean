@@ -1,4 +1,4 @@
-import Rpg.Rules
+import Rpg.RuleSet
 
 /-!
 # Adventures

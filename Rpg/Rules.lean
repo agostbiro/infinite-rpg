@@ -1,8 +1,9 @@
 /-!
-# Game rules
+# Reusable GURPS Lite types and mechanics
 
-This file holds the GURPS Lite rules that the game uses: beings, skills, gear,
-point costs, the damage table, and success rolls.
+This library supplies reusable GURPS Lite defaults: beings, skills, gear,
+point costs, damage tables, and success rolls. Each adventure selects its own
+`RuleSet` in its `Rules.lean`; runtime and analysis receive that value explicitly.
 Page numbers refer to GURPS Lite, Fourth Edition (2020).
 The file `docs/gurps-deviations.md` lists each place where these rules differ from GURPS Lite.
 -/
@@ -112,7 +113,7 @@ structure Being where
   armor : Armor
   /-- Natural DR, such as a stone hide. Only Creatures may have it. -/
   naturalDR : Nat := 0
-  deriving Repr
+  deriving Repr, DecidableEq
 
 /-- The score of an attribute. -/
 def Being.attr (b : Being) : Attribute → Nat

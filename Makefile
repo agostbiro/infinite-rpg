@@ -19,4 +19,14 @@ check: build
 
 # Show the checker rejecting the cheating Adventures.
 cheats:
-	echo 2 | lake exe rpg
+	lake exe rpg --cheats
+
+# Fast diagnostics only; this command never creates a fairness proof.
+.PHONY: audit
+audit:
+	lake exe audit $(if $(SAMPLES),--samples $(SAMPLES),) $(if $(SEED),--seed $(SEED),)
+
+# Frozen validation protocol backed by the Lean statistical risk theorem.
+.PHONY: validate
+validate:
+	lake exe validate

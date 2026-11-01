@@ -1,4 +1,5 @@
 import Rpg.Check
+import Rpg.Adventures.Harbor.Rules
 
 /-!
 # Ready-made Characters
@@ -6,11 +7,11 @@ import Rpg.Check
 Each Character is a legal 100-point build, proved by the checker.
 -/
 
-namespace Rpg
+namespace Rpg.Harbor
 
-/-- Mara, a sellsword. 100 points: attributes 70, skills 30. -/
-def mara : Being where
-  name := "Mara"
+/-- Iona, a traveler. 100 points: attributes 70, skills 30. -/
+def iona : Being where
+  name := "Iona"
   st := 11
   dx := 12
   iq := 10
@@ -20,10 +21,10 @@ def mara : Being where
   weapon := .broadsword
   armor := .leather
 
-#guard mara.points == 100
+#guard iona.points == 100
 
-/-- Mara is a legal Character. -/
-theorem mara_legal : LegalCharacter mara :=
+/-- Iona is a legal Character. -/
+theorem iona_legal : LegalCharacter rules iona :=
   checkCharacter_sound (by decide)
 
-end Rpg
+end Rpg.Harbor
