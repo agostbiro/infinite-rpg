@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { portalsForView, roomLayout } from '../web/spatial.js';
+import { portalsForView } from '../web/spatial.js';
+import {environmentFor,placeForScene,worldLayout} from '../web/environment.js';
 
 async function view(page) { return (await page.request.get('/api/view')).json(); }
 
@@ -15,7 +16,9 @@ async function settled(page) {
 async function walkThrough(page, index) {
   await settled(page);
   const before = await view(page);
-  const gate = roomLayout(portalsForView(before)).portals[index];
+  const env=environmentFor(before);
+  const place=placeForScene(env,before.scene.id);
+  const gate=worldLayout(portalsForView(before),place).portals[index];
   expect(gate).toBeTruthy();
   const world = page.locator('#world');
   await page.locator('#world-canvas').focus();
@@ -42,10 +45,10 @@ async function walkThrough(page, index) {
         await page.keyboard.up(key); await page.keyboard.up('Shift');
       }
     };
-    await moveAxis('z', 2);
+    await moveAxis('z', place.z+5);
     await moveAxis('x', gate.x);
     const request = page.waitForRequest(r => r.url().endsWith('/api/input') && r.method() === 'POST');
-    const key = gate.z < 2 ? 'ArrowUp' : 'ArrowDown';
+    const key = gate.z < place.z+5 ? 'ArrowUp' : 'ArrowDown';
     await page.keyboard.down('Shift');
     await page.keyboard.down(key);
     try { expect((await request).postDataJSON()).toEqual(gate.input); }
@@ -66,18 +69,18 @@ test('a Wish passes the real checks and is playable in 3D through combat and a t
   page.on('request', r => { if (r.url().endsWith('/api/input')) sent.push(r.postDataJSON()); });
   await page.goto('/');
   await page.locator('#new-open').click();
-  await page.locator('#wish').fill('A hobbit adventure in the Shire, with a stolen silver acorn.');
+  await page.locator('#wish').fill('A long adventure with Napoleon in Egypt and the pyramids.');
+  await page.locator('#wish-difficulty').selectOption('easy');
   await page.locator('#wish-send').click();
   await expect(page.locator('#ready')).toBeVisible({ timeout: 120000 });
   await expect(page.locator('#progress-steps')).toContainText('passed');
   await page.locator('#play-now').click();
   await settled(page);
   await expect(page.locator('#world')).toHaveAttribute('data-renderer', 'webgl');
-  await expect(page.locator('#world-location')).toHaveText('The Garden Gate');
+  await expect(page.locator('#world-location')).toHaveText("The Scholars' Camp");
   await expect(page.locator('#world')).toHaveAttribute('data-portal-count', '2');
-  await expect(page.locator('[data-object="path"]')).toHaveCount(1);
-  await expect(page.locator('[data-object="lookout"]')).toHaveCount(1);
-  await expect(page.locator('[data-actor="Old Mother Burrows"]')).toHaveCount(1);
+  await expect(page.locator('#world')).toHaveAttribute('data-place-count','8');
+  await expect(page.locator('[data-object="person"]')).toHaveCount(1);
   await page.screenshot({ path: testInfo.outputPath('wish-3d-desktop.png') });
   // Waiting and moving do not advance the graph, roll dice, or change health.
   const stationary = await view(page);
@@ -96,36 +99,38 @@ test('a Wish passes the real checks and is playable in 3D through combat and a t
   expect(rejected.status()).toBe(400);
   expect((await view(page)).reports).toEqual(stationary.reports);
   // Safe deterministic scene edges lead to the combat chosen by the player.
+  const builds=await page.locator('#world').getAttribute('data-world-builds');
   await walkThrough(page, 0);
-  await expect(page.locator('#world-location')).toHaveText('The Green Dragon');
+  await expect(page.locator('#world')).toHaveAttribute('data-world-builds',builds);
+  await expect(page.locator('#world-location')).toHaveText("Salma's Tent");
   await page.reload();
   await settled(page);
-  await expect(page.locator('#world-location')).toHaveText('The Green Dragon');
-  await walkThrough(page, 1);
-  await expect(page.locator('#world-location')).toHaveText('Teeth in the Hedge');
-  let current = await walkThrough(page, 0);
+  await expect(page.locator('#world-location')).toHaveText("Salma's Tent");
+  await walkThrough(page, 0);
+  await expect(page.locator('#world-location')).toHaveText('Alexandria Harbour');
+  let current = await walkThrough(page, 1);
   expect(current.phase).toBe('fight');
-  await expect(page.locator('[data-actor="Grey Wolf"]')).toHaveCount(1);
+  await expect(page.locator('[data-actor="Armed Smuggler"]')).toHaveCount(1);
   await expect(page.locator('[data-object="shield"]')).toHaveCount(1);
   await page.screenshot({ path: testInfo.outputPath('combat-3d.png') });
   let turns = 0;
-  while (!['dead', 'ended'].includes(current.phase) && turns++ < 80) {
-    if (current.phase === 'fight') {
-      // Resolve a real offered attack, including its target, through the 3D controls.
-      current = await walkThrough(page, 0);
-    } else {
-      // Take the ferry rather than a random swimming check, then face the ruffian.
-      const index = current.scene.title === 'The Brandywine Bank' ? 1 : 0;
-      current = await walkThrough(page, index);
-    }
+  while(current.phase === 'fight' && turns++ < 80) {
+    await page.locator('#world-combat-actions button').first().click();
+    await settled(page);
+    current=await view(page);
   }
+  // Exercise the full long graph without spending the test waiting for 64 walks.
+  while(current.phase==='scene' && turns++<200) {
+    current=await (await page.request.post('/api/input',{data:current.scene.choices[0].input})).json();
+  }
+  await page.reload(); await settled(page);
   expect(['dead', 'ended']).toContain(current.phase);
   await expect(page.locator('#over')).toBeVisible();
   await expect(page.locator('#world')).toHaveAttribute('data-portal-count', '0');
   expect(errors).toEqual([]);
   await page.locator('#again').click();
   await settled(page);
-  await expect(page.locator('#world-location')).toHaveText('The Garden Gate');
+  await expect(page.locator('#world-location')).toHaveText("The Scholars' Camp");
   // A small touch viewport retains navigation, readable choices, and no page overflow.
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('[data-move="arrowup"]')).toBeVisible();

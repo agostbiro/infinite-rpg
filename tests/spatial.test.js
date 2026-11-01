@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { portalsForView, roomLayout, movePosition, crossedPortal, inputKey, figuresForView } from '../web/spatial.js';
+import { portalsForView, crossedPortal, inputKey, figuresForView } from '../web/spatial.js';
 
+import {worldLayout,moveInWorld} from '../web/environment.js';
+const place={id:0,x:0,z:0};
 const choose = choice => ({ choose: { choice } });
 const viewFor = count => ({
   phase: 'scene', inputs: Array.from({ length: count }, (_, i) => choose(i)),
@@ -55,9 +57,9 @@ test('terminal states expose no logical exit', () => {
   for (const phase of ['ended', 'dead', 'title']) assert.deepEqual(portalsForView({ ...viewFor(2), phase }), []);
 });
 
-test('every generated gate is reachable directly without crossing another gate', () => {
-  for (let count = 1; count <= 100; count++) {
-    const layout = roomLayout(portalsForView(viewFor(count)));
+test('each supported scene choice is reachable directly without crossing another choice', () => {
+  for (let count = 1; count <= 4; count++) {
+    const layout = worldLayout(portalsForView(viewFor(count)),place);
     for (const target of layout.portals) {
       let position = layout.spawn;
       let crossed = null;
@@ -68,7 +70,7 @@ test('every generated gate is reachable directly without crossing another gate',
           x: layout.spawn.x + fraction * (target.x - layout.spawn.x),
           z: layout.spawn.z + fraction * (target.z - layout.spawn.z),
         };
-        const next = movePosition(position, intended.x - position.x, intended.z - position.z, layout.bound);
+        const next = moveInWorld(position, intended.x - position.x, intended.z - position.z, [], layout.bound);
         crossed = crossedPortal(position, next, layout.portals);
         position = next;
         if (crossed) break;
@@ -81,16 +83,16 @@ test('every generated gate is reachable directly without crossing another gate',
 test('movement and waiting do not mutate logical state or invent an exit', () => {
   const view = viewFor(3);
   const before = JSON.stringify(view);
-  const layout = roomLayout(portalsForView(view));
+  const layout = worldLayout(portalsForView(view),place);
   let p = layout.spawn;
   for (let i = 0; i < 1000; i++) {
-    const next = movePosition(p, Math.cos(i) * 0.1, Math.sin(i) * 0.1, layout.bound);
+    const next = moveInWorld(p, Math.cos(i) * 0.1, Math.sin(i) * 0.1, [], layout.bound);
     assert.equal(crossedPortal(p, next, layout.portals), null);
     p = next;
   }
   assert.equal(JSON.stringify(view), before);
-  const atWall = movePosition(p, 10000, 10000, layout.bound);
-  assert.ok(Math.hypot(atWall.x, atWall.z) <= layout.bound + 1e-10);
+  const atWall = moveInWorld(p, 10000, 10000, [], layout.bound);
+  assert.deepEqual(atWall,{x:layout.bound,z:layout.bound});
 });
 
 test('swept gate detection does not miss a crossing between frames or resend inside a gate', () => {

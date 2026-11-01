@@ -48,6 +48,14 @@
               </select>
             </label>
           </div>
+          <label id="wish-difficulty-row" class="wish-label">Difficulty
+            <select id="wish-difficulty" aria-describedby="difficulty-help">
+              <option value="easy">Easy · 50% survival at 10 choices</option>
+              <option value="medium">Medium · 30% survival at 10 choices</option>
+              <option value="hard">Hard · 10% survival at 10 choices</option>
+            </select>
+          </label>
+          <p id="difficulty-help" class="wish-help">Survival targets for the random test player. Your own choices affect your chances. All adventures are written in English.</p>
           <div class="wish-buttons">
             <button id="wish-send" class="big-button" type="button">Ask the Dungeon Master</button>
             <button id="wish-close" class="small-button" type="button">Close</button>
@@ -96,6 +104,10 @@
       <button id="world-pause" class="small-button" type="button">Pause</button>
       <button id="world-speed" class="small-button" type="button" title="Change the dice animation speed">Dice ×1</button>
       <button id="skip" class="small-button" type="button" hidden>Skip animation</button>
+    </div>
+    <div class="world-navigation">
+      <canvas id="world-minimap" width="160" height="160" role="img" aria-label="World map"></canvas>
+      <p id="world-objective"></p>
     </div>
     <div class="world-crosshair" aria-hidden="true">+</div>
     <div id="world-combat-actions" class="world-combat-actions" aria-label="Combat maneuvers" hidden></div>

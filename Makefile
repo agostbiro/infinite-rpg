@@ -37,7 +37,7 @@ napoleon: build
 
 # Spatial adapter tests need only Node.js. Browser tests use the recorded Wish hook.
 test-spatial:
-	node --test tests/spatial.test.js tests/playback.test.js
+	node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js
 
 test-browser: build
 	npm run test:browser

@@ -693,6 +693,7 @@ import { playbackView, reportDuration } from './playback.js';
 
   /** A line about the Pictures of a live Adventure, or null. */
   function picturesNote(v) {
+    if (v.environment) return null;
     const P = v.pictures;
     if (!P || P.ready === null) return null;
     if (P.off) return 'Pictures are off: the Picture check cannot run on this machine.';
@@ -704,6 +705,8 @@ import { playbackView, reportDuration } from './playback.js';
   /** The "New Adventure" tile: a button, or the Wish form, or the steps of the work on a Wish. */
   function renderWish(v) {
     const gen = v.generation;
+    $('wish-difficulty-row').hidden = !gen.difficulty;
+    $('difficulty-help').hidden = !gen.difficulty;
     const running = gen.state === 'running';
     const showSteps = gen.state !== 'idle';
     const open = showSteps || (S.wishOpen && gen.available);
@@ -729,7 +732,7 @@ import { playbackView, reportDuration } from './playback.js';
       $('ready-pictures').hidden = note === null;
       $('ready-pictures').textContent = note || '';
     }
-    $('progress-wish').textContent = gen.wish ? 'Your Wish: ' + gen.wish : '';
+    $('progress-wish').textContent = gen.wish ? 'Your Wish: ' + gen.wish + (gen.difficulty ? ' · Difficulty: ' + gen.difficulty : '') : '';
     const list = $('progress-steps');
     list.textContent = '';
     gen.steps.forEach((st, i) => {
@@ -1073,7 +1076,8 @@ import { playbackView, reportDuration } from './playback.js';
     }
     const wish = box.value.trim();
     if (!wish) { toast('Type a Wish first.'); return; }
-    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value });
+    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value,
+      difficulty: $('wish-difficulty').value });
   });
   $('cancel').addEventListener('click', async () => {
     try {
@@ -1106,6 +1110,7 @@ import { playbackView, reportDuration } from './playback.js';
     $('wish').value = '';
     $('wish-name').value = '';
     $('wish-gender').value = 'dm';
+    $('wish-difficulty').value = 'easy';
     $('wish-count').textContent = '0 / 500';
   }
 

@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/spatial.test.js tests/playback.test.js",
+    "test": "node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js",
     "test:browser": "playwright test"
   },
   "devDependencies": {

@@ -2,7 +2,7 @@
 
 There are two ways the DM writes an Adventure.
 
-- **From a Wish, in the game.** The server sends the prompt in `Rpg/Prompt.lean` to the Claude API. It asks for a PG-13 campaign of 60 to 100 Scenes, with at least 40 Choices on each successful path, and a 100-point Character as JSON. The rule tables in that prompt come from `Rpg/Rules.lean`, and the ranges of the fairness check come from `Rpg/Probability/Weibull.lean`. The prompt below is the source for its rules, so keep the two in step.
+- **From a Wish, in the game.** The server sends the prompt in `Rpg/Prompt.lean` to the Claude API. It asks for a PG-13 campaign of 60 to 100 Scenes, with at least 40 Choices on each successful path, a 100-point Character, and a persistent `environment` as JSON, all in English. The selected Easy / Medium / Hard difficulty selects the Weibull reference curve. The environment and its checked limits are described in `docs/wish-worlds.md`. The rule tables in that prompt come from `Rpg/Rules.lean`, and the ranges of the fairness check come from `Rpg/Probability/Weibull.lean`. The prompt below is the source for its rules, so keep the two in step.
 - **As a Lean file, offline.** Paste the prompt below into an AI coding agent that works in this repo.
 
 ---

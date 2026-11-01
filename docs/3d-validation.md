@@ -1,5 +1,7 @@
 # Vérification de RPG_3D
 
+> Historical report for the first spatial version. The current continuous world and Wish checks are documented in [world-validation.md](world-validation.md).
+
 Vérification locale du 1 novembre 2026, sur macOS.
 
 ## Réalisé

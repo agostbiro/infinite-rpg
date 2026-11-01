@@ -8,9 +8,11 @@ Movement, camera motion, lighting, and idle time are presentation only. Lean
 still decides all outcomes. Combat weapons and shields select the existing maneuvers and
 targets. They do not introduce physical damage, range, or real-time enemy turns.
 
-Each scene uses an open, bounded floor. Interaction zones are separated, and scenery does
-not block their routes. A larger menu gets a larger floor. Generated adventures
-therefore need no new schema or AI-generated navigation geometry.
+The world is now a persistent landscape described by the Wish JSON. A checked
+`environment` supplies places, connected paths, props, NPCs and a total scene-to-place
+mapping. The current options appear in the active place's clear interaction area;
+scene transitions preserve the player position and static scenery. See
+[Wish-generated worlds](../wish-worlds.md) for the format and checks.
 
 Three.js 0.180.0 is vendored with its license. The existing Lean server serves
 its two modules. No CDN request, JavaScript build, or production npm install is
@@ -27,7 +29,7 @@ The complete mathematical contract is in [3d-formalization.md](../3d-formalizati
 The journal retains the existing transcript, character, map, and accessible input
 buttons. A browser without WebGL can use those controls, with an explicit message.
 
-Objects are procedural meshes chosen from cosmetic narrative hints. NPCs recognized
-in the prose are decorative, except at explicitly offered conversation choices.
+Objects are procedural meshes chosen from cosmetic narrative hints. NPCs supplied
+in the environment (or recognized in legacy prose) are decorative, except at explicitly offered conversation choices.
 Combat figures and their health come directly from the engine. Unknown prose falls
 back to a trail; missing a visual hint cannot remove or create a logical edge.

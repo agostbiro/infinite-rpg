@@ -70,12 +70,12 @@ def rulesText : String :=
     s!"- Example, Mara: {pointsBreakdown Lighthouse.mara}."])
 
 /-- The allowed death range of one row of the fairness check, as text. -/
-def bandText (row : Nat) : String :=
+def bandText (row : Nat) (difficulty : Probability.Difficulty := .easy) : String :=
   let pct (r : Rat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   if h : row < liveHorizon + 1 then
-    let band := Probability.confidenceBands liveHorizon ⟨row, h⟩ Probability.explorationPolicy
+    let band := Probability.confidenceBands liveHorizon ⟨row, h⟩ difficulty.policy
     let what := if row = 0 then "Death on turn 1"
       else s!"Death on turn {row + 1}, of the Characters alive at turn {row - 1}"
     s!"  - {what}: {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}."
@@ -83,22 +83,23 @@ def bandText (row : Nat) : String :=
 
 /-- The part of the DM prompt about the fairness check. The numbers come from the policy in
 `Rpg/Probability/Weibull.lean`, so the prompt cannot drift from the check. -/
-def dangerText : String :=
+def dangerText (difficulty : Probability.Difficulty) : String :=
   "\n".intercalate ([
     "## Danger (the fairness check)",
     "- After the checker, a program plays your Adventure 1,000 times. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
     s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range, with 90% confidence:"] ++
-    (List.range (liveHorizon + 1)).map bandText ++ [
-    "- The reference lifetime has a median of ten scene choices. Offer meaningful danger, but also negotiation, scouting and safe detours. A human is not required to follow the uniform test policy.",
+    (List.range (liveHorizon + 1)).map (fun row => bandText row difficulty) ++ [
+    s!"- Selected difficulty: {difficulty.key}. Target survival after ten scene choices: {(difficulty.survivalAtTen * 100).floor}%. This is survival, not death probability. Shape is two. Offer negotiation, scouting and safe detours alongside danger. A human is not required to follow the uniform test policy.",
     s!"- Most paths must be at least {liveHorizon + 2} Choices long. A turn that too few games reach fails.",
     "- If the check fails, you get the numbers for each turn that failed. Make Fights harder or easier, or move them earlier or later. The rules cannot change."])
 
 /-- The DM's instructions for an Adventure. They are the same on every try and every Wish, and
 `requestBody` marks them for the prompt cache. -/
-def dmSystemPrompt : String :=
+def dmSystemPromptFor (difficulty : Probability.Difficulty) : String :=
   "\n".intercalate [
     "You are the DM (Dungeon Master) of a single-player game based on GURPS Lite.",
     "The Player sends a Wish. You write one Adventure and its Character as JSON.",
+    "Write all player-facing text in English, even if the Wish is in another language. Names, descriptions, choices, introductions and theme labels must be in English.",
     "A checker program reads your JSON before anyone can play it. It sends back any rule you break, and you fix the Adventure.",
     "",
     "## The story",
@@ -140,16 +141,28 @@ def dmSystemPrompt : String :=
     "- The Player picks a maneuver on each turn of a Fight: Attack; All-Out Attack (+4 to hit, but no Dodge until the next turn); or All-Out Defense (no attack, but +2 to Dodge). Creatures always Attack.",
     "- Make most Fights winnable: 1 to 3 Creatures, each with a weapon skill of 9 to 13.",
     "",
-    dangerText,
+    dangerText difficulty,
     "",
     "## Theme Names",
     "- `themeNames` gives display names that fit the world to the Character's skills, weapon, and armor. For example, in a school for wizards, Broadsword could show as \"Wand Duelling\" and the broadsword as \"Holly Wand\".",
     "- The Player sees only the Theme Name. The rules stay the same.",
     "",
+    "## Persistent 3D environment",
+    "- Include an `environment` for THIS Wish, alongside the story. It is one continuous, stable world, not one room per scene. Invent appropriate named locations, paths and scenery for the requested setting.",
+    "- `theme`: desert, forest, coast, snow, space or city. `places`: 2 to 12 objects with unique integer id, English name (1 to 60 characters), kind (camp, harbour, village, market, ruins, temple, forest, outpost), and integer x,z coordinates in [-85,85] metres. Separate place centres by at least 24 metres.",
+    "- `paths`: at most 30 objects {fromPlace,toPlace}; valid different place ids, connected as an undirected network. These are visible trails; walking on them never triggers a story choice.",
+    "- `props`: at most 80 objects {kind,x,z,scale,heading}. Kinds: pyramid, palm, tree, rock, house, tent, column, boat, river. Coordinates [-100,100], scale 50 to 200 percent, heading 0 to 359 degrees. Use the available reusable models to evoke the Wish; do not send code, model URLs or new commands.",
+    "- Keep solid props clear of every place centre: distance >= 10 + model radius in metres. Radius is ceil(scale/100 * (12 for pyramid, 5 for house, 3 otherwise)). Rivers are shallow decorative water and exempt. Keep a 4-metre-wide clear corridor along every path. Spread props across the map, with visible landmarks and varied destinations.",
+    "- `scenes`: exactly one {scene,place,npcs} mapping for EVERY story scene including endings. Scene ids must exist, place ids must exist. `npcs` lists at most 4 English names (1 to 60 characters) of people visibly present in this scene; use [] when nobody is present. Those people are rendered as characters. Nearby story events should share a place; moving to another chapter can send the player to another location. Revisit earlier places when the story calls for it.",
+    "- Only the story graph defines actions. The renderer places exactly the current scene's options as objects or NPCs at its mapped place. The environment never adds a choice, hazard, die roll, damage or outcome.",
+    "",
     "## Pictures",
     "- `palette` lists 8 to 14 colors (such as \"#0b1220\") that fit the world. An artist will draw one Picture for each Scene with these colors.",
     "",
     rulesText]
+
+/-- The default prompt uses the easy difficulty. -/
+def dmSystemPrompt : String := dmSystemPromptFor .easy
 
 /-- The words for the Character's gender in the prompt. -/
 def genderText : String → String
@@ -219,12 +232,24 @@ def outcomeSchema : Json :=
       ("foes", arrSchema (objSchema (beingFields ++ [("naturalDR", intSchema)]))), ("onWin", intSchema)])
   ] }
 
+/-- The same reusable environment format for every Wish. -/
+def environmentSchema : Json := objSchema [
+  ("theme", enumSchema worldThemes),
+  ("places", arrSchema (objSchema [("id", intSchema), ("name", strSchema),
+    ("kind", enumSchema worldPlaceKinds), ("x", intSchema), ("z", intSchema)])),
+  ("paths", arrSchema (objSchema [("fromPlace", intSchema), ("toPlace", intSchema)])),
+  ("props", arrSchema (objSchema [("kind", enumSchema worldPropKinds), ("x", intSchema),
+    ("z", intSchema), ("scale", intSchema), ("heading", intSchema)])),
+  ("scenes", arrSchema (objSchema [("scene", intSchema), ("place", intSchema),
+    ("npcs", arrSchema strSchema)]))]
+
 /-- The schema of a whole reply: what `Draft.ofJson` reads. -/
 def adventureSchema : Json :=
   objSchema [
     ("title", strSchema),
     ("world", strSchema),
     ("intro", strSchema),
+    ("environment", environmentSchema),
     ("character", objSchema (beingFields ++ [("background", strSchema)])),
     ("themeNames", objSchema [
       ("skills", arrSchema (objSchema [("skill", enumSchema (Skill.all.map Skill.key)), ("name", strSchema)])),
@@ -266,8 +291,8 @@ def assistantTurn (content : Json) : Json := json% { role: "assistant", content:
 
 /-- The request for an Adventure, with the turns so far. Thinking cannot be turned off on this
 model, and it counts against `max_tokens`, so the limit is 64,000. -/
-def adventureRequest (messages : List Json) : Json :=
-  requestBody dmSystemPrompt messages adventureSchema "medium" 64000
+def adventureRequest (messages : List Json) (difficulty : Probability.Difficulty := .easy) : Json :=
+  requestBody (dmSystemPromptFor difficulty) messages adventureSchema "medium" 64000
 
 /-! ## Pictures -/
 

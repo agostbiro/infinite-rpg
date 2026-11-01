@@ -200,4 +200,8 @@ Design notes: `GLOSSARY.md`, `docs/adr/` (ADR, Architecture Decision Record; ADR
 
 ## Test hook
 
-`make run-fake` sets `RPG_FAKE_API=tests/fake-api`. The server then reads recorded API replies from that folder and never calls the API. Each reply is a recorded stream of SSE events (`.sse`), read by the same code as a real stream. The first reply fails the checker with 4 errors, the second passes the checker and the fairness check ("The Silver Acorn", in the Shire), and one Picture has a script, so it fails the check and shows the plain backdrop. `tests/fake-api/make_fixtures.py` writes these files.
+`make run-fake` sets `RPG_FAKE_API=tests/fake-api`. The server then reads recorded API replies from that folder and never calls the API. Each reply is a recorded stream of SSE events (`.sse`), read by the same code as a real stream. The first reply has a disconnected environment and is rejected. The corrected Napoleon campaign passes Easy admission and includes its complete 3D world. The selected difficulty still controls admission; a fixture can fail on another difficulty. Picture fixtures retain a script rejection case for older adventures. `tests/fake-api/make_fixtures.py` writes these files.
+
+## Continuous worlds and Wish difficulties
+
+New Wishes include a validated persistent environment and Easy / Medium / Hard survival targets. See [the format, limits and equations](docs/wish-worlds.md). `npm test` checks spatial command identity, reachable paths, collision handling and combat playback. The game interface and newly generated adventures use English.

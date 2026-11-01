@@ -26,79 +26,874 @@ event: content_block_start
 data: {"type": "content_block_start", "index": 1, "content_block": {"type": "text", "text": ""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"title\": \"The Silver Acorn\", \"world\": \"Middle-earth, the Shire\", \"intro\": \"The Shire, in the green heart of Middle-earth, where hobbits mind their gardens and nothing much ever happens. You are Pip T"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"environment\": {\"theme\": \"desert\", \"places\": [{\"id\": 0, \"name\": \"Scholars' Camp\", \"kind\": \"camp\", \"x\": -55, \"z\": 55}, {\"id\": 1, \"name\": \"Alexandria Harbour\", \"kind\": \"harbour\", \"x\": -55, \"z\": 15}, {\""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "unnelly, a young hobbit of Bywater who reads the weather better than books. This morning, something has happened.\", \"character\": {\"name\": \"Pip Tunnelly\", \"background\": \"A young hobbit of Bywater who r"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "id\": 2, \"name\": \"Nile Landing\", \"kind\": \"harbour\", \"x\": -15, \"z\": 15}, {\"id\": 3, \"name\": \"Reed Village\", \"kind\": \"village\", \"x\": 25, \"z\": 50}, {\"id\": 4, \"name\": \"Cairo Market\", \"kind\": \"market\", \"x\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "eads the weather better than books, and talks his way out of most trouble.\", \"st\": 9, \"dx\": 12, \"iq\": 11, \"ht\": 12, \"skills\": [{\"skill\": \"stealth\", \"level\": 14}, {\"skill\": \"knife\", \"level\": 14}, {\"ski"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "50, \"z\": 5}, {\"id\": 5, \"name\": \"Old Observatory\", \"kind\": \"ruins\", \"x\": 25, \"z\": -35}, {\"id\": 6, \"name\": \"Giza Plateau\", \"kind\": \"temple\", \"x\": -25, \"z\": -55}, {\"id\": 7, \"name\": \"Desert Outpost\", \"kin"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ll\": \"fastTalk\", \"level\": 13}, {\"skill\": \"naturalist\", \"level\": 12}, {\"skill\": \"survival\", \"level\": 12}, {\"skill\": \"climbing\", \"level\": 13}, {\"skill\": \"swimming\", \"level\": 13}, {\"skill\": \"firstAid\", \""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "d\": \"outpost\", \"x\": -65, \"z\": -30}], \"paths\": [], \"props\": [{\"kind\": \"pyramid\", \"x\": -58, \"z\": -78, \"scale\": 150, \"heading\": 0}, {\"kind\": \"pyramid\", \"x\": -6, \"z\": -91, \"scale\": 180, \"heading\": 0}, {\"k"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "level\": 12}], \"weapon\": \"largeKnife\", \"armor\": \"none\"}, \"themeNames\": {\"skills\": [{\"skill\": \"stealth\", \"name\": \"Hobbit Quietness\"}, {\"skill\": \"fastTalk\", \"name\": \"Hobbit Chatter\"}, {\"skill\": \"naturali"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ind\": \"pyramid\", \"x\": -86, \"z\": -68, \"scale\": 80, \"heading\": 0}, {\"kind\": \"river\", \"x\": -6, \"z\": 20, \"scale\": 120, \"heading\": 0}, {\"kind\": \"boat\", \"x\": -7, \"z\": 44, \"scale\": 100, \"heading\": 0}, {\"kind"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "st\", \"name\": \"Weather-lore\"}, {\"skill\": \"knife\", \"name\": \"Blade-work\"}, {\"skill\": \"survival\", \"name\": \"Wild-lore\"}], \"weapons\": [{\"weapon\": \"largeKnife\", \"name\": \"Grandfather's Barrow-blade\"}], \"armor"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": \"palm\", \"x\": -32, \"z\": 48, \"scale\": 100, \"heading\": 0}, {\"kind\": \"palm\", \"x\": 9, \"z\": 78, \"scale\": 140, \"heading\": 0}, {\"kind\": \"palm\", \"x\": 68, \"z\": 41, \"scale\": 130, \"heading\": 0}, {\"kind\": \"palm"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": [{\"armor\": \"none\", \"name\": \"Second-best Waistcoat\"}]}, \"palette\": [\"#1d2a1a\", \"#2f4a2a\", \"#4d6b3a\", \"#86a35a\", \"#c9b46a\", \"#e8d9a8\", \"#6b4a2a\", \"#3a2a1c\", \"#7a9ab8\", \"#2a3a52\"], \"start\": 0, \"scenes"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\", \"x\": -33, \"z\": 1, \"scale\": 120, \"heading\": 0}, {\"kind\": \"rock\", \"x\": 73, \"z\": -54, \"scale\": 150, \"heading\": 30}, {\"kind\": \"rock\", \"x\": -83, \"z\": 74, \"scale\": 150, \"heading\": 40}, {\"kind\": \"house\", "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": [{\"id\": 0, \"title\": \"The Garden Gate\", \"text\": \"Morning mist lies over Bywater. Old Mother Burrows hammers on your gate: her grandson's silver acorn, an heirloom, was snatched in the night, and mud"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"x\": 75, \"z\": 70, \"scale\": 150, \"heading\": 0}, {\"kind\": \"column\", \"x\": 48, \"z\": -65, \"scale\": 140, \"heading\": 0}, {\"kind\": \"column\", \"x\": 59, \"z\": -65, \"scale\": 140, \"heading\": 0}], \"scenes\": [{\"scene"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "dy boot prints lead off toward the river. The sky to the west looks heavy.\", \"choices\": [{\"text\": \"Walk down the lane to the Green Dragon\", \"outcome\": {\"type\": \"goto\", \"next\": 1}}, {\"text\": \"Read the "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 200, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 0, \"place\": 0, \"npcs\": [\"Napoleon Bonaparte\"]}, {\"scene\": 101, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 1, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "clouds before you go (Weather-lore)\", \"outcome\": {\"type\": \"roll\", \"against\": \"naturalist\", \"modifier\": 0, \"onSuccess\": 2, \"onFailure\": 1}}]}, {\"id\": 1, \"title\": \"The Green Dragon\", \"text\": \"The inn is"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "2, \"place\": 1, \"npcs\": []}, {\"scene\": 203, \"place\": 1, \"npcs\": [\"Salma\"]}, {\"scene\": 3, \"place\": 1, \"npcs\": []}, {\"scene\": 4, \"place\": 1, \"npcs\": []}, {\"scene\": 105, \"place\": 1, \"npcs\": [\"Salma\"]}, {\""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " warm and loud. In the corner a tall stranger in a wet cloak keeps his hand on a bulging pocket and watches the door.\", \"choices\": [{\"text\": \"Spin him a tale and look in his pocket (Hobbit Chatter -1)"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "scene\": 5, \"place\": 1, \"npcs\": [\"Salma\"]}, {\"scene\": 6, \"place\": 1, \"npcs\": [\"Youssef\"]}, {\"scene\": 207, \"place\": 1, \"npcs\": [\"Salma\"]}, {\"scene\": 7, \"place\": 1, \"npcs\": []}, {\"scene\": 8, \"place\": 2, "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\", \"outcome\": {\"type\": \"roll\", \"against\": \"fastTalk\", \"modifier\": -1, \"onSuccess\": 3, \"onFailure\": 4}}, {\"text\": \"Follow him when he slips out\", \"outcome\": {\"type\": \"goto\", \"next\": 4}}]}, {\"id\": 2, \"t"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"npcs\": []}, {\"scene\": 109, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 9, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 10, \"place\": 2, \"npcs\": []}, {\"scene\": 211, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"sce"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "itle\": \"Bagshot Hill\", \"text\": \"You climb the hill and see the storm coming. From up here you also see the path the thief took: across Farmer Cotton's fields, toward the ferry.\", \"choices\": [{\"text\": "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ne\": 11, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 12, \"place\": 2, \"npcs\": []}, {\"scene\": 113, \"place\": 2, \"npcs\": [\"Amina\"]}, {\"scene\": 13, \"place\": 2, \"npcs\": [\"Amina\"]}, {\"scene\": 214, \"place\": 2, "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"Take the short way through the fields\", \"outcome\": {\"type\": \"goto\", \"next\": 3}}]}, {\"id\": 3, \"title\": \"Farmer Cotton's Fields\", \"text\": \"Tall barley hides you. Ahead, by the hedge, something grey and"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"npcs\": [\"Salma\"]}, {\"scene\": 14, \"place\": 2, \"npcs\": []}, {\"scene\": 215, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 15, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 216, \"place\": 3, \"npcs\": [\"Salma\"]},"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " lean is sniffing the thief's trail.\", \"choices\": [{\"text\": \"Creep past it through the barley (Hobbit Quietness)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 5, \"onF"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " {\"scene\": 16, \"place\": 3, \"npcs\": []}, {\"scene\": 117, \"place\": 3, \"npcs\": []}, {\"scene\": 17, \"place\": 3, \"npcs\": []}, {\"scene\": 218, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 18, \"place\": 3, \"npcs\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ailure\": 4}}, {\"text\": \"Walk up to it boldly\", \"outcome\": {\"type\": \"goto\", \"next\": 4}}]}, {\"id\": 4, \"title\": \"Teeth in the Hedge\", \"text\": \"A grey wolf, far from the wild, bursts out of the hedge with"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "[\"Amina\"]}, {\"scene\": 219, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 19, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 20, \"place\": 3, \"npcs\": []}, {\"scene\": 121, \"place\": 3, \"npcs\": []}, {\"scene\": 21, \"p"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " a snarl.\", \"choices\": [{\"text\": \"Stand and fight\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Grey Wolf\", \"st\": 9, \"dx\": 12, \"iq\": 4, \"ht\": 12, \"skills\": [{\"skill\": \"brawling\", \"level\": 12}], \"w"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "lace\": 3, \"npcs\": []}, {\"scene\": 222, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 22, \"place\": 3, \"npcs\": [\"Desaix\"]}, {\"scene\": 223, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 23, \"place\": 3, \"npcs\": []"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "eapon\": \"punch\", \"armor\": \"none\", \"naturalDR\": 1}], \"onWin\": 5}}]}, {\"id\": 5, \"title\": \"The Brandywine Bank\", \"text\": \"The river runs fast and brown after the night's rain. On the far bank the strange"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}, {\"scene\": 224, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 24, \"place\": 4, \"npcs\": []}, {\"scene\": 125, \"place\": 4, \"npcs\": [\"Youssef\"]}, {\"scene\": 25, \"place\": 4, \"npcs\": [\"Youssef\"]}, {\"scene\": 226,"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "r is loading a little boat.\", \"choices\": [{\"text\": \"Swim across before he casts off (Swimming -2)\", \"outcome\": {\"type\": \"roll\", \"against\": \"swimming\", \"modifier\": -2, \"onSuccess\": 6, \"onFailure\": 7}},"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 26, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 227, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 27, \"place\": 4, \"npcs\": []}, {\"scene\": 28, \"place\": 4, \"npcs\": ["}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " {\"text\": \"Run for the ferry\", \"outcome\": {\"type\": \"goto\", \"next\": 7}}]}, {\"id\": 6, \"title\": \"Ending: Home by Supper\", \"text\": \"You haul yourself out of the water right beside the boat. The stranger i"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "]}, {\"scene\": 129, \"place\": 4, \"npcs\": []}, {\"scene\": 29, \"place\": 4, \"npcs\": []}, {\"scene\": 230, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 30, \"place\": 4, \"npcs\": [\"Farid\"]}, {\"scene\": 231, \"place\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "s so startled that he drops the silver acorn and flees. You are back in Bywater in time for supper, and Mother Burrows bakes you a seed cake.\", \"choices\": []}, {\"id\": 7, \"title\": \"The Ferry\", \"text\": "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "4, \"npcs\": [\"Salma\"]}, {\"scene\": 31, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 232, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 32, \"place\": 4, \"npcs\": []}, {\"scene\": 133, \"place\": 4, \"npcs\": []}, {\"sce"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"At the ferry the stranger turns and draws a long knife. \\\"Go home, little one,\\\" he says.\", \"choices\": [{\"text\": \"Fight the ruffian\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Bree Ruffian\", \"s"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ne\": 33, \"place\": 4, \"npcs\": []}, {\"scene\": 234, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 34, \"place\": 4, \"npcs\": [\"Napoleon Bonaparte\"]}, {\"scene\": 235, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 35,"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "t\": 11, \"dx\": 10, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 11}], \"weapon\": \"largeKnife\", \"armor\": \"leather\", \"naturalDR\": 0}], \"onWin\": 9}}]}, {\"id\": 8, \"title\": \"Ending: The Acorn Re"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"place\": 4, \"npcs\": []}, {\"scene\": 36, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 137, \"place\": 5, \"npcs\": [\"Amina\"]}, {\"scene\": 37, \"place\": 5, \"npcs\": [\"Amina\"]}, {\"scene\": 238, \"place\": 5, \"npcs\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "turned\", \"text\": \"The ruffian goes into the river and comes up far downstream, with no acorn and no pride. The Shirriffs hear the tale by evening, and your name is toasted at the Green Dragon for a we"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "[\"Salma\"]}, {\"scene\": 38, \"place\": 5, \"npcs\": []}, {\"scene\": 239, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 39, \"place\": 5, \"npcs\": [\"Youssef\"]}, {\"scene\": 240, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ek.\", \"choices\": []}]}"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 40, \"place\": 5, \"npcs\": []}, {\"scene\": 141, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 41, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 242, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 42, \"place\": 5, \"n"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "pcs\": [\"Farid\"]}, {\"scene\": 243, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 43, \"place\": 5, \"npcs\": []}, {\"scene\": 44, \"place\": 6, \"npcs\": []}, {\"scene\": 145, \"place\": 6, \"npcs\": [\"Monge\"]}, {\"scene\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "45, \"place\": 6, \"npcs\": [\"Monge\"]}, {\"scene\": 246, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 46, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 247, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 47, \"place\": 6"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"npcs\": [\"Youssef\"]}, {\"scene\": 248, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 48, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 149, \"place\": 6, \"npcs\": []}, {\"scene\": 49, \"place\": 6, \"npcs\": []}, {\"sc"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ene\": 250, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 50, \"place\": 6, \"npcs\": [\"Farid\"]}, {\"scene\": 251, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 51, \"place\": 6, \"npcs\": []}, {\"scene\": 52, \"place\": 6,"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"npcs\": [\"Salma\"]}, {\"scene\": 153, \"place\": 6, \"npcs\": []}, {\"scene\": 53, \"place\": 6, \"npcs\": []}, {\"scene\": 254, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 54, \"place\": 6, \"npcs\": [\"Salma\", \"Monge\"]}"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", {\"scene\": 255, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 55, \"place\": 6, \"npcs\": [\"Amina\"]}, {\"scene\": 256, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 56, \"place\": 6, \"npcs\": []}, {\"scene\": 157, \"pla"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ce\": 6, \"npcs\": [\"Youssef\"]}, {\"scene\": 57, \"place\": 6, \"npcs\": [\"Youssef\"]}, {\"scene\": 258, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 58, \"place\": 6, \"npcs\": [\"Napoleon Bonaparte\"]}, {\"scene\": 259, \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 59, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 60, \"place\": 0, \"npcs\": [\"Farid\"]}, {\"scene\": 161, \"place\": 0, \"npcs\": []}, {\"scene\": 61, \"place\": 0, \"npcs\": []}"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", {\"scene\": 262, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 62, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 63, \"place\": 0, \"npcs\": []}, {\"scene\": 64, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 65, \"place"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 3, \"npcs\": [\"Amina\"]}]}, \"title\": \"Bonaparte \\u00b7 Maps of the Nile\", \"world\": \"Egypt, Bonaparte's expedition, 1798\", \"intro\": \"Egypt, July 1798. You are Camille Laurent, an interpreter and cartog"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "rapher with the expedition. Alongside Salma, you search for stolen surveys that threaten access to water. This historical fiction takes you from Alexandria to the Nile, Cairo and the pyramids of Giza."}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\", \"character\": {\"name\": \"Camille Laurent\", \"background\": \"An interpreter and cartographer with the expedition, you investigate with Salma to protect the water routes.\", \"st\": 11, \"dx\": 12, \"iq\": 10, "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"ht\": 12, \"skills\": [{\"skill\": \"broadsword\", \"level\": 14}, {\"skill\": \"stealth\", \"level\": 13}, {\"skill\": \"lockpicking\", \"level\": 12}, {\"skill\": \"diplomacy\", \"level\": 11}, {\"skill\": \"brawling\", \"level\":"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " 12}, {\"skill\": \"knife\", \"level\": 12}], \"weapon\": \"broadsword\", \"armor\": \"leather\"}, \"start\": 0, \"themeNames\": {\"skills\": [{\"skill\": \"broadsword\", \"name\": \"Sabre Fencing\"}, {\"skill\": \"stealth\", \"name\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": \"Stealth\"}, {\"skill\": \"diplomacy\", \"name\": \"Negotiation\"}, {\"skill\": \"lockpicking\", \"name\": \"Lockpicking\"}], \"weapons\": [{\"weapon\": \"broadsword\", \"name\": \"Expedition Sabre\"}], \"armor\": [{\"armor\": \"l"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "eather\", \"name\": \"Reinforced Coat\"}]}, \"palette\": [\"#d9b878\", \"#b9894d\", \"#ead9ab\", \"#254c62\", \"#193747\", \"#6d4d35\"], \"scenes\": [{\"id\": 0, \"title\": \"The Scholars' Camp\", \"text\": \"I \\u00b7 The Stolen M"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "aps. Napoleon Bonaparte waits beside a table covered in maps. A survey of the Nile's wells has vanished; soldiers and villages alike depend on finding it.\", \"choices\": [{\"text\": \"Talk to Napoleon Bona"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "parte\", \"outcome\": {\"type\": \"goto\", \"next\": 1}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 1, \"onFailure\": 200}}]},"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " {\"id\": 1, \"title\": \"Salma's Tent\", \"text\": \"I \\u00b7 The Stolen Maps. Salma waits beneath a striped awning. The cartographer recognises a mark on the abandoned map case: the thief left through the ha"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "rbour.\", \"choices\": [{\"text\": \"Examine the map with Salma\", \"outcome\": {\"type\": \"goto\", \"next\": 2}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 101}}]}, {\"id"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 2, \"title\": \"Alexandria Harbour\", \"text\": \"I \\u00b7 The Stolen Maps. Mooring ropes creak among the cargo bales. A smuggler is keeping curious eyes away from a crate bearing the expedition's seal.\","}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"choices\": [{\"text\": \"Follow the path along the quay\", \"outcome\": {\"type\": \"goto\", \"next\": 3}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Arme"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "d Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 3}}]}, {\"id\": 3, \"title\": \"The Stor"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ekeeper's Ledger\", \"text\": \"I \\u00b7 The Stolen Maps. Lucien Morel asks why one receipt lists the same boat twice. A splash of ink hides the recipient's name.\", \"choices\": [{\"text\": \"Examine the ledge"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "r\", \"outcome\": {\"type\": \"goto\", \"next\": 4}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 4, \"onFailure\": 203}}]}, {\"i"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "d\": 4, \"title\": \"The Warehouse Yard\", \"text\": \"I \\u00b7 The Stolen Maps. A shadow closes a crate behind a row of jars. You can follow the porters through their passage or challenge the armed lookout.\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"choices\": [{\"text\": \"Follow the porters through the passage\", \"outcome\": {\"type\": \"goto\", \"next\": 5}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"nam"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e\": \"Armed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 5}}]}, {\"id\": 5, \"title\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"The Merchant's Balcony\", \"text\": \"I \\u00b7 The Stolen Maps. Salma waits beside an open window. She has found the name of a ferryman who knows the canals better than the officers do.\", \"choices\": [{\"t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ext\": \"Climb through the window towards the canal\", \"outcome\": {\"type\": \"goto\", \"next\": 6}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 105}}]}, {\"id\": 6, \"t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "itle\": \"The Severed Ropes\", \"text\": \"I \\u00b7 The Stolen Maps. Youssef waits beside his damaged boat. Someone has cut the mooring lines; an armed man now claims the right to collect a crossing fee.\", "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"choices\": [{\"text\": \"Talk to Youssef about another boat\", \"outcome\": {\"type\": \"goto\", \"next\": 7}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"A"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "rmed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 7}}]}, {\"id\": 7, \"title\": \"The P"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ilot's House\", \"text\": \"I \\u00b7 The Stolen Maps. The pilot draws the river channels on a damp stone. The route to Rosetta remains open if you leave before the supply convoy.\", \"choices\": [{\"text\": \"E"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "xamine the drawing on the stone\", \"outcome\": {\"type\": \"goto\", \"next\": 8}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": 8, \"onFailure\": 207}}]}, {\"id\": 8, \"title\": \"The Salt Marsh Causeway\", \"text\": \"I \\u00b7 The Stolen Maps. The wind drives salt against your boots. An irregular guard blocks the direct road, but work"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ers use a raised walkway to the side.\", \"choices\": [{\"text\": \"Climb the ladder to the walkway\", \"outcome\": {\"type\": \"goto\", \"next\": 9}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"type\": \"fight\", \"foes\": [{\"name\": \"Armed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onW"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "in\": 9}}]}, {\"id\": 9, \"title\": \"The Patched Sail\", \"text\": \"I \\u00b7 The Stolen Maps. Youssef waits beneath a blue sail. He will take you to the first lock if you help him prepare the boat.\", \"choices"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": [{\"text\": \"Board Youssef's boat\", \"outcome\": {\"type\": \"goto\", \"next\": 10}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 109}}]}, {\"id\": 10, \"title\": \"The A"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "bandoned Watchpost\", \"text\": \"I \\u00b7 The Stolen Maps. A lantern still burns in the empty watchpost. Its returning lookout wants the notebook you spotted, but he may listen to an explanation.\", \"choi"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ces\": [{\"text\": \"Talk to the lookout about passing through\", \"outcome\": {\"type\": \"goto\", \"next\": 11}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\":"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"Armed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 11}}]}, {\"id\": 11, \"title\": \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "The Canal Marker\", \"text\": \"I \\u00b7 The Stolen Maps. Three carved lines indicate a channel towards cultivated fields. Salma recognises a surveying method used by an expedition engineer.\", \"choices\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "[{\"text\": \"Examine the three carved lines\", \"outcome\": {\"type\": \"goto\", \"next\": 12}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"onSuccess\": 12, \"onFailure\": 211}}]}, {\"id\": 12, \"title\": \"The Granaries of Rosetta\", \"text\": \"I \\u00b7 The Stolen Maps. Grain sacks form a quiet maze. A marauder guards a hidden cache; local residen"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ts show you a way out towards the market.\", \"choices\": [{\"text\": \"Follow the path towards the market\", \"outcome\": {\"type\": \"goto\", \"next\": 13}}, {\"text\": \"Challenge the smuggler with your sabre\", \"out"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "come\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Armed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}], \"onWin\": 13}}]}, {\"id\": 13, \"title\": \"The Rope Market\", \"text\": \"I \\u00b7 The Stolen Maps. Amina asks for news of the convoy. She saw a man carrying the stolen case as though it held a treasure.\","}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"choices\": [{\"text\": \"Talk to Amina\", \"outcome\": {\"type\": \"goto\", \"next\": 14}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 113}}]}, {\"id\": 14, \"title\": \"The"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " Bookbinder's Workshop\", \"text\": \"I \\u00b7 The Stolen Maps. The bookbinder repaired a sand-covered notebook. A torn page shows a small dam and an officer's initials.\", \"choices\": [{\"text\": \"Open the c"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "hest of papers\", \"outcome\": {\"type\": \"goto\", \"next\": 15}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 15, \"onFailure"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 214}}]}, {\"id\": 15, \"title\": \"The First Nile Camp\", \"text\": \"I \\u00b7 The Stolen Maps. The river turns orange at sunset. Youssef warns that the next stage will take you along the banks and into the"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " irrigation canals.\", \"choices\": [{\"text\": \"Board the boat beside the Nile\", \"outcome\": {\"type\": \"goto\", \"next\": 16}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"aga"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "inst\": \"stealth\", \"modifier\": 0, \"onSuccess\": 16, \"onFailure\": 215}}]}, {\"id\": 16, \"title\": \"The Delta Reeds\", \"text\": \"II \\u00b7 The Nile Routes. A narrow track winds between the reeds. The sound of "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "an oar lets you follow another boat without approaching it.\", \"choices\": [{\"text\": \"Follow the reed-lined path\", \"outcome\": {\"type\": \"goto\", \"next\": 17}}, {\"text\": \"Examine the tracks quietly (Stealth"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ")\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 17, \"onFailure\": 216}}]}, {\"id\": 17, \"title\": \"The Water Mill\", \"text\": \"II \\u00b7 The Nile Routes. A motionless wheel"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " holds debris from a flood. One part of its mechanism resembles the sketch in the stolen notebook.\", \"choices\": [{\"text\": \"Climb the mill stairs\", \"outcome\": {\"type\": \"goto\", \"next\": 18}}, {\"text\": \"E"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "xamine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 117}}]}, {\"id\": 18, \"title\": \"The Potters' Courtyard\", \"text\": \"II \\u00b7 The Nile Routes. Amina waits beside a cooled kiln. "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "The potters carried jars for men who spoke of a concealed cistern.\", \"choices\": [{\"text\": \"Talk to Amina by the kiln\", \"outcome\": {\"type\": \"goto\", \"next\": 19}}, {\"text\": \"Examine the tracks quietly (S"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "tealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 19, \"onFailure\": 218}}]}, {\"id\": 19, \"title\": \"The Palm Terrace\", \"text\": \"II \\u00b7 The Nile Routes. Salma stud"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ies the palm shadows. She concludes that the notebook's drawing was made in an east-facing courtyard.\", \"choices\": [{\"text\": \"Look across the river through the telescope\", \"outcome\": {\"type\": \"goto\", "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"next\": 20}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 20, \"onFailure\": 219}}]}, {\"id\": 20, \"title\": \"The Convoy L"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "anding\", \"text\": \"II \\u00b7 The Nile Routes. A deserter guards a chest of military papers. The supply officer knows a path around his post.\", \"choices\": [{\"text\": \"Follow the convoy path\", \"outcome\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"type\": \"goto\", \"next\": 21}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Armed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"s"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "kill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 21}}]}, {\"id\": 21, \"title\": \"The Infirmary Tents\", \"text\": \"II \\u00b7 The Nile Routes. The doctor ask"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "s you to conserve drinking water. A wounded courier heard the name of a village where the maps are to change hands.\", \"choices\": [{\"text\": \"Talk to the infirmary doctor\", \"outcome\": {\"type\": \"goto\", \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "next\": 22}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 121}}]}, {\"id\": 22, \"title\": \"Desaix's Letter\", \"text\": \"II \\u00b7 The Nile Routes. General Desaix wa"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "its outside an open tent. He grants you passage through the lines without diverting soldiers from their duties.\", \"choices\": [{\"text\": \"Talk to General Desaix\", \"outcome\": {\"type\": \"goto\", \"next\": 23}"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 23, \"onFailure\": 222}}]}, {\"id\": 23, \"title\": \"The Irrigated Garden\", "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"text\": \"II \\u00b7 The Nile Routes. A gardener closes the little sluices one by one. His account confirms that a side canal reaches the village you seek.\", \"choices\": [{\"text\": \"Examine the garden slu"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ice\", \"outcome\": {\"type\": \"goto\", \"next\": 24}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 24, \"onFailure\": 223}}]},"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " {\"id\": 24, \"title\": \"The Landing Steps\", \"text\": \"II \\u00b7 The Nile Routes. Stone steps descend beneath the palms. Red sealing wax clings to the last dry step.\", \"choices\": [{\"text\": \"Descend the st"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "airs to the boat\", \"outcome\": {\"type\": \"goto\", \"next\": 25}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 25, \"onFailu"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "re\": 224}}]}, {\"id\": 25, \"title\": \"The Eastern Ferry\", \"text\": \"II \\u00b7 The Nile Routes. Youssef waits for the ferry. Across the river, two routes lead to a caravanserai without entering the militar"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "y camp.\", \"choices\": [{\"text\": \"Board the ferry\", \"outcome\": {\"type\": \"goto\", \"next\": 26}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 125}}]}, {\"id\": 26, \"t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "itle\": \"The Caravanserai\", \"text\": \"II \\u00b7 The Nile Routes. Salma asks travellers about a case marked with a compass. A merchant recognises it and points towards the inner courtyard.\", \"choices\": ["}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"text\": \"Talk to Salma in the courtyard\", \"outcome\": {\"type\": \"goto\", \"next\": 27}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "onSuccess\": 27, \"onFailure\": 226}}]}, {\"id\": 27, \"title\": \"The Carpet Room\", \"text\": \"II \\u00b7 The Nile Routes. An open window overlooks the rooftops. Beneath a rolled carpet lies a draft survey desc"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ribing the flow of several wells.\", \"choices\": [{\"text\": \"Examine the survey beneath the carpet\", \"outcome\": {\"type\": \"goto\", \"next\": 28}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 28, \"onFailure\": 227}}]}, {\"id\": 28, \"title\": \"The Brick Rooftops\", \"text\": \"II \\u00b7 The Nile Routes. A trafficker watches the stai"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "rs to discourage pursuit. A mason's ladder offers another way around his post.\", \"choices\": [{\"text\": \"Climb the mason's ladder\", \"outcome\": {\"type\": \"goto\", \"next\": 29}}, {\"text\": \"Challenge the smug"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "gler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Armed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"arm"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "or\": \"none\", \"naturalDR\": 0}], \"onWin\": 29}}]}, {\"id\": 29, \"title\": \"The Baker's Oven\", \"text\": \"II \\u00b7 The Nile Routes. The baker recognises the stamp on the survey. His neighbour engraves merchan"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ts' seals and is still working despite the heat.\", \"choices\": [{\"text\": \"Follow the path to the workshop\", \"outcome\": {\"type\": \"goto\", \"next\": 30}}, {\"text\": \"Examine the objects and tracks nearby\", \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "outcome\": {\"type\": \"goto\", \"next\": 129}}]}, {\"id\": 30, \"title\": \"The Seal Maker\", \"text\": \"II \\u00b7 The Nile Routes. Farid asks to see the wax impression. A tiny notch identifies a forged seal used t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "o divert supply convoys.\", \"choices\": [{\"text\": \"Talk to Farid\", \"outcome\": {\"type\": \"goto\", \"next\": 31}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stea"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "lth\", \"modifier\": 0, \"onSuccess\": 31, \"onFailure\": 230}}]}, {\"id\": 31, \"title\": \"Night on the Terrace\", \"text\": \"II \\u00b7 The Nile Routes. Stars shimmer in the rooftop pools. Salma connects the clues"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": the maps are being used to sell false access to water reserves.\", \"choices\": [{\"text\": \"Watch the stars before setting out\", \"outcome\": {\"type\": \"goto\", \"next\": 32}}, {\"text\": \"Examine the tracks qu"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 32, \"onFailure\": 231}}]}, {\"id\": 32, \"title\": \"The Road to Embabeh\", \"text\": \"III \\u00b7 The Cairo Evide"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "nce. News of the army catches up with you. You must reach the quartermasters before another convoy follows a false map.\", \"choices\": [{\"text\": \"Follow the path towards Embabeh\", \"outcome\": {\"type\": \"g"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "oto\", \"next\": 33}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 33, \"onFailure\": 232}}]}, {\"id\": 33, \"title\": \"The Of"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ficers' Map Table\", \"text\": \"III \\u00b7 The Cairo Evidence. Officers arrange cloth squares on a table to explain their movements. A messenger tells you where Bonaparte will be after the council.\", \"ch"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "oices\": [{\"text\": \"Examine the officers' map table\", \"outcome\": {\"type\": \"goto\", \"next\": 34}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 133}}]}, {\"id\": 34,"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"title\": \"The General's Tent\", \"text\": \"III \\u00b7 The Cairo Evidence. Napoleon Bonaparte waits for a precise report. He wants evidence of the diversions and leaves you to decide how to protect the c"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ivilian convoy.\", \"choices\": [{\"text\": \"Talk to Napoleon Bonaparte\", \"outcome\": {\"type\": \"goto\", \"next\": 35}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "stealth\", \"modifier\": 0, \"onSuccess\": 35, \"onFailure\": 234}}]}, {\"id\": 35, \"title\": \"The Earthen Embankment\", \"text\": \"III \\u00b7 The Cairo Evidence. The distant noise of battle unsettles the porters."}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " Your task is to guide civilians through a sheltered passage, away from the fighting.\", \"choices\": [{\"text\": \"Follow the passage behind the embankment\", \"outcome\": {\"type\": \"goto\", \"next\": 36}}, {\"tex"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "t\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 36, \"onFailure\": 235}}]}, {\"id\": 36, \"title\": \"The Disputed Storehouse\", \"text"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": \"III \\u00b7 The Cairo Evidence. An armed man is moving supplies under cover of the confusion. Salma suggests asking the storekeeper for help instead of confronting him.\", \"choices\": [{\"text\": \"Talk"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " to the storekeeper about protecting the supplies\", \"outcome\": {\"type\": \"goto\", \"next\": 37}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Armed S"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "muggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 37}}]}, {\"id\": 37, \"title\": \"The Famil"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ies' Refuge\", \"text\": \"III \\u00b7 The Cairo Evidence. Amina waits beside a well with a broken rope. The carpenters can help restore the crossing used by the families.\", \"choices\": [{\"text\": \"Take the "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "path to the carpenters\", \"outcome\": {\"type\": \"goto\", \"next\": 38}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 137}}]}, {\"id\": 38, \"title\": \"The Broken Footbr"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "idge\", \"text\": \"III \\u00b7 The Cairo Evidence. The carpenters assemble salvaged planks. They saw a man carrying the map case towards the river.\", \"choices\": [{\"text\": \"Cross the repaired footbridge\", "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"outcome\": {\"type\": \"goto\", \"next\": 39}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 39, \"onFailure\": 238}}]}, {\"id\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": 39, \"title\": \"The Departing Feluccas\", \"text\": \"III \\u00b7 The Cairo Evidence. Youssef has found a light boat. The fugitives followed the channel beside the ruins of an old quay.\", \"choices\": [{\"tex"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "t\": \"Board the felucca\", \"outcome\": {\"type\": \"goto\", \"next\": 40}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 40, \"o"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "nFailure\": 239}}]}, {\"id\": 40, \"title\": \"The Old Quay Columns\", \"text\": \"III \\u00b7 The Cairo Evidence. Broken columns rise from the sand. A fresh chalk message arranges a meeting near Cairo.\", \"choic"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "es\": [{\"text\": \"Examine the marked column\", \"outcome\": {\"type\": \"goto\", \"next\": 41}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"onSuccess\": 41, \"onFailure\": 240}}]}, {\"id\": 41, \"title\": \"The Cairo Gate\", \"text\": \"III \\u00b7 The Cairo Evidence. Salma speaks with a neighbourhood official. He will help if the inquiry is not used"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " as an excuse to seize the residents' water.\", \"choices\": [{\"text\": \"Talk to Salma and the official\", \"outcome\": {\"type\": \"goto\", \"next\": 42}}, {\"text\": \"Examine the objects and tracks nearby\", \"outco"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "me\": {\"type\": \"goto\", \"next\": 141}}]}, {\"id\": 42, \"title\": \"The Fountain Courtyard\", \"text\": \"III \\u00b7 The Cairo Evidence. Water runs between stone basins. Farid finds the same forged seal on a jar "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "that he saw on the notebook.\", \"choices\": [{\"text\": \"Examine the jar with the forged seal\", \"outcome\": {\"type\": \"goto\", \"next\": 43}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 43, \"onFailure\": 242}}]}, {\"id\": 43, \"title\": \"The Copyist's Stairs\", \"text\": \"III \\u00b7 The Cairo Evidence. A copyist keeps duplicates of"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " transport contracts. A page was removed so recently that the ink on its neighbour is still damp.\", \"choices\": [{\"text\": \"Climb the copyist's stairs\", \"outcome\": {\"type\": \"goto\", \"next\": 44}}, {\"text\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 44, \"onFailure\": 243}}]}, {\"id\": 44, \"title\": \"The Contract Chest\", \"text\": \"III"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \\u00b7 The Cairo Evidence. An accomplice returns for the last contract. The copyist shows you a hiding place where you can let him pass and then read the papers.\", \"choices\": [{\"text\": \"Open the cont"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ract chest\", \"outcome\": {\"type\": \"goto\", \"next\": 45}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Armed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 45}}]}, {\"id\": 45, \"title\": \"Monge's Loggia\", \"text\": \"III \\u00b7 The Cairo E"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "vidence. Gaspard Monge waits beside an incomplete survey. He confirms that the notebook combines useful measurements with deliberately false directions.\", \"choices\": [{\"text\": \"Talk to Gaspard Monge\","}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"outcome\": {\"type\": \"goto\", \"next\": 46}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 145}}]}, {\"id\": 46, \"title\": \"The Instrument Garden\", \"text\": \"III \\u00"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "b7 The Cairo Evidence. The scholars arrange their instruments on a table. Salma proposes comparing the notebook's bearings with the plain of Giza.\", \"choices\": [{\"text\": \"Look through the scholars' te"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "lescope\", \"outcome\": {\"type\": \"goto\", \"next\": 47}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 47, \"onFailure\": 246}"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}]}, {\"id\": 47, \"title\": \"The Boat to Giza\", \"text\": \"III \\u00b7 The Cairo Evidence. Youssef waits on the western bank. Beyond the fields and palms, the pyramids finally emerge from the dust.\", \"choic"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "es\": [{\"text\": \"Board the boat to Giza\", \"outcome\": {\"type\": \"goto\", \"next\": 48}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"on"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Success\": 48, \"onFailure\": 247}}]}, {\"id\": 48, \"title\": \"At the Pyramids\", \"text\": \"IV \\u00b7 Water at the Pyramids. Salma examines a survey marker. The stolen sketch indicates a cistern near the anci"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ent paths, not a secret chamber inside a pyramid.\", \"choices\": [{\"text\": \"Examine the survey stone\", \"outcome\": {\"type\": \"goto\", \"next\": 49}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 49, \"onFailure\": 248}}]}, {\"id\": 49, \"title\": \"The Temple Columns\", \"text\": \"IV \\u00b7 Water at the Pyramids. Wind whistles betwee"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "n the columns. Part of a map case protrudes from the sand beside a recently disturbed step.\", \"choices\": [{\"text\": \"Climb the temple stairs\", \"outcome\": {\"type\": \"goto\", \"next\": 50}}, {\"text\": \"Examin"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 149}}]}, {\"id\": 50, \"title\": \"The Workers' Camp\", \"text\": \"IV \\u00b7 Water at the Pyramids. Farid waits with two workers who maint"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ain the water access routes. They saw the suspects descend to a storehouse away from the monuments.\", \"choices\": [{\"text\": \"Talk to Farid and the workers\", \"outcome\": {\"type\": \"goto\", \"next\": 51}}, {\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 51, \"onFailure\": 250}}]}, {\"id\": 51, \"title\": \"The Cool Gallery\", \"text\": \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "IV \\u00b7 Water at the Pyramids. A service gallery shelters the water jars from the sun. Fresh tracks stop at a wooden door secured from within.\", \"choices\": [{\"text\": \"Examine the gallery lock\", \"out"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "come\": {\"type\": \"goto\", \"next\": 52}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 52, \"onFailure\": 251}}]}, {\"id\": 52"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"title\": \"The Storehouse Keeper\", \"text\": \"IV \\u00b7 Water at the Pyramids. The leader of the scheme guards the last notebook. Salma wants to negotiate its return while the workers secure the path t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "o the well.\", \"choices\": [{\"text\": \"Talk to the keeper about returning the notebook\", \"outcome\": {\"type\": \"goto\", \"next\": 53}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "fight\", \"foes\": [{\"name\": \"Armed Smuggler\", \"st\": 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 53}}"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "]}, {\"id\": 53, \"title\": \"The Cistern\", \"text\": \"IV \\u00b7 Water at the Pyramids. The complete plan lies on a low table. You can correct the false directions once you identify which measurements are tr"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ustworthy.\", \"choices\": [{\"text\": \"Examine the map beside the cistern\", \"outcome\": {\"type\": \"goto\", \"next\": 54}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "153}}]}, {\"id\": 54, \"title\": \"The Shadow Survey\", \"text\": \"IV \\u00b7 Water at the Pyramids. Salma compares the shadows with Monge's measurements. The true water route reaches a village the convoy had "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "not planned to serve.\", \"choices\": [{\"text\": \"Observe the shadows through the telescope\", \"outcome\": {\"type\": \"goto\", \"next\": 55}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\":"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 55, \"onFailure\": 254}}]}, {\"id\": 55, \"title\": \"Return to the Village\", \"text\": \"IV \\u00b7 Water at the Pyramids. Amina waits in the square. T"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "he residents ask to receive corrected maps at the same time as the army.\", \"choices\": [{\"text\": \"Talk to Amina in the square\", \"outcome\": {\"type\": \"goto\", \"next\": 56}}, {\"text\": \"Examine the tracks qu"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 56, \"onFailure\": 255}}]}, {\"id\": 56, \"title\": \"Copies of the Plan\", \"text\": \"IV \\u00b7 Water at the Pyra"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "mids. The copyist spreads sheets across a table. You prepare two clear copies so that no group depends on a single precious original.\", \"choices\": [{\"text\": \"Examine the copied plans\", \"outcome\": {\"ty"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "pe\": \"goto\", \"next\": 57}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 57, \"onFailure\": 256}}]}, {\"id\": 57, \"title\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"The Last Nile Crossing\", \"text\": \"IV \\u00b7 Water at the Pyramids. Youssef packs the documents into a watertight chest. You cross back to camp carrying the villagers' testimony.\", \"choices\": [{\"text\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": \"Board the boat carrying the documents\", \"outcome\": {\"type\": \"goto\", \"next\": 58}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 157}}]}, {\"id\": 58, \"title\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"The Evening Council\", \"text\": \"IV \\u00b7 Water at the Pyramids. Napoleon Bonaparte waits with the quartermasters. Your report separates established facts from the rumours that surrounded the investig"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ation.\", \"choices\": [{\"text\": \"Talk to Napoleon Bonaparte at the council\", \"outcome\": {\"type\": \"goto\", \"next\": 59}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"again"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "st\": \"stealth\", \"modifier\": 0, \"onSuccess\": 59, \"onFailure\": 258}}]}, {\"id\": 59, \"title\": \"The Written Agreement\", \"text\": \"IV \\u00b7 Water at the Pyramids. Salma asks for the water access arrangement"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "s in writing. An officer agrees to deliver a copy to the village before the convoy leaves.\", \"choices\": [{\"text\": \"Examine the agreement on the table\", \"outcome\": {\"type\": \"goto\", \"next\": 60}}, {\"text"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 60, \"onFailure\": 259}}]}, {\"id\": 60, \"title\": \"The Last Accomplice\", \"text\": \"I"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "V \\u00b7 Water at the Pyramids. An accomplice still wants the forged seal. Farid proposes handing it to the neighbourhood officials with the evidence of the scheme.\", \"choices\": [{\"text\": \"Talk to Far"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "id about handing over the evidence\", \"outcome\": {\"type\": \"goto\", \"next\": 61}}, {\"text\": \"Challenge the smuggler with your sabre\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Armed Smuggler\", \"st\":"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " 14, \"dx\": 11, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 15}], \"weapon\": \"largeKnife\", \"armor\": \"none\", \"naturalDR\": 0}], \"onWin\": 61}}]}, {\"id\": 61, \"title\": \"The Supply Road\", \"text\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": \"IV \\u00b7 Water at the Pyramids. The first convoy follows the corrected route. You accompany the porters as far as the branch leading to the village.\", \"choices\": [{\"text\": \"Follow the supply convo"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "y path\", \"outcome\": {\"type\": \"goto\", \"next\": 62}}, {\"text\": \"Examine the objects and tracks nearby\", \"outcome\": {\"type\": \"goto\", \"next\": 161}}]}, {\"id\": 62, \"title\": \"Evening over Giza\", \"text\": \"IV \\"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "u00b7 Water at the Pyramids. The sun sinks behind the palms and pyramids. Salma joins you to decide who should keep the last field notebook.\", \"choices\": [{\"text\": \"Follow the path to Salma\", \"outcome"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": {\"type\": \"goto\", \"next\": 63}}, {\"text\": \"Examine the tracks quietly (Stealth)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 63, \"onFailure\": 262}}]}, {\"id\": 63, \"t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "itle\": \"The Cartographer's Choice\", \"text\": \"IV \\u00b7 Water at the Pyramids. Two tasks await: accompany the scholars on their surveys, or help the residents maintain their water routes. Bonaparte has"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " his maps; your own road is yours to choose.\", \"choices\": [{\"text\": \"Give the notebook to the scholars\", \"outcome\": {\"type\": \"goto\", \"next\": 64}}, {\"text\": \"Join Amina to maintain the water routes\", \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "outcome\": {\"type\": \"goto\", \"next\": 65}}]}, {\"id\": 64, \"title\": \"Ending \\u00b7 The Scholars' Notebook\", \"text\": \"You join Salma and the scholars on new surveys. The residents retain copies of the maps."}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " Your notebook carefully separates measurements from the stories you were told.\", \"choices\": []}, {\"id\": 65, \"title\": \"Ending \\u00b7 Guardians of the Water\", \"text\": \"You stay with Amina to share the "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "surveys and repair the crossings. Bonaparte continues his campaign; your adventure ends with work the villages can maintain for themselves.\", \"choices\": []}, {\"id\": 101, \"title\": \"Salma's Tent \\u00b7 "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "The Detour\", \"text\": \"Salma waits beneath a striped awning. The cartographer recognises a mark on the abandoned map case: the thief left through the harbour. You take time to hear another witness and "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 2}}, {\"text\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 1}}]}, {\"id\": 105, \"title\": \"The Merchant's Balcony \\u00b7 The Detour\", \"text\": \"Salma waits beside an open window. She has found t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "he name of a ferryman who knows the canals better than the officers do. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"cho"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 6}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 5}}]}, {\"id\": 109"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"title\": \"The Patched Sail \\u00b7 The Detour\", \"text\": \"Youssef waits beneath a blue sail. He will take you to the first lock if you help him prepare the boat. You take time to hear another witness "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 10}}, {\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 9}}]}, {\"id\": 113, \"title\": \"The Rope Market \\u00b7 The Detour\", \"text\": \"Amina asks for news of the convoy. She saw a man car"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "rying the stolen case as though it held a treasure. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Fo"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "llow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 14}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 13}}]}, {\"id\": 117, \"title\": \"The Wa"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ter Mill \\u00b7 The Detour\", \"text\": \"A motionless wheel holds debris from a flood. One part of its mechanism resembles the sketch in the stolen notebook. You take time to hear another witness and rec"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ord the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 18}}, {\"text\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 17}}]}, {\"id\": 121, \"title\": \"The Infirmary Tents \\u00b7 The Detour\", \"text\": \"The doctor asks you to conserve drinking water. A woun"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ded courier heard the name of a village where the maps are to change hands. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 22}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 21}}]}, {\"id"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 125, \"title\": \"The Eastern Ferry \\u00b7 The Detour\", \"text\": \"Youssef waits for the ferry. Across the river, two routes lead to a caravanserai without entering the military camp. You take time to h"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"got"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "o\", \"next\": 26}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 25}}]}, {\"id\": 129, \"title\": \"The Baker's Oven \\u00b7 The Detour\", \"text\": \"The baker recognises the stamp"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " on the survey. His neighbour engraves merchants' seals and is still working despite the heat. You take time to hear another witness and record the details. You can return to compare the evidence when"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 30}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "next\": 29}}]}, {\"id\": 133, \"title\": \"The Officers' Map Table \\u00b7 The Detour\", \"text\": \"Officers arrange cloth squares on a table to explain their movements. A messenger tells you where Bonaparte wi"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ll be after the council. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "he investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 34}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 33}}]}, {\"id\": 137, \"title\": \"The Families' Refuge \\u00b7 The D"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "etour\", \"text\": \"Amina waits beside a well with a broken rope. The carpenters can help restore the crossing used by the families. You take time to hear another witness and record the details. You can "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 38}}, {\"text\": \"Return to compare the cl"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ues\", \"outcome\": {\"type\": \"goto\", \"next\": 37}}]}, {\"id\": 141, \"title\": \"The Cairo Gate \\u00b7 The Detour\", \"text\": \"Salma speaks with a neighbourhood official. He will help if the inquiry is not used "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "as an excuse to seize the residents' water. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 42}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 41}}]}, {\"id\": 145, \"title\": \"Monge's Loggia"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \\u00b7 The Detour\", \"text\": \"Gaspard Monge waits beside an incomplete survey. He confirms that the notebook combines useful measurements with deliberately false directions. You take time to hear anot"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "her witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"nex"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "t\": 46}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 45}}]}, {\"id\": 149, \"title\": \"The Temple Columns \\u00b7 The Detour\", \"text\": \"Wind whistles between the columns. P"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "art of a map case protrudes from the sand beside a recently disturbed step. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 50}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 49}}]}, {\"id"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 153, \"title\": \"The Cistern \\u00b7 The Detour\", \"text\": \"The complete plan lies on a low table. You can correct the false directions once you identify which measurements are trustworthy. You take ti"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "me to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": \"goto\", \"next\": 54}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 53}}]}, {\"id\": 157, \"title\": \"The Last Nile Crossing \\u00b7 The Detour\", \"text\": \"Youssef packs the"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " documents into a watertight chest. You cross back to camp carrying the villagers' testimony. You take time to hear another witness and record the details. You can return to compare the evidence whene"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ver you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 58}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"n"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ext\": 57}}]}, {\"id\": 161, \"title\": \"The Supply Road \\u00b7 The Detour\", \"text\": \"The first convoy follows the corrected route. You accompany the porters as far as the branch leading to the village. Yo"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "u take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": {\"type\": \"goto\", \"next\": 62}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 61}}]}, {\"id\": 200, \"title\": \"The Scholars' Camp \\u00b7 Another Lead\", \"text\": \"Your appro"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the jou"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "rney\", \"outcome\": {\"type\": \"goto\", \"next\": 1}}]}, {\"id\": 203, \"title\": \"The Storekeeper's Ledger \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to ex"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "plain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 4}}]}, {\"id\": 207, "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"title\": \"The Pilot's House \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your in"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "vestigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 8}}]}, {\"id\": 211, \"title\": \"The Canal Marker \\u00b7 Another Lead\", \"text\": \"Your approa"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ch has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the jour"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ney\", \"outcome\": {\"type\": \"goto\", \"next\": 12}}]}, {\"id\": 214, \"title\": \"The Bookbinder's Workshop \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to e"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "xplain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 15}}]}, {\"id\": 215"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"title\": \"The First Nile Camp \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing you"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "r investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 16}}]}, {\"id\": 216, \"title\": \"The Delta Reeds \\u00b7 Another Lead\", \"text\": \"Your ap"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "proach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "journey\", \"outcome\": {\"type\": \"goto\", \"next\": 17}}]}, {\"id\": 218, \"title\": \"The Potters' Courtyard \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 19}}]}, {\"id\": 21"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "9, \"title\": \"The Palm Terrace \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 20}}]}, {\"id\": 222, \"title\": \"Desaix's Letter \\u00b7 Another Lead\", \"text\": \"Your appr"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "oach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the jo"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "urney\", \"outcome\": {\"type\": \"goto\", \"next\": 23}}]}, {\"id\": 223, \"title\": \"The Irrigated Garden \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to expl"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 24}}]}, {\"id\": 224, \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "title\": \"The Landing Steps \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your inv"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "estigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 25}}]}, {\"id\": 226, \"title\": \"The Caravanserai \\u00b7 Another Lead\", \"text\": \"Your approa"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ch has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the jour"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ney\", \"outcome\": {\"type\": \"goto\", \"next\": 27}}]}, {\"id\": 227, \"title\": \"The Carpet Room \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 28}}]}, {\"id\": 230, \"title\":"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"The Seal Maker \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ".\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 31}}]}, {\"id\": 231, \"title\": \"Night on the Terrace \\u00b7 Another Lead\", \"text\": \"Your approach has"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"outcome\": {\"type\": \"goto\", \"next\": 32}}]}, {\"id\": 232, \"title\": \"The Road to Embabeh \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the m"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 33}}]}, {\"id\": 234, \"title\": \""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "The General's Tent \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigati"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "on.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 35}}]}, {\"id\": 235, \"title\": \"The Earthen Embankment \\u00b7 Another Lead\", \"text\": \"Your approach"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journe"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "y\", \"outcome\": {\"type\": \"goto\", \"next\": 36}}]}, {\"id\": 238, \"title\": \"The Broken Footbridge \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 39}}]}, {\"id\": 239, \"tit"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "le\": \"The Departing Feluccas \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your i"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "nvestigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 40}}]}, {\"id\": 240, \"title\": \"The Old Quay Columns \\u00b7 Another Lead\", \"text\": \"Your "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume th"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e journey\", \"outcome\": {\"type\": \"goto\", \"next\": 41}}]}, {\"id\": 242, \"title\": \"The Fountain Courtyard \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "o explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 43}}]}, {\"id\": "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "243, \"title\": \"The Copyist's Stairs \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 44}}]}, {\"id\": 246, \"title\": \"The Instrument Garden \\u00b7 Another Lead\", \"text\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and r"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "esume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 47}}]}, {\"id\": 247, \"title\": \"The Boat to Giza \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 48}}]}, {\"id\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": 248, \"title\": \"At the Pyramids \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing yo"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ur investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 49}}]}, {\"id\": 250, \"title\": \"The Workers' Camp \\u00b7 Another Lead\", \"text\": \"Your"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "he journey\", \"outcome\": {\"type\": \"goto\", \"next\": 51}}]}, {\"id\": 251, \"title\": \"The Cool Gallery \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to exp"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "lain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 52}}]}, {\"id\": 254, "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"title\": \"The Shadow Survey \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your in"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "vestigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 55}}]}, {\"id\": 255, \"title\": \"Return to the Village \\u00b7 Another Lead\", \"text\": \"Your "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume th"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e journey\", \"outcome\": {\"type\": \"goto\", \"next\": 56}}]}, {\"id\": 256, \"title\": \"Copies of the Plan \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to ex"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "plain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 57}}]}, {\"id\": 258,"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"title\": \"The Evening Council \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 59}}]}, {\"id\": 259, \"title\": \"The Written Agreement \\u00b7 Another Lead\", \"text\": \"Yo"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ur approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 60}}]}, {\"id\": 262, \"title\": \"Evening over Giza \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 63}}]}]}"}}
 
 event: content_block_stop
 data: {"type": "content_block_stop", "index": 1}

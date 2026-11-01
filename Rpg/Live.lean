@@ -1,4 +1,5 @@
 import Rpg.View
+import Rpg.Environment
 import Rpg.Probability.StatisticalAdmission
 
 /-!
@@ -106,6 +107,8 @@ structure Draft where
   intro : String := ""
   /-- Versioned policy selected by the application, preserved in saved adventures. -/
   validationProfile : String := "legacy"
+  /-- The persistent spatial world; absent only in older saved adventures. -/
+  environment : Option WorldEnvironment := none
   deriving Repr
 
 /-- The Picture name of a Scene in a live Adventure. -/
@@ -196,6 +199,9 @@ def Draft.ofJson (j : Json) : Except String Draft := do
   let world ← optStrField j "world"
   let intro ← optStrField j "intro"
   let profile ← optStrField j "fairnessProfile"
+  let environment ← match j.getObjVal? "environment" with
+    | .ok v => inCtx "environment" (fromJson? v : Except String (Option WorldEnvironment))
+    | .error _ => pure none
   let start ← j.getObjValAs? Nat "start"
   let scenes ← listField j "scenes" sceneOfJson
   let themes ← match j.getObjVal? "themeNames" with
@@ -209,7 +215,7 @@ def Draft.ofJson (j : Json) : Except String Draft := do
     | .error _ => pure []
   return { adventure := { title, start, scenes, themes },
            validationProfile := if profile.isEmpty then "legacy" else profile,
-           hero, background, palette, world, intro }
+           hero, background, palette, world, intro, environment }
 
 /-- Read a Draft from JSON text. -/
 def Draft.parse (s : String) : Except String Draft := do
@@ -243,6 +249,7 @@ def Draft.toJson (d : Draft) : Json :=
     world: $(d.world),
     intro: $(d.intro),
     fairnessProfile: $(d.validationProfile),
+    environment: $(d.environment),
     character: $((beingToJson d.hero).setObjVal! "background" (Json.str d.background)),
     themeNames: {
       skills: $(th.skills.map fun (s, n) => json% { skill: $(s.key), name: $(n) }),
@@ -293,8 +300,13 @@ def Draft.beingNames (d : Draft) : List String :=
 def sizeErrors (d : Draft) : List String :=
   let a := d.adventure
   let th := a.themes
-  (if !["legacy", "exploration-10-v1"].contains d.validationProfile then
+  (if !["legacy", "exploration-10-v1"].contains d.validationProfile &&
+      (Probability.Difficulty.ofProfile d.validationProfile).isNone then
     ["unknown fairness profile"] else []) ++
+  (match d.environment with
+    | some e => e.errors a
+    | none => if (Probability.Difficulty.ofProfile d.validationProfile).isSome then
+        ["environment: a new Wish must include its world plan"] else []) ++
   (if a.scenes.length > maxScenes then
     [s!"the Adventure has {a.scenes.length} Scenes, but the limit is {maxScenes}"] else []) ++
   tooLong "the title" maxShortText a.title ++
@@ -319,7 +331,10 @@ def liveHorizon : Nat := 14
 
 /-- New wishes use the requested ten-turn reference median. Old saves retain their policy. -/
 def profilePolicy (profile : String) : Probability.FairnessPolicy :=
-  if profile == "legacy" then Probability.defaultPolicy else Probability.explorationPolicy
+  if profile == "legacy" then Probability.defaultPolicy
+  else match Probability.Difficulty.ofProfile profile with
+    | some d => d.policy
+    | none => Probability.explorationPolicy
 
 /-- All errors in a Draft: the size errors, or else the checker's errors for the Character and
 for the Adventure. An empty list means the Draft passes the checker. -/
@@ -426,6 +441,42 @@ def draftErrors (s : String) : List String :=
   match Draft.parse s with
   | .ok d => d.errors
   | .error e => [e]
+
+/-- A small world used to test the actual Draft validation path. -/
+def fixtureWorld : WorldEnvironment := {
+  theme := "forest"
+  places := [{ id := 0, name := "Camp", kind := "camp", x := 0, z := 0 },
+    { id := 1, name := "Forest", kind := "forest", x := 40, z := 0 }]
+  paths := [{ fromPlace := 0, toPlace := 1 }]
+  props := [{ kind := "tree", x := 20, z := 20 }]
+  scenes := [{ scene := 0, place := 0 }, { scene := 1, place := 1 }, { scene := 2, place := 1 }]
+}
+
+-- Every difficulty survives saving and uses the selected policy and complete world.
+#guard match Draft.parse fixtureLegal with
+  | .ok d => [Probability.Difficulty.easy, .medium, .hard].all fun difficulty =>
+      let draft := { d with validationProfile := difficulty.profile, environment := some fixtureWorld }
+      draft.errors == [] &&
+        (Draft.ofJson draft.toJson).toOption.map (fun saved =>
+          reprStr saved == reprStr draft && reprStr (profilePolicy saved.validationProfile) == reprStr difficulty.policy) == some true
+  | .error _ => false
+-- A new Wish may not silently omit its environment.
+#guard match Draft.parse fixtureLegal with
+  | .ok d => !(sizeErrors { d with validationProfile := Probability.Difficulty.easy.profile }).isEmpty
+  | .error _ => false
+-- Wrong ids, incomplete mappings, disconnected places and obstructed paths are rejected.
+#guard match Draft.parse fixtureLegal with
+  | .ok d =>
+    let badWorlds := [
+      { fixtureWorld with paths := [] },
+      { fixtureWorld with scenes := fixtureWorld.scenes.drop 1 },
+      { fixtureWorld with scenes := { scene := 999, place := 1 } :: fixtureWorld.scenes },
+      { fixtureWorld with places := fixtureWorld.places ++ fixtureWorld.places },
+      { fixtureWorld with props := [{ kind := "tree", x := 20, z := 0 }] },
+      { fixtureWorld with props := [{ kind := "unknown", x := 20, z := 20 }] },
+      { fixtureWorld with props := [{ kind := "tree", x := 101, z := 20 }] }]
+    badWorlds.all fun e => !({ d with environment := some e }.errors).isEmpty
+  | .error _ => false
 
 -- The legal fixture reads and passes the checker.
 #guard passesChecker fixtureLegal

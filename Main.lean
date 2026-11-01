@@ -76,6 +76,7 @@ def Session.apply (s : Session) (i : Input) : Session × Option String × Nat :=
 
 /-- Where the Adventure in play comes from, and its Pictures. -/
 structure Source where
+  environment : Option WorldEnvironment := none
   /-- The folder name under `adventures/`, or `none` for the built-in Adventure. -/
   savedId : Option String := none
   /-- The Character's background. -/
@@ -129,6 +130,7 @@ structure Generation where
   wish : String := ""
   name : String := ""
   gender : String := ""
+  difficulty : Probability.Difficulty := .easy
   /-- Monotonic timings for the current job, including all repair attempts. -/
   startedMs : Nat := 0
   apiMs : Nat := 0
@@ -228,7 +230,7 @@ def savedWish (text : String) : String :=
 /-- The Source of a saved Draft: its folder, World, Intro, and background. -/
 def savedSource (id : String) (d : Draft) (wish : String) : Source :=
   let (world, intro) := worldAndIntro d wish
-  { savedId := some id, background := some d.background, world, intro }
+  { savedId := some id, background := some d.background, world, intro, environment := d.environment }
 
 /-- Kill every `curl` process of an owner. -/
 def killOwner (children : Children) (owner : String) : IO Unit := do
@@ -529,7 +531,9 @@ def picturesWanted (ref : IO.Ref ServerState) (id : String) (run : Nat) : IO Boo
 
 /-- End job `job` in the state `st`, with a last step. -/
 def endJob (ref : IO.Ref ServerState) (job : Nat) (st : GenState) (last : Step) : IO Unit := do
-  let _ ← updateJob ref job fun g => { g with state := st, steps := g.steps.push last }
+  let finished ← IO.monoMsNow
+  let _ ← updateJob ref job fun g =>
+    { g with state := st, steps := g.steps.push last, totalMs := finished - g.startedMs }
 
 /-- Add a step to job `job`. -/
 def addStep (ref : IO.Ref ServerState) (job : Nat) (st : Step) : IO Bool :=
@@ -632,13 +636,13 @@ def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (j
       session := Session.start g seed,
       runs := run,
       source := { savedSource id d wish with
-                  drawing := if cfg.picturesOn then d.adventure.scenes.filterMap (·.picture) else [],
+                  drawing := if cfg.picturesOn && d.environment.isNone then d.adventure.scenes.filterMap (·.picture) else [],
                   drawRun := run },
       gen := { s.gen with state := .ready, readyId := some id, totalMs := finished - s.gen.startedMs } })
   if let some (old, run) := res then
     if let some oldId := old then killOwner children (picturesOwner oldId)
-    -- With Pictures off, no Picture is asked for.
-    if cfg.picturesOn then
+    -- A structured 3D world needs no per-scene image API calls.
+    if cfg.picturesOn && d.environment.isNone then
       let _ ← IO.asTask (drawPictures cfg children ref id run d d.adventure.scenes) .dedicated
 
 /-- The step text for the errors of the checker and the fairness check. -/
@@ -653,15 +657,15 @@ def randomSeed : IO Nat := do
 /-- Ask the DM for an Adventure for a Wish: up to 3 tries. After a failed try, the DM gets the
 errors and sends a fixed version. -/
 def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
-    (wish name gender : String) : IO Unit := do
+    (wish name gender : String) (difficulty : Probability.Difficulty) : IO Unit := do
   let mut messages := [userTurn (wishMessage wish name gender)]
   let mut lastErrors : List String := []
   for attempt in [1, 2, 3] do
     let text := if attempt == 1 then "The Dungeon Master is writing..." else "The Dungeon Master is fixing them..."
     if !(← addStep ref job { text }) then return
     let apiStarted ← IO.monoMsNow
-    let reply ← callApi cfg children (jobOwner job) (jobWanted ref job) (adventureRequest messages)
-      [s!"adventure-{attempt}"]
+    let reply ← callApi cfg children (jobOwner job) (jobWanted ref job) (adventureRequest messages difficulty)
+      [s!"adventure-{difficulty.key}-{attempt}", s!"adventure-{attempt}"]
     let apiFinished ← IO.monoMsNow
     ref.modify fun s => if s.gen.job != job then s else
       { s with gen := { s.gen with apiMs := s.gen.apiMs + apiFinished - apiStarted } }
@@ -680,7 +684,7 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
         match Draft.parse text with
         | .error e => pure ([s!"the JSON does not read: {e}"], none, content)
         | .ok d =>
-          let d := { d with validationProfile := if cfg.fake.isSome then "legacy" else "exploration-10-v1" }
+          let d := { d with validationProfile := difficulty.profile }
           -- A fresh random seed for each try, so the DM cannot tune its story to one batch of games.
           -- In test mode (`RPG_FAKE_API`) the seed is fixed, so `make run-fake` gives the same result each time.
           let fairnessSeed ← if cfg.fake.isSome then pure 1 else randomSeed
@@ -704,15 +708,15 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
 /-- Start the work on a Wish in the background. Returns `false`, and does nothing, if the DM is
 already writing. The check and the start are one atomic step. -/
 def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
-    (wish name gender : String) : IO Bool := do
+    (wish name gender : String) (difficulty : Probability.Difficulty) : IO Bool := do
   let startedMs ← IO.monoMsNow
   let job? ← ref.modifyGet fun s =>
     if s.gen.state == .running then (none, s) else
     let job := s.gen.job + 1
-    (some job, { s with gen := { job, state := .running, wish, name, gender, startedMs } })
+    (some job, { s with gen := { job, state := .running, wish, name, gender, difficulty, startedMs } })
   let some job := job? | return false
   let _ ← IO.asTask (prio := .dedicated) do
-    try generate cfg children ref job wish name gender
+    try generate cfg children ref job wish name gender difficulty
     catch e =>
       endJob ref job .failed { text := "Something went wrong.", errors := [toString e] }
   return true
@@ -730,7 +734,7 @@ def cancelWish (children : Children) (ref : IO.Ref ServerState) : IO Unit := do
 nor drawing now. It is worked out from the state each time, so it never goes stale.
 With Pictures off it is 0: no Picture was tried, so none failed. -/
 def failedPictures (cfg : GameConfig) (s : ServerState) : Nat :=
-  if !cfg.picturesOn then 0 else
+  if !cfg.picturesOn || s.source.environment.isSome then 0 else
   let src := s.source
   (s.session.game.adventure.scenes.filterMap (·.picture)).filter
     (fun n => !src.pictures.contains n && !src.drawing.contains n) |>.length
@@ -743,10 +747,10 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
   let pictures := match s.source.savedId with
     | none => json% { base: "/pictures/", ready: null, drawing: 0, failed: 0, off: false }
     | some id => json% { base: $(s!"/saved/{id}/"), ready: $(s.source.pictures),
-                         drawing: $(s.source.drawing.length), failed: $(failedPictures cfg s), off: $(!cfg.picturesOn) }
+                         drawing: $(s.source.drawing.length), failed: $(failedPictures cfg s), off: $(!cfg.picturesOn || s.source.environment.isSome) }
   let gen := json% {
     available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps), readyId: $(s.gen.readyId),
-    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender),
+    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender), difficulty: $(s.gen.difficulty.key),
     timings: { apiMs: $(s.gen.apiMs), validationMs: $(s.gen.validationMs), totalMs: $(s.gen.totalMs),
       source: $(if cfg.fake.isSome then "recorded-fixture" else "claude-api") }
   }
@@ -758,6 +762,7 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "background" (toJson s.source.background)
     |>.setObjVal! "world" (toJson s.source.world)
     |>.setObjVal! "intro" (toJson s.source.intro)
+    |>.setObjVal! "environment" (toJson s.source.environment)
     |>.setObjVal! "builtin" builtinCard.toJson
   return v.compress
 
@@ -862,18 +867,27 @@ def postAllowed (host : String) (port : Nat) (headers : Headers) : Bool :=
   isJson && originOk
 
 /-- Read a Wish from a request body. Returns the Wish, the name, and the gender, or an error. -/
-def parseWish (body : String) : Except String (String × String × String) := do
+def parseWish (body : String) : Except String (String × String × String × Probability.Difficulty) := do
   let j ← Json.parse body
   let wish := (j.getObjValAs? String "wish").toOption.getD "" |>.trimAscii.toString
   let name := (j.getObjValAs? String "name").toOption.getD "" |>.trimAscii.toString
   let gender := (j.getObjValAs? String "gender").toOption.getD "dm"
+  let difficultyKey ← match j.getObjVal? "difficulty" with
+    | .error _ => pure "easy"
+    | .ok value => value.getStr?
+  let some difficulty := Probability.Difficulty.ofKey difficultyKey
+    | throw "Pick easy, medium or hard."
   if wish.isEmpty then throw "Type a Wish first."
   if wish.length > maxWish then throw s!"A Wish can have at most {maxWish} characters."
   if name.length > maxName then throw s!"A name can have at most {maxName} characters."
   if !["she", "he", "they", "dm"].contains gender then throw "Pick she, he, they, or let the Dungeon Master choose."
-  return (wish, name, gender)
+  return (wish, name, gender, difficulty)
 
-#guard (parseWish "{\"wish\": \"the Shire\", \"name\": \"Pip\", \"gender\": \"he\"}").toOption == some ("the Shire", "Pip", "he")
+#guard (parseWish "{\"wish\":\"forest\",\"difficulty\":\"medium\"}").toOption.map (·.2.2.2) == some .medium
+#guard (parseWish "{\"wish\":\"forest\",\"difficulty\":\"hard\"}").toOption.map (·.2.2.2) == some .hard
+#guard (parseWish "{\"wish\":\"forest\",\"difficulty\":\"impossible\"}").toOption.isNone
+#guard (parseWish "{\"wish\":\"forest\",\"difficulty\":50}").toOption.isNone
+#guard (parseWish "{\"wish\": \"the Shire\", \"name\": \"Pip\", \"gender\": \"he\"}").toOption == some ("the Shire", "Pip", "he", .easy)
 #guard (parseWish "{\"wish\": \"  \"}").toOption.isNone
 #guard (parseWish ("{\"wish\": \"" ++ "".pushn 'a' 501 ++ "\"}")).toOption.isNone
 
@@ -972,14 +986,14 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
         return ← replyJson .badRequest (← view (error := some "Generation is unavailable: no API key."))
       match parseWish body with
       | .error e => replyJson .badRequest (← view (error := some e))
-      | .ok (wish, name, gender) =>
-        if !(← startWish cfg children state wish name gender) then return ← busy
+      | .ok (wish, name, gender, difficulty) =>
+        if !(← startWish cfg children state wish name gender difficulty) then return ← busy
         replyJson .ok (← view)
     | ["api", "retry"] =>
       let g := (← state.get).gen
       if !cfg.canWish || g.wish.isEmpty then
         return ← replyJson .badRequest (← view (error := some "There is no Wish to try again."))
-      if !(← startWish cfg children state g.wish g.name g.gender) then return ← busy
+      if !(← startWish cfg children state g.wish g.name g.gender g.difficulty) then return ← busy
       replyJson .ok (← view)
     | ["api", "load"] =>
       let id := (Json.parse body >>= (·.getObjValAs? String "id")).toOption.getD ""
@@ -996,7 +1010,7 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       | .ok (g, src, d) =>
         let seed ← freshSeed
         -- Pictures with no file and no refusal on record are drawn now (if the DM can be asked).
-        let missing ← if cfg.canWish && cfg.picturesOn then missingPictures id d.adventure else pure []
+        let missing ← if cfg.canWish && cfg.picturesOn && d.environment.isNone then missingPictures id d.adventure else pure []
         -- Loading the Adventure that is already in play, while its Pictures are drawing, keeps
         -- that drawing run and its lists. Otherwise a new run draws the missing Pictures.
         let r ← whenIdle state fun s =>

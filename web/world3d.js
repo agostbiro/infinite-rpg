@@ -1,5 +1,7 @@
 import * as THREE from './vendor/three.module.js';
-import { portalsForView, roomLayout, movePosition, crossedPortal, inputKey, themeFor, figuresForView } from './spatial.js';
+import { portalsForView, crossedPortal, inputKey, themeFor, figuresForView } from './spatial.js';
+
+import { environmentFor, placeForScene, worldLayout, sceneryFor, propRadius, moveInWorld } from './environment.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
@@ -13,7 +15,7 @@ export class SpatialGame {
     this.canvas = $('world-canvas');
     this.labels = $('world-labels');
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(68, 1, 0.1, 180);
+    this.camera = new THREE.PerspectiveCamera(68, 1, 0.1, 500);
     this.camera.rotation.order = 'YXZ';
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
@@ -25,11 +27,12 @@ export class SpatialGame {
     this.renderer.shadowMap.autoUpdate = false;
     this.scene.add(new THREE.HemisphereLight(0xd6edff, 0x6e6b50, 2.5));
     const sun = new THREE.DirectionalLight(0xffe2b6, 3.2);
-    sun.position.set(-10, 18, 8);
+    sun.position.set(-90, 160, 80);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = sun.shadow.camera.bottom = -18;
-    sun.shadow.camera.right = sun.shadow.camera.top = 18;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -130;
+    sun.shadow.camera.right = sun.shadow.camera.top = 130;
+    sun.shadow.camera.far = 400;
     sun.shadow.bias = -0.001;
     this.scene.add(sun);
     this.lantern = new THREE.PointLight(0xffd19a, 10, 8, 2);
@@ -186,101 +189,157 @@ export class SpatialGame {
     this.pictureMesh = null;
   }
 
-  buildRoom(view, layout, pictureURL) {
-    this.buildStarted = performance.now();
-    this.clearRoom();
-    const theme = themeFor(view);
-    this.theme = theme;
+  buildWorld(view, environment) {
+    if (this.terrain) {
+      const current = this.group;
+      this.group = this.terrain;
+      this.clearRoom();
+      this.scene.remove(this.terrain);
+      this.group = current;
+    }
+    this.terrain = new THREE.Group();
+    this.scene.add(this.terrain);
+    this.theme = themeFor({ ...view, environment });
+    const theme = this.theme, terrain = this.terrain;
     this.scene.background = new THREE.Color(theme.sky);
-    this.scene.fog = new THREE.Fog(theme.sky, layout.radius + 15, layout.radius + 80);
-    const ground = this.material(theme.ground);
-    const stone = this.material(theme.stone);
-    const dark = this.material(0x283735);
-    const brass = this.material(theme.glow, { metalness: 0.6, roughness: 0.3 });
-    const r = layout.radius;
-    this.mesh(new THREE.CylinderGeometry(r + 1.8, r + 3, 1, 64), ground, 0, -0.55, 0);
-    this.mesh(new THREE.CylinderGeometry(r + 3, r + 6, 4, 32), dark, 0, -3, 0);
-    const ocean = this.material(theme.name === 'Dunes' ? 0xbfa16c : theme.nature ? 0x2c4943 : 0x294d62, { roughness: 0.6 });
-    this.mesh(new THREE.CylinderGeometry(160, 160, 0.3, 64), ocean, 0, -5.5, 0);
-    // Etched floor rings and a compass. Every ornament on the floor is non-blocking.
-    for (const radius of [2.2, r * 0.65, r + 0.8]) {
-      const ring = this.mesh(new THREE.RingGeometry(radius, radius + 0.035, 96),
-        this.material(0xc6b991, { transparent: true, opacity: 0.35 }), 0, 0.008, 0);
-      ring.rotation.x = -Math.PI / 2;
-      ring.castShadow = false;
+    this.scene.fog = new THREE.Fog(theme.sky, 120, 330);
+    const ground = this.material(theme.ground), stone = this.material(theme.stone);
+    const pathMaterial = this.material(theme.nature ? 0x9d9574 : 0xdfc594);
+    this.box(700, 1, 700, ground, 0, -0.53, 0, terrain);
+    // Low hills frame a large continuous landscape, never an enclosing room.
+    for (let i=0;i<28;i++) {
+      const a=i*2.39996, r=150+(i%4)*22;
+      const hill=this.mesh(new THREE.DodecahedronGeometry(17+i%5*3,1),ground,
+        Math.sin(a)*r, -9,Math.cos(a)*r,terrain);
+      hill.scale.set(1.7,0.65,1.3);
     }
-    for (let i = 0; i < 12; i++) {
-      const a = i * Math.PI / 6;
-      const line = this.box(0.025, 0.012, r - 2.4, stone,
-        Math.sin(a) * (r + 2.4) / 2, 0.005, Math.cos(a) * (r + 2.4) / 2);
-      line.rotation.y = a;
+    // Rivers are shallow visual water. Trails crossing them form continuous causeways.
+    for (const p of environment.props.filter(p => p.kind === 'river')) this.buildScenery(p, terrain, stone);
+    for (const path of environment.paths) {
+      const a=environment.places.find(p=>p.id===path.fromPlace), b=environment.places.find(p=>p.id===path.toPlace);
+      const trail=this.box(4,0.06,Math.hypot(b.x-a.x,b.z-a.z),pathMaterial,(a.x+b.x)/2,0.02,(a.z+b.z)/2,terrain);
+      trail.rotation.y=Math.atan2(b.x-a.x,b.z-a.z);
     }
-    const center = this.mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.02, 6), brass, 0, 0.02, 0);
-    center.castShadow = false;
-    // Continuous outer curb, outside the convex navigable disc.
-    for (let i = 0; i < 64; i++) {
-      const a = i * Math.PI * 2 / 64;
-      const curb = this.box(0.7, 0.45, 0.45, stone, Math.sin(a) * (r + 1.25), 0.2, Math.cos(a) * (r + 1.25));
-      curb.rotation.y = a;
-    }
-    // Scenery is outside the walkable floor; it cannot hide or block a choice.
-    for (let i = 0; i < 24; i++) {
-      const a = i * 2.399963;
-      const distance = r + 6 + (i % 5) * 2.5;
-      const x = Math.sin(a) * distance, z = Math.cos(a) * distance;
-      if (theme.name === 'Dunes') {
-        const dune = this.mesh(new THREE.SphereGeometry(3.5 + i % 3, 12, 6), ground, x, -1.8, z);
-        dune.scale.set(1.7, 0.55, 1);
-        if (i % 4 === 0) {
-          this.mesh(new THREE.CylinderGeometry(0.13, 0.23, 3.8, 7), this.material(0x80603b), x, 1.5, z);
-          for (let leaf = 0; leaf < 5; leaf++) {
-            const frond = this.mesh(new THREE.ConeGeometry(0.5, 3, 5), this.material(0x6b8252), x, 3.5, z);
-            frond.rotation.set(1.05, leaf * Math.PI * 2 / 5, 0);
-          }
-        }
-      } else if (theme.nature) {
-        this.mesh(new THREE.CylinderGeometry(0.18, 0.35, 4, 7), this.material(0x604b3d), x, 0.6, z);
-        this.mesh(new THREE.ConeGeometry(2.4, 6, 7), this.material(i % 2 ? 0x284c3c : 0x3b6250), x, 4, z);
-      } else {
-        const rock = this.mesh(new THREE.DodecahedronGeometry(2 + i % 4), this.material(i % 2 ? 0x566b74 : 0x718087), x, -1.4, z);
-        rock.rotation.set(i * 0.7, i, i * 0.4);
-        rock.scale.y = 1.5 + i % 3;
+    for (const place of environment.places) {
+      this.box(19,0.04,19,pathMaterial,place.x,0.015,place.z,terrain);
+      if (place.kind === 'harbour') {
+        const wood=this.material(0x866145);
+        this.box(6,0.22,14,wood,place.x,0.12,place.z+13,terrain);
+        for (const side of [-1,1]) for(let i=0;i<4;i++)
+          this.box(0.2,1.4,0.2,wood,place.x+side*3,0.5,place.z+7+i*4,terrain);
       }
     }
-    if (theme.name === 'Dunes') {
-      // Monument silhouettes remain outside the navigable graph realization.
-      for (const [x, z, size] of [[-r - 9, -r - 15, 11], [r + 10, -r - 24, 15], [r + 22, -r - 14, 7]]) {
-        const pyramid = this.mesh(new THREE.ConeGeometry(size, size * 1.15, 4), stone, x, size * 0.575 - 1, z);
-        pyramid.rotation.y = Math.PI / 4;
+    const scenery=sceneryFor(environment);
+    for (const p of scenery.filter(p=>p.kind!=='river')) this.buildScenery(p,terrain,stone);
+    this.obstacles=scenery.filter(p=>p.kind!=='river').map(p=>({x:p.x,z:p.z,radius:propRadius(p)}));
+    this.root.dataset.placeCount=String(environment.places.length);
+    this.root.dataset.worldBuilds=String(Number(this.root.dataset.worldBuilds||0)+1);
+    this.renderer.shadowMap.needsUpdate=true;
+  }
+
+  buildScenery(p, parent, stone) {
+    const group=new THREE.Group();
+    group.position.set(p.x,0,p.z);
+    group.rotation.y=p.heading*Math.PI/180;
+    group.scale.setScalar(p.scale/100);
+    parent.add(group);
+    const wood=this.material(0x78553c), leaves=this.material(this.theme.nature?0x375e43:0x6c8451);
+    if(p.kind==='pyramid') {
+      const pyramid=this.mesh(new THREE.ConeGeometry(12,15,4),stone,0,7.5,0,group);
+      pyramid.rotation.y=Math.PI/4;
+    } else if(p.kind==='river') {
+      const water=this.material(0x387e92,{metalness:0.35,roughness:0.28});
+      this.box(9,0.025,190,water,0,0.005,0,group);
+      for(let i=0;i<15;i++) {
+        const ripple=this.box(4+(i%3),0.015,0.06,this.material(0x8ebbbd),Math.sin(i)*1.2,0.024,-90+i*13,group);
+        ripple.rotation.y=0.08*Math.sin(i);
       }
-      for (let i = 0; i < 6; i++) {
-        const x = (i - 2.5) * 2.4;
-        this.mesh(new THREE.CylinderGeometry(0.4, 0.5, 3.6, 10), stone, x, 1.6, r + 5);
-        this.box(1.15, 0.35, 1.15, stone, x, 3.55, r + 5);
+    } else if(p.kind==='tree'||p.kind==='palm') {
+      this.mesh(new THREE.CylinderGeometry(0.18,0.4,5,7),wood,0,2.5,0,group);
+      if(p.kind==='tree') {
+        for(let i=0;i<3;i++) this.mesh(new THREE.ConeGeometry(2.6-i*0.6,4,7),leaves,0,4+i*1.4,0,group);
+      } else for(let i=0;i<7;i++) {
+        const frond=this.mesh(new THREE.ConeGeometry(0.5,3.5,5),leaves,0,5.2,0,group);
+        frond.rotation.set(1.15,i*Math.PI*2/7,0);
       }
+    } else if(p.kind==='house') {
+      this.box(6,4.5,5,stone,0,2.25,0,group);
+      this.box(6.4,0.35,5.4,stone,0,4.6,0,group);
+      this.box(1.1,2.3,0.05,wood,0,1.15,2.53,group);
+      for(const side of [-1,1]) this.box(0.9,1.1,0.06,this.material(0x304b54),side*1.9,2.8,2.54,group);
+      if(this.theme.nature) {
+        const roof=this.mesh(new THREE.ConeGeometry(5,2.5,4),wood,0,5.9,0,group);
+        roof.rotation.y=Math.PI/4;
+      }
+    } else if(p.kind==='tent') {
+      const cloth=this.material(this.theme.nature?0x879569:0xe7d1a2,{side:THREE.DoubleSide});
+      const roof=this.mesh(new THREE.ConeGeometry(3.6,3.6,4,1,true),cloth,0,1.8,0,group);
+      roof.rotation.y=Math.PI/4;
+      this.box(0.14,3.8,0.14,wood,0,1.9,0,group);
+      this.box(1.1,0.7,0.8,wood,2,0.35,1,group);
+    } else if(p.kind==='column') {
+      this.mesh(new THREE.CylinderGeometry(0.65,0.8,6,10),stone,0,3,0,group);
+      this.box(2.4,0.5,2.4,stone,0,6,0,group);
+      this.box(2,0.3,2,stone,0,0.15,0,group);
+    } else if(p.kind==='boat') {
+      this.box(2,0.5,5,wood,0,0.3,0,group);
+      for(const side of [-1,1]) this.box(0.2,0.7,5,wood,side,0.7,0,group);
+      this.box(0.15,4,0.15,wood,0,2.2,0,group);
+      this.mesh(new THREE.PlaneGeometry(2.4,2.8),this.material(0xe9d9b6,{side:THREE.DoubleSide}),1.1,2.7,0,group);
+    } else {
+      const rock=this.mesh(new THREE.DodecahedronGeometry(2.4,0),stone,0,1.1,0,group);
+      rock.scale.set(1,0.8,0.85);
     }
-    const figures = figuresForView(view);
-    for (const p of layout.portals) this.buildObject(p, stone, brass, figures);
-    // A painted scene is a decorative mural only, using the existing checked URL.
-    const wall = new THREE.Group();
-    wall.position.set(0, 0, r + 0.35);
-    wall.rotation.y = Math.PI;
-    this.group.add(wall);
-    this.box(5.8, 3.9, 0.35, stone, 0, 2, 0, wall);
-    this.pictureMesh = this.mesh(new THREE.PlaneGeometry(5.3, 3.3),
-      this.material(0x283e47), 0, 2, 0.19, wall);
-    this.loadPicture(pictureURL);
-    const hasConversation = layout.portals.some(p => p.visual.type === 'person');
-    figures.forEach((figure, i) => {
-      if (hasConversation && i === 0) return; // This person is already at their dialogue interaction.
-      const x = (i - (figures.length - 1) / 2) * 2.1;
-      this.buildActor(figure, x, -3, i);
+  }
+
+  buildRoom(view, layout, pictureURL) {
+    this.buildStarted=performance.now();
+    this.clearRoom();
+    const stone=this.material(this.theme.stone);
+    const brass=this.material(this.theme.glow,{metalness:0.6,roughness:0.3});
+    const figures=figuresForView(view);
+    for(const p of layout.portals) this.buildObject(p,stone,brass,figures);
+    const conversationNames=new Set(layout.portals.filter(p=>p.visual.type==='person').map(p=>
+      (figures.find(f=>p.label.includes(f.name))||figures[0])?.name));
+    const hasConversation=conversationNames.size>0;
+    figures.forEach((figure,i)=>{
+      if(conversationNames.has(figure.name)) return;
+      this.buildActor(figure,layout.center.x+(i-(figures.length-1)/2)*2.1,layout.center.z-6,i);
     });
-    this.root.dataset.portalCount = String(layout.portals.length);
-    this.root.dataset.npcCount = String(figures.length || Number(hasConversation));
-    this.renderer.shadowMap.needsUpdate = true;
-    this.root.dataset.buildMs = (performance.now() - this.buildStarted).toFixed(2);
-    this.awaitingFirstFrame = true;
+    // An objective pennant is a visual guide. It has no interaction of its own.
+    const pole=this.box(0.12,8,0.12,stone,layout.place.x+8,4,layout.place.z);
+    const flag=this.mesh(new THREE.PlaneGeometry(2.5,1.2),this.material(this.theme.glow,{side:THREE.DoubleSide}),
+      pole.position.x+1.25,7.2,pole.position.z);
+    flag.castShadow=false;
+    this.root.dataset.portalCount=String(layout.portals.length);
+    this.root.dataset.npcCount=String(figures.length||Number(hasConversation));
+    this.renderer.shadowMap.needsUpdate=true;
+    this.root.dataset.buildMs=(performance.now()-this.buildStarted).toFixed(2);
+    this.awaitingFirstFrame=true;
+  }
+
+  drawMap() {
+    const canvas=$('world-minimap'), ctx=canvas.getContext('2d'), e=this.environment;
+    const scale=canvas.width/240, coord=n=>(n+120)*scale;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#162b34e8';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle='#a8aa8d';ctx.lineWidth=1;
+    for(const p of e.paths) {
+      const a=e.places.find(q=>q.id===p.fromPlace),b=e.places.find(q=>q.id===p.toPlace);
+      ctx.beginPath();ctx.moveTo(coord(a.x),coord(a.z));ctx.lineTo(coord(b.x),coord(b.z));ctx.stroke();
+    }
+    for(const p of e.places) {
+      ctx.fillStyle=p.id===this.layout.place.id?'#ffd491':'#a5b5b5';
+      ctx.beginPath();ctx.arc(coord(p.x),coord(p.z),p.id===this.layout.place.id?4:2.5,0,Math.PI*2);ctx.fill();
+    }
+    ctx.save();ctx.translate(coord(this.position.x),coord(this.position.z));ctx.rotate(-this.yaw);
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(-3.5,4);ctx.lineTo(3.5,4);ctx.closePath();ctx.fill();ctx.restore();
+    const p=this.layout.place, distance=Math.hypot(p.x-this.position.x,p.z-this.position.z);
+    const angle=Math.atan2(p.x-this.position.x,-(p.z-this.position.z))+this.yaw;
+    const arrow=['↑','↗','→','↘','↓','↙','←','↖'][(Math.round(angle/(Math.PI/4))+8)%8];
+    $('world-objective').textContent=distance<10?'Explore '+p.name:arrow+' '+p.name+' · '+Math.round(distance)+' m';
+    canvas.setAttribute('aria-label','World map. Your objective: '+p.name+'. '+Math.round(distance)+' metres away.');
+    this.root.dataset.placeId=String(p.id);
   }
 
   buildObject(p, stone, brass, figures) {
@@ -293,7 +352,7 @@ export class SpatialGame {
     const metal = this.material(0xc0ccd0, { metalness: 0.7, roughness: 0.3 });
     const type = p.visual.type;
     if (type === 'person') {
-      const figure = figures[0] || { name: 'Traveller', alive: true, combat: false };
+      const figure = figures.find(f=>p.label.includes(f.name)) || figures[0] || { name: 'Traveller', alive: true, combat: false };
       this.buildActor(figure, 0, -0.3, 0, group);
     } else if (type === 'ladder') {
       this.mesh(new THREE.DodecahedronGeometry(1.3, 0), stone, 0, 0.9, -0.8, group);
@@ -341,6 +400,13 @@ export class SpatialGame {
       const telescope = this.mesh(new THREE.CylinderGeometry(0.17, 0.23, 1.3, 12), brass, 0, 1.5, 0, group);
       telescope.rotation.x = Math.PI / 2 - 0.3;
       this.mesh(new THREE.SphereGeometry(0.18, 12, 8), this.material(0x75b3c5), 0, 1.69, -0.6, group);
+    } else if (type === 'table') {
+      this.box(2, 0.15, 1.3, wood, 0, 1.15, 0, group);
+      for(const x of [-0.8,0.8]) for(const z of [-0.45,0.45]) this.box(0.12,1.1,0.12,wood,x,0.55,z,group);
+      const paper=this.material(0xeee2bd);
+      this.box(1.3,0.025,0.85,paper,0,1.24,0,group);
+      for(let i=0;i<4;i++) this.box(0.8-i*0.1,0.008,0.02,brass,0,1.26,-0.25+i*0.15,group);
+      this.mesh(new THREE.CylinderGeometry(0.14,0.14,0.2,8),metal,0.75,1.32,0,group);
     } else if (type === 'chest') {
       this.box(1.6, 0.75, 0.95, wood, 0, 0.4, 0, group);
       this.box(1.65, 0.2, 1, paleWood, 0, 0.9, 0, group);
@@ -513,31 +579,48 @@ export class SpatialGame {
     this.ready = ready;
     const portals = portalsForView(view);
     this.combatActions(view, portals);
+    const worldKey = JSON.stringify([view.seed, view.adventure, view.environment]);
+    const newWorld = this.worldKey !== worldKey;
+    if (newWorld) {
+      this.worldKey = worldKey;
+      this.environment = environmentFor(view);
+      const worldStarted=performance.now();
+      this.buildWorld(view, this.environment);
+      this.root.dataset.environmentBuildMs=(performance.now()-worldStarted).toFixed(2);
+      this.environmentFrameStarted=worldStarted;
+      const place = placeForScene(this.environment, view.scene?.id);
+      this.position = {x:place.x,z:place.z+5};
+      this.yaw = 0; this.pitch = -0.04;
+      this.storageKey = 'rpg-position:' + view.adventure + ':' + view.seed;
+      try {
+        const saved = JSON.parse(localStorage.getItem(this.storageKey));
+        if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.z) && Math.abs(saved.x)<115 && Math.abs(saved.z)<115
+          && this.obstacles.every(o=>Math.hypot(saved.x-o.x,saved.z-o.z)>o.radius+0.4)) {
+          this.position = {x:saved.x,z:saved.z};
+          this.yaw = Number.isFinite(saved.yaw) ? saved.yaw : 0;
+        }
+      } catch { /* Storage is optional. */ }
+    }
     const visits = view.reports.filter(r => r && typeof r === 'object' && r.scene).length;
-    const roomKey = JSON.stringify([view.seed, view.adventure, view.scene?.id, visits, view.phase, portals.map(p => p.key)]);
+    const roomKey = JSON.stringify([worldKey, view.scene?.id, visits, view.phase, portals.map(p => p.key)]);
     if (roomKey !== this.roomKey) {
-      const samePlace = this.placeKey === JSON.stringify([view.seed, view.adventure, view.scene?.id, visits, view.phase]);
       this.roomKey = roomKey;
-      this.placeKey = JSON.stringify([view.seed, view.adventure, view.scene?.id, visits, view.phase]);
-      this.layout = roomLayout(portals);
+      const place = placeForScene(this.environment, view.scene?.id);
+      if(view.phase==='fight' && this.previousPhase!=='fight') this.combatAnchor={...this.position};
+      this.layout = worldLayout(portals, place, view.phase==='fight'?this.combatAnchor:null);
       this.buildRoom(view, this.layout, pictureURL);
-      if (!samePlace) {
-        this.position = { ...this.layout.spawn };
-        this.yaw = 0; this.pitch = -0.04;
-        this.keys.clear(); this.touches.clear();
-      } else {
-        this.position = movePosition(this.position, 0, 0, this.layout.bound);
-      }
+      // State transitions move only the options, never the player or the landscape.
+      this.keys.clear(); this.touches.clear();
       this.resize();
-    } else {
-      this.loadPicture(pictureURL);
-      if (view.fight) this.actors.filter(a => a.combat).forEach(a => {
+    } else if (view.fight) {
+      this.actors.filter(a => a.combat).forEach(a => {
         a.alive = !!view.fight.foes[a.index]?.alive;
         a.mesh.rotation.z = a.alive ? 0 : Math.PI / 2;
         a.mesh.position.y = a.alive ? 0 : 0.3;
         a.label.textContent = a.name + ' · ' + Math.max(0, view.fight.foes[a.index]?.hp || 0) + ' HP';
       });
     }
+    this.previousPhase=view.phase;
     $('world-location').textContent = view.scene?.title || view.adventure;
     $('world-description').textContent = view.phase === 'fight'
       ? 'Choose a maneuver below, press its number, or approach a weapon. Watch the dice resolve attacks, dodges and damage.'
@@ -572,7 +655,7 @@ export class SpatialGame {
 
   move(dx, dz) {
     if (!this.canMove() || !this.layout) return;
-    const next = movePosition(this.position, dx, dz, this.layout.bound);
+    const next = moveInWorld(this.position, dx, dz, this.obstacles, this.layout.bound);
     const selected = crossedPortal(this.position, next, this.layout.portals);
     this.position = next;
     if (selected) this.choose(selected);
@@ -613,7 +696,7 @@ export class SpatialGame {
       moving = length > 0;
       if (moving) {
         forward /= length; right /= length;
-        const speed = has('shift') ? 6.2 : 3.5;
+        const speed = has('shift') ? 11 : 5;
         const dx = (-Math.sin(this.yaw) * forward + Math.cos(this.yaw) * right) * speed * dt;
         const dz = (-Math.cos(this.yaw) * forward - Math.sin(this.yaw) * right) * speed * dt;
         this.move(dx, dz);
@@ -635,7 +718,7 @@ export class SpatialGame {
     }
     for (const gate of this.gates) {
       const point = new THREE.Vector3(gate.x, 2.3, gate.z).project(this.camera);
-      const visible = point.z > -1 && point.z < 1 && Math.abs(point.x) < 1.15 && Math.abs(point.y) < 1.3;
+      const visible = Math.hypot(gate.x-this.position.x,gate.z-this.position.z)<22 && point.z > -1 && point.z < 1 && Math.abs(point.x) < 1.15 && Math.abs(point.y) < 1.3;
       gate.label.hidden = !visible;
       if (visible) {
         gate.label.style.left = ((point.x + 1) * 50) + '%';
@@ -654,14 +737,25 @@ export class SpatialGame {
       if (actor.alive) actor.mesh.position.y = reduced ? 0 : Math.sin(this.elapsed * 2 + actor.index) * 0.03;
       actor.label.classList.toggle('taking-hit', !!hurt && pulse > 0);
       const point = actor.mesh.localToWorld(new THREE.Vector3(0, 2.35, 0)).project(this.camera);
-      actor.label.hidden = point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1;
+      actor.label.hidden = actor.mesh.getWorldPosition(new THREE.Vector3()).distanceTo(this.camera.position)>22 || point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1;
       actor.label.style.left = ((point.x + 1) * 50) + '%';
       actor.label.style.top = ((1 - point.y) * 50) + '%';
     }
     // Presentation coordinates let navigation tests observe movement without controlling it.
     this.root.dataset.playerX = this.position.x.toFixed(3);
     this.root.dataset.playerZ = this.position.z.toFixed(3);
+    if (!this.lastMapFrame || time-this.lastMapFrame>100) {
+      this.drawMap(); this.lastMapFrame=time;
+    }
+    if(moving && (!this.lastSavedPosition || time-this.lastSavedPosition>500)) {
+      try { localStorage.setItem(this.storageKey,JSON.stringify({...this.position,yaw:this.yaw})); } catch { /* Optional. */ }
+      this.lastSavedPosition=time;
+    }
     this.renderer.render(this.scene, this.camera);
+    if (this.environmentFrameStarted !== undefined) {
+      this.root.dataset.environmentFirstFrameMs=(performance.now()-this.environmentFrameStarted).toFixed(2);
+      this.environmentFrameStarted=undefined;
+    }
     if (this.awaitingFirstFrame) {
       this.root.dataset.firstFrameMs = (performance.now() - this.buildStarted).toFixed(2);
       this.awaitingFirstFrame = false;

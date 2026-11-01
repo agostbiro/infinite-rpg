@@ -16,7 +16,7 @@ def weibullShape : Nat := 2
 /-- Maximum absolute difference in the conditional death probability. -/
 def fairnessTolerance : Rat := 1 / 5
 
-/-- The fairness policy: the target curve and the tolerance. Every Adventure uses the same one. -/
+/-- The fairness policy: a versioned target curve and its tolerance. -/
 structure FairnessPolicy where
   retention : Rat
   shape : Nat
@@ -31,6 +31,46 @@ def defaultPolicy : FairnessPolicy :=
 The rational retention approximates 2^(-1/100); the tolerance is unchanged. -/
 def explorationPolicy : FairnessPolicy :=
   ⟨99309 / 100000, 2, fairnessTolerance⟩
+
+/-- The difficulty selected before generating a new adventure. -/
+inductive Difficulty where
+  | easy | medium | hard
+  deriving Repr, BEq, DecidableEq
+
+/-- Stable names used by the form and JSON API. -/
+def Difficulty.key : Difficulty → String
+  | .easy => "easy"
+  | .medium => "medium"
+  | .hard => "hard"
+
+/-- Decode only the three supported difficulty names. -/
+def Difficulty.ofKey : String → Option Difficulty
+  | "easy" => some .easy
+  | "medium" => some .medium
+  | "hard" => some .hard
+  | _ => none
+
+/-- Target probability of surviving ten scene choices under the test policy. -/
+def Difficulty.survivalAtTen : Difficulty → Rat
+  | .easy => 1 / 2
+  | .medium => 3 / 10
+  | .hard => 1 / 10
+
+/-- Shape two is fixed. Retentions approximate p^(1/100) with nine decimal places. -/
+def Difficulty.policy : Difficulty → FairnessPolicy
+  | .easy => ⟨993092495 / 1000000000, 2, fairnessTolerance⟩
+  | .medium => ⟨988032459 / 1000000000, 2, fairnessTolerance⟩
+  | .hard => ⟨977237220 / 1000000000, 2, fairnessTolerance⟩
+
+/-- Save the curve version so a later load checks the same selected difficulty. -/
+def Difficulty.profile (d : Difficulty) : String := "difficulty-" ++ d.key ++ "-v1"
+
+/-- Decode a difficulty profile; legacy policies are handled separately. -/
+def Difficulty.ofProfile : String → Option Difficulty
+  | "difficulty-easy-v1" => some .easy
+  | "difficulty-medium-v1" => some .medium
+  | "difficulty-hard-v1" => some .hard
+  | _ => none
 
 /-- Exclude invalid Weibull parameters and vacuous tolerances. -/
 def FairnessPolicy.Valid (p : FairnessPolicy) : Prop :=
@@ -64,6 +104,22 @@ theorem explorationPolicy_valid : explorationPolicy.Valid := by decide +kernel
 theorem explorationPolicy_median :
     (1 / 2 : Rat) < explorationPolicy.survival 9 ∧
     explorationPolicy.survival 10 ≤ (1 / 2 : Rat) := by
+  decide +kernel
+
+/-- Every difficulty defines a nondegenerate curve. -/
+theorem difficulty_valid (d : Difficulty) : d.policy.Valid := by
+  cases d <;> decide +kernel
+
+/-- The rational curves meet their ten-choice survival targets to within one millionth. -/
+theorem difficulty_target (d : Difficulty) :
+    d.survivalAtTen - 1 / 1000000 < d.policy.survival 10 ∧
+    d.policy.survival 10 ≤ d.survivalAtTen := by
+  cases d <;> decide +kernel
+
+/-- At ten choices, the reference survival strictly decreases with difficulty. -/
+theorem difficulty_order :
+    Difficulty.hard.policy.survival 10 < Difficulty.medium.policy.survival 10 ∧
+    Difficulty.medium.policy.survival 10 < Difficulty.easy.policy.survival 10 := by
   decide +kernel
 
 /-- The reference lifetime starts alive with probability one. -/

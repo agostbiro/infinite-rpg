@@ -121,3 +121,15 @@ body:not(.spatial-mode) .world-over { position: static; transform: none; width: 
   .world-touch button:nth-child(3) { grid-column: 2; grid-row: 2; }
   .world-touch button:nth-child(4) { grid-column: 3; grid-row: 2; }
 }
+
+.world-navigation { position:absolute; right:24px; top:135px; width:160px; pointer-events:none; }
+#world-minimap { width:160px; height:160px; border:1px solid #d8c89a55; border-radius:12px; box-shadow:0 8px 24px #0003; }
+#world-objective { text-align:right; font:11px/1.4 var(--sans); color:#fff1d0; text-shadow:0 1px 5px #000; margin:7px 0; }
+.world[data-phase="fight"] .world-navigation { opacity:.6; }
+@media(max-width:760px) {
+  .world-navigation { right:15px; top:auto; bottom:125px; width:100px; }
+  #world-minimap { width:100px; height:100px; }
+  #world-objective { font-size:10px; }
+  .world[data-phase="fight"] .world-navigation { display:none; }
+  .world-prompt { width:calc(100% - 155px); left:15px; transform:none; bottom:135px; }
+}

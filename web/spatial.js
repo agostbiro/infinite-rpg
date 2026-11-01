@@ -42,6 +42,7 @@ export function appearanceFor(option) {
   if (/swim|nage|nager|river|rivière|causeway|wade/.test(text)) return { type: 'water' };
   if (/window|fenêtre/.test(text)) return { type: 'window' };
   if (/door|lock|porte|serrure/.test(text)) return { type: 'door' };
+  if (/map|ledger|notebook|survey|contract|document|record|evidence|compare/.test(text)) return { type: 'table' };
   if (/cloud|weather|nuage|ciel|observer|look|inspect|examin/.test(text)) return { type: 'lookout' };
   if (/chest|coffre|search|fouill|take|pick up|ramass/.test(text) && !/way|path|route/.test(text)) return { type: 'chest' };
   if (/lamp|light|lantern|phare|allum/.test(text)) return { type: 'lantern' };
@@ -54,6 +55,8 @@ export function appearanceFor(option) {
 /** Narrative figures are decoration; actual combatants come from the engine. */
 export function figuresForView(view) {
   if (view.fight) return view.fight.foes.map((foe, index) => ({ ...foe, index, combat: true }));
+  const cast = view.environment?.scenes.find(s => s.scene === view.scene?.id)?.npcs;
+  if (Array.isArray(cast)) return cast.map((name, index) => ({name, index, species:'person', alive:true, combat:false}));
   const text = view.scene?.text || '';
   const figures = [];
   const add = (name, species = 'person') => {
@@ -74,32 +77,9 @@ export function figuresForView(view) {
   if (/\b(?:merchant|marchand)\b/i.test(text)) add('Merchant');
   if (/\b(?:villager|villageois)\b/i.test(text)) add('Villager');
   if (/\bHollis\b/.test(text) && !figures.some(f => /Hollis/.test(f.name))) add('Grey Hollis');
-  if (/Napol[ée]on|Bonaparte/i.test(text) && !figures.some(f => /Napol|Bonaparte/.test(f.name))) add('Napoléon Bonaparte');
+  if (/Napol[ée]on|Bonaparte/i.test(text) && !figures.some(f => /Napol|Bonaparte/.test(f.name))) add('Napoleon Bonaparte');
   if (!figures.length && /\b(?:he|she) says\b|\b(?:man|woman|homme|femme|personnage)\b/i.test(text)) add('Traveller');
   return figures;
-}
-
-/** A convex walkable floor with separated interactions. Decoration never blocks it. */
-export function roomLayout(portals) {
-  const count = portals.length;
-  const span = Math.min(Math.PI * 1.5, Math.max(0, count - 1) * 0.6);
-  const radius = Math.max(8, count > 1 ? (count - 1) * 3.8 / span : 8);
-  return {
-    radius, bound: radius + 0.6, spawn: { x: 0, z: 2 },
-    portals: portals.map((p, i) => {
-      const angle = count < 2 ? 0 : -span / 2 + span * i / (count - 1);
-      return { ...p, index: i, angle, x: radius * Math.sin(angle), z: -radius * Math.cos(angle) };
-    }),
-  };
-}
-
-/** Movement only changes presentation coordinates. */
-export function movePosition(position, dx, dz, bound) {
-  let x = position.x + dx;
-  let z = position.z + dz;
-  const distance = Math.hypot(x, z);
-  if (distance > bound) { x *= bound / distance; z *= bound / distance; }
-  return { x, z };
 }
 
 /** The first gate crossed by a movement segment, including a large frame step. */
@@ -127,9 +107,11 @@ export function crossedPortal(from, to, portals, radius = 0.72) {
 
 /** Visual variation only: this never participates in a logical transition. */
 export function themeFor(view) {
-  const text = [view.adventure, view.world, view.scene?.title, view.scene?.text].join(' ').toLowerCase();
+  const text = (view.environment?.theme || [view.adventure, view.world].join(' ')).toLowerCase();
   if (/space|starship|station|robot|cyber|galax/.test(text)) return { name: 'Astral', sky: 0x111629, ground: 0x283347, stone: 0x536077, glow: 0x78d9e8, nature: false };
-  if (/desert|désert|sand|sable|dune|pyramid|égypte|egypte|bonaparte/.test(text)) return { name: 'Dunes', sky: 0x829ba2, ground: 0xc3a063, stone: 0xd3b77e, glow: 0xffd783, nature: false };
+  if (/desert|désert|sand|sable|dune|pyramid|égypte|egypte|egypt|bonaparte/.test(text)) return { name: 'Dunes', sky: 0x829ba2, ground: 0xc3a063, stone: 0xd3b77e, glow: 0xffd783, nature: false };
   if (/shire|forest|wood|garden|acorn|hobbit|grove/.test(text)) return { name: 'Woodland', sky: 0x526f71, ground: 0x425c45, stone: 0x75816a, glow: 0xeac878, nature: true };
+  if (/snow/.test(text)) return { name: 'Snow', sky: 0x9cbcc8, ground: 0xdde6e8, stone: 0x8f9ba6, glow: 0x95d9ff, nature: false };
+  if (/city/.test(text)) return { name: 'City', sky: 0x9db0bd, ground: 0x77787a, stone: 0xb5b1a8, glow: 0xf4cb88, nature: false };
   return { name: 'Coast', sky: 0x3a5367, ground: 0x535b61, stone: 0x7d888a, glow: 0xeec582, nature: false };
 }
