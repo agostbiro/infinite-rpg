@@ -15,6 +15,46 @@ make validate         # run the fairness check on The Drowned Lighthouse and pri
 make check            # build, then replay every proof through the Lean kernel
 ```
 
+## Playing in 3D
+
+Every admitted Adventure, including one made from a Wish, opens as a 3D space.
+Use **WASD**, **ZQSD**, or the **arrow keys** to move. Drag on the view to look,
+and hold **Shift** to run. Approach the marked object or character to select its choice.
+Near an interaction, **E** or **Choose** also selects it. Touch screens have a direction pad.
+
+There is one spatial interaction for each choice the Engine offers. A weapon or shield selects an
+existing maneuver and target; Lean still rolls the dice and resolves the turn.
+Walking and waiting do not change HP or advance a logical turn. **Escape** pauses
+the spatial view. **J** opens the journal, with the transcript, Character, map,
+and accessible buttons for the same inputs.
+
+Objects are procedural models selected from narrative hints: trails, ladders,
+boats, windows, chests, lamps, and conversation partners. Recognized narrative
+NPCs and all combat foes are visible. Unrecognized choices use a trail; the
+visual hints never determine an input or an outcome.
+
+The 3D room is built from the current view, so Wishes need no extra generation
+step or geometry schema. Pictures are decorative murals. The mathematical
+contract is in [docs/3d-formalization.md](docs/3d-formalization.md), and the design
+decision is [ADR 0005](docs/adr/0005-spatial-realization-of-the-graph.md).
+
+Three.js is included under `web/vendor/`, with its MIT license. No CDN, npm install,
+or JavaScript build is needed to play. WebGL 2 is required for 3D; a browser
+without it shows a message and the existing text controls.
+
+### Spatial tests
+
+With Node.js installed, `make test-spatial` tests the actual adapter, interaction layout,
+movement, and crossing detection. It needs no npm dependencies.
+
+For the browser test, run `npm ci`, `npx playwright install chromium`, then
+`make test-browser`. It starts a separate server on port 8094 and sends a Wish
+through the existing recorded-response hook, legality checks, and fairness
+admission. It then navigates with real keyboard events, plays combat, checks
+terminal/replay behavior, and captures desktop and mobile screenshots. This test
+does not call the live Claude API. `PLAYWRIGHT_CHROME_PATH` can select an installed
+Chrome executable instead of Playwright's Chromium.
+
 ## How to play
 
 `make run` builds the game, starts the server, and opens the page. Ctrl-C stops the server.
@@ -27,7 +67,7 @@ Wishes need an API key for the Claude API in `ANTHROPIC_API_KEY`. Without a key,
 
 Each Adventure that passes is saved under `adventures/<id>/`, with its Character, World, Intro, Theme Names, and Pictures. A saved Adventure is checked again, with the fairness check and its saved seed, when the Front Page lists it and when you load it. Its Pictures are checked again on load. A save that fails a check now shows as a grey card with the reason, and you cannot play it.
 
-The story opens with the Intro: a few lines that name the World and say who your Character is. Read the Scene and click a Choice. Some Choices make a Success Roll: the dice tumble, then show the faces the Engine rolled.
+The journal opens with the Intro: a few lines that name the World and say who your Character is. Read the Scene and approach an object or character. The journal also offers the same Choices as buttons. Some Choices make a Success Roll: the dice in the journal show the faces the Engine rolled.
 In a Fight, the Creatures act, then you click a Maneuver. If you attack and more than one Creature is alive, their cards light up: click the one to attack. "Skip" shows the rest of a turn at once.
 The Character panel shows the background, attributes, skills, Gear, and HP. The map shows the Scenes you visited and a "?" for each way you have not taken.
 "← Adventures" at the top goes back to the Front Page. If the game is not over, the page asks first, because you lose your progress.
@@ -39,7 +79,7 @@ The game ends at an Ending, or when the Character dies, which is not an Ending. 
 - The Engine is a pure function, `step : Game → Input → Roll (Game × List Report)` in `Rpg/Play.lean`. Dice come from a seeded generator, so the same seed and the same clicks give the same game.
 - Each Report says one thing the Engine did, such as a roll or a hit. A roll Report carries each die face, the total, the target number, and the result. The page shows these faces; it never makes up a die.
 - The server sends the whole view on each reply: the Scene or Fight, the Character, the map, every Report so far, and the inputs the game offers now. A reload or a second tab shows the same game.
-- The page (`web/`) is plain HTML, CSS, and JavaScript, with no build step and nothing loaded from the internet.
+- The page (`web/`) is HTML, CSS, and JavaScript modules, with a vendored Three.js renderer, no build step, and nothing loaded from the internet.
 
 ## How a Wish becomes a game
 

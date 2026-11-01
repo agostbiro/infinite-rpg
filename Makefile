@@ -1,4 +1,4 @@
-.PHONY: install run run-fake build check check-pictures check-rules cheats validate comparator agree
+.PHONY: install run run-fake build check check-pictures check-rules cheats validate comparator agree test-spatial test-browser
 
 # The port of the game server: make run PORT=9000
 PORT ?= 8080
@@ -30,6 +30,13 @@ run-fake: build
 build:
 	lake build
 
+# Spatial adapter tests need only Node.js. Browser tests use the recorded Wish hook.
+test-spatial:
+	node --test tests/spatial.test.js
+
+test-browser: build
+	npm run test:browser
+
 # Words that can make compiled code differ from what the proofs are about.
 # The DM may not use them in Adventure or Character files.
 # `@[` and `attribute [` catch every attribute, such as `@[implemented_by]`.
@@ -52,7 +59,7 @@ check: build
 # unless a person puts its path on RULES_ALLOW. No other Adventure file may name `RuleSet` or
 # change a rules value with `{ ... with ... }`.
 RULES_ALLOW ?=
-RULES_LINE = ^(import Rpg\.RuleSet|namespace Rpg\.[A-Za-z]+|end Rpg\.[A-Za-z]+|def rules : RuleSet := \{\}|/--.*-/|)$$
+RULES_LINE = ^(import Rpg\.RuleSet|namespace Rpg\.[A-Za-z]+|end Rpg\.[A-Za-z]+|def rules : RuleSet := \{\}|/--.*-/)?$$
 check-rules:
 	@bad=0; for f in $$(find Rpg/Adventures -name Rules.lean); do \
 	  case " $(RULES_ALLOW) " in *" $$f "*) continue;; esac; \

@@ -2,6 +2,7 @@
 // The page only draws what the server sends and sends back the Player's clicks.
 // All rules and dice are in Lean. The page never makes up a die face: every face it
 // shows comes from a Report.
+import { SpatialGame } from './world3d.js';
 'use strict';
 
 (() => {
@@ -37,6 +38,19 @@
     wishOpen: false, // true while the Wish form is open on the front page
     gridKey: null,   // the cards on screen, as JSON, so a poll can tell if they changed
   };
+  let spatial = null;
+
+  /** Present only the actions in the current Lean view. */
+  function syncSpatial() {
+    if (!spatial || !S.view) return;
+    try {
+      spatial.update(S.view, !S.playing && !S.busy, pictureUrl(S.view.scene?.picture));
+    } catch (error) {
+      spatial.ready = false;
+      document.body.classList.add('journal-open');
+      toast('The 3D view could not show every choice. Use the journal: ' + error.message);
+    }
+  }
 
   // ---------- Server ----------
 
@@ -472,6 +486,7 @@
     renderCards(S.shown);
     renderManeuvers();
     markState();
+    syncSpatial();
     if (S.playing || S.busy) return;
     if (v.phase === 'scene' && v.scene) {
       for (const ch of v.scene.choices) {
@@ -775,10 +790,12 @@
     const title = v.phase === 'title';
     $('title-screen').hidden = !title;
     $('table').hidden = title;
+    if (!spatial) $('world').hidden = title;
     // The seed belongs to a game, so the front page does not show it.
     $('seed').hidden = title;
     document.title = (title ? 'Choose an Adventure' : v.adventure) + ' · Verified RPG';
     if (title) {
+      syncSpatial();
       renderTitle();
       markState();
       return;
@@ -792,6 +809,7 @@
   }
 
   function scrollToMat() {
+    if (spatial) return;
     $('mat').scrollIntoView({ block: 'end', behavior: 'smooth' });
   }
 
@@ -1000,6 +1018,7 @@
         S.view.pictures = v.pictures;
         showTopPictures(v);
         refreshWindow();
+        syncSpatial();
       }
     } catch (e) { /* The server is gone; the next click says so. */ }
     schedulePoll();
@@ -1109,5 +1128,13 @@
     } catch (e) { /* The server is gone; the next click says so. */ }
   });
 
+  try {
+    spatial = new SpatialGame(send);
+  } catch (error) {
+    const notice = el('p', 'world-failed', '3D is unavailable in this browser. You can still play using the choices below. Enable WebGL 2 to explore in 3D.');
+    notice.setAttribute('role', 'status');
+    $('world').appendChild(notice);
+    $('world').dataset.renderer = 'unavailable';
+  }
   load();
 })();

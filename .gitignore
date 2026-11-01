@@ -1,3 +1,7 @@
 .lake/
 # Adventures from Wishes, saved by the game server.
 adventures/
+node_modules/
+test-results/
+playwright-report/
+work/

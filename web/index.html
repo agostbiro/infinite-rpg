@@ -6,16 +6,17 @@
 <title>Verified RPG</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
-<script src="/app.js" defer></script>
+<link rel="stylesheet" href="/world3d.css">
+<script src="/app.js" type="module"></script>
 </head>
 <body>
 <div id="seed" class="seed" title="The dice seed. The same seed and the same clicks give the same game."></div>
 
 <main id="title-screen" class="front" hidden>
   <header class="front-head">
-    <p class="kicker">GURPS Lite adventures, checked by Lean</p>
-    <h1>Choose an Adventure</h1>
-    <p class="front-help">Click an Adventure to start playing. Before you can play an Adventure, a rule checker written in Lean must pass it, so the Dungeon Master cannot cheat.</p>
+    <p class="kicker">A wish. A world. Your adventure.</p>
+    <h1>Step into your next story</h1>
+    <p class="front-help">Ask the Dungeon Master for an adventure, then explore it in 3D. Follow a trail, board a boat, or approach a character to choose what happens next. Every adventure is checked before you enter.</p>
   </header>
 
   <p id="busy-note" class="busy-note" hidden>Wait for the Dungeon Master, or click Cancel.</p>
@@ -79,6 +80,52 @@
     <p id="top-pictures" class="top-pictures" hidden></p>
   </header>
 
+  <section id="world" class="world" aria-label="Explore the adventure in 3D" hidden>
+    <canvas id="world-canvas" tabindex="0" aria-label="3D adventure. Move with WASD, ZQSD or arrow keys. Drag to look. Approach a marked object or character to interact. Press E nearby, Escape to pause, or J for the journal."></canvas>
+    <div id="world-labels" class="world-labels" aria-hidden="true"></div>
+    <div class="world-vignette" aria-hidden="true"></div>
+    <div class="world-heading">
+      <p id="world-mode" class="world-mode"></p>
+      <h2 id="world-location"></h2>
+      <p id="world-description"></p>
+    </div>
+    <div class="world-toolbar">
+      <span id="world-hp" class="world-hp"></span>
+      <button id="world-journal" class="small-button" type="button" aria-expanded="false">Journal · J</button>
+      <button id="world-pause" class="small-button" type="button">Pause</button>
+      <button id="skip" class="small-button" type="button" hidden>Skip animation</button>
+    </div>
+    <div class="world-crosshair" aria-hidden="true">+</div>
+    <div id="world-prompt" class="world-prompt" hidden>
+      <p id="world-choice"></p>
+      <p id="world-detail"></p>
+      <button id="world-use" type="button">Choose · E</button>
+    </div>
+    <div class="world-controls">
+      <p><kbd>WASD</kbd> / <kbd>ZQSD</kbd> / <kbd>↑↓←→</kbd> move <span>· Drag to look · Shift to run</span></p>
+      <p>Approach a marked object or character to interact.</p>
+    </div>
+    <div class="world-touch" aria-label="Movement controls">
+      <button type="button" data-move="arrowup" aria-label="Move forward">↑</button>
+      <button type="button" data-move="arrowleft" aria-label="Move left">←</button>
+      <button type="button" data-move="arrowdown" aria-label="Move backward">↓</button>
+      <button type="button" data-move="arrowright" aria-label="Move right">→</button>
+    </div>
+    <div id="world-loading" class="world-loading" role="status" hidden>Resolving your choice…</div>
+    <div id="world-paused" class="world-paused" hidden>
+      <p class="kicker">Take a breath</p>
+      <h2 id="world-pause-title">Your adventure is paused</h2>
+      <p id="world-pause-text">Resume when you are ready to choose your next path.</p>
+      <button id="world-resume" class="big-button" type="button">Resume exploring</button>
+    </div>
+    <div id="over" class="over world-over" hidden>
+      <p id="over-title" class="over-title"></p>
+      <p id="over-text" class="over-text"></p>
+      <button id="again" class="big-button" type="button">Play again</button>
+      <button id="to-title" class="small-button" type="button">&larr; Adventures</button>
+    </div>
+  </section>
+
   <section class="story" aria-live="polite">
     <div id="scroll" class="scroll"></div>
     <div id="mat" class="mat">
@@ -89,13 +136,6 @@
         <div id="maneuvers" class="maneuvers"></div>
       </div>
       <div id="choices" class="choices"></div>
-      <div id="over" class="over" hidden>
-        <p id="over-title" class="over-title"></p>
-        <p id="over-text" class="over-text"></p>
-        <button id="again" class="big-button" type="button">Play again</button>
-        <button id="to-title" class="small-button" type="button">&larr; Adventures</button>
-      </div>
-      <button id="skip" class="skip" type="button" hidden>Skip</button>
     </div>
   </section>
 
