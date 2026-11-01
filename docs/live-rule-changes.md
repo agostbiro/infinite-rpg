@@ -25,6 +25,14 @@ If the DM says a mechanic is unsupported, the server requests one additional des
 before declining. It must explain any remaining missing capability and suggest a playable
 alternative, without silently substituting a different mechanic or a cosmetic-only effect.
 
+## Shared defaults
+
+New games and generated Wishes inherit the shared tactical meta rules in
+`Rpg/Mechanic.lean`. They appear in the live context as existing effects, and the GM must
+balance additional requests around them. `Prepared.preserves_existing_rule` proves that
+installation retains every existing effect, including the shared defaults and earlier grants.
+The combat preview uses the same trigger function as the Engine.
+
 ## Scope
 
 `Rpg/Mechanic.lean` defines the supported language:

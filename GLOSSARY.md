@@ -131,3 +131,11 @@ _Avoid_: combat encounter, battle
 **Maneuver**:
 What a being chooses to do on its turn in a Fight: Attack, All-Out Attack, or All-Out Defense. The maneuver also sets the being's defense until its next turn.
 _Avoid_: action, combat option
+
+- **Shared meta rules:** `defaultCombatRules`, inherited by every new adventure through
+  `RuleSet`. They include Committed Strike, Guard Feint, Cornered Fury, and Punish the Opening.
+- **Death-conditional mean:** average scene-choice turns among sampled characters who died;
+  successful endings are excluded. It must be read alongside the death rate.
+- **Policy sensitivity study:** replaying the admission comparison on fixed observations
+  under different Weibull targets, tolerance, and confidence. It does not change those
+  observations or certify every comparison simultaneously.

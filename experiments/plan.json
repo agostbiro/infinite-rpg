@@ -1,0 +1,100 @@
+{
+  "purpose": "Exploratory sensitivity study, not admission or a replacement balance proof",
+  "variants": [
+    "original_lighthouse",
+    "meta_rules_only",
+    "expanded_lighthouse",
+    "unchecked_power",
+    "harsh_opposition",
+    "peaceful_lighthouse",
+    "silver_acorn"
+  ],
+  "admission_games_per_batch": 1000,
+  "admission_seeds": [
+    20261111,
+    20261112,
+    20261113,
+    20261114,
+    20261115
+  ],
+  "lifetime_games_per_variant": 20000,
+  "lifetime_seed": 20261201,
+  "lifetime_turn_limit": 40,
+  "combat_round_limit": 200,
+  "balance_horizon": 5,
+  "policies": [
+    {
+      "name": "default",
+      "retention": "19/20",
+      "shape": 2,
+      "tolerance": "1/5",
+      "delta": "1/20"
+    },
+    {
+      "name": "earlier_danger",
+      "retention": "9/10",
+      "shape": 2,
+      "tolerance": "1/5",
+      "delta": "1/20"
+    },
+    {
+      "name": "later_danger",
+      "retention": "49/50",
+      "shape": 2,
+      "tolerance": "1/5",
+      "delta": "1/20"
+    },
+    {
+      "name": "constant_hazard",
+      "retention": "19/20",
+      "shape": 1,
+      "tolerance": "1/5",
+      "delta": "1/20"
+    },
+    {
+      "name": "steeper_hazard",
+      "retention": "19/20",
+      "shape": 3,
+      "tolerance": "1/5",
+      "delta": "1/20"
+    },
+    {
+      "name": "tight_tolerance",
+      "retention": "19/20",
+      "shape": 2,
+      "tolerance": "1/10",
+      "delta": "1/20"
+    },
+    {
+      "name": "wide_tolerance",
+      "retention": "19/20",
+      "shape": 2,
+      "tolerance": "3/10",
+      "delta": "1/20"
+    },
+    {
+      "name": "confidence_90",
+      "retention": "19/20",
+      "shape": 2,
+      "tolerance": "1/5",
+      "delta": "1/10"
+    },
+    {
+      "name": "confidence_99",
+      "retention": "19/20",
+      "shape": 2,
+      "tolerance": "1/5",
+      "delta": "1/100"
+    }
+  ],
+  "protocol": [
+    "Freeze all variants before these independent study seeds are run.",
+    "Do not tune production against study or held-out results.",
+    "Use shared uniform scene choice and combat maneuver/target policies.",
+    "Record all endings, deaths, invalid trajectories and timeouts; never discard them.",
+    "A turn is one scene choice including its whole fight.",
+    "Changing a policy reclassifies fixed game outcomes; it does not resimulate a different engine.",
+    "Average time to death is conditional on observed death; wins are not deaths.",
+    "These comparisons do not establish a simultaneous confidence statement across experiments."
+  ]
+}

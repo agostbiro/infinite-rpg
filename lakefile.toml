@@ -48,3 +48,8 @@ globs = ["Comparator.+"]
 [[lean_exe]]
 name = "change-check"
 root = "ChangeCheck"
+
+# Reproducible balance-policy and lifetime experiments, using the shared compiled simulator.
+[[lean_exe]]
+name = "balance-study"
+root = "BalanceStudy"

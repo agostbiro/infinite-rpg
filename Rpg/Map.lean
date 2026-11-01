@@ -150,7 +150,7 @@ def playSeed7 (inputs : List Input) : Game :=
   let g := playSeed7 [.begin, .choose 0, .choose 1, .choose 0]
   let m := g.map
   g.phase.name == "fight" &&
-    m.nodes.map (·.label) == ["The Shore", "?", "The Iron Door", "?", "Wreckers!"] &&
+    m.nodes.map (·.label) == ["The Shore", "?", "The Iron Door", "?", "?", "Wreckers!"] &&
     m.edges.all (·.style != "branch")
 
 end Rpg

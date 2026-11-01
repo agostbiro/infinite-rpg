@@ -42,4 +42,4 @@ These are open. The branch author has them.
 
 - The trusted surface is larger: the mechanic language (`Rpg/Mechanic.lean`), the `WorldChange` limits and types (`Proposal`, `Prepared`, `Admission`), `RetryTree`, the continuation fields of `StatisticalCandidate`, and the five new statements in `Comparator/Statements.lean` (`live_change_core`, `live_change_checkpoint`, `live_change_from_start`, `live_change_balanced`, `retry_balanced`).
 - Wider intervals make a Wish a little harder to pass. A save from another machine can fail the check at 95% and show as a grey card.
-- `make comparator` checks 13 statements: the 8 of ADR 0004 and the 5 live-change statements.
+- `make comparator` checks 15 statements: the 8 of ADR 0004, the 5 live-change statements, and 2 that came with the shared tactics (`shared_tactical_rules`, `live_change_existing_rule`).

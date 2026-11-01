@@ -783,6 +783,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
   .spinner { animation: none !important; border-color: var(--lamp); }
 }
 
+.tactic-effect { display: block; margin-top: 6px; line-height: 1.4; opacity: 0.9; }
+
 /* ---------- Narrow windows ---------- */
 
 @media (max-width: 520px) {

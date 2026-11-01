@@ -4,15 +4,16 @@ import Rpg.Mechanic
 # The rules of one adventure
 
 Each adventure has one `RuleSet` value, in its own `Rules.lean`. The spec, the checker, the
-Engine, and the balance check all get that same value. The default of each field is the
-GURPS Lite rule in `Rpg/Rules.lean`, so `{}` means "the rules of this game, unchanged".
+Engine, and the balance check all get that same value. The defaults combine the
+GURPS Lite core in `Rpg/Rules.lean` with `defaultCombatRules` in `Rpg/Mechanic.lean`.
+Thus `{}` inherits the shared tactical rules in every authored or generated adventure.
 
 A `RuleSet` is part of what "legal" means. People own the `Rules.lean` files: `make check`
 fails if a `Rules.lean` is not `{}`, unless a person puts its path on the allow list.
 -/
 namespace Rpg
 
-/-- The limits and the rules of one adventure. Each field defaults to the rule in `Rpg/Rules.lean`. -/
+/-- The limits and rules of one adventure, inheriting the approved shared core and tactical defaults. -/
 structure RuleSet where
   /-- The lowest attribute score a Creature may have. -/
   creatureAttributeMin : Nat := 1
@@ -69,7 +70,7 @@ structure RuleSet where
   /-- Equipment granted inside this Adventure, including its actual attack and damage values. -/
   equipment : List EquipmentRule := []
   /-- Named conditional effects active only in this Adventure. -/
-  combatRules : List CombatRule := []
+  combatRules : List CombatRule := defaultCombatRules
 
 /-- Equipment affects only its named owner using its specified weapon. -/
 def RuleSet.equipmentFor (rules : RuleSet) (b : Being) : Option EquipmentRule :=

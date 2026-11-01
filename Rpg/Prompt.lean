@@ -56,6 +56,8 @@ def armorLine (a : Armor) : String := s!"- {a.key}: DR {a.dr}."
 /-- The rules part of the DM prompt. -/
 def rulesText : String :=
   "\n".intercalate ([
+    "## Shared tactical rules (already active; do not duplicate them)"] ++
+    defaultCombatRules.map (fun r => s!"- {r.name}: {r.description}") ++ [
     "## Skills (use these JSON names)"] ++ Skill.all.map skillLine ++ [
     "",
     "## Weapons",
@@ -105,6 +107,7 @@ def dmSystemPrompt : String :=
     "- Write for a PG-13 audience: danger and fights are fine; no sexual content, no gore, no cruelty for its own sake.",
     "- Write 8 to 15 Scenes. Each Scene text has 2 to 6 sentences and at most 1,500 characters. Second person (\"you\").",
     "- Give the Player real choices, and more than one way to an Ending. Write 2 or more Endings.",
+    "- Build at least two concrete environmental tactics: for example split a group with a trap, free an ally to weaken a later foe, or bluff past a confrontation. Express each consequence through actual roll branches and different future encounters, not decorative text. Include a meaningful failure route. The shared tactical combat rules are already active in every Fight.",
     "- Do not name game rules in the Scene text. A Choice that makes a roll shows the roll in brackets, with the Theme Name of the skill, such as \"Sneak past the guard (Shadow-walking -2)\".",
     "- If the Wish names a known story or world, write a new adventure in that world. Do not copy text from books or films.",
     "- `world` names the world of the Adventure in a few words, at most 60 characters, such as \"Middle-earth, the Shire\" or \"A drowned city of brass\".",

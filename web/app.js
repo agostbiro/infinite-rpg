@@ -463,6 +463,7 @@
       const chosen = el('button', 'maneuver chosen');
       chosen.type = 'button';
       chosen.append(el('b', '', m.label), el('span', '', m.help));
+      (m.effects || []).forEach((effect) => chosen.append(el('small', 'tactic-effect', effect)));
       chosen.disabled = true;
       const cancel = el('button', 'maneuver cancel');
       cancel.type = 'button';
@@ -477,6 +478,7 @@
       const b = el('button', 'maneuver');
       b.type = 'button';
       b.append(el('b', '', m.label), el('span', '', m.help));
+      (m.effects || []).forEach((effect) => b.append(el('small', 'tactic-effect', effect)));
       b.onclick = () => {
         if (m.attacks && m.options.length > 1) {
           S.aim = idx;

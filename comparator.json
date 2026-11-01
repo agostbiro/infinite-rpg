@@ -9,9 +9,11 @@
     "Verified.step_rejects",
     "Verified.mem_inputs_iff",
     "Verified.lighthouse_default_rules",
+    "Verified.shared_tactical_rules",
     "Verified.balanced",
     "Verified.live_change_core",
     "Verified.live_change_checkpoint",
+    "Verified.live_change_existing_rule",
     "Verified.live_change_from_start",
     "Verified.live_change_balanced",
     "Verified.retry_balanced"
