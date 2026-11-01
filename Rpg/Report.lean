@@ -8,6 +8,8 @@ A Report is one thing the Engine did or found out during play, such as a roll or
 The Engine makes Reports, and the page draws them. A Report is data, not text,
 so the page can draw each die face and move each HP bar.
 Each Report that has dice carries every face the Engine rolled.
+A Report keeps the rule data, such as the skill of a roll or the weapon of an attack.
+The view (`Rpg/View.lean`) turns these into the Theme Names that the Player sees.
 -/
 
 namespace Rpg
@@ -16,6 +18,10 @@ open Lean
 
 deriving instance ToJson, FromJson for Maneuver
 deriving instance ToJson for RollResult
+deriving instance ToJson for Attribute
+deriving instance ToJson for Skill
+deriving instance ToJson for RollTarget
+deriving instance ToJson for Weapon
 
 /-- Who acts in a Fight: `none` is the Character, `some i` is Creature number `i`. -/
 abbrev Actor := Option Nat
@@ -50,7 +56,7 @@ structure Card where
   name : String
   hp : Int
   maxHP : Nat
-  weapon : String
+  weapon : Weapon
   /-- The damage roll and type, such as "1d+2 cutting". -/
   damage : String
   dr : Nat
@@ -58,7 +64,7 @@ structure Card where
 
 /-- The card of a being with `hp` HP. -/
 def Being.card (b : Being) (hp : Int) : Card :=
-  { name := b.name, hp, maxHP := b.maxHP, weapon := b.weapon.name,
+  { name := b.name, hp, maxHP := b.maxHP, weapon := b.weapon,
     damage := s!"{(b.weapon.damage b.st).show} {b.weapon.damageType.name}", dr := b.dr }
 
 /-- One thing the Engine did or found out during play. -/
@@ -68,11 +74,11 @@ inductive Report where
   | scene (id : SceneId) (title : String) (text : String) (ending : Bool) (picture : Option String)
   /-- The Player picks the Choice with this text. -/
   | picked (text : String)
-  /-- `who` makes a Success Roll against `what`, for example "DX -2". -/
-  | successRoll (who : String) (what : String) (roll : DiceRoll)
-  /-- `who` cannot try a roll against `what`. `level` is the effective skill, or `none`
-  if `who` cannot use the skill at all. The result is a failure. -/
-  | cannotTry (who : String) (what : String) (level : Option Int)
+  /-- `who` makes a Success Roll against `target` at `modifier`, for example DX at -2. -/
+  | successRoll (who : String) (target : RollTarget) (modifier : Int) (roll : DiceRoll)
+  /-- `who` cannot try a roll against `target` at `modifier`. `level` is the effective skill,
+  or `none` if `who` cannot use the skill at all. The result is a failure. -/
+  | cannotTry (who : String) (target : RollTarget) (modifier : Int) (level : Option Int)
   /-- A Fight starts between the Character and these Creatures, numbered from 0. -/
   | fightStarts (hero : Card) (foes : List Card)
   /-- A new round of the Fight starts. -/
@@ -81,7 +87,7 @@ inductive Report where
   | maneuver (who : String) (m : Maneuver)
   /-- An attack roll by `attacker` on `defender`. -/
   | attack (attacker : Actor) (attackerName : String) (defender : Actor) (defenderName : String)
-      (weapon : String) (roll : DiceRoll)
+      (weapon : Weapon) (roll : DiceRoll)
   /-- `who` cannot attack, because its effective skill `level` is below 3. -/
   | cannotAttack (who : String) (level : Int)
   /-- `who` cannot defend, because its last Maneuver was an All-Out Attack. -/

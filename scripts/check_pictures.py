@@ -17,7 +17,14 @@ script is a third guard. It fails if any SVG file in the given folders:
 It also fails on any file in the folders that is not an .svg file, because the
 server would serve it (an .html or .js file could run code).
 
-Usage: check_pictures.py FOLDER...
+A path can also be one file. The game server checks each Picture of a live
+Adventure this way before it serves it.
+
+Exit codes: 0 if every file passes, 1 if a file is rejected, and 2 if the check could not
+run (no path given, a path that does not exist, or an error in this script). The game server
+records a Picture as refused only on exit code 1.
+
+Usage: check_pictures.py FOLDER_OR_FILE...
 """
 
 import pathlib
@@ -78,19 +85,44 @@ def problems(path):
     return found
 
 
-def main(folders):
-    """Check every .svg file in the folders. Exit 1 if any has a problem."""
+def files(arg):
+    """The files to check for one argument: the file itself, or every file in a folder."""
+    path = pathlib.Path(arg)
+    if path.is_file():
+        return [path]
+    if not path.is_dir():
+        print(f"{arg}: no such file or folder")
+        return None
+    return [p for p in sorted(path.rglob("*")) if p.is_file()]
+
+
+REJECTED = 1
+CANNOT_CHECK = 2
+
+
+def main(args):
+    """Check every .svg file in the folders and files. Return 1 if any has a problem, and 2 if a
+    path does not exist or no path is given."""
+    if not args:
+        print("usage: check_pictures.py FOLDER_OR_FILE...")
+        return CANNOT_CHECK
     bad = False
-    for folder in folders:
-        for path in sorted(pathlib.Path(folder).rglob("*")):
-            if not path.is_file():
-                continue
+    for arg in args:
+        found_files = files(arg)
+        if found_files is None:
+            return CANNOT_CHECK
+        for path in found_files:
             found = problems(path) if path.suffix.lower() == ".svg" else ["is not an .svg file"]
             for p in found:
                 print(f"{path}: {p}")
                 bad = True
-    return 1 if bad else 0
+    return REJECTED if bad else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    try:
+        code = main(sys.argv[1:])
+    except Exception as e:  # noqa: BLE001 - any error means the check did not run to the end
+        print(f"the check could not run: {type(e).__name__}: {e}")
+        code = CANNOT_CHECK
+    sys.exit(code)

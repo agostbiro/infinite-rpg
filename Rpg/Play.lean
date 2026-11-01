@@ -60,10 +60,6 @@ def Game.enter (g : Game) (id : SceneId) : Game × List Report :=
 def Game.record (g : Game) (id : SceneId) (k : Nat) (target : SceneId) (rolled : Option Bool) : Game :=
   { g with trail := g.trail ++ [⟨id, k, target, rolled⟩] }
 
-/-- The name of a Success Roll, such as "DX -2" or "Lockpicking". -/
-def rollName (t : RollTarget) (m : Int) : String :=
-  if m = 0 then t.name else if m > 0 then s!"{t.name} +{m}" else s!"{t.name} {m}"
-
 /-! ## Fights -/
 
 /-- The Creatures that act before the Character in each round. -/
@@ -130,7 +126,7 @@ def Game.choose (g : Game) (id : SceneId) (k : Nat) (ch : Choice) : Roll (Game �
     let (g, reports) := (g.record id k n none).enter n
     return (g, picked :: reports)
   | .roll t m onSuccess onFailure =>
-    let (res, roll) ← makeRoll g.hero.name (rollName t m) ((g.hero.rollLevel t).map (· + m))
+    let (res, roll) ← makeRoll g.hero.name t m ((g.hero.rollLevel t).map (· + m))
     let n := if res.succeeded then onSuccess else onFailure
     let (g, reports) := (g.record id k n (some res.succeeded)).enter n
     return (g, picked :: roll :: reports)
@@ -320,7 +316,7 @@ example : (step titleGame (.choose 0)).run ⟨7⟩ = ((titleGame, [.rejected rej
 #guard
   let (g, reports) := (step shoreGame (.choose 1)).run' ⟨7⟩
   g.sceneId? == some 2 && g.trail.map (·.rolled) == [some true] &&
-    reports.contains (.successRoll "Mara" "DX -2" ⟨[4, 1, 1], 6, 10, .success⟩)
+    reports.contains (.successRoll "Mara" (.attribute .dx) (-2) ⟨[4, 1, 1], 6, 10, .success⟩)
 
 -- In a Fight, a forged attack on a Creature that is down is refused.
 #guard

@@ -103,7 +103,7 @@ theorem hiddenEnding_only_start {x : SceneId}
 example : ¬ LegalAdventure mara cheatHiddenEnding := by
   intro h
   have h1 := hiddenEnding_only_start
-    (h.2.2.2.2 { id := 1, title := "Hidden End", text := "", choices := [] } (by simp [cheatHiddenEnding]))
+    (h.2.2.2.2.1 { id := 1, title := "Hidden End", text := "", choices := [] } (by simp [cheatHiddenEnding]))
   simp at h1
 example : check mara cheatHiddenEnding ≠ [] := by decide
 
@@ -116,9 +116,60 @@ def cheatUnrollable : Adventure :=
 example : ¬ LegalAdventure mara cheatUnrollable := fun h => absurd h.2.2.2.1 (by decide)
 example : check mara cheatUnrollable ≠ [] := by decide
 
+/-- Cheat 8: a trap with no way out. Every Scene can be reached and an Ending exists,
+but the maze only leads back into the maze. A Player who goes in can never reach an Ending. -/
+def cheatTrap : Adventure where
+  title := "Trap with no way out"
+  start := 0
+  scenes := [
+    { id := 0, title := "Fork", text := "", choices := [
+        { text := "Go home", outcome := .goto 1 },
+        { text := "Enter the maze", outcome := .goto 2 }] },
+    { id := 1, title := "Home", text := "", choices := [] },
+    { id := 2, title := "Maze", text := "", choices := [{ text := "Walk on", outcome := .goto 2 }] } ]
+
+/-- In the trap Adventure, an Ending can never be reached from the maze (Scene 2). -/
+theorem trap_no_way_out {x : SceneId}
+    (h : ReachesEnding cheatTrap x) : x ≠ 2 := by
+  induction h with
+  -- The only Ending is Scene 1, which is not the maze.
+  | ending he =>
+    obtain ⟨sc, hsc, rfl, hnil⟩ := he
+    simp only [cheatTrap, List.mem_cons, List.not_mem_nil, or_false] at hsc
+    rcases hsc with rfl | rfl | rfl
+    -- The fork has Choices, so it is not an Ending.
+    · simp at hnil
+    -- Home is Scene 1, not the maze.
+    · decide
+    -- The maze has a Choice, so it is not an Ending.
+    · simp at hnil
+  -- A Choice in the maze leads only back into the maze.
+  | next hl _ ih =>
+    rintro rfl
+    obtain ⟨sc, hsc, hid, ch, hch, ht⟩ := hl
+    simp only [cheatTrap, List.mem_cons, List.not_mem_nil, or_false] at hsc
+    rcases hsc with rfl | rfl | rfl
+    -- The fork is Scene 0, not the maze.
+    · simp at hid
+    -- Home is Scene 1, not the maze.
+    · simp at hid
+    -- The maze's one Choice leads to the maze.
+    · simp only [List.mem_singleton] at hch
+      subst hch
+      simp only [Outcome.targets, List.mem_singleton] at ht
+      exact ih ht
+
+example : ¬ LegalAdventure mara cheatTrap := by
+  intro h
+  have h2 := trap_no_way_out
+    (h.2.2.2.2.2 { id := 2, title := "Maze", text := "", choices := [{ text := "Walk on", outcome := .goto 2 }] }
+      (by simp [cheatTrap]))
+  exact h2 rfl
+example : check mara cheatTrap ≠ [] := by decide
+
 /-- All the cheating Adventures, for the demo. -/
 def cheats : List Adventure :=
   [cheatGiant, cheatBrokenLink, cheatEasyLock, cheatEndless, cheatNoEnding, cheatHiddenEnding,
-    cheatUnrollable]
+    cheatUnrollable, cheatTrap]
 
 end Rpg

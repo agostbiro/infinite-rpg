@@ -1,0 +1,105 @@
+event: message_start
+data: {"type": "message_start", "message": {"id": "msg_fixture", "type": "message", "role": "assistant", "model": "claude-opus-5-5", "content": [], "stop_reason": null, "stop_sequence": null, "usage": {"input_tokens": 100, "output_tokens": 1}}}
+
+event: content_block_start
+data: {"type": "content_block_start", "index": 0, "content_block": {"type": "thinking", "thinking": "", "signature": ""}}
+
+event: ping
+data: {"type": "ping"}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 0, "delta": {"type": "thinking_delta", "thinking": "Plan the "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 0, "delta": {"type": "thinking_delta", "thinking": "Adventure."}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 0, "delta": {"type": "signature_delta", "signature": "fixture-sig-"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 0, "delta": {"type": "signature_delta", "signature": "part-2"}}
+
+event: content_block_stop
+data: {"type": "content_block_stop", "index": 0}
+
+event: content_block_start
+data: {"type": "content_block_start", "index": 1, "content_block": {"type": "text", "text": ""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"title\": \"The Silver Acorn\", \"character\": {\"name\": \"Pip Tunnelly\", \"background\": \"A young hobbit of Bywater who reads the weather better than books, and talks his way out of most trouble.\", \"st\": 8, "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"dx\": 12, \"iq\": 11, \"ht\": 12, \"skills\": [{\"skill\": \"stealth\", \"level\": 14}, {\"skill\": \"knife\", \"level\": 14}, {\"skill\": \"fastTalk\", \"level\": 13}, {\"skill\": \"naturalist\", \"level\": 12}, {\"skill\": \"surviv"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "al\", \"level\": 12}, {\"skill\": \"climbing\", \"level\": 13}, {\"skill\": \"swimming\", \"level\": 13}, {\"skill\": \"firstAid\", \"level\": 12}], \"weapon\": \"largeKnife\", \"armor\": \"none\"}, \"themeNames\": {\"skills\": [{\"sk"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ill\": \"stealth\", \"name\": \"Hobbit Quietness\"}, {\"skill\": \"fastTalk\", \"name\": \"Hobbit Chatter\"}, {\"skill\": \"naturalist\", \"name\": \"Weather-lore\"}, {\"skill\": \"knife\", \"name\": \"Blade-work\"}, {\"skill\": \"sur"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "vival\", \"name\": \"Wild-lore\"}], \"weapons\": [{\"weapon\": \"largeKnife\", \"name\": \"Grandfather's Barrow-blade\"}], \"armor\": [{\"armor\": \"none\", \"name\": \"Second-best Waistcoat\"}]}, \"palette\": [\"#1d2a1a\", \"#2f4"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "a2a\", \"#4d6b3a\", \"#86a35a\", \"#c9b46a\", \"#e8d9a8\", \"#6b4a2a\", \"#3a2a1c\", \"#7a9ab8\", \"#2a3a52\"], \"start\": 0, \"scenes\": [{\"id\": 0, \"title\": \"The Garden Gate\", \"text\": \"Morning mist lies over Bywater. Old"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " Mother Burrows hammers on your gate: her grandson's silver acorn, an heirloom, was snatched in the night, and muddy boot prints lead off toward the river. The sky to the west looks heavy.\", \"choices\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": [{\"text\": \"Walk down the lane to the Green Dragon\", \"outcome\": {\"type\": \"goto\", \"next\": 1}}, {\"text\": \"Read the clouds before you go (Weather-lore)\", \"outcome\": {\"type\": \"roll\", \"against\": \"naturali"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "st\", \"modifier\": 0, \"onSuccess\": 2, \"onFailure\": 1}}]}, {\"id\": 1, \"title\": \"The Green Dragon\", \"text\": \"The inn is warm and loud. In the corner a tall stranger in a wet cloak keeps his hand on a bulgi"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ng pocket and watches the door.\", \"choices\": [{\"text\": \"Spin him a tale and look in his pocket (Hobbit Chatter -1)\", \"outcome\": {\"type\": \"roll\", \"against\": \"fastTalk\", \"modifier\": -1, \"onSuccess\": 3, "}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"onFailure\": 4}}, {\"text\": \"Follow him when he slips out\", \"outcome\": {\"type\": \"goto\", \"next\": 4}}]}, {\"id\": 2, \"title\": \"Bagshot Hill\", \"text\": \"You climb the hill and see the storm coming. From up h"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ere you also see the path the thief took: across Farmer Cotton's fields, toward the ferry.\", \"choices\": [{\"text\": \"Take the short way through the fields\", \"outcome\": {\"type\": \"goto\", \"next\": 3}}]}, {\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "id\": 3, \"title\": \"Farmer Cotton's Fields\", \"text\": \"Tall barley hides you. Ahead, by the hedge, something grey and lean is sniffing the thief's trail.\", \"choices\": [{\"text\": \"Creep past it through the"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " barley (Hobbit Quietness)\", \"outcome\": {\"type\": \"roll\", \"against\": \"stealth\", \"modifier\": 0, \"onSuccess\": 5, \"onFailure\": 4}}, {\"text\": \"Walk up to it boldly\", \"outcome\": {\"type\": \"goto\", \"next\": 4}}"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "]}, {\"id\": 4, \"title\": \"Teeth in the Hedge\", \"text\": \"A grey wolf, far from the wild, bursts out of the hedge with a snarl.\", \"choices\": [{\"text\": \"Stand and fight\", \"outcome\": {\"type\": \"fight\", \"foes"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": [{\"name\": \"Grey Wolf\", \"st\": 9, \"dx\": 12, \"iq\": 4, \"ht\": 12, \"skills\": [{\"skill\": \"brawling\", \"level\": 12}], \"weapon\": \"punch\", \"armor\": \"none\", \"naturalDR\": 1}], \"onWin\": 5}}]}, {\"id\": 5, \"title\":"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"The Brandywine Bank\", \"text\": \"The river runs fast and brown after the night's rain. On the far bank the stranger is loading a little boat.\", \"choices\": [{\"text\": \"Swim across before he casts off (S"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "wimming -2)\", \"outcome\": {\"type\": \"roll\", \"against\": \"swimming\", \"modifier\": -2, \"onSuccess\": 6, \"onFailure\": 7}}, {\"text\": \"Run for the ferry\", \"outcome\": {\"type\": \"goto\", \"next\": 7}}]}, {\"id\": 6, \"t"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "itle\": \"Ending: Home by Supper\", \"text\": \"You haul yourself out of the water right beside the boat. The stranger is so startled that he drops the silver acorn and flees. You are back in Bywater in tim"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e for supper, and Mother Burrows bakes you a seed cake.\", \"choices\": []}, {\"id\": 7, \"title\": \"The Ferry\", \"text\": \"At the ferry the stranger turns and draws a long knife. \\\"Go home, little one,\\\" he s"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ays.\", \"choices\": [{\"text\": \"Fight the ruffian\", \"outcome\": {\"type\": \"fight\", \"foes\": [{\"name\": \"Bree Ruffian\", \"st\": 11, \"dx\": 10, \"iq\": 9, \"ht\": 11, \"skills\": [{\"skill\": \"knife\", \"level\": 11}], \"wea"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "pon\": \"largeKnife\", \"armor\": \"leather\", \"naturalDR\": 0}], \"onWin\": 8}}]}, {\"id\": 8, \"title\": \"Ending: The Acorn Returned\", \"text\": \"The ruffian goes into the river and comes up far downstream, with no"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " acorn and no pride. The Shirriffs hear the tale by evening, and your name is toasted at the Green Dragon for a week.\", \"choices\": []}]}"}}
+
+event: content_block_stop
+data: {"type": "content_block_stop", "index": 1}
+
+event: message_delta
+data: {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": null}, "usage": {"output_tokens": 500}}
+
+event: message_stop
+data: {"type": "message_stop"}
+

@@ -15,15 +15,56 @@
   <div class="title-card">
     <p class="kicker">A GURPS Lite adventure, checked by Lean</p>
     <h1 id="title-adventure"></h1>
-    <p class="title-blurb">The rules and the dice run in Lean. The Adventure passed the checker before you could play it, so the DM cannot cheat.</p>
+    <p id="title-blurb" class="title-blurb"></p>
     <div id="title-character" class="title-character"></div>
+    <p id="title-pictures" class="title-pictures" hidden></p>
     <button id="begin" class="big-button" type="button">Begin</button>
   </div>
+
+  <section class="title-card wish-card" aria-labelledby="wish-h">
+    <h2 id="wish-h">Make a Wish</h2>
+    <p class="wish-help">Tell the DM what Adventure you want. The DM writes it, and Lean checks it against the rules before you can play.</p>
+    <div id="wish-form" class="wish-form">
+      <label class="wish-label" for="wish">Your Wish</label>
+      <textarea id="wish" maxlength="500" rows="3" placeholder="I love LOTR, give me an adventure set in the Shire"></textarea>
+      <p id="wish-count" class="wish-count">0 / 500</p>
+      <div class="wish-row">
+        <label>Name <input id="wish-name" type="text" maxlength="30" placeholder="Let the DM choose" autocomplete="off"></label>
+        <label>Gender
+          <select id="wish-gender">
+            <option value="dm">Let the DM choose</option>
+            <option value="she">she</option>
+            <option value="he">he</option>
+            <option value="they">they</option>
+          </select>
+        </label>
+      </div>
+      <button id="wish-send" class="big-button" type="button">Ask the DM</button>
+    </div>
+    <p id="wish-off" class="wish-off" hidden>Generation is unavailable: the server has no API key. Set ANTHROPIC_API_KEY and run the game again. You can still play the built-in Adventure.</p>
+    <div id="progress" class="progress" hidden aria-live="polite">
+      <p id="progress-wish" class="wish-help"></p>
+      <ol id="progress-steps" class="progress-steps"></ol>
+      <div class="progress-buttons">
+        <button id="cancel" class="small-button" type="button">Cancel</button>
+        <button id="retry" class="small-button" type="button">Try again</button>
+        <button id="to-builtin" class="small-button" type="button">Play the built-in Adventure</button>
+        <button id="dismiss" class="small-button" type="button">OK</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="title-card saved-card" aria-labelledby="saved-h">
+    <h2 id="saved-h">Adventures</h2>
+    <p class="wish-help">Each saved Adventure is checked again before you can play it.</p>
+    <ul id="saved-list" class="saved-list"></ul>
+  </section>
 </main>
 
 <div id="table" class="table" hidden>
   <header class="top">
     <h1 id="adventure-title"></h1>
+    <p id="top-pictures" class="top-pictures" hidden></p>
   </header>
 
   <section class="story" aria-live="polite">
@@ -40,6 +81,7 @@
         <p id="over-title" class="over-title"></p>
         <p id="over-text" class="over-text"></p>
         <button id="again" class="big-button" type="button">Play again</button>
+        <button id="to-title" class="small-button" type="button">Back to the title</button>
       </div>
       <button id="skip" class="skip" type="button" hidden>Skip</button>
     </div>

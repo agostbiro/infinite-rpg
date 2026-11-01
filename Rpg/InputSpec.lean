@@ -44,7 +44,7 @@ def AllowedInput (g : Game) (i : Input) : Prop :=
 Each example uses Mara in The Drowned Lighthouse. -/
 
 /-- A new game on the title screen. -/
-def titleGame : Game := Game.new mara lighthouse
+def titleGame : Game := Game.new mara mara_legal ⟨lighthouse, lighthouse_legal⟩
 
 /-- A game in The Shore, the first Scene. It has 2 Choices. -/
 def shoreGame : Game := { titleGame with phase := .scene 0 }

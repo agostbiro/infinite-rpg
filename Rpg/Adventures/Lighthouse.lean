@@ -79,4 +79,19 @@ def lighthouse : Adventure where
 theorem lighthouse_legal : LegalAdventure mara lighthouse :=
   check_sound (by decide)
 
+/-- Rule 7 holds for a real Adventure: from every Scene of The Drowned Lighthouse,
+an Ending can be reached. -/
+theorem lighthouse_reaches_ending : ∀ s ∈ lighthouse.scenes, ReachesEnding lighthouse s.id :=
+  lighthouse_legal.2.2.2.2.2
+
+/-- Rule 7 by hand, for one Scene: from Steel in the Dark (Scene 6), the Fight with
+Grey Hollis leads to the Ending The Keeper's Debt (Scene 8). -/
+example : ReachesEnding lighthouse 6 := by
+  apply ReachesEnding.next (t := 8)
+  -- The one Choice of Scene 6 is the Fight with Grey Hollis. A win leads to Scene 8.
+  · refine ⟨lighthouse.scenes[6], by simp [lighthouse], rfl, _, List.mem_cons_self, ?_⟩
+    simp [Outcome.targets]
+  -- Scene 8 has no Choices, so it is an Ending.
+  · exact .ending ⟨lighthouse.scenes[8], by simp [lighthouse], rfl, rfl⟩
+
 end Rpg

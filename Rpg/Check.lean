@@ -199,6 +199,64 @@ theorem reachable_of_mem {a : Adventure} {x : SceneId}
   subst hy
   exact Reachable.start
 
+/-! ## A way to an Ending -/
+
+/-- The numbers of the Endings: the Scenes with no Choices. -/
+def endings (a : Adventure) : List SceneId :=
+  (a.scenes.filter (·.choices.isEmpty)).map (·.id)
+
+/-- Each Scene in `endings a` is an Ending. -/
+theorem isEnding_of_mem_endings {a : Adventure} {s : SceneId}
+    (h : s ∈ endings a) : IsEnding a s := by
+  simp only [endings, List.mem_map, List.mem_filter, List.isEmpty_iff] at h
+  obtain ⟨sc, ⟨hsc, hnil⟩, hid⟩ := h
+  exact ⟨sc, hsc, hid, hnil⟩
+
+/-- Search back from the Scenes in `found`, for at most `fuel` steps. Each step adds every Scene
+with a Choice that leads into `found`. Returns `found` plus every Scene added. -/
+def exploreBack (a : Adventure) : Nat → List SceneId → List SceneId
+  | 0, found => found
+  | fuel + 1, found =>
+    let more := (a.scenes.map (·.id)).filter fun s =>
+      s ∉ found ∧ (successors a s).any (· ∈ found)
+    if more = [] then found else exploreBack a fuel (found ++ more)
+
+/-- If an Ending can be reached from every Scene in `found`, the same is true for every Scene
+that `exploreBack` returns. -/
+theorem exploreBack_reachesEnding {a : Adventure} :
+    ∀ (fuel : Nat) (found : List SceneId),
+    (∀ x ∈ found, ReachesEnding a x) → ∀ x ∈ exploreBack a fuel found, ReachesEnding a x := by
+  intro fuel
+  induction fuel with
+  -- No fuel: `exploreBack` returns `found`.
+  | zero =>
+    intro found h
+    simpa [exploreBack] using h
+  -- One more step: each Scene added has a Choice that leads into `found`.
+  | succ n ih =>
+    intro found h
+    simp only [exploreBack]
+    split
+    · exact h
+    · apply ih
+      intro x hx
+      rcases List.mem_append.mp hx with hx | hx
+      · exact h x hx
+      · simp only [List.mem_filter, List.any_eq_true, decide_eq_true_eq] at hx
+        obtain ⟨_, _, t, ht, hfound⟩ := hx
+        exact ReachesEnding.next (leads_of_mem_successors ht) (h t hfound)
+
+/-- The Scenes from which the checker finds a way to an Ending. -/
+def endingScenes (a : Adventure) : List SceneId :=
+  exploreBack a (a.scenes.length + 1) (endings a)
+
+/-- From every Scene in `endingScenes a`, an Ending can be reached. -/
+theorem reachesEnding_of_mem {a : Adventure} {x : SceneId}
+    (h : x ∈ endingScenes a) : ReachesEnding a x := by
+  apply exploreBack_reachesEnding _ (endings a) _ x h
+  intro y hy
+  exact ReachesEnding.ending (isEnding_of_mem_endings hy)
+
 /-- All errors in an Adventure, for the Character `c`. Each error names its Scene. -/
 def check (c : Being) (a : Adventure) : List String :=
   need (SceneExists a a.start) s!"the start Scene {a.start} does not exist" ++
@@ -208,19 +266,25 @@ def check (c : Being) (a : Adventure) : List String :=
     s.choices.flatMap (fun ch =>
       (checkOutcome c a ch.outcome).map (fun e => s!"Scene {s.id} ({s.title}), choice \"{ch.text}\": {e}"))) ++
   a.scenes.flatMap (fun s =>
-    need (s.id ∈ reachableScenes a) s!"Scene {s.id} ({s.title}) cannot be reached from the start")
+    need (s.id ∈ reachableScenes a) s!"Scene {s.id} ({s.title}) cannot be reached from the start") ++
+  a.scenes.flatMap (fun s =>
+    need (s.id ∈ endingScenes a)
+      s!"Scene {s.id} ({s.title}) has no way to an Ending: no path of Choices from it leads to a Scene with no Choices")
 
 /-- **The checker is sound.** If `check` finds no errors, the Adventure is legal by the spec. -/
 theorem check_sound {c : Being} {a : Adventure}
     (h : check c a = []) : LegalAdventure c a := by
   simp only [check, List.append_eq_nil_iff, List.flatMap_eq_nil_iff, List.map_eq_nil_iff] at h
-  obtain ⟨⟨⟨⟨hStart, hNodup⟩, hEnding⟩, hScenes⟩, hReach⟩ := h
-  refine ⟨need_sound hStart, need_sound hNodup, need_sound hEnding, ?_, ?_⟩
+  obtain ⟨⟨⟨⟨⟨hStart, hNodup⟩, hEnding⟩, hScenes⟩, hReach⟩, hEnd⟩ := h
+  refine ⟨need_sound hStart, need_sound hNodup, need_sound hEnding, ?_, ?_, ?_⟩
   -- Every Choice is legal.
   · intro s hs ch hch
     exact checkOutcome_sound (hScenes s hs ch hch)
   -- Every Scene can be reached.
   · intro s hs
     exact reachable_of_mem (need_sound (hReach s hs))
+  -- From every Scene, an Ending can be reached.
+  · intro s hs
+    exact reachesEnding_of_mem (need_sound (hEnd s hs))
 
 end Rpg

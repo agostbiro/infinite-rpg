@@ -53,17 +53,19 @@ def rollAgainst (target : Int) : Roll DiceRoll := do
   let faces ← roll3d6
   return ⟨faces, faces.sum, target, successRoll target faces.sum⟩
 
-/-- Make a Success Roll for `who` against `what`, at an effective skill. Returns the result and a Report.
+/-- Make a Success Roll for `who` against `target` at `modifier`, at an effective skill.
+Returns the result and a Report.
 `none` means the being cannot use the skill at all. Then, and also when the effective skill
 is below 3, there is no roll and the result is a failure (p. 2, and deviation 7).
 A Legal Adventure never asks for such a roll (see `CanTryRoll` in the spec). -/
-def makeRoll (who what : String) (skill? : Option Int) : Roll (RollResult × Report) := do
+def makeRoll (who : String) (target : RollTarget) (modifier : Int) (skill? : Option Int) :
+    Roll (RollResult × Report) := do
   let some skill := skill?
-    | return (.failure, .cannotTry who what none)
+    | return (.failure, .cannotTry who target modifier none)
   if skill < 3 then
-    return (.failure, .cannotTry who what (some skill))
+    return (.failure, .cannotTry who target modifier (some skill))
   let r ← rollAgainst skill
-  return (r.result, .successRoll who what r)
+  return (r.result, .successRoll who target modifier r)
 
 /-- A being in a Fight, with its current HP and its last maneuver. -/
 structure Fighter where
@@ -99,7 +101,7 @@ def attack (attId : Actor) (att : Fighter) (dfnId : Actor) (dfn : Fighter) :
   if level < 3 then
     return (0, [.cannotAttack att.being.name level])
   let r ← rollAgainst level
-  let line := Report.attack attId att.being.name dfnId dfn.being.name att.being.weapon.name r
+  let line := Report.attack attId att.being.name dfnId dfn.being.name att.being.weapon r
   if !r.result.succeeded then
     return (0, [line])
   let mut reports := [line]

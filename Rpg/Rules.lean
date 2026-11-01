@@ -32,7 +32,25 @@ inductive Skill where
   | stealth
   | lockpicking
   | diplomacy
+  | survival
+  | naturalist
+  | occultism
+  | riding
+  | climbing
+  | swimming
+  | firstAid
+  | fastTalk
+  | staff
   deriving Repr, DecidableEq
+
+/-- Every skill, in a fixed order. -/
+def Skill.all : List Skill :=
+  [.broadsword, .knife, .brawling, .stealth, .lockpicking, .diplomacy, .survival, .naturalist,
+   .occultism, .riding, .climbing, .swimming, .firstAid, .fastTalk, .staff]
+
+/-- `Skill.all` lists every skill. -/
+theorem Skill.mem_all (s : Skill) : s ∈ Skill.all := by
+  cases s <;> decide
 
 /-- The attribute that a skill is based on. -/
 def Skill.attribute : Skill → Attribute
@@ -42,6 +60,15 @@ def Skill.attribute : Skill → Attribute
   | .stealth => .dx
   | .lockpicking => .iq
   | .diplomacy => .iq
+  | .survival => .iq
+  | .naturalist => .iq
+  | .occultism => .iq
+  | .riding => .dx
+  | .climbing => .dx
+  | .swimming => .ht
+  | .firstAid => .iq
+  | .fastTalk => .iq
+  | .staff => .dx
 
 /-- How hard a skill is to learn. -/
 def Skill.difficulty : Skill → Difficulty
@@ -51,9 +78,20 @@ def Skill.difficulty : Skill → Difficulty
   | .stealth => .average
   | .lockpicking => .average
   | .diplomacy => .hard
+  | .survival => .average
+  | .naturalist => .hard
+  | .occultism => .average
+  | .riding => .average
+  | .climbing => .average
+  | .swimming => .easy
+  | .firstAid => .easy
+  | .fastTalk => .average
+  | .staff => .average
 
 /-- The penalty to the attribute when a being uses a skill it has not learned (p. 13-17).
-`none` means the being cannot use the skill untrained. -/
+`none` means the being cannot use the skill untrained.
+Pages: Climbing and First Aid p. 14; Fast-Talk and Staff p. 15 (a melee skill of Average
+difficulty defaults to DX-5); Naturalist, Occultism, and Riding p. 16; Survival and Swimming p. 17. -/
 def Skill.defaultPenalty : Skill → Option Int
   | .broadsword => some (-5)
   | .knife => some (-4)
@@ -61,6 +99,15 @@ def Skill.defaultPenalty : Skill → Option Int
   | .stealth => some (-5)
   | .lockpicking => some (-5)
   | .diplomacy => some (-6)
+  | .survival => some (-5)
+  | .naturalist => some (-6)
+  | .occultism => some (-5)
+  | .riding => some (-5)
+  | .climbing => some (-5)
+  | .swimming => some (-4)
+  | .firstAid => some (-4)
+  | .fastTalk => some (-5)
+  | .staff => some (-5)
 
 /-- The name of a skill, for display. -/
 def Skill.name : Skill → String
@@ -70,6 +117,15 @@ def Skill.name : Skill → String
   | .stealth => "Stealth"
   | .lockpicking => "Lockpicking"
   | .diplomacy => "Diplomacy"
+  | .survival => "Survival"
+  | .naturalist => "Naturalist"
+  | .occultism => "Occultism"
+  | .riding => "Riding"
+  | .climbing => "Climbing"
+  | .swimming => "Swimming"
+  | .firstAid => "First Aid"
+  | .fastTalk => "Fast-Talk"
+  | .staff => "Staff"
 
 /-- The kinds of damage in this game (p. 19). -/
 inductive DamageType where
@@ -86,13 +142,34 @@ inductive Weapon where
   | largeKnife
   /-- Bare-handed punch: thr-1 crushing, no ST minimum (p. 26). -/
   | punch
+  /-- Quarterstaff, swung, with Staff skill: sw+2 crushing, ST 7, two hands (p. 20). -/
+  | quarterstaff
   deriving Repr, DecidableEq
+
+/-- Every weapon, in a fixed order. -/
+def Weapon.all : List Weapon := [.broadsword, .largeKnife, .punch, .quarterstaff]
+
+/-- `Weapon.all` lists every weapon. -/
+theorem Weapon.mem_all (w : Weapon) : w ∈ Weapon.all := by
+  cases w <;> decide
 
 /-- Body armor (p. 18). -/
 inductive Armor where
   | none
   | leather
   deriving Repr, DecidableEq
+
+/-- Every type of armor, in a fixed order. -/
+def Armor.all : List Armor := [.none, .leather]
+
+/-- `Armor.all` lists every type of armor. -/
+theorem Armor.mem_all (a : Armor) : a ∈ Armor.all := by
+  cases a <;> decide
+
+/-- The name of a type of armor, for display. -/
+def Armor.name : Armor → String
+  | .none => "no armor"
+  | .leather => "leather armor"
 
 /-- The Damage Resistance (DR) of a type of armor (p. 18). -/
 def Armor.dr : Armor → Nat
@@ -224,18 +301,21 @@ def Weapon.skill : Weapon → Skill
   | .broadsword => .broadsword
   | .largeKnife => .knife
   | .punch => .brawling
+  | .quarterstaff => .staff
 
 /-- The lowest ST that can use a weapon without penalty (p. 20). -/
 def Weapon.minST : Weapon → Nat
   | .broadsword => 10
   | .largeKnife => 6
   | .punch => 0
+  | .quarterstaff => 7
 
 /-- The damage type of a weapon's attack. -/
 def Weapon.damageType : Weapon → DamageType
   | .broadsword => .cutting
   | .largeKnife => .impaling
   | .punch => .crushing
+  | .quarterstaff => .crushing
 
 /-- The damage roll of a weapon in the hands of a being with a given ST. -/
 def Weapon.damage (w : Weapon) (st : Nat) : Dice :=
@@ -243,12 +323,20 @@ def Weapon.damage (w : Weapon) (st : Nat) : Dice :=
   | .broadsword => let d := swing st; ⟨d.count, d.add + 1⟩
   | .largeKnife => thrust st
   | .punch => let d := thrust st; ⟨d.count, d.add - 1⟩
+  | .quarterstaff => let d := swing st; ⟨d.count, d.add + 2⟩
 
 /-- The name of a weapon, for display. -/
 def Weapon.name : Weapon → String
   | .broadsword => "broadsword"
   | .largeKnife => "large knife"
   | .punch => "fists"
+  | .quarterstaff => "quarterstaff"
+
+-- A quarterstaff at ST 10 swings for 1d+2: swing damage 1d, plus 2.
+#guard Weapon.quarterstaff.damage 10 == ⟨1, 2⟩
+-- A Swimming default is HT-4, and a Staff default is DX-5.
+#guard Skill.swimming.attribute == .ht && Skill.swimming.defaultPenalty == some (-4)
+#guard Skill.staff.defaultPenalty == some (-5)
 
 /-- The lowest basic damage allowed: 0 for crushing, 1 for other types (p. 29). -/
 def DamageType.minDamage : DamageType → Nat

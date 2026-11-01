@@ -58,9 +58,11 @@ button { font: inherit; color: inherit; }
 
 .title-screen {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 32px 16px;
 }
 
 .title-card {
@@ -129,6 +131,68 @@ button { font: inherit; color: inherit; }
 
 .big-button:hover { filter: brightness(1.08); }
 .big-button:focus-visible { outline: 3px solid var(--lamp-hot); outline-offset: 3px; }
+
+.small-button {
+  padding: 8px 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--slate-2);
+  color: var(--ink);
+  font-size: 14px;
+  cursor: pointer;
+}
+.small-button:hover { border-color: var(--lamp); }
+.small-button:focus-visible { outline: 2px solid var(--lamp-hot); outline-offset: 2px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+
+.char-card-h { margin: 0 0 6px; font-size: 11px; color: var(--lamp); letter-spacing: 0.14em; text-transform: uppercase; }
+.char-card-bg { margin: 6px 0 10px; font-family: var(--serif); font-size: 15px; color: var(--ink); }
+.char-card-attrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; text-align: center; }
+.char-card-attrs div { padding: 4px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--deep); }
+.char-card-attrs b { display: block; font-size: 17px; color: var(--ink); }
+.char-card-attrs span { font-size: 11px; color: var(--ink-dim); }
+.title-pictures, .top-pictures { margin: 0 0 18px; color: var(--ink-dim); font-size: 13px; }
+.top-pictures { margin: 4px 0 0; }
+
+.wish-card, .saved-card { text-align: left; padding: 24px 28px; }
+.wish-card h2, .saved-card h2 { margin: 0 0 6px; font-family: var(--serif); font-size: 24px; color: var(--lamp-hot); font-weight: 600; }
+.wish-help { margin: 0 0 14px; color: var(--ink-dim); font-size: 14px; line-height: 1.5; }
+.wish-label { display: block; margin-bottom: 4px; font-size: 13px; color: var(--ink-dim); }
+.wish-form textarea, .wish-form input, .wish-form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--deep);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+.wish-form textarea { resize: vertical; font-family: var(--serif); font-size: 16px; }
+.wish-form textarea:focus, .wish-form input:focus, .wish-form select:focus { outline: 2px solid var(--lamp); outline-offset: 1px; }
+.wish-count { margin: 4px 0 10px; text-align: right; font-size: 12px; color: var(--ink-faint); }
+.wish-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.wish-row label { flex: 1 1 200px; font-size: 13px; color: var(--ink-dim); }
+.wish-row input, .wish-row select { margin-top: 4px; }
+.wish-off { margin: 0; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; color: var(--ink-dim); font-size: 14px; }
+
+.progress-steps { margin: 0 0 14px; padding-left: 20px; line-height: 1.5; }
+.progress-steps > li { margin-bottom: 6px; }
+.progress-steps > li.now { color: var(--lamp); animation: pulse 1.6s ease-in-out infinite; }
+.progress-steps > li.good { color: var(--moss); }
+.progress-steps > li.bad { color: var(--blood); }
+.progress-steps ul { margin: 4px 0 0; padding-left: 18px; color: var(--ink-dim); font-size: 13px; }
+.progress-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+@keyframes pulse { 50% { opacity: 0.55; } }
+
+.saved-list { margin: 0; padding: 0; list-style: none; }
+.saved-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.saved-list li:first-child { border-top: 0; }
+.saved-list .saved-title { font-family: var(--serif); font-size: 16px; color: var(--ink); }
+.saved-list .saved-note { display: block; font-size: 12px; color: var(--ink-faint); font-family: var(--sans); }
+.saved-list li.failed .saved-title { color: var(--ink-dim); }
+.saved-list li.failed .saved-note { color: var(--blood); }
 
 /* ---------- Table layout ---------- */
 
@@ -543,6 +607,7 @@ button { font: inherit; color: inherit; }
 .over-title { margin: 0 0 6px; font-family: var(--serif); font-size: 26px; color: var(--lamp-hot); }
 .over.dead .over-title { color: var(--blood); }
 .over-text { margin: 0 0 18px; color: var(--ink-dim); }
+#to-title { margin-left: 10px; vertical-align: middle; }
 
 /* ---------- Map ---------- */
 

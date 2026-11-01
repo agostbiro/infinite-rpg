@@ -85,3 +85,43 @@ These entries describe the full v1 design. The current v0 version leaves out mor
 **Reason:** A Test has only a success branch and a failure branch.
 
 **Follow-up task:** Let a Quick Contest Test give a third branch for a tie, except for Influence rolls.
+
+## 9. One skill for each kind of Survival and Riding
+
+**GURPS Lite (p. 16-17):** There are many types of Survival skill (one per kind of land), each learned on its own. Riding is the skill of one kind of mount.
+
+**This game:** Survival is one skill for every kind of land, and Riding is one skill for every mount.
+
+**Reason:** The Adventure, not the rules, says where the Character is and what it rides. One skill keeps the skill list short for the DM.
+
+**Follow-up task:** Add specialties to `Skill`, such as Survival (Woodlands), and let a roll name one.
+
+## 10. Influence skills are plain Success Rolls
+
+**GURPS Lite (p. 15):** To make a Creature do something with Fast-Talk or Diplomacy, you win a Quick Contest of the skill against the Creature's Will. A failed Fast-Talk roll gives a bad reaction.
+
+**This game:** A Fast-Talk or Diplomacy Choice is a Success Roll at a modifier that the DM picks. The failure branch is the bad reaction.
+
+**Reason:** v0 has no Quick Contests (see the scope in `README.md`).
+
+**Follow-up task:** Make influence Choices a Quick Contest against the Creature's Will, with deviation 8 for a tie.
+
+## 11. The quarterstaff has one attack mode
+
+**GURPS Lite (p. 20):** A quarterstaff can swing (sw+2 crushing) or thrust (thr+2 crushing), with Staff skill or Two-Handed Sword skill. It needs two hands, and Staff skill gives +2 to Parry.
+
+**This game:** The quarterstaff only swings, for sw+2 crushing, and only with Staff skill. Two hands have no effect, because a being has one weapon and no shield. There is no Parry in v0, so the +2 to Parry has no effect.
+
+**Reason:** Each weapon has one attack mode in v0.
+
+**Follow-up task:** Add attack modes and Parry, then add the thrust and the Parry bonus.
+
+## 12. Swimming, Climbing, and First Aid are only story rolls
+
+**GURPS Lite (p. 14, 17, 22, 30):** A Swimming roll is against the higher of HT or Swimming when you avoid fatigue or injury in water. Climbing has rules for speed. First Aid restores HP (Recovery, p. 30). First Aid has a tech level (TL).
+
+**This game:** Each of these is a plain Success Roll against the skill level (learned, or the default). A roll changes only which Scene comes next. First Aid does not restore HP, and tech levels do not exist.
+
+**Reason:** In v0 the Character's HP change only in Fights, and there is no movement or fatigue.
+
+**Follow-up task:** Let a Scene heal the Character after a First Aid roll, by the Recovery rules.

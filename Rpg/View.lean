@@ -6,6 +6,9 @@ import Rpg.Map
 The view is everything the page draws, as JSON (JavaScript Object Notation):
 the Scene or Fight, the Character panel, the map, every Report since the game began,
 and the inputs the game offers now. The page sends back one of these inputs, as it is.
+
+The view shows each skill, weapon, and armor by its Theme Name, if the Adventure gives one,
+and else by its rule name. The Theme Name is shown alone, never next to the rule name.
 -/
 
 namespace Rpg
@@ -16,11 +19,6 @@ open Lean
 def speedText (b : Being) : String :=
   let x := b.speedX4
   s!"{x / 4}.{["00", "25", "50", "75"].getD (x % 4) "00"}"
-
-/-- The name of a type of armor, for display. -/
-def Armor.name : Armor → String
-  | .none => "no armor"
-  | .leather => "leather armor"
 
 /-- The name of a Maneuver for a button. -/
 def Maneuver.label : Maneuver → String
@@ -34,29 +32,71 @@ def Maneuver.help : Maneuver → String
   | .allOutAttack => "+4 to hit, but no Dodge until your next turn."
   | .allOutDefense => "No attack, but +2 to Dodge until your next turn."
 
-/-- The Character panel: attributes, skills, Gear, and HP. -/
-def characterJson (b : Being) (hp : Int) : Json :=
+/-- The name of a Success Roll that the Player sees, such as "DX -2" or "Wand Duelling".
+A skill shows its Theme Name. -/
+def rollText (th : ThemeNames) (t : RollTarget) (m : Int) : String :=
+  let name := match t with
+    | .skill s => th.skill s
+    | .attribute a => a.name
+  if m = 0 then name else if m > 0 then s!"{name} +{m}" else s!"{name} {m}"
+
+/-- How an attack names its weapon, such as "with a broadsword", "with bare fists", or
+"with Sting" for a weapon with a Theme Name. -/
+def withWeaponText (th : ThemeNames) (w : Weapon) : String :=
+  match th.weapons.lookup w with
+  | some name => s!"with {name}"
+  | none => if w = .punch then "with bare fists" else s!"with a {w.name}"
+
+/-- The damage of a being's weapon as text, such as "1d+2 cutting". -/
+def damageText (b : Being) : String :=
+  s!"{(b.weapon.damage b.st).show} {b.weapon.damageType.name}"
+
+/-- The Character panel: attributes, skills, Gear, and HP. Names are Theme Names. -/
+def characterJson (th : ThemeNames) (b : Being) (hp : Int) : Json :=
   json% {
     name: $(b.name), st: $(b.st), dx: $(b.dx), iq: $(b.iq), ht: $(b.ht),
     hp: $(hp), maxHP: $(b.maxHP), dodge: $(b.dodge), speed: $(speedText b),
-    skills: $(b.skills.map fun (s, l) => json% { name: $(s.name), level: $(l) }),
-    weapon: $(b.weapon.name),
-    damage: $(s!"{(b.weapon.damage b.st).show} {b.weapon.damageType.name}"),
+    skills: $(b.skills.map fun (s, l) => json% { name: $(th.skill s), level: $(l) }),
+    weapon: $(th.weapon b.weapon),
+    damage: $(damageText b),
     attack: $(b.attackLevel),
-    armor: $(b.armor.name), dr: $(b.dr)
+    armor: $(th.armorName b.armor), dr: $(b.dr)
   }
 
 /-- One being in a Fight, for its card. -/
-def fighterJson (who : Actor) (f : Fighter) : Json :=
+def fighterJson (th : ThemeNames) (who : Actor) (f : Fighter) : Json :=
   json% {
     actor: $(who), name: $(f.being.name), hp: $(f.hp), maxHP: $(f.being.maxHP),
-    alive: $(f.alive), maneuver: $(f.maneuver.label), weapon: $(f.being.weapon.name),
-    damage: $(s!"{(f.being.weapon.damage f.being.st).show} {f.being.weapon.damageType.name}"),
+    alive: $(f.alive), maneuver: $(f.maneuver.label), weapon: $(th.weapon f.being.weapon),
+    damage: $(damageText f.being),
     attack: $(f.being.attackLevel), dodge: $(f.dodge), dr: $(f.being.dr)
   }
 
+/-- A card at the start of a Fight, with the weapon's Theme Name. -/
+def cardJson (th : ThemeNames) (c : Card) : Json :=
+  json% {
+    name: $(c.name), hp: $(c.hp), maxHP: $(c.maxHP), weapon: $(th.weapon c.weapon),
+    damage: $(c.damage), dr: $(c.dr)
+  }
+
+/-- A Report as the page gets it. A roll names its skill and an attack names its weapon by the
+Theme Name. Every other Report is sent as it is. -/
+def reportJson (th : ThemeNames) : Report → Json
+  | .successRoll who t m roll =>
+    json% { successRoll: { who: $(who), what: $(rollText th t m), roll: $(roll) } }
+  | .cannotTry who t m level =>
+    json% { cannotTry: { who: $(who), what: $(rollText th t m), level: $(level) } }
+  | .attack attacker attackerName defender defenderName w roll =>
+    json% { attack: {
+      attacker: $(attacker), attackerName: $(attackerName), defender: $(defender),
+      defenderName: $(defenderName), weapon: $(th.weapon w), withWeapon: $(withWeaponText th w),
+      roll: $(roll) } }
+  | .fightStarts hero foes =>
+    json% { fightStarts: { hero: $(cardJson th hero), foes: $(foes.map (cardJson th)) } }
+  | r => toJson r
+
 /-- The Fight part of the view. Each Maneuver lists the inputs it offers. -/
-def fightJson (offered : List Input) (f : FightPhase) : Json :=
+def fightJson (th : ThemeNames) (offered : List Input) (f : FightPhase) : Json :=
   let maneuvers := maneuverMenu.map fun m =>
     let options := offered.filterMap fun i =>
       match i with
@@ -65,8 +105,8 @@ def fightJson (offered : List Input) (f : FightPhase) : Json :=
     json% { label: $(m.label), help: $(m.help), attacks: $(m.attacks), options: $(options) }
   json% {
     round: $(f.round),
-    hero: $(fighterJson none f.state.hero),
-    foes: $(f.state.foes.zipIdx.map fun (x, i) => fighterJson (some i) x),
+    hero: $(fighterJson th none f.state.hero),
+    foes: $(f.state.foes.zipIdx.map fun (x, i) => fighterJson th (some i) x),
     maneuvers: $(maneuvers)
   }
 
@@ -93,22 +133,42 @@ def viewJson (g : Game) (seed : Nat) (reports : Array Report) (fresh : Nat)
     | .fight f => f.state.hero.hp
     | .dead f => f.state.hero.hp
     | _ => g.hp
+  let th := g.adventure.themes
   let fight := match g.phase with
-    | .fight f => fightJson g.inputs f
-    | .dead f => fightJson [] f
+    | .fight f => fightJson th g.inputs f
+    | .dead f => fightJson th [] f
     | _ => Json.null
   json% {
     seed: $(seed),
     adventure: $(g.adventure.title),
     phase: $(g.phase.name),
-    character: $(characterJson g.hero hp),
+    character: $(characterJson th g.hero hp),
     scene: $(match g.sceneId? with | some id => sceneJson g id | none => Json.null),
     fight: $(fight),
     map: $(g.map),
     inputs: $(g.inputs),
-    reports: $(reports),
+    reports: $(reports.map (reportJson th)),
     fresh: $(fresh),
     error: $(error)
   }
+
+/-! ## Tests -/
+
+/-- Theme Names for a test: Broadsword is "Wand Duelling" and the broadsword is "Sting". -/
+private def testThemes : ThemeNames :=
+  { skills := [(.broadsword, "Wand Duelling")], weapons := [(.broadsword, "Sting")] }
+
+-- A roll shows the Theme Name alone. A thing with no Theme Name shows its rule name.
+#guard rollText testThemes (.skill .broadsword) (-2) == "Wand Duelling -2"
+#guard rollText testThemes (.skill .stealth) 0 == "Stealth"
+#guard rollText testThemes (.attribute .dx) 1 == "DX +1"
+#guard withWeaponText testThemes .broadsword == "with Sting"
+#guard withWeaponText {} .broadsword == "with a broadsword"
+#guard withWeaponText {} .punch == "with bare fists"
+
+-- The roll Report keeps the rule data, but the page gets the Theme Name.
+#guard
+  let r := Report.successRoll "Mara" (.skill .broadsword) 0 ⟨[1, 2, 3], 6, 14, .success⟩
+  (reportJson testThemes r).getObjValD "successRoll" |>.getObjValD "what" == Json.str "Wand Duelling"
 
 end Rpg

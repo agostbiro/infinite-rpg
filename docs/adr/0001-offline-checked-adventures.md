@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0003
+---
+
 # Adventures are Lean files, checked before play
 
 The DM (Dungeon Master) is an AI agent that writes each Adventure as a Lean file before play. A checker with a soundness proof makes each bundled Adventure carry a theorem that it is legal, so the build fails on an illegal Adventure. No LLM (large language model) runs during play. The Engine plays the Adventure alone, so the DM has no way to cheat once play starts.

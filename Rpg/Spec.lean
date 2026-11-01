@@ -13,23 +13,27 @@ A Legal Adventure obeys these rules:
 2. Every Success Roll uses a modifier from -10 to +10, and the Character can try it:
    the Character can use the skill, and the effective skill is 3 or more.
    Then both results can happen, so both Scenes that the roll leads to can be reached in play.
-3. Every Scene that a Choice leads to exists, and so does the start Scene.
-4. No two Scenes share a number.
-5. At least one Scene is an Ending (it has no Choices).
-6. Every Fight can end: for each Creature, the Character can hurt it, or it can hurt the Character.
+3. Every Scene that a Choice leads to exists, and so does the start Scene. No two Scenes share a number.
+4. At least one Scene is an Ending (it has no Choices).
+5. Every Fight can end: for each Creature, the Character can hurt it, or it can hurt the Character.
    "Can hurt" means: the attack level is 3 or more, and the best possible hit gets past DR.
    A Fight must also have at least one Creature.
-7. Every Scene can be reached from the start Scene by following Choices.
+6. Every Scene can be reached from the start Scene by following Choices.
+7. From every Scene, an Ending can be reached by following Choices.
+   Each Scene that an Outcome can lead to counts, whatever the dice do.
 
 These rules do not say that the Adventure is fair or can be won.
-For example, a Fight that the Character cannot win is legal,
-and so is a Scene from which no Ending can be reached. Fairness is planned for a later version.
+For example, a Fight that the Character cannot win is legal.
+Rule 7 ignores the dice and the Fights. It does not say that the Character lives to reach an Ending.
+Fairness is planned for a later version.
 
 The Character must be a legal build too: attributes from 7 to 14, exactly 100 points, no natural DR.
 
-Rules 1, 2, 5, 7, and the point caps are design rules of this game, not GURPS rules.
+Rules 1, 2, and 4 to 7, and the point caps, are design rules of this game, not GURPS rules.
 They put limits on Creatures and rolls. They do not stop a strong Creature:
 low attributes give points back, so a 150-point Creature can still be one the Character cannot hurt.
+
+Theme Names (`Adventure.themes`) and Pictures change only what the Player sees. No rule here looks at them.
 -/
 
 namespace Rpg
@@ -100,6 +104,18 @@ inductive Reachable (a : Adventure) : SceneId → Prop where
   /-- If `s` can be reached and a Choice in `s` leads to `t`, then `t` can be reached. -/
   | next {s t : SceneId} : Reachable a s → Leads a s t → Reachable a t
 
+/-- Scene `s` is an Ending: a Scene with this number has no Choices. -/
+def IsEnding (a : Adventure) (s : SceneId) : Prop :=
+  ∃ sc ∈ a.scenes, sc.id = s ∧ sc.choices = []
+
+/-- An Ending can be reached from Scene `s` by following Choices. Dice do not count:
+each Scene that an Outcome can lead to is a step. -/
+inductive ReachesEnding (a : Adventure) : SceneId → Prop where
+  /-- From an Ending, an Ending is reached. -/
+  | ending {s : SceneId} : IsEnding a s → ReachesEnding a s
+  /-- If a Choice in `s` leads to `t`, and an Ending can be reached from `t`, then also from `s`. -/
+  | next {s t : SceneId} : Leads a s t → ReachesEnding a t → ReachesEnding a s
+
 /-- A Choice's Outcome is legal, for the Character `c`. -/
 def LegalOutcome (c : Being) (a : Adventure) (o : Outcome) : Prop :=
   -- Every Scene it leads to exists.
@@ -130,6 +146,8 @@ def LegalAdventure (c : Being) (a : Adventure) : Prop :=
   -- Every Choice in every Scene is legal.
   (∀ s ∈ a.scenes, ∀ ch ∈ s.choices, LegalOutcome c a ch.outcome) ∧
   -- Every Scene can be reached from the start Scene.
-  (∀ s ∈ a.scenes, Reachable a s.id)
+  (∀ s ∈ a.scenes, Reachable a s.id) ∧
+  -- From every Scene, an Ending can be reached.
+  (∀ s ∈ a.scenes, ReachesEnding a s.id)
 
 end Rpg

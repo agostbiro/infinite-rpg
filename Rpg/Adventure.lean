@@ -7,6 +7,10 @@ An Adventure is a graph of Scenes. Each Scene has text and a list of Choices.
 A Choice leads to another Scene directly, through a Success Roll, or through a Fight.
 A Scene with no Choices is an Ending.
 
+An Adventure can also give Theme Names to skills, weapons, and armor, such as "Wand Duelling"
+for Broadsword. A Theme Name changes only what the Player sees. The spec and the Engine do not
+look at Theme Names.
+
 The types here have no way to say "the Character loses HP" or "the Character dies".
 So an Adventure cannot script harm. Harm only comes from a Fight, which the Engine runs.
 -/
@@ -20,7 +24,7 @@ abbrev SceneId := Nat
 inductive RollTarget where
   | skill (s : Skill)
   | attribute (a : Attribute)
-  deriving Repr
+  deriving Repr, DecidableEq
 
 /-- The level of a being for a Success Roll against a target, before modifiers.
 `none` means the being cannot use the skill, not even at its default. -/
@@ -28,13 +32,17 @@ def Being.rollLevel (b : Being) : RollTarget → Option Int
   | .skill s => b.skillLevel s
   | .attribute a => some (b.attr a)
 
+/-- The short name of an attribute, such as "DX". -/
+def Attribute.name : Attribute → String
+  | .st => "ST"
+  | .dx => "DX"
+  | .iq => "IQ"
+  | .ht => "HT"
+
 /-- The name of a roll target, for display. -/
 def RollTarget.name : RollTarget → String
   | .skill s => s.name
-  | .attribute .st => "ST"
-  | .attribute .dx => "DX"
-  | .attribute .iq => "IQ"
-  | .attribute .ht => "HT"
+  | .attribute a => a.name
 
 /-- What happens when the Player picks a Choice. -/
 inductive Outcome where
@@ -63,11 +71,33 @@ structure Scene where
   picture : Option String := none
   deriving Repr
 
+/-- The Theme Names of an Adventure: display names for skills, weapons, and armor.
+A thing with no Theme Name shows its rule name. The spec and the Engine do not look at these. -/
+structure ThemeNames where
+  skills : List (Skill × String) := []
+  weapons : List (Weapon × String) := []
+  armor : List (Armor × String) := []
+  deriving Repr
+
+/-- The name the Player sees for a skill: its Theme Name, or else its rule name. -/
+def ThemeNames.skill (th : ThemeNames) (s : Skill) : String :=
+  (th.skills.lookup s).getD s.name
+
+/-- The name the Player sees for a weapon: its Theme Name, or else its rule name. -/
+def ThemeNames.weapon (th : ThemeNames) (w : Weapon) : String :=
+  (th.weapons.lookup w).getD w.name
+
+/-- The name the Player sees for a type of armor: its Theme Name, or else its rule name. -/
+def ThemeNames.armorName (th : ThemeNames) (a : Armor) : String :=
+  (th.armor.lookup a).getD a.name
+
 /-- A complete scenario, written before play. -/
 structure Adventure where
   title : String
   start : SceneId
   scenes : List Scene
+  /-- Display names for skills, weapons, and armor. The spec does not look at them. -/
+  themes : ThemeNames := {}
   deriving Repr
 
 /-- Find a Scene by its number. -/

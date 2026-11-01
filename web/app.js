@@ -43,13 +43,27 @@
     return r.json();
   }
 
+  /** An error with the server's own reason, for a reply that is not a view. */
+  class ServerRefused extends Error {}
+
+  /** The text for a toast after a failed request: the server's reason, if it gave one. */
+  function failText(e) {
+    return e instanceof ServerRefused ? e.message : 'Cannot reach the game server.';
+  }
+
   async function post(path, body) {
     const r = await fetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body === undefined ? '' : JSON.stringify(body),
     });
-    return { ok: r.ok, view: await r.json() };
+    const type = r.headers.get('Content-Type') || '';
+    if (!type.startsWith('application/json')) {
+      // A refusal such as 403, 404, or 413 comes as plain text, not as a view.
+      const text = (await r.text()).trim();
+      throw new ServerRefused('The server refused that (' + r.status + '): ' + (text || r.statusText));
+    }
+    return { ok: r.ok, status: r.status, view: await r.json() };
   }
 
   // ---------- Reports ----------
@@ -103,8 +117,6 @@
     li.append(el('span', 'result ' + cls, text));
   }
 
-  const withWeapon = (w) => (w === 'fists' ? 'with bare fists' : 'with a ' + w);
-
   /** One line of the story for a Report that is not a Scene. */
   function reportEl(r) {
     const k = kindOf(r);
@@ -135,7 +147,7 @@
         li.textContent = d.who + ' chooses ' + (MANEUVER[d.m] || d.m) + '.';
         break;
       case 'attack':
-        li.append(d.attackerName + ' attacks ' + d.defenderName + ' ' + withWeapon(d.weapon) +
+        li.append(d.attackerName + ' attacks ' + d.defenderName + ' ' + d.withWeapon +
           ', needing ' + d.roll.target + ' or less: ');
         addRoll(li, d.roll);
         break;
@@ -181,19 +193,40 @@
   // ---------- Story ----------
 
   const PICTURE_NAME = /^[a-z0-9-]+$/;
+  const PICTURE_BASE = /^\/(pictures|saved\/[A-Za-z0-9_-][A-Za-z0-9._-]*)\/$/;
+
+  /** The address of a Scene's Picture, or null if there is none to show yet.
+   * For the built-in Adventure every Picture is ready. For a live one, only the Pictures
+   * that passed the check on the server. */
+  function pictureUrl(picture) {
+    const P = S.view && S.view.pictures;
+    if (!picture || !PICTURE_NAME.test(picture) || !P || !PICTURE_BASE.test(P.base)) return null;
+    if (P.ready !== null && !P.ready.includes(picture)) return null;
+    return P.base + encodeURIComponent(picture) + '.svg';
+  }
 
   /** The window with the Scene's Picture, or a plain backdrop. */
   function windowEl(picture) {
     const w = el('div', 'window');
-    if (picture && PICTURE_NAME.test(picture)) {
+    w.dataset.picture = picture || '';
+    const url = pictureUrl(picture);
+    if (url) {
       const img = el('img');
       img.alt = '';
       img.decoding = 'async';
       img.addEventListener('error', () => { img.hidden = true; });
-      img.src = '/pictures/' + encodeURIComponent(picture) + '.svg';
+      img.src = url;
       w.appendChild(img);
     }
     return w;
+  }
+
+  /** Show a Picture that finished after its Scene was drawn. */
+  function refreshWindow() {
+    const w = document.querySelector('#scroll .chapter.current .window');
+    if (!w || w.querySelector('img')) return;
+    const fresh = windowEl(w.dataset.picture);
+    if (fresh.querySelector('img')) w.replaceWith(fresh);
   }
 
   /** Draw the story from the first `n` Reports. */
@@ -607,20 +640,109 @@
 
   // ---------- Whole page ----------
 
-  function renderTitle() {
-    const v = S.view;
-    $('title-adventure').textContent = v.adventure;
+  /** The "Meet your Character" card: name, background, attributes, skills, and Gear.
+   * Skills and Gear show their Theme Names. */
+  function characterCard(v) {
     const c = v.character;
     const box = $('title-character');
     box.textContent = '';
+    box.append(el('p', 'char-card-h', 'Meet your Character'));
     box.append(el('strong', '', c.name));
-    box.append(el('span', 'muted', ' plays this Adventure.'));
-    box.append(document.createElement('br'));
-    box.append('ST ' + c.st + ', DX ' + c.dx + ', IQ ' + c.iq + ', HT ' + c.ht + '. HP ' + c.maxHP + ', Dodge ' + c.dodge + '.');
+    if (v.background) box.append(el('p', 'char-card-bg', v.background));
+    const attrs = el('div', 'char-card-attrs');
+    for (const [k, label] of [['st', 'ST'], ['dx', 'DX'], ['iq', 'IQ'], ['ht', 'HT']]) {
+      const a = el('div');
+      a.append(el('b', '', String(c[k])), el('span', '', label));
+      attrs.appendChild(a);
+    }
+    box.append(attrs);
+    box.append(el('span', 'muted', 'HP ' + c.maxHP + ', Dodge ' + c.dodge + ', Basic Speed ' + c.speed + '.'));
     box.append(document.createElement('br'));
     box.append(el('span', 'muted', 'Skills: ' + c.skills.map((s) => s.name + '-' + s.level).join(', ') + '.'));
     box.append(document.createElement('br'));
     box.append(el('span', 'muted', 'Gear: ' + c.weapon + ' (' + c.damage + '), ' + c.armor + ' (DR ' + c.dr + ').'));
+  }
+
+  /** A line about the Pictures of a live Adventure, or null. */
+  function picturesNote(v) {
+    const P = v.pictures;
+    if (!P || P.ready === null) return null;
+    if (P.off) return 'Pictures are off: the Picture check cannot run on this machine.';
+    if (P.drawing > 0) return 'The DM is drawing the Pictures: ' + P.ready.length + ' done, ' + P.drawing + ' to go. You can begin now.';
+    if (P.failed > 0) return P.failed + (P.failed === 1 ? ' Picture' : ' Pictures') + ' failed the check or did not come, so ' + (P.failed === 1 ? 'its Scene shows' : 'their Scenes show') + ' a plain backdrop.';
+    return null;
+  }
+
+  /** The Wish box, or the steps of the work on a Wish. */
+  function renderWish(v) {
+    const gen = v.generation;
+    const running = gen.state === 'running';
+    const showSteps = gen.state !== 'idle';
+    $('wish-off').hidden = gen.available;
+    $('wish-form').hidden = !gen.available || showSteps;
+    $('progress').hidden = !showSteps;
+    $('cancel').hidden = !running;
+    $('retry').hidden = gen.state !== 'failed';
+    $('to-builtin').hidden = gen.state !== 'failed';
+    $('dismiss').hidden = gen.state !== 'refused' && gen.state !== 'failed';
+    $('progress-wish').textContent = gen.wish ? 'Your Wish: ' + gen.wish : '';
+    const list = $('progress-steps');
+    list.textContent = '';
+    gen.steps.forEach((st, i) => {
+      const li = el('li', '', st.text);
+      const last = i === gen.steps.length - 1;
+      if (st.errors.length > 0) {
+        li.classList.add('bad');
+        const ul = el('ul');
+        for (const e of st.errors) ul.appendChild(el('li', '', e));
+        li.appendChild(ul);
+      } else if (st.text.startsWith('The Adventure passed')) {
+        li.classList.add('good');
+      } else if (last && running) {
+        li.classList.add('now');
+      } else if (last) {
+        li.classList.add('bad');
+      }
+      list.appendChild(li);
+    });
+  }
+
+  /** The list of Adventures: the built-in one, then the saved ones. */
+  function renderSaved(v) {
+    const list = $('saved-list');
+    list.textContent = '';
+    const busy = v.generation.state === 'running';
+    const row = (title, note, onPlay, ok) => {
+      const li = el('li', ok ? '' : 'failed');
+      const t = el('span', 'saved-title', title);
+      t.appendChild(el('span', 'saved-note', note));
+      const b = el('button', 'small-button', ok ? 'Play' : 'Failed');
+      b.type = 'button';
+      b.disabled = busy || !ok;
+      b.onclick = onPlay;
+      li.append(t, b);
+      list.appendChild(li);
+    };
+    row('The Drowned Lighthouse', 'Built in. Mara the sellsword.', () => action('/api/builtin'), true);
+    for (const a of v.saved) {
+      const note = a.ok ? 'From a Wish' : 'Fails the checker now, so it cannot be played: ' + a.why;
+      row(a.title, note, () => action('/api/load', { id: a.id }), a.ok);
+    }
+  }
+
+  function renderTitle() {
+    const v = S.view;
+    $('title-adventure').textContent = v.adventure;
+    $('title-blurb').textContent = v.live
+      ? 'The DM wrote this Adventure for a Wish. It passed the checker before you could play it, so the DM cannot cheat.'
+      : 'The rules and the dice run in Lean. The Adventure passed the checker before you could play it, so the DM cannot cheat.';
+    characterCard(v);
+    const note = picturesNote(v);
+    $('title-pictures').hidden = note === null;
+    $('title-pictures').textContent = note || '';
+    $('begin').disabled = v.generation.state === 'running';
+    renderWish(v);
+    renderSaved(v);
   }
 
   /** Tell tests and screen readers whether the page waits for the Player. */
@@ -628,6 +750,13 @@
     const ready = !S.playing && !S.busy;
     document.body.dataset.state = ready ? 'ready' : 'busy';
     document.body.dataset.shown = String(S.shown);
+  }
+
+  /** In play, a line while the Pictures are still drawing. */
+  function showTopPictures(v) {
+    const note = picturesNote(v);
+    $('top-pictures').hidden = note === null || !(v.pictures && (v.pictures.drawing > 0 || v.pictures.off));
+    $('top-pictures').textContent = note || '';
   }
 
   function renderAll() {
@@ -643,6 +772,7 @@
       return;
     }
     $('adventure-title').textContent = v.adventure;
+    showTopPictures(v);
     renderStory(S.shown);
     renderMat();
     renderCharacter();
@@ -721,11 +851,12 @@
       }
       await play();
     } catch (e) {
-      toast('Cannot reach the game server.');
+      toast(failText(e));
     } finally {
       S.busy = false;
       if (S.view && S.view.phase !== 'title') renderMat();
       markState();
+      schedulePoll();
     }
   }
 
@@ -742,7 +873,7 @@
       S.busy = false;
       if (fresh.view.inputs.length > 0) await send(fresh.view.inputs[0]);
     } catch (e) {
-      toast('Cannot reach the game server.');
+      toast(failText(e));
     } finally {
       S.busy = false;
     }
@@ -757,10 +888,99 @@
       S.shown = v.reports.length;
       S.cardsFor = -1;
       renderAll();
+      schedulePoll();
     } catch (e) {
-      toast('Cannot reach the game server.');
+      toast(failText(e));
     }
   }
+
+  /** Send a POST that changes the title screen, such as a Wish or "Play" on a saved Adventure. */
+  async function action(path, body) {
+    if (S.busy || S.playing) return;
+    S.busy = true;
+    try {
+      const { ok, view } = await post(path, body);
+      S.view = view;
+      S.mapView = view;
+      S.shown = view.reports.length;
+      S.cardsFor = -1;
+      if (!ok) toast(view.error || 'The game refused that.');
+      renderAll();
+    } catch (e) {
+      toast(failText(e));
+    } finally {
+      S.busy = false;
+      markState();
+      schedulePoll();
+    }
+  }
+
+  /** `true` while the server works in the background: the DM writes or draws. */
+  function serverWorking(v) {
+    return !!v && (v.generation.state === 'running' || (!!v.pictures && v.pictures.drawing > 0));
+  }
+
+  let pollTimer = null;
+  /** Ask the server for news every 2 seconds while it works in the background.
+   * The state lives on the server, so a reload shows the same steps. */
+  function schedulePoll() {
+    clearTimeout(pollTimer);
+    if (!serverWorking(S.view)) return;
+    pollTimer = setTimeout(poll, 2000);
+  }
+
+  async function poll() {
+    if (S.busy || S.playing) { schedulePoll(); return; }
+    try {
+      const v = await fetchView();
+      if (S.busy || S.playing) { schedulePoll(); return; }
+      const sameGame = S.view && v.seed === S.view.seed &&
+        v.reports.length === S.view.reports.length && v.phase === S.view.phase;
+      if (v.phase === 'title' || !sameGame) {
+        S.view = v;
+        S.mapView = v;
+        S.shown = v.reports.length;
+        S.cardsFor = -1;
+        renderAll();
+      } else {
+        // In play: take the new list of Pictures, and show a Picture that just finished.
+        S.view.pictures = v.pictures;
+        showTopPictures(v);
+        refreshWindow();
+      }
+    } catch (e) { /* The server is gone; the next click says so. */ }
+    schedulePoll();
+  }
+
+  $('wish').addEventListener('input', () => {
+    $('wish-count').textContent = $('wish').value.length + ' / 500';
+  });
+  $('wish-send').addEventListener('click', () => {
+    const box = $('wish');
+    // An empty box sends the example Wish shown as the placeholder. It goes into the box as real
+    // text first, so the Player sees the Wish that was sent.
+    if (!box.value.trim()) {
+      box.value = box.placeholder;
+      $('wish-count').textContent = box.value.length + ' / 500';
+    }
+    const wish = box.value.trim();
+    if (!wish) { toast('Type a Wish first.'); return; }
+    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value });
+  });
+  $('cancel').addEventListener('click', async () => {
+    try {
+      const { view } = await post('/api/cancel');
+      S.view = view;
+      renderAll();
+      toast('The DM stopped.');
+    } catch (e) {
+      toast(failText(e));
+    }
+  });
+  $('retry').addEventListener('click', () => action('/api/retry'));
+  $('to-builtin').addEventListener('click', () => action('/api/builtin'));
+  $('dismiss').addEventListener('click', () => action('/api/dismiss'));
+  $('to-title').addEventListener('click', () => action('/api/new'));
 
   $('begin').addEventListener('click', () => {
     const begin = S.view && S.view.inputs[0];

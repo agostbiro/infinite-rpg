@@ -1,4 +1,5 @@
 import Rpg.Engine
+import Rpg.Spec
 
 /-!
 # Game
@@ -6,6 +7,10 @@ import Rpg.Engine
 A `Game` records where play is: on the title screen, in a Scene, in a Fight,
 or over. The function `step` in `Rpg/Play.lean` moves a `Game` forward by one input
 from the Player. The page sends the inputs; it never changes a `Game` itself.
+
+Only a Legal Adventure can be played. A `Game` holds a proof that its Adventure is legal for
+its Character, and a proof that the Character is a legal build. So no code can make a `Game`
+from an Adventure that has not passed the checker (or another proof).
 
 This file has only the types. The spec for inputs is in `Rpg/InputSpec.lean`.
 -/
@@ -69,8 +74,12 @@ inductive Phase where
 structure Game where
   /-- The Character. -/
   hero : Being
+  /-- The Character is a legal build. -/
+  heroLegal : LegalCharacter hero
   /-- The Adventure. It does not change during play. -/
   adventure : Adventure
+  /-- The Adventure is legal for the Character. -/
+  legal : LegalAdventure hero adventure
   /-- The Character's HP now. -/
   hp : Int
   /-- Where play is. -/
@@ -78,9 +87,14 @@ structure Game where
   /-- Every Choice taken so far, oldest first. -/
   trail : List Taken
 
-/-- A new game on the title screen, with the Character at full HP. -/
-def Game.new (hero : Being) (a : Adventure) : Game :=
-  { hero, adventure := a, hp := hero.maxHP, phase := .title, trail := [] }
+/-- A new game on the title screen, with the Character at full HP.
+It needs a proof that the Character is a legal build, and an Adventure with a proof that it is
+legal for this Character. The server gets these proofs only from `checkCharacter_sound` and
+`check_sound`, or from a shipped theorem such as `lighthouse_legal`. -/
+def Game.new (hero : Being) (heroLegal : LegalCharacter hero)
+    (a : {a : Adventure // LegalAdventure hero a}) : Game :=
+  { hero, heroLegal, adventure := a.val, legal := a.property, hp := hero.maxHP, phase := .title,
+    trail := [] }
 
 /-- The Scene that play is in now, if any. In a Fight, this is the Scene where it started. -/
 def Game.sceneId? (g : Game) : Option SceneId :=

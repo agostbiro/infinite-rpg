@@ -1,6 +1,9 @@
 # Prompt for the DM (Dungeon Master) agent
 
-Paste this into an AI coding agent that works in this repo.
+There are two ways the DM writes an Adventure.
+
+- **From a Wish, in the game.** The server sends the prompt in `Rpg/Prompt.lean` to the Claude API. It asks for a PG-13 Adventure of 8 to 15 Scenes and a 100-point Character as JSON. The rule tables in that prompt come from `Rpg/Rules.lean`. The prompt below is the source for its rules, so keep the two in step.
+- **As a Lean file, offline.** Paste the prompt below into an AI coding agent that works in this repo.
 
 ---
 
@@ -19,11 +22,16 @@ You are the DM. Write one new Adventure for the GURPS Lite game in this repo.
 Make a new file `Rpg/Adventures/<Name>.lean`, written like the Lighthouse file:
 
 1. Creatures, as `Being` values. Use only the skills, weapons, and armor in `Rules.lean`.
+   There are 15 skills (Broadsword, Knife, Brawling, Stealth, Lockpicking, Diplomacy, Survival,
+   Naturalist, Occultism, Riding, Climbing, Swimming, First Aid, Fast-Talk, Staff) and 4 weapons
+   (broadsword, large knife, punch, quarterstaff). There are no ranged attacks.
 2. One `Adventure` value: Scenes with numbers, text, and Choices.
    A Choice can go to a Scene, make a Success Roll, or start a Fight.
    A Scene with no Choices is an Ending.
    Give each Scene a Picture: `picture := some "<name>"`. The name has only lowercase letters,
    digits, and dashes, for example `"iron-door"`.
+   You can give Theme Names to skills, weapons, and armor (`themes := { skills := [(.broadsword, "Wand Duelling")] }`).
+   The Player sees only the Theme Name. The rules do not change.
 3. At the end, the legality theorem:
 
    ```lean
@@ -42,10 +50,12 @@ The spec and the checker do not look at it. If a Picture file is missing, the pa
 
 - Size: `viewBox="0 0 1200 400"`, with `width="1200" height="400"`. Keep the main shapes in the middle
   800 by 300, because a narrow window can cut the edges.
-- Style: simple, flat shapes. Night, a dark sea, and lamp light. Polygons, rectangles, circles,
-  and paths. A gradient is fine for a glow. Silhouettes, not faces.
+- Style: simple, flat shapes. Polygons, rectangles, circles, and paths. A gradient is fine for a glow.
+  Silhouettes, not faces.
 - No text in the drawing.
-- Palette. Use only these colors:
+- Palette. Each Adventure has its own palette of 8 to 14 colors that fit its world. The DM picks it
+  (for a live Adventure, in the `palette` field of the JSON), and every Picture of the Adventure uses
+  only those colors. The palette of The Drowned Lighthouse (night, a dark sea, and lamp light) is:
   - Sky: `#0b1220`, `#121c2e`, `#1b2a40`
   - Sea: `#0d1a26`, `#10243a`, `#163049`, foam `#2c4a66`
   - Rock and shadow: `#070b12`, `#0a0f16`, `#121821`
@@ -74,4 +84,5 @@ The spec and the checker do not look at it. If a Picture file is missing, the pa
 - Do not use `sorry`, `axiom`, `native_decide`, or `set_option`.
 - Do not use attributes (`@[...]` or `attribute [...]`), `unsafe`, `extern`, `initialize`, macros, or new syntax. `make check` fails if you do.
 - Every roll must be one the Character can try: the Character must have the skill or a default for it, and the effective skill (level plus modifier) must be 3 or more.
+- From every Scene, some path of Choices must lead to an Ending (spec rule 7). The dice do not count: each Scene that an Outcome can lead to is a step.
 - Make the Adventure fun. Give the Player real choices, with more than one way to an Ending.

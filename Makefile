@@ -1,4 +1,4 @@
-.PHONY: install run build check check-pictures cheats
+.PHONY: install run run-fake build check check-pictures cheats
 
 # The port of the game server: make run PORT=9000
 PORT ?= 8080
@@ -13,12 +13,19 @@ install:
 	$(MAKE) check
 
 # Build, start the game server on $(HOST), and open the page in the browser. Ctrl-C stops it.
+# Set ANTHROPIC_API_KEY to let the Player ask the DM for an Adventure with a Wish.
 # Pass a seed to replay the first game with the same dice: make run SEED=7
 run: build
 	@URL=http://$(HOST):$(PORT)/; \
 	echo "Open $$URL in your browser."; \
 	( sleep 1; (command -v xdg-open >/dev/null && xdg-open $$URL) || (command -v open >/dev/null && open $$URL) || true ) >/dev/null 2>&1 & \
 	exec .lake/build/bin/rpg --host $(HOST) --port $(PORT) $(if $(SEED),--seed $(SEED),)
+
+# Test hook: run the game with recorded API replies from tests/fake-api instead of the Claude API.
+# A Wish then always gives "The Silver Acorn", after one failed try. No API key is needed.
+run-fake: build
+	@echo "TEST MODE: Wishes use recorded replies from tests/fake-api."
+	RPG_FAKE_API=tests/fake-api .lake/build/bin/rpg --host $(HOST) --port $(PORT) $(if $(SEED),--seed $(SEED),)
 
 build:
 	lake build

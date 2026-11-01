@@ -5,7 +5,7 @@ A single-player tabletop role-playing game (RPG) based on GURPS. An AI writes th
 ## People and parts
 
 **DM** (Dungeon Master):
-The AI agent that writes an Adventure. It works before play and takes no part in play.
+The AI that writes an Adventure, and for an Adventure from a Wish, also its Character. It works before play and takes no part in play.
 _Avoid_: GM, narrator, agent
 
 **Player**:
@@ -26,6 +26,10 @@ _Avoid_: event, log line, message
 A complete scenario the DM writes before play, as a graph of Scenes. It cannot change once play starts.
 _Avoid_: module, campaign, scenario
 
+**Wish**:
+The text the Player types to ask the DM for an Adventure, such as "I love LOTR, set it in the Shire".
+_Avoid_: prompt, request, query
+
 **Legal Adventure**:
 An Adventure that obeys every rule in the spec. Only a Legal Adventure can be played.
 _Avoid_: valid adventure, verified adventure
@@ -37,6 +41,10 @@ _Avoid_: room, node, page
 **Picture**:
 The drawing shown with a Scene. The DM picks it. It changes only what the Player sees, never what the rules do.
 _Avoid_: art, image, illustration
+
+**Theme Name**:
+A name an Adventure gives to a skill or a piece of Gear, shown to the Player in place of the rule name. For example, Broadsword shows as "Wand Duelling". It changes only what the Player sees, never what the rules do.
+_Avoid_: alias, label, reskin
 
 **Choice**:
 An option the Player can pick in a Scene. It leads to another Scene, either directly or through a Test.
