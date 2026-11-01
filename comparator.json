@@ -29,7 +29,9 @@
     "Verified.exactExpectation_eq_fast",
     "Verified.difficulty_valid",
     "Verified.difficulty_order",
-    "Verified.live_change_policy"
+    "Verified.live_change_policy",
+    "Verified.timestamped_balance_target",
+    "Verified.timestamped_balance_if_covered"
   ],
   "permitted_axioms": [
     "propext",

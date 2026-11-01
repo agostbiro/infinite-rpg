@@ -193,4 +193,22 @@ theorem exactExpectation_eq_fast :
     @Probability.Confidence.exactExpectation = @Probability.Confidence.Fast.fastExactExpectation :=
   Probability.Confidence.Fast.exactExpectation_eq_fast
 
+/-- One timestamped target formula applies to both initial and revised adventures. -/
+theorem timestamped_balance_target (d : AdventureDefinition) (point : Probability.ResumePoint)
+    (elapsed horizon : Nat) (positive : 0 < horizon) (policy : Probability.BalancePolicy)
+    (valid : policy.Valid) (offset : Nat) (within : offset + 1 < horizon + 1) :
+    ((Probability.StatisticalCandidate.atCheckpoint d point elapsed horizon positive policy).bands
+      ⟨offset + 1, within⟩).target =
+      1 - policy.survival (elapsed + offset + 2) / policy.survival (elapsed + offset) :=
+  Probability.StatisticalCandidate.timestamp_target d point elapsed horizon positive policy valid offset within
+
+/-- Accepted covered intervals imply the common meta property, for every adventure and checkpoint. -/
+theorem timestamped_balance_if_covered (a : Probability.StatisticalCandidate)
+    (counts : Probability.ValidationCounts) (delta : Rat) (accepted : a.accepts counts delta)
+    (covered : ∀ i : Fin (a.horizon + 1),
+      let obs := counts.observation i.val
+      let iv := Probability.Confidence.confidenceInterval delta obs.trials obs.deaths
+      iv.lower ≤ a.truth i ∧ a.truth i ≤ iv.upper) : a.FitsBands :=
+  a.fits_if_covered counts delta accepted covered
+
 end Verified

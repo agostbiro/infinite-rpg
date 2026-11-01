@@ -31,13 +31,30 @@ structure StatisticalCandidate extends AdventureDefinition where
   difficulty level uses the medium level. -/
   policy : BalancePolicy := DifficultyLevel.medium.policy
 
+/-- One timestamped check for both a new world and a changed world. -/
+def StatisticalCandidate.atCheckpoint (d : AdventureDefinition) (point : ResumePoint)
+    (elapsed horizon : Nat) (positive : 0 < horizon) (policy : BalancePolicy) : StatisticalCandidate :=
+  { toAdventureDefinition := d, resume := some point, elapsed, horizon,
+    horizonPositive := positive, policy, protocol := .window }
+
+/-- Precommit enough trajectories for roughly 2,000 survivors at the last row of the target curve.
+The 50,000-run cap bounds work; it never relaxes admission. No observed deaths select this budget. -/
+def StatisticalCandidate.games (a : StatisticalCandidate) : Nat :=
+  match a.protocol with
+  | .point => 1200
+  | .window => max 5000 (min 50000
+      ((2000 : Rat) / a.policy.remainingSurvival a.elapsed (a.horizon - 1)).ceil.toNat)
+
+/-- Every timestamped check has a bounded, nonempty precommitted batch. -/
+theorem StatisticalCandidate.window_games_bounds (a : StatisticalCandidate)
+    (window : a.protocol = .window) : 5000 ≤ a.games ∧ a.games ≤ 50000 := by
+  simp only [games, window]
+  omega
+
 /-- The fixed, independently chosen validation seed. Never search seeds for a favorable result. -/
 def validationSeed : Nat := 20261103
 
-/-- The number of games in one balance check, at every difficulty level. It is a precommitted
-batch size, not a number of qualifying observations per row. A measurement chose 1,200: at this
-size, an Adventure on its curve passes the 5-point tolerance even when its counts are 2 standard
-deviations off. -/
+/-- Fixed batch size retained for historical point-probability fixtures. Live checks use `games`. -/
 def difficultyGames : Nat := 1200
 
 /-- Combat timeouts abort validation rather than selecting only completed fights. -/
@@ -90,7 +107,7 @@ def sampleCounts (a : StatisticalCandidate) (seed games : Nat) : ValidationCount
 
 /-- Admission uses only the precommitted seed and fixed total game count. -/
 def validateCounts (a : StatisticalCandidate) : ValidationCounts :=
-  sampleCounts a validationSeed difficultyGames
+  sampleCounts a validationSeed a.games
 
 /-- Policy parameters change the target bands, never the simulated game or combat. -/
 def confidenceBandsFor (policy : BalancePolicy) (horizon : Nat) (i : Fin (horizon+1)) : Band :=
@@ -121,17 +138,24 @@ def ValidationCounts.observation (c : ValidationCounts) (row : Nat) : Observatio
 The policy has no default value, so each caller names the curve that it checks against. -/
 def ValidationAccepted (horizon : Nat) (c : ValidationCounts)
     (delta : Rat) (elapsed : Nat) (policy : BalancePolicy)
-    (protocol : BalanceProtocol := .point) : Prop :=
-  c.aborted = false ∧ c.games = difficultyGames ∧
+    (protocol : BalanceProtocol := .point) (expectedGames : Nat := difficultyGames) : Prop :=
+  c.aborted = false ∧ c.games = expectedGames ∧
   c.trials.size = horizon+1 ∧ c.deaths.size = horizon+1 ∧
   ∀ i : Fin (horizon+1), c.trials[i.val]! ≤ c.games ∧
     acceptsCount (bandsFor protocol policy elapsed horizon i) delta (c.observation i.val)
 
 instance (horizon : Nat) (c : ValidationCounts) (delta : Rat) (elapsed : Nat) (policy : BalancePolicy)
-    (protocol : BalanceProtocol) :
-    Decidable (ValidationAccepted horizon c delta elapsed policy protocol) := by
+    (protocol : BalanceProtocol) (expectedGames : Nat) :
+    Decidable (ValidationAccepted horizon c delta elapsed policy protocol expectedGames) := by
   unfold ValidationAccepted
   infer_instance
+
+/-- The admission gate derives every parameter from the candidate itself. -/
+def StatisticalCandidate.accepts (a : StatisticalCandidate) (counts : ValidationCounts) (delta : Rat) : Prop :=
+  ValidationAccepted a.horizon counts delta a.elapsed a.policy a.protocol a.games
+
+instance (a : StatisticalCandidate) (counts : ValidationCounts) (delta : Rat) :
+    Decidable (a.accepts counts delta) := inferInstanceAs (Decidable (ValidationAccepted _ _ _ _ _ _ _))
 
 /-- The true tested probabilities come from this candidate's own graph, not caller-supplied odds.
 Zero-probability conditioning uses zero; the batch has no observations for such a row and will not admit it. -/
@@ -146,6 +170,35 @@ def StatisticalCandidate.truth (a : StatisticalCandidate) (i : Fin (a.horizon+1)
   else match a.protocol with
     | .point => (a.graph.deathAtTwo (i.val-1)).getD 0
     | .window => (a.graph.deathWithinTwo (i.val-1)).getD 0
+
+/-- The same balance property for any adventure, start state and absolute event timestamp. -/
+def StatisticalCandidate.FitsBands (a : StatisticalCandidate) : Prop :=
+  ∀ i, WithinTolerance (a.truth i) (a.bands i).target (a.bands i).tolerance
+
+instance (a : StatisticalCandidate) : Decidable a.FitsBands := by
+  unfold StatisticalCandidate.FitsBands
+  infer_instance
+
+/-- An accepted batch puts the entire confidence interval inside each target band. -/
+theorem StatisticalCandidate.accepted_intervals (a : StatisticalCandidate)
+    (counts : ValidationCounts) (delta : Rat) (accepted : a.accepts counts delta)
+    (i : Fin (a.horizon + 1)) :
+    let obs := counts.observation i.val
+    let iv := confidenceInterval delta obs.trials obs.deaths
+    (a.bands i).target - (a.bands i).tolerance ≤ iv.lower ∧
+      iv.upper ≤ (a.bands i).target + (a.bands i).tolerance :=
+  (accepted.2.2.2.2 i).2.2.2
+
+/-- Interval coverage plus admission implies the common balance property. -/
+theorem StatisticalCandidate.fits_if_covered (a : StatisticalCandidate)
+    (counts : ValidationCounts) (delta : Rat) (accepted : a.accepts counts delta)
+    (covered : ∀ i : Fin (a.horizon + 1),
+      let obs := counts.observation i.val
+      let iv := confidenceInterval delta obs.trials obs.deaths
+      iv.lower ≤ a.truth i ∧ a.truth i ≤ iv.upper) : a.FitsBands := by
+  intro i
+  exact ⟨Rat.le_trans (a.accepted_intervals counts delta accepted i).1 (covered i).1,
+    Rat.le_trans (covered i).2 (a.accepted_intervals counts delta accepted i).2⟩
 
 /-- Finite statistical balance under the accepted sampling model.
 Each interval covers its true expectation with risk at most delta, and accepting all
@@ -191,7 +244,7 @@ structure StatisticalAdventure where
   candidate : StatisticalCandidate
   /-- The test is sound for this candidate (true for every candidate). -/
   balanced : Balanced candidate
-  /-- The seed of the `difficultyGames` games. -/
+  /-- The seed of the candidate's precommitted games. -/
   seed : Nat
   /-- The counts from those games. -/
   counts : ValidationCounts
@@ -202,9 +255,9 @@ structure StatisticalAdventure where
   /-- The proof also covers the actual error allowance used by this admission. -/
   confidence : BalancedAt candidate delta
   /-- The counts come from this candidate's own games with this seed. -/
-  provenance : counts = sampleCounts candidate seed difficultyGames
+  provenance : counts = sampleCounts candidate seed candidate.games
   /-- Every row passed, against the candidate's own policy. -/
-  accepted : ValidationAccepted candidate.horizon counts delta candidate.elapsed candidate.policy candidate.protocol
+  accepted : candidate.accepts counts delta
 
 /-- Every admitted interval fits the Weibull tolerance band of the candidate's own policy. -/
 theorem StatisticalAdventure.intervals_fit (a : StatisticalAdventure) (i : Fin (a.candidate.horizon+1)) :
@@ -216,15 +269,15 @@ theorem StatisticalAdventure.intervals_fit (a : StatisticalAdventure) (i : Fin (
     -- The entire interval is below the band's upper bound.
     interval.upper ≤
       (a.candidate.bands i).target + (a.candidate.bands i).tolerance :=
-  (a.accepted.2.2.2.2 i).2.2.2
+  a.candidate.accepted_intervals a.counts a.delta a.accepted i
 
-/-- Play `difficultyGames` games of `candidate` from `seed`, and admit it only if every row
+/-- Play the candidate's precommitted number of games from `seed`, and admit it only if every row
 fits the candidate's own policy. Returns the counts, and the admitted adventure if it passed. -/
 def admitWithRisk (candidate : StatisticalCandidate) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option StatisticalAdventure :=
-  let counts := sampleCounts candidate seed difficultyGames
+  let counts := sampleCounts candidate seed candidate.games
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
-    if h : ValidationAccepted candidate.horizon counts delta candidate.elapsed candidate.policy candidate.protocol then
+    if h : candidate.accepts counts delta then
       (counts, some ⟨candidate, candidate.balanced, seed, counts, delta, hd,
         candidate.balancedAt delta (Rat.le_of_lt hd.1), rfl, h⟩)
     else (counts, none)
@@ -244,13 +297,13 @@ def admitStatistically (candidate : StatisticalCandidate) :
 server log. An empty list means that every row passed. -/
 def failedRows (horizon : Nat) (c : ValidationCounts)
     (delta : Rat) (elapsed : Nat) (policy : BalancePolicy)
-    (protocol : BalanceProtocol := .point) : List String :=
+    (protocol : BalanceProtocol := .point) (expectedGames : Nat := difficultyGames) : List String :=
   let pct (r : Rat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   let general :=
     (if c.aborted then ["a game did not finish inside the window (a Fight went on too long)"] else []) ++
-    (if c.games != difficultyGames then [s!"only {c.games} of {difficultyGames} games were played"] else [])
+    (if c.games != expectedGames then [s!"only {c.games} of {expectedGames} games were played"] else [])
   general ++ (List.range (horizon + 1)).filterMap fun row =>
     if h : row < horizon + 1 then
       let i : Fin (horizon + 1) := ⟨row, h⟩
@@ -262,7 +315,20 @@ def failedRows (horizon : Nat) (c : ValidationCounts)
           s!"death within turns {elapsed + row} to {elapsed + row + 1}, given survival after turn {elapsed + row - 1}"
         else s!"death on turn {elapsed + row + 1}, given alive at turn {elapsed + row - 1}"
       let iv := confidenceInterval delta obs.trials obs.deaths
-      some s!"{name}: {obs.deaths} of {obs.trials} games, so {pct iv.lower} to {pct iv.upper}, but the allowed range is {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}"
+      some s!"{if band.tolerance * 2 < iv.upper - iv.lower then "Insufficient precision: " else "Not admitted: "}{name}: {obs.deaths} of {obs.trials} games, so {pct iv.lower} to {pct iv.upper}, but the allowed range is {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}"
     else none
+
+/-- Failure reports use the same timestamp, policy, window and sample budget as admission. -/
+def StatisticalCandidate.failures (a : StatisticalCandidate) (counts : ValidationCounts) (delta : Rat) : List String :=
+  failedRows a.horizon counts delta a.elapsed a.policy a.protocol a.games
+
+/-- The shared check compares conditional two-event death at the supplied absolute timestamp. -/
+theorem StatisticalCandidate.timestamp_target (d : AdventureDefinition) (point : ResumePoint)
+    (elapsed horizon : Nat) (positive : 0 < horizon) (policy : BalancePolicy)
+    (valid : policy.Valid) (offset : Nat) (within : offset + 1 < horizon + 1) :
+    ((StatisticalCandidate.atCheckpoint d point elapsed horizon positive policy).bands
+      ⟨offset + 1, within⟩).target =
+      1 - policy.survival (elapsed + offset + 2) / policy.survival (elapsed + offset) :=
+  policy.checkpointTarget_pair valid elapsed offset
 
 end Rpg.Probability

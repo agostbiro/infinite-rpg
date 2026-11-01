@@ -33,7 +33,7 @@ async function walkThrough(page, index) {
   if (await page.locator('#world-prompt').isVisible() && nearText === gate.label) {
     const request = page.waitForRequest(r => r.url().endsWith('/api/input') && r.method() === 'POST');
     await page.keyboard.press('e');
-    expect((await request).postDataJSON()).toEqual(gate.input);
+    expect((await request).postDataJSON()).toEqual({ revision: before.worldRevision, input: gate.input });
   } else {
     // Return to the inner floor before changing lanes. This never crosses a different gate.
     const moveAxis = async (axis, target) => {
@@ -58,7 +58,7 @@ async function walkThrough(page, index) {
     const key = gate.z < place.z+5 ? 'ArrowUp' : 'ArrowDown';
     await page.keyboard.down('Shift');
     await page.keyboard.down(key);
-    try { expect((await request).postDataJSON()).toEqual(gate.input); }
+    try { expect((await request).postDataJSON()).toEqual({ revision: before.worldRevision, input: gate.input }); }
     finally { await page.keyboard.up(key); await page.keyboard.up('Shift'); }
   }
   await expect.poll(async () => (await view(page)).reports.length).toBeGreaterThan(before.reports.length);
@@ -131,7 +131,7 @@ test('a Wish passes the real checks and is playable in 3D through a Fight to the
   }
   // Finish the Adventure through the server, without a walk for each Scene.
   while (current.phase === 'scene' && turns++ < 200) {
-    current = await (await page.request.post('/api/input', { data: current.scene.choices[0].input })).json();
+    current = await (await page.request.post('/api/input', { data: { revision: current.worldRevision, input: current.scene.choices[0].input } })).json();
   }
   await page.reload();
   await settled(page);

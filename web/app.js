@@ -800,7 +800,7 @@ import { playbackView, reportDuration } from './playback.js';
     S.busy = true;
     if (S.view && S.view.phase !== 'title') renderMat();
     try {
-      const { ok, view } = await post('/api/input', input);
+      const { ok, view } = await post('/api/input', { revision: S.view.worldRevision, input });
       S.playbackBase = S.view;
       S.view = view;
       if (S.shown > view.reports.length) S.shown = view.reports.length;

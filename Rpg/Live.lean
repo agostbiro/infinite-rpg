@@ -358,11 +358,9 @@ private def Draft.checked (d : Draft) : Except (List String) AdventureDefinition
 
 /-- A Draft that passed the checker, as a candidate for the balance check with `policy`. -/
 def liveCandidate (defn : AdventureDefinition) (policy : Probability.BalancePolicy) :
-    Probability.StatisticalCandidate where
-  toAdventureDefinition := defn
-  horizon := liveHorizon
-  horizonPositive := by decide
-  policy
+    Probability.StatisticalCandidate :=
+  Probability.StatisticalCandidate.atCheckpoint defn
+    (.scene defn.story.start (defn.rules.maxHP defn.hero)) 0 liveHorizon (by decide) policy
 
 /-- A Game from a Draft that this build of the server already admitted: it runs the size limits and
 the checker again, but not the balance check. Use it only when a saved verdict for this exact
@@ -382,8 +380,7 @@ def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
     match Probability.admitWithSeed (liveCandidate defn d.difficulty.policy) seed with
     | (_, some a) => .ok (Game.new a.candidate.toAdventureDefinition a.candidate.policy)
     | (counts, none) =>
-      .error ((Probability.failedRows liveHorizon counts Probability.Confidence.confidenceDelta 0
-        d.difficulty.policy).map ("balance: " ++ ·))
+      .error (((liveCandidate defn d.difficulty.policy).failures counts Probability.Confidence.confidenceDelta).map ("balance: " ++ ·))
 
 /-- How the points of a being add up, such as "ST 11: 10, DX 12: 40, ... Total: 100". The DM
 gets this with the errors, so it can fix a build. -/
@@ -551,17 +548,17 @@ def fixtureAt (key : String) : String :=
   | .error _ => false
 
 -- The balance check uses the curve of the Draft's level. On turn 6 the allowed range is
--- 6.1% to 16.1% on medium (the default), and 13.1% to 23.1% on hard.
+-- 16.3% to 26.3% on medium (the default), and 31.9% to 41.9% on hard.
 #guard match Draft.parse fixtureLegal with
   | .ok d => match d.toGame 1 with
     | .ok _ => false
-    | .error errs => errs.any (·.endsWith "the allowed range is 6.1% to 16.1%")
+    | .error errs => errs.any (·.endsWith "the allowed range is 16.3% to 26.3%")
   | .error _ => false
 #guard match Draft.parse (fixtureAt "hard") with
   | .ok d => match d.toGame 1 with
     | .ok _ => false
-    | .error errs => errs.any (·.endsWith "the allowed range is 13.1% to 23.1%") &&
-      !errs.any (·.endsWith "the allowed range is 6.1% to 16.1%")
+    | .error errs => errs.any (·.endsWith "the allowed range is 31.9% to 41.9%") &&
+      !errs.any (·.endsWith "the allowed range is 16.3% to 26.3%")
   | .error _ => false
 
 -- The legal fixture passes the checker but fails the balance check: it is too short and too safe.

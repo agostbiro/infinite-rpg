@@ -8,7 +8,7 @@ install it. A proposal has no policy field, so it cannot change the difficulty l
 namespace Rpg.WorldChange
 open Lean Probability Probability.Confidence
 
-/-- A GM proposal contains the requested equipment, new counter-rules, and future scenes only. -/
+/-- A GM proposal can change gameplay, scenery, or both. -/
 structure Proposal where
   summary : String
   moment : String
@@ -19,6 +19,7 @@ structure Proposal where
   scenes : List Scene
   /-- The place on the world map of each new Scene. The map itself does not change. -/
   scenePlaces : List ScenePlace := []
+  environment : Option WorldEnvironment := none
   supported : Bool := true
 
 /-- A tuned effect's description states its actual condition and numbers. -/
@@ -83,7 +84,11 @@ def Proposal.parse (owner text : String) : Except String Proposal := do
   let j ← Json.parse text
   let equipment ← j.getObjVal? "equipment"
   let gear ← if equipment == Json.null then pure none else some <$> equipmentOfJson owner equipment
+  let environment ← match j.getObjVal? "environment" with
+    | .error _ => pure none
+    | .ok value => fromJson? (α := Option WorldEnvironment) value
   return {
+    environment
     summary := ← j.getObjValAs? String "summary"
     moment := ← j.getObjValAs? String "moment"
     equipment := gear
@@ -99,24 +104,15 @@ def available (g : Game) : Bool := match g.phase with
   | .fight f => !f.state.over
   | _ => false
 
-/-- Visited scenes and the current scene are immutable; the GM can change what lies ahead. -/
-def protectedScenes (g : Game) : List SceneId :=
-  g.adventure.start :: g.trail.flatMap (fun t => [t.source, t.target]) ++ g.sceneId?.toList
-
 /-- Limits keep proposals meaningful, bounded, and inside the supported adventure language. -/
 def Proposal.errors (p : Proposal) (g : Game) : List String :=
   (if p.supported then [] else ["This requested behavior is outside the supported adventure rules."]) ++
   (if available g then [] else ["A change needs a living Character in a Scene or Fight."]) ++
   (if p.summary.isEmpty || p.moment.isEmpty then ["Describe the change and its dramatic player moment."] else []) ++
-  (if p.equipment.isNone && p.requestedRules.isEmpty && p.scenes.isEmpty then
+  (if p.equipment.isNone && p.requestedRules.isEmpty && p.rules.isEmpty && p.scenes.isEmpty && p.environment.isNone && p.scenePlaces.isEmpty then
     ["The proposal must implement the requested change, separately from the counter-rules."] else []) ++
   tooLong "the change summary" 800 p.summary ++ tooLong "the dramatic moment" 800 p.moment ++
-  (if p.rules.isEmpty then ["Add a fun counter-rule even if the requested change already passes the balance check."] else []) ++
   (if g.rules.combatRules.length + p.requestedRules.length + p.rules.length > 24 then ["At most 24 adventure effects can be active."] else []) ++
-  (if !(p.rules.any fun r => r.side == "foes" && (r.hitBonus > 0 || r.damageBonus > 0 || r.armorBonus > 0))
-    then ["Give the opposition a new, visible conditional advantage; do not merely cancel the gift."] else []) ++
-  (if p.rules.any (fun r => r.trigger == "always") then
-    ["Counter-rules need a visible condition and player decision, not a flat penalty."] else []) ++
   (p.requestedRules ++ p.rules).flatMap (fun r =>
     (if r.name.isEmpty || r.description.isEmpty then ["Every rule needs a name and description."] else []) ++
     tooLong "a rule name" 80 r.name ++ tooLong "a rule description" 400 r.description ++
@@ -141,8 +137,6 @@ def Proposal.errors (p : Proposal) (g : Game) : List String :=
         ["Equipment needs a name, attack level 3..18, 1..6 damage dice, and add -3..6."] else [])) ++
   (if p.scenes.length > maxScenes then ["Too many scene patches."] else []) ++
   (if (p.scenes.map (·.id)).eraseDups.length != p.scenes.length then ["Scene patches must have distinct IDs."] else []) ++
-  p.scenes.filterMap (fun sc => if (protectedScenes g).contains sc.id then
-    some s!"Scene {sc.id} is already known. Preserve it; change or extend future Scenes instead." else none) ++
   p.scenes.flatMap (fun sc =>
     (if sc.choices.length > 8 then [s!"Scene {sc.id} has more than 8 Choices."] else []) ++
     sc.choices.filterMap (fun ch => if ch.outcome.foes.length > 4 then
@@ -162,10 +156,26 @@ def Proposal.story (p : Proposal) (g : Game) : Adventure :=
   let added := p.scenes.filter fun sc => (g.adventure.scene? sc.id).isNone
   { g.adventure with scenes := scenes ++ added }
 
-/-- The world map after the change: the same places, paths, and props, and the place of each new
-Scene added. A replaced Scene keeps its place. -/
-def Proposal.map (p : Proposal) (e : WorldEnvironment) : WorldEnvironment :=
-  { e with scenes := e.scenes ++ p.scenePlaces }
+/-- Replace the environment when supplied and upsert scene placements. -/
+def Proposal.map (p : Proposal) (old : WorldEnvironment) : WorldEnvironment :=
+  let e := p.environment.getD old
+  { e with scenes := e.scenes.filter (fun sc => !(p.scenePlaces.any (·.scene == sc.scene))) ++ p.scenePlaces }
+
+/-- Resolve the proposed environment even when the old world has no map. -/
+def Proposal.environmentAfter (p : Proposal) (old : Option WorldEnvironment) : Option WorldEnvironment :=
+  (p.environment.or old).map p.map
+
+/-- Scenery alone cannot change any game rule or graph edge. -/
+def Proposal.visualOnly (p : Proposal) : Prop :=
+  p.equipment = none ∧ p.requestedRules = [] ∧ p.rules = [] ∧ p.scenes = []
+
+instance (p : Proposal) : Decidable p.visualOnly := by unfold Proposal.visualOnly; infer_instance
+
+/-- The exact gameplay data is unchanged by a scenery-only proposal. -/
+theorem Proposal.visualOnly_preserves (p : Proposal) (g : Game) (h : p.visualOnly) :
+    p.ruleSet g = g.rules ∧ p.story g = g.adventure := by
+  rcases h with ⟨equipment, requested, rules, scenes⟩
+  simp [ruleSet, story, equipment, requested, rules, scenes]
 
 /-- The visible HP and the paused combat HP must name the same checkpoint. -/
 def checkpointConsistent (g : Game) : Prop :=
@@ -203,6 +213,7 @@ def Prepared.game (p : Prepared) : Game :=
     hp := p.before.hp, trail := p.before.trail, policy := p.before.policy,
     phase := match p.before.phase with
       | .fight f => .fight { f with state := { f.state with hero := { f.state.hero with being := d.hero } } }
+      | .scene id => if (d.story.scene? id).any (·.choices.isEmpty) then .ended id else .scene id
       | phase => phase }
 
 /-- State preservation does not depend on the GM following its prompt. -/
@@ -213,7 +224,10 @@ theorem Prepared.preserves_checkpoint (p : Prepared) :
   · rfl
   · constructor
     · rfl
-    · cases h : p.before.phase <;> simp [game, Game.sceneId?, h]
+    · cases h : p.before.phase <;> try { simp [game, Game.sceneId?, h] }
+      rename_i id
+      by_cases empty : (p.definition.story.scene? id).any (·.choices.isEmpty) = true <;>
+        simp [game, Game.sceneId?, h, empty]
 
 /-- Every core field is unchanged, including dice, point budgets, HP rules, and turn order. -/
 theorem Prepared.preserves_core (p : Prepared) :
@@ -226,9 +240,8 @@ theorem Prepared.preserves_existing_rule (p : Prepared) (r : CombatRule)
 
 /-- Sample the actual revised checkpoint at its completed-event count, without healing or rewinding. -/
 def Prepared.candidate (p : Prepared) : StatisticalCandidate :=
-  { toAdventureDefinition := p.definition, horizon := liveHorizon, horizonPositive := by decide,
-    resume := some p.game.balancePoint, elapsed := p.before.trail.length,
-    protocol := .window, policy := p.before.policy }
+  StatisticalCandidate.atCheckpoint p.definition p.game.balancePoint
+    p.before.trail.length liveHorizon (by decide) p.before.policy
 
 /-- A change keeps the game's balance policy, and the check uses that same policy. So the
 difficulty level of an Adventure stays the same for its whole life. -/
@@ -250,8 +263,9 @@ theorem Prepared.candidate_scene_start (p : Prepared) (id : SceneId)
     (scene : p.before.phase = .scene id) :
     p.candidate.resume = some (.scene id p.before.hp) ∧
     p.candidate.graph.start = arrive p.definition.story id p.before.hp := by
-  simp [candidate, game, Game.balancePoint, Game.sceneId?, scene,
-    StatisticalCandidate.graph, continuationGraph]
+  by_cases empty : (p.definition.story.scene? id).any (·.choices.isEmpty) = true <;>
+    simp [StatisticalCandidate.atCheckpoint, candidate, game, Game.balancePoint, Game.sceneId?, scene,
+      StatisticalCandidate.graph, continuationGraph, empty]
 
 /-- Paused combat retains wounds, foes, maneuvers, order and round, with only the granted build updated. -/
 theorem Prepared.candidate_fight_start (p : Prepared) (f : FightPhase)
@@ -261,7 +275,7 @@ theorem Prepared.candidate_fight_start (p : Prepared) (f : FightPhase)
       { f with state := { f.state with hero := { f.state.hero with being := p.definition.hero } } }) := by
   have hp := p.checkpointValid
   simp only [checkpointConsistent, fight] at hp
-  exact ⟨hp, by simp [candidate, game, Game.balancePoint, fight]⟩
+  exact ⟨hp, by simp [StatisticalCandidate.atCheckpoint, candidate, game, Game.balancePoint, fight]⟩
 
 /-- Decode limits, legality and the short-loop check (`Adventure.noShortLoops`) are checked
 before any simulation. `map` is the world map of the
@@ -273,7 +287,7 @@ def Proposal.prepare (p : Proposal) (g : Game) (map : Option WorldEnvironment :=
   let rules := p.ruleSet g
   let hero := { g.hero with weapon := p.equipment.map (·.weapon) |>.getD g.hero.weapon }
   let story := p.story g
-  let sizes := sizeErrors { adventure := story, hero, background := "", environment := map.map p.map }
+  let sizes := sizeErrors { adventure := story, hero, background := "", environment := p.environmentAfter map }
   if he : errs = [] then
   if hp : g.policy.Valid then
   if hk : checkpointConsistent g then
@@ -291,8 +305,8 @@ def Proposal.prepare (p : Proposal) (g : Game) (map : Option WorldEnvironment :=
 /-- Evidence is bound to this updated adventure, seed, and error allowance. -/
 structure Admission (p : Prepared) (seed : Nat) (delta : Rat) where
   counts : ValidationCounts
-  provenance : counts = sampleCounts p.candidate seed difficultyGames
-  accepted : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy p.candidate.protocol
+  provenance : counts = sampleCounts p.candidate seed p.candidate.games
+  accepted : p.candidate.accepts counts delta
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
 
 -- The fact about one admission is `WorldChange.Admission.intervals_fit`.
@@ -309,7 +323,7 @@ theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
     let iv := confidenceInterval delta obs.trials obs.deaths
     (p.candidate.bands i).target - (p.candidate.bands i).tolerance ≤ iv.lower ∧
       iv.upper ≤ (p.candidate.bands i).target + (p.candidate.bands i).tolerance :=
-  (a.accepted.2.2.2.2 i).2.2.2
+  p.candidate.accepted_intervals a.counts delta a.accepted i
 
 /-- Admission requires the complete interval to fit the original curve's conditional target within five points. -/
 theorem Admission.checkpoint_intervals {p : Prepared} {seed : Nat} {delta : Rat}
@@ -318,7 +332,7 @@ theorem Admission.checkpoint_intervals {p : Prepared} {seed : Nat} {delta : Rat}
     let iv := confidenceInterval delta obs.trials obs.deaths
     let target := p.before.policy.checkpointTarget p.before.trail.length i.val
     target - 1/20 ≤ iv.lower ∧ iv.upper ≤ target + 1/20 := by
-  simpa only [StatisticalCandidate.bands, Prepared.candidate, bandsFor, difficultyTolerance]
+  simpa only [StatisticalCandidate.bands, Prepared.candidate, StatisticalCandidate.atCheckpoint, bandsFor, difficultyTolerance]
     using a.intervals_fit i
 
 /-- The checked pair probability uses the original Weibull parameters at the true elapsed time. -/
@@ -333,13 +347,11 @@ theorem Prepared.checkpoint_pair_truth (p : Prepared) (offset : Nat)
     (within : offset + 1 < p.candidate.horizon + 1) :
     p.candidate.truth ⟨offset + 1, within⟩ =
       ((continuationGraph p.definition p.game.balancePoint).deathWithinTwo offset).getD 0 := by
-  simp [StatisticalCandidate.truth, candidate, StatisticalCandidate.graph]
+  simp [StatisticalCandidate.truth, StatisticalCandidate.atCheckpoint, candidate, StatisticalCandidate.graph]
 
 /-- The requested semantic property, for every row in the finite continuation window. -/
 def Prepared.CheckpointBalanced (p : Prepared) : Prop :=
-  ∀ i : Fin (p.candidate.horizon + 1),
-    WithinTolerance (p.candidate.truth i)
-      (p.before.policy.checkpointTarget p.before.trail.length i.val) (1/20)
+  p.candidate.FitsBands
 
 instance (p : Prepared) : Decidable p.CheckpointBalanced := by
   unfold Prepared.CheckpointBalanced
@@ -352,10 +364,8 @@ theorem Admission.difficulty_preserved_if_covered {p : Prepared} {seed : Nat} {d
     (covered : ∀ i : Fin (p.candidate.horizon + 1),
       let obs := a.counts.observation i.val
       (confidenceInterval delta obs.trials obs.deaths).Contains (p.candidate.truth i)) :
-    p.CheckpointBalanced := by
-  intro i
-  exact ⟨Rat.le_trans (a.checkpoint_intervals i).1 (covered i).1,
-    Rat.le_trans (covered i).2 (a.checkpoint_intervals i).2⟩
+    p.CheckpointBalanced :=
+  p.candidate.fits_if_covered a.counts delta a.accepted covered
 
 /-- Under the existing binomial sampling hypotheses, accepting every checkpoint interval
 while the changed graph violates the five-point property has probability at most delta.
@@ -374,11 +384,16 @@ theorem Prepared.checkpoint_falseAcceptance (p : Prepared) (delta : Rat)
 /-- Validate one frozen proposal with a fresh, preassigned batch; every row must pass. -/
 def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option (Admission p seed delta) :=
-  let counts := sampleCounts p.candidate seed difficultyGames
+  let counts := sampleCounts p.candidate seed p.candidate.games
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
-    if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy p.candidate.protocol then
+    if h : p.candidate.accepts counts delta then
       (counts, some ⟨counts, rfl, h, hd⟩)
     else (counts, none)
   else (counts, none)
+
+/-- Gameplay changes need statistical evidence; scenery-only changes carry an identity proof. -/
+inductive Permit (p : Prepared) (seed : Nat) (delta : Rat) where
+  | statistical (evidence : Admission p seed delta)
+  | visual (unchanged : p.proposal.visualOnly)
 
 end Rpg.WorldChange

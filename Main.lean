@@ -158,6 +158,8 @@ structure ServerState where
   gen : Generation := {}
   /-- Validation attempts for live changes. Cancellation never refunds their error budget. -/
   changeChecks : Nat := 0
+  /-- Invalidates commands whose choice index referred to an earlier graph. -/
+  worldRevision : Nat := 0
 
 /-- What an Adventure card on the front page shows. -/
 structure AdventureCard where
@@ -830,13 +832,14 @@ def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState
 
 /-- Install only a source-bound admitted adventure. The original session dice and log stay. -/
 def applyChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
-    (seed : Nat) (delta : Rat) (_accepted : WorldChange.Admission p seed delta) : IO Unit := do
+    (seed : Nat) (delta : Rat) (_accepted : WorldChange.Permit p seed delta) : IO Unit := do
   ref.modify fun s =>
     if s.gen.job != job || s.gen.state != .running then s else
     let report := Report.worldRule "The world answers" (p.proposal.summary ++ " " ++ p.proposal.moment)
     { s with
       session := { s.session with game := p.game, reports := s.session.reports.push report }
-      source := { s.source with environment := s.source.environment.map p.proposal.map }
+      source := { s.source with environment := p.proposal.environmentAfter s.source.environment }
+      worldRevision := s.worldRevision + 1
       gen := { s.gen with state := .idle, steps := #[] } }
 
 /-- Try bounded numeric counter adjustments on screening data only, for at most six seconds.
@@ -855,9 +858,8 @@ def tuneChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
     match proposal.prepare p.before map with
     | .error _ => continue
     | .ok candidate =>
-      let counts := Probability.sampleCounts candidate.candidate 1 Probability.difficultyGames
-      if decide (Probability.ValidationAccepted candidate.candidate.horizon counts delta
-          candidate.candidate.elapsed candidate.candidate.policy candidate.candidate.protocol) then
+      let counts := Probability.sampleCounts candidate.candidate 1 candidate.candidate.games
+      if decide (candidate.candidate.accepts counts delta) then
         return some candidate
   return none
 
@@ -997,6 +999,9 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
           else match proposal.prepare before map with
           | .error errs => pure (errs, content)
           | .ok prepared =>
+            if visual : prepared.proposal.visualOnly then
+              applyChange ref job prepared 0 0 (.visual visual)
+              return
             gift := some (proposal.equipment, proposal.requestedRules)
             let signature := reprStr (proposal.equipment, proposal.requestedRules, proposal.rules, proposal.scenes)
             if validated.contains signature then
@@ -1005,18 +1010,16 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
               let index := (← ref.get).changeChecks
               let delta := Probability.attemptRisk index
               if !(← addStep ref job { text := s!"Checking from your current position and health, including paused combat, against {curveName prepared.candidate.policy}..." }) then return
-              let screen := Probability.sampleCounts prepared.candidate 1 Probability.difficultyGames
+              let screen := Probability.sampleCounts prepared.candidate 1 prepared.candidate.games
               if !(← jobWanted ref job) then return
-              let picked ← if decide (Probability.ValidationAccepted prepared.candidate.horizon screen delta
-                  prepared.candidate.elapsed prepared.candidate.policy prepared.candidate.protocol) then
+              let picked ← if decide (prepared.candidate.accepts screen delta) then
                   pure (some prepared)
                 else do
                   if !(← addStep ref job { text := "Balancing the counter-rule while keeping your requested mechanic..." }) then pure none
                   else tuneChange ref job prepared delta validated map
               match picked with
               | none =>
-                pure (Probability.failedRows prepared.candidate.horizon screen delta prepared.candidate.elapsed
-                  prepared.candidate.policy prepared.candidate.protocol, content)
+                pure (prepared.candidate.failures screen delta, content)
               | some prepared =>
                 let signature := reprStr (prepared.proposal.equipment, prepared.proposal.requestedRules,
                   prepared.proposal.rules, prepared.proposal.scenes)
@@ -1031,11 +1034,10 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                 if !(← jobWanted ref job) then return
                 match accepted with
                 | some proof =>
-                  applyChange ref job prepared seed delta proof
+                  applyChange ref job prepared seed delta (.statistical proof)
                   return
                 | none =>
-                  let feedback := Probability.failedRows prepared.candidate.horizon counts delta
-                    prepared.candidate.elapsed prepared.candidate.policy prepared.candidate.protocol ++
+                  let feedback := prepared.candidate.failures counts delta ++
                     ["The validated counter-rules were: " ++
                       (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress]
                   pure (feedback, content)
@@ -1101,6 +1103,7 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "intro" (toJson s.source.intro)
     |>.setObjVal! "environment" (toJson s.source.environment)
     |>.setObjVal! "canChange" (toJson (WorldChange.available g.game))
+    |>.setObjVal! "worldRevision" (toJson s.worldRevision)
     |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map WorldChange.ruleJson))
     -- The level of the game in play, or `null` for a policy that is not a level (the test Adventure).
     |>.setObjVal! "difficulty" (toJson ((Probability.DifficultyLevel.ofPolicy? g.game.policy).map (·.key)))
@@ -1306,11 +1309,17 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       return ← busy
     match path with
     | ["api", "input"] =>
-      match Json.parse body >>= fromJson? (α := Input) with
+      match Json.parse body >>= (fun j => do
+        let revision := (j.getObjValAs? Nat "revision").toOption.getD 0
+        let input ← match j.getObjVal? "input" with
+          | .ok value => fromJson? value
+          | .error _ => fromJson? j
+        pure (revision, input)) with
       | .error e =>
         replyJson .badRequest (← view (error := some s!"Bad input: {e}"))
-      | .ok i =>
+      | .ok (revision, i) =>
         let r ← whenIdle state fun s =>
+          if revision != s.worldRevision then ((some "The world changed. Choose again from the updated scene.", 0), s) else
           -- The home game is not for play: no input is allowed until an Adventure is loaded.
           if s.source.savedId.isNone then ((some noAdventureText, 0), s) else
           let (s', error, fresh) := s.session.apply i

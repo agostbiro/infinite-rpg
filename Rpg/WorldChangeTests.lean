@@ -26,13 +26,13 @@ def proposal : Proposal :=
     moment := "Wounded bandits rally through the smoke. Finish them or guard behind a Cinder Veil.",
     equipment := some flame, rules := [fury, shelter], scenes := [] }
 
--- A missing counter-rule, an impossible trigger, and rewritten history are rejected.
-#guard !({ proposal with rules := [] }.errors roadGame).isEmpty
+-- Current/visited scenes and optional counters are supported; invalid triggers are rejected.
+#guard ({ proposal with rules := [] }.errors roadGame).isEmpty
 #guard !({ proposal with rules := [{ fury with trigger := "heal" }] }.errors roadGame).isEmpty
 #guard !({ proposal with rules := [{ fury with trigger := "guarding" }] }.errors roadGame).isEmpty
-#guard !({ proposal with scenes := TestAdventure.testAdventure.scenes.take 1 }.errors roadGame).isEmpty
+#guard ({ proposal with scenes := TestAdventure.testAdventure.scenes.take 1 }.errors roadGame).isEmpty
 #guard !(proposal.errors titleGame).isEmpty
-#guard !({ proposal with rules := [{ fury with trigger := "always" }] }.errors roadGame).isEmpty
+#guard ({ proposal with rules := [{ fury with trigger := "always" }] }.errors roadGame).isEmpty
 
 /-- A non-weapon request demonstrates that the same path accepts a general combat effect. -/
 def ironSkin : Proposal :=
@@ -308,5 +308,18 @@ def finishPlayed : Nat → Game → Roll Game
       | some result => played.hp == result.hero.hp && playDice.state == simDice.state &&
         (played.phase.name == "dead") == !result.hero.alive
     | _ => false
+
+-- A pure environment replacement requires no compulsory counter-rule.
+#guard
+  let p := { proposal with equipment := none, rules := [], scenes := [], environment := some { (mapFor roadGame) with theme := "forest" } }
+  decide p.visualOnly && (p.prepare roadGame (some (mapFor roadGame))).toOption.isSome &&
+    (p.environmentAfter none).isSome
+
+-- Moving an existing scene replaces its mapping instead of creating a duplicate.
+#guard
+  let p := { proposal with scenePlaces := [{ scene := 0, place := 1 }] }
+  let e := p.map (mapFor roadGame)
+  (e.scenes.filter (·.scene == 0)).length == 1 &&
+    (e.scenes.find? (·.scene == 0)).map (·.place) == some 1
 
 end Rpg.WorldChange.Tests

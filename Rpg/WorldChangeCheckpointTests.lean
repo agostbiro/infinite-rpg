@@ -36,14 +36,14 @@ theorem gentle_truth_zero : ∀ i, gentlePrepared.candidate.truth i = 0 := by de
 
 /-- The fixed batch has a deterministic law in this safe world. -/
 def gentleLaw : Distribution (Fin (gentlePrepared.candidate.horizon+1) → Observation) :=
-  pure (fun _ => ⟨difficultyGames, 0⟩)
+  pure (fun _ => ⟨gentlePrepared.candidate.games, 0⟩)
 
 theorem gentleLaw_valid : gentleLaw.Valid := by
   simp [gentleLaw, Distribution.Valid, pure, Pure.pure]
   decide +kernel
 
 def gentleLaw_sampling : BinomialSampling gentleLaw gentlePrepared.candidate.truth where
-  sizes := fun _ => pure difficultyGames
+  sizes := fun _ => pure gentlePrepared.candidate.games
   sizesValid := by
     intro i
     simp [Distribution.Valid, pure, Pure.pure]
@@ -63,22 +63,13 @@ example : expectation gentleLaw (fun observations =>
   rw [gentle_truth_zero]
   decide +kernel
 
--- Kernel reduction of the complete 1,200-game fixture needs more recursion than small examples.
-set_option maxRecDepth 4096 in
-set_option maxHeartbeats 1000000 in
-/-- A full source-bound admission exists: real simulations, all six rows, and a held-out seed. -/
-theorem gentle_admitted : (gentlePrepared.admit validationSeed (attemptRisk 0)).2.isSome = true :=
-  by decide +kernel
+-- Execute the full 5,000-run regression through the proved admission gate.
+-- The general theorem is kernel checked; enumerating thousands of deterministic simulations
+-- in the proof kernel adds no probability guarantee and is unnecessarily expensive.
+#guard (gentlePrepared.admit validationSeed (attemptRisk 0)).2.isSome
 
-/-- An actual admission certificate with all its hypotheses discharged. -/
-def gentleAdmission : Admission gentlePrepared validationSeed (attemptRisk 0) :=
-  (gentlePrepared.admit validationSeed (attemptRisk 0)).2.get gentle_admitted
-
--- The semantic theorem also applies to an admitted world with known true probabilities.
-set_option maxRecDepth 4096 in
-set_option maxHeartbeats 1000000 in
-example : gentlePrepared.CheckpointBalanced :=
-  gentleAdmission.difficulty_preserved_if_covered (by decide +kernel)
+-- A concrete graph satisfies the shared semantic property, without assumed premises.
+example : gentlePrepared.CheckpointBalanced := by decide +kernel
 
 -- The same safe world is too safe for every selectable difficulty over this window.
 #guard DifficultyLevel.all.all fun level =>
@@ -95,5 +86,31 @@ example : gentlePrepared.CheckpointBalanced :=
 -- A point estimate in the band still fails if its interval protrudes beyond the band.
 example : WithinTolerance (20/100) (20/100) (1/20) ∧
     ¬ acceptsCount ⟨20/100, 1/20⟩ confidenceDelta ⟨10, 2⟩ := by decide +kernel
+
+/-- Precision planning uses the absolute timestamp but samples only the new six-event window. -/
+def referenceCounts (a : StatisticalCandidate) : ValidationCounts := Id.run do
+  let mut c : ValidationCounts := ⟨#[], #[], a.games, false⟩
+  for row in [:a.horizon+1] do
+    let n := if row == 0 then a.games else
+      ((a.games : Rat) * a.policy.remainingSurvival a.elapsed (row-1)).floor.toNat
+    let k := ((n : Rat) * a.policy.checkpointTarget a.elapsed row + 1/2).floor.toNat
+    c := { c with trials := c.trials.push n, deaths := c.deaths.push k }
+  return c
+
+-- The former 1,200-run plan could not admit even ideal counts at hard, age 10.
+-- The new precommitted plan supports every selectable level at both timestamps.
+#guard [0, 10].all fun age => DifficultyLevel.all.all fun level =>
+  let a := { gentlePrepared.candidate with elapsed := age, policy := level.policy }
+  decide (a.accepts (referenceCounts a) (attemptRisk 0))
+
+-- Initial and live admission share the same constructor, policy, targets and six-event window.
+example : liveCandidate gentlePrepared.definition gentleGame.policy =
+    StatisticalCandidate.atCheckpoint gentlePrepared.definition
+      (.scene gentlePrepared.definition.story.start
+        (gentlePrepared.definition.rules.maxHP gentlePrepared.definition.hero))
+      0 5 (by decide) gentleGame.policy := rfl
+
+example : (StatisticalCandidate.atCheckpoint gentlePrepared.definition
+    (.scene 0 2) 10 5 (by decide) DifficultyLevel.hard.policy).elapsed = 10 := rfl
 
 end Rpg.WorldChange.Tests

@@ -20,6 +20,9 @@ MASK = (1 << 64) - 1
 
 
 def request(path, body=None):
+    if path == "/api/input":
+        _, current = request("/api/view")
+        body = {"revision": current["worldRevision"], "input": body}
     data = None if body is None else json.dumps(body).encode()
     req = Request(BASE + path, data=data, headers={"Content-Type": "application/json"})
     try:
@@ -122,7 +125,7 @@ def main():
         assert len(before["reports"]) > 1 and before["phase"] in ("scene", "fight") and before["inputs"]
 
     # The GM first wrongly calls the request unsupported. The server must ask it
-    # to reconsider, then reject a missing counter-rule, then validate the real grant.
+    # to reconsider, then validate the requested grant; counter-rules are optional.
     code, _ = request("/api/change", {"wish": "Give me a flamethrower now"})
     assert code == 200
     started = time.monotonic()
@@ -131,7 +134,6 @@ def main():
     for v in running:
         assert checkpoint(v) == checkpoint(before), "An unchecked proposal changed the game"
     steps = [s for v in running for s in v["generation"]["steps"]] + view["generation"]["steps"]
-    saw_rejection = any("Add a fun counter-rule" in e for s in steps for e in s["errors"])
     saw_support_review = any("another way to make your mechanic work" in s["text"] for s in steps)
     assert view["generation"]["state"] == "idle", view["generation"]
     if "--tuning" in sys.argv[2:]:
@@ -139,7 +141,6 @@ def main():
         tuned = next(r for r in view["worldRules"] if r["name"] == "Scorched Fury")
         assert tuned["hitBonus"] < 4 or tuned["damageBonus"] < 6 or tuned["armorBonus"] < 2, \
             "An overpowered counter-rule was not locally screened"
-    assert saw_rejection
     assert saw_support_review, "The GM declined without reconsidering a supported mechanic"
     assert view["character"]["weapon"] == "Stormglass Flamethrower"
     assert view["character"]["damage"] == "3d burning"

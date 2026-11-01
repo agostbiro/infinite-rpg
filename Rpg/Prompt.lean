@@ -78,9 +78,9 @@ def bandText (level : Probability.DifficultyLevel) (row : Nat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   if h : row < liveHorizon + 1 then
-    let band := Probability.confidenceBandsFor level.policy liveHorizon ⟨row, h⟩
+    let band := Probability.bandsFor .window level.policy 0 liveHorizon ⟨row, h⟩
     let what := if row = 0 then "Death on turn 1"
-      else s!"Death on turn {row + 1}, of the Characters alive at turn {row - 1}"
+      else s!"Death within turns {row} to {row + 1}, given survival through turn {row - 1}"
     s!"  - {what}: {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}."
   else ""
 
@@ -90,8 +90,8 @@ def dangerText (level : Probability.DifficultyLevel) : String :=
   "\n".intercalate ([
     "## Danger (the balance check)",
     s!"- The Player picked the {level.key} difficulty level. On this level, about {(100 * level.survivalAtTen).floor}% of Characters are still alive after 10 turns.",
-    s!"- After the checker, a program plays your Adventure {Probability.difficultyGames} times. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
-    s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range for the {level.key} level, with {(100 * (1 - Probability.Confidence.confidenceDelta)).floor}% confidence:"] ++
+    s!"- After the checker, a program plays your Adventure in a precommitted batch of at least 5,000 runs. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
+    s!"- It counts first-event death and conditional two-event deaths, for the first {liveHorizon + 1} turns. Each count must fit its range for the {level.key} level, with {(100 * (1 - Probability.Confidence.confidenceDelta)).floor}% confidence:"] ++
     (List.range (liveHorizon + 1)).map (bandText level) ++ [
     "- So the first turns can be safe, but the danger must rise. From turn 4 on, some Fights must be able to kill the Character.",
     s!"- Most paths must be at least {liveHorizon + 2} Choices long. A turn that too few games reach fails.",
@@ -607,7 +607,7 @@ def sseFixtureMessage : String :=
 -- The ranges differ between levels: the hard prompt does not show the medium range of turn 6.
 #guard bandText .hard 5 != bandText .medium 5 &&
   ((dmSystemPrompt .hard).splitOn (bandText .medium 5)).length == 1
-#guard bandText .hard 5 == "  - Death on turn 6, of the Characters alive at turn 4: 13.1% to 23.1%."
+#guard bandText .hard 5 == "  - Death within turns 5 to 6, given survival through turn 4: 31.9% to 41.9%."
 #guard bandText .medium 0 == "  - Death on turn 1: 0.0% to 6.1%."
 -- The prompt names the level.
 #guard ((dmSystemPrompt .easy).splitOn "The Player picked the easy difficulty level.").length == 2

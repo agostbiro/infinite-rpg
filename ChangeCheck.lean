@@ -33,8 +33,8 @@ def main (args : List String) : IO UInt32 := do
       match (heavy.tune quarters).prepare homeRoad with
       | .error errs => IO.println s!"{quarters}/4: {errs}"
       | .ok p =>
-        let counts := sampleCounts p.candidate 1 difficultyGames
-        let ok := decide (ValidationAccepted p.candidate.horizon counts (attemptRisk 0) p.candidate.elapsed p.candidate.policy p.candidate.protocol)
+        let counts := sampleCounts p.candidate 1 p.candidate.games
+        let ok := decide (p.candidate.accepts counts (attemptRisk 0))
         results := results ++ [ok]
         IO.println s!"{quarters}/4: {ok}; deaths={counts.deaths}"
     return if results.head? == some false && results.any id then 0 else 1
@@ -46,14 +46,13 @@ def main (args : List String) : IO UInt32 := do
     return 1
   | .ok p =>
     let started ← IO.monoMsNow
-    let counts := sampleCounts p.candidate 1 difficultyGames
+    let counts := sampleCounts p.candidate 1 p.candidate.games
     IO.println s!"Sampling: {(← IO.monoMsNow) - started} ms; deaths={counts.deaths}"
     let checking ← IO.monoMsNow
-    let accepted := decide (ValidationAccepted p.candidate.horizon counts (attemptRisk 0) p.candidate.elapsed
-      p.candidate.policy p.candidate.protocol)
+    let accepted := decide (p.candidate.accepts counts (attemptRisk 0))
     IO.println s!"Intervals: {(← IO.monoMsNow) - checking} ms; accepted={accepted}"
     if args.contains "--timing" then return if accepted then 0 else 1
-    let errors := failedRows p.candidate.horizon counts (attemptRisk 0) p.candidate.elapsed p.candidate.policy p.candidate.protocol
+    let errors := p.candidate.failures counts (attemptRisk 0)
     IO.println s!"Live change: {counts.games} games; elapsed={p.candidate.elapsed}; error allowance={attemptRisk 0}"
     for row in [:counts.trials.size] do
       let n := counts.trials[row]!
