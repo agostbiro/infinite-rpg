@@ -10,6 +10,7 @@ make run-fake         # test hook: Wishes use recorded replies from tests/fake-a
 make run SEED=7       # the first game uses dice seed 7, so you can replay it
 make run PORT=9000    # use another port
 make run HOST=10.211.55.6   # listen on this IPv4 (Internet Protocol version 4) address, for example to play from the host of a VM (virtual machine)
+make napoleon         # assemble, check and install Bonaparte · Les Cartes du Nil
 make cheats           # watch the checker catch a cheating DM
 make validate         # run the fairness check on The Drowned Lighthouse and print each row
 make check            # build, then replay every proof through the Lean kernel
@@ -24,6 +25,8 @@ Near an interaction, **E** or **Choose** also selects it. Touch screens have a d
 
 There is one spatial interaction for each choice the Engine offers. A weapon or shield selects an
 existing maneuver and target; Lean still rolls the dice and resolves the turn.
+In combat, buttons and number keys select these same actions. Dice and damage are
+visible over the 3D view, with normal, double-speed and instant playback.
 Walking and waiting do not change HP or advance a logical turn. **Escape** pauses
 the spatial view. **J** opens the journal, with the transcript, Character, map,
 and accessible buttons for the same inputs.
@@ -67,7 +70,7 @@ Wishes need an API key for the Claude API in `ANTHROPIC_API_KEY`. Without a key,
 
 Each Adventure that passes is saved under `adventures/<id>/`, with its Character, World, Intro, Theme Names, and Pictures. A saved Adventure is checked again, with the fairness check and its saved seed, when the Front Page lists it and when you load it. Its Pictures are checked again on load. A save that fails a check now shows as a grey card with the reason, and you cannot play it.
 
-The journal opens with the Intro: a few lines that name the World and say who your Character is. Read the Scene and approach an object or character. The journal also offers the same Choices as buttons. Some Choices make a Success Roll: the dice in the journal show the faces the Engine rolled.
+The journal opens with the Intro: a few lines that name the World and say who your Character is. Read the Scene and approach an object or character. The journal also offers the same Choices as buttons. Some Choices make a Success Roll: the visible dice show the faces the Engine rolled.
 In a Fight, the Creatures act, then you click a Maneuver. If you attack and more than one Creature is alive, their cards light up: click the one to attack. "Skip" shows the rest of a turn at once.
 The Character panel shows the background, attributes, skills, Gear, and HP. The map shows the Scenes you visited and a "?" for each way you have not taken.
 "← Adventures" at the top goes back to the Front Page. If the game is not over, the page asks first, because you lose your progress.
@@ -85,7 +88,7 @@ The game ends at an Ending, or when the Character dies, which is not an Ending. 
 
 1. The server sends the Wish to the Claude API (model `claude-opus-5-5`, effort `medium`) with `curl`, because core Lean has no TLS (Transport Layer Security). The API key goes to `curl` on its standard input, not on the command line. The request asks for JSON that follows a JSON schema (structured outputs), so the reply always reads as JSON. It also sets `fallbacks: "default"`, so the API can retry a refused request on another model. The reply streams as SSE (server-sent events), so a long reply never leaves the connection idle; `rebuildStream` in `Rpg/Prompt.lean` joins the events into the same message that a request without streaming gives, thinking blocks and their signatures included. The system prompt is marked for the prompt cache. If the reply is still a refusal, the page says "The Dungeon Master won't write that one. Try another Wish." The prompts are in `Rpg/Prompt.lean`; the rule tables in them come from `Rpg/Rules.lean`.
 2. `Rpg/Live.lean` reads the JSON into a `Draft`: an Adventure with Theme Names, a Character, a background, a World, an Intro, and a palette for the Pictures. The World and the Intro change only what the Player sees. An older save has neither: its card then shows the Wish as the World, and the story opens with the background.
-3. Size limits come first: at most 40 Scenes, at most 2,000 characters of text in a Scene, at most 120 characters in a title, a Choice, a name, or a Theme Name, at most 60 in the World, and at most 600 in the Intro. A Draft over a limit is a failed try with a plain error. These limits are not part of the spec.
+3. Size limits come first: at most 128 Scenes, at most 2,000 characters of text in a Scene, at most 120 characters in a title, a Choice, a name, or a Theme Name, at most 60 in the World, and at most 600 in the Intro. A Draft over a limit is a failed try with a plain error. These limits are not part of the spec.
 4. `Draft.toGame` runs `checkCharacter` and `check`, with the default rules (`liveRules`). If either finds an error, the server sends the errors back to the DM in a new turn, with how the Character's points add up, and asks for a fixed version.
 5. If both find no errors, `Draft.checked` makes an `AdventureDefinition`, which holds the proofs:
    ```lean
@@ -94,7 +97,7 @@ The game ends at an Ending, or when the Character dies, which is not an Ending. 
        .ok ⟨liveRules, d.hero, checkCharacter_sound hc, d.adventure, check_sound ha⟩
    ```
    `Game.new` takes an `AdventureDefinition`, and a `Game` keeps both proofs as fields. So no code can make a `Game`, and so no code can play an Adventure, without the proofs. The built-in game uses the theorems `mara_legal` and `lighthouse_legal`.
-6. Then `Draft.toGame` runs the fairness check (see below) with a fresh random seed from the operating system, and horizon 5. If a row fails, the DM gets one error for each row that failed, with the numbers, and the try counts as a failed try. If every row passes, the game starts, and the seed is saved with the Adventure.
+6. Then `Draft.toGame` runs the fairness check (see below) with a fresh random seed from the operating system, and horizon 14 (15 turns) for a new Wish. If a row fails, the DM gets one error for each row that failed, with the numbers, and the try counts as a failed try. If every row passes, the game starts, and the seed is saved with the Adventure.
 7. Then the server asks the DM for one Picture per Scene, at most 4 at a time, and checks each one with `scripts/check_pictures.py` before it serves it. A Picture that fails, or is still drawing, shows the plain backdrop. Pictures appear as they finish, and you can begin before they are all done. If you switch to another Adventure, the server stops the drawing. When you load the Adventure again, it draws the Pictures that are still missing. A Picture that the check refused is listed in `refused-pictures.txt` in the save folder and is not drawn again.
 
 ## How it works
@@ -138,7 +141,29 @@ The Character must be a legal build: attributes 7 to 14, exactly 100 points, ski
 
 The check plays an Adventure 1,000 times with a seeded random generator (`Rpg/Probability/StatisticalAdmission.lean`). On each turn it picks a Choice at random. In a Fight, the Player picks Attack, All-Out Attack, or All-Out Defense, each with chance 1/3, and then a living target at random. One turn is one Choice, with its whole Fight.
 
-It counts the deaths on each turn, for the first 6 turns (horizon 5): death on turn 1, and death on turn t+2 of the games still going at turn t. For each row, it makes a 90% confidence interval (an exact binomial interval). Each interval must fit in a range around a target curve, a discrete Weibull curve with shape 2, q = 19/20, and a tolerance of 1/5 (`Rpg/Probability/Weibull.lean`). Shape 2 means that the danger rises over the turns. So the first turns can be safe, but from turn 4 on the range has a lower edge above 0: an Adventure where the Character never dies fails. A test in `Rpg/Probability/ConfidenceTests.lean` shows this with a count of zero deaths.
+New Wishes use the versioned profile `exploration-10-v1`: the first **15 turns**
+(horizon 14), Weibull shape 2, retention q = 99309/100000 and tolerance 1/5.
+The reference survival is q^(t²), crossing 1/2 at turn 10. This is a reference
+median, not a guarantee that every admitted adventure has exactly that median.
+Each row tests first-turn death or death on turn t+2 conditional on being alive
+at t. Its exact conservative 90% binomial confidence interval must lie entirely
+inside its target band. A row without observations cannot pass.
+
+Old saves, the built-in Lighthouse and the recorded test hook keep the `legacy`
+profile: six turns, q = 19/20, shape 2 and the same tolerance. Profile versions
+are saved and rechecked; the application sets the profile of a new live Wish.
+
+The locally authored **Bonaparte · Les Cartes du Nil** campaign has 117 scenes,
+two endings and at least 64 choices before success. Safe routes and revisitable
+detours let a human explore longer than the uniform test player. Run `make napoleon`
+to install it, then select its card. The prompt for future Wishes requests 60–100
+scenes and at least 40 choices to a successful ending; these minimum lengths are
+prompt instructions, not new legality theorems.
+
+[The campaign report](docs/napoleon-validation.md) gives the 15-, 30- and 60-turn
+results, timings, reproducible commands and limitations. Only the 15-turn window
+passes admission; the longer diagnostics must not be described as certified.
+
 
 The theorem `StatisticalCandidate.fair` is about the test, not about one Adventure. If the games follow the sampling model (`BinomialSampling`), each interval misses the true chance at most 10% of the time, and the test accepts an Adventure that breaks a range at most 10% of the time. The theorem holds for every Adventure, the cheats too. What admits an Adventure is the run-time check `admitStatistically`, or `admitWithSeed` for a Wish.
 

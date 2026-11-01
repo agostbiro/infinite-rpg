@@ -22,6 +22,7 @@ export class SpatialGame {
     this.renderer.toneMappingExposure = 1.25;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
     this.scene.add(new THREE.HemisphereLight(0xd6edff, 0x6e6b50, 2.5));
     const sun = new THREE.DirectionalLight(0xffe2b6, 3.2);
     sun.position.set(-10, 18, 8);
@@ -48,6 +49,8 @@ export class SpatialGame {
     this.picture = '';
     this.frameTime = 0;
     this.elapsed = 0;
+    this.effect = null;
+    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     this.actors = [];
     this.gates = [];
     this.installControls();
@@ -68,6 +71,10 @@ export class SpatialGame {
       if (this.paused) return;
       if (motionKeys.has(key)) { e.preventDefault(); this.keys.add(key); }
       if (key === 'e' && !e.repeat) { e.preventDefault(); this.useNearest(); }
+      if (/^[1-9]$/.test(key) && !e.repeat && this.view?.phase === 'fight') {
+        const option = this.layout?.portals[Number(key) - 1];
+        if (option) { e.preventDefault(); this.choose(option); }
+      }
     });
     window.addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => this.keys.clear());
@@ -180,6 +187,7 @@ export class SpatialGame {
   }
 
   buildRoom(view, layout, pictureURL) {
+    this.buildStarted = performance.now();
     this.clearRoom();
     const theme = themeFor(view);
     this.theme = theme;
@@ -192,7 +200,7 @@ export class SpatialGame {
     const r = layout.radius;
     this.mesh(new THREE.CylinderGeometry(r + 1.8, r + 3, 1, 64), ground, 0, -0.55, 0);
     this.mesh(new THREE.CylinderGeometry(r + 3, r + 6, 4, 32), dark, 0, -3, 0);
-    const ocean = this.material(theme.nature ? 0x2c4943 : 0x294d62, { roughness: 0.6 });
+    const ocean = this.material(theme.name === 'Dunes' ? 0xbfa16c : theme.nature ? 0x2c4943 : 0x294d62, { roughness: 0.6 });
     this.mesh(new THREE.CylinderGeometry(160, 160, 0.3, 64), ocean, 0, -5.5, 0);
     // Etched floor rings and a compass. Every ornament on the floor is non-blocking.
     for (const radius of [2.2, r * 0.65, r + 0.8]) {
@@ -220,13 +228,35 @@ export class SpatialGame {
       const a = i * 2.399963;
       const distance = r + 6 + (i % 5) * 2.5;
       const x = Math.sin(a) * distance, z = Math.cos(a) * distance;
-      if (theme.nature) {
+      if (theme.name === 'Dunes') {
+        const dune = this.mesh(new THREE.SphereGeometry(3.5 + i % 3, 12, 6), ground, x, -1.8, z);
+        dune.scale.set(1.7, 0.55, 1);
+        if (i % 4 === 0) {
+          this.mesh(new THREE.CylinderGeometry(0.13, 0.23, 3.8, 7), this.material(0x80603b), x, 1.5, z);
+          for (let leaf = 0; leaf < 5; leaf++) {
+            const frond = this.mesh(new THREE.ConeGeometry(0.5, 3, 5), this.material(0x6b8252), x, 3.5, z);
+            frond.rotation.set(1.05, leaf * Math.PI * 2 / 5, 0);
+          }
+        }
+      } else if (theme.nature) {
         this.mesh(new THREE.CylinderGeometry(0.18, 0.35, 4, 7), this.material(0x604b3d), x, 0.6, z);
         this.mesh(new THREE.ConeGeometry(2.4, 6, 7), this.material(i % 2 ? 0x284c3c : 0x3b6250), x, 4, z);
       } else {
         const rock = this.mesh(new THREE.DodecahedronGeometry(2 + i % 4), this.material(i % 2 ? 0x566b74 : 0x718087), x, -1.4, z);
         rock.rotation.set(i * 0.7, i, i * 0.4);
         rock.scale.y = 1.5 + i % 3;
+      }
+    }
+    if (theme.name === 'Dunes') {
+      // Monument silhouettes remain outside the navigable graph realization.
+      for (const [x, z, size] of [[-r - 9, -r - 15, 11], [r + 10, -r - 24, 15], [r + 22, -r - 14, 7]]) {
+        const pyramid = this.mesh(new THREE.ConeGeometry(size, size * 1.15, 4), stone, x, size * 0.575 - 1, z);
+        pyramid.rotation.y = Math.PI / 4;
+      }
+      for (let i = 0; i < 6; i++) {
+        const x = (i - 2.5) * 2.4;
+        this.mesh(new THREE.CylinderGeometry(0.4, 0.5, 3.6, 10), stone, x, 1.6, r + 5);
+        this.box(1.15, 0.35, 1.15, stone, x, 3.55, r + 5);
       }
     }
     const figures = figuresForView(view);
@@ -248,6 +278,9 @@ export class SpatialGame {
     });
     this.root.dataset.portalCount = String(layout.portals.length);
     this.root.dataset.npcCount = String(figures.length || Number(hasConversation));
+    this.renderer.shadowMap.needsUpdate = true;
+    this.root.dataset.buildMs = (performance.now() - this.buildStarted).toFixed(2);
+    this.awaitingFirstFrame = true;
   }
 
   buildObject(p, stone, brass, figures) {
@@ -369,7 +402,8 @@ export class SpatialGame {
     const actor = new THREE.Group();
     actor.position.set(x, 0, z);
     parent.add(actor);
-    const body = this.material(foe.combat ? 0x70473b : index % 2 ? 0x526c77 : 0x777850);
+    const napoleon = /Napol|Bonaparte/.test(foe.name);
+    const body = this.material(napoleon ? 0x243f62 : foe.combat ? 0x70473b : index % 2 ? 0x526c77 : 0x777850);
     const metal = this.material(0x939a9e, { metalness: 0.65, roughness: 0.35 });
     const isWolf = /wolf|loup|hound|dog/i.test(foe.name);
     if (isWolf) {
@@ -391,6 +425,13 @@ export class SpatialGame {
       this.mesh(new THREE.CapsuleGeometry(0.35, 0.65, 4, 8), body, 0, 1.1, 0, actor);
       this.mesh(new THREE.IcosahedronGeometry(0.29, 1), skin, 0, 1.9, 0, actor);
       this.mesh(new THREE.SphereGeometry(0.3, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), this.material(0x493c35), 0, 1.96, 0, actor);
+      if (napoleon) {
+        const black = this.material(0x20272c), gold = this.material(0xd8b35f);
+        const hat = this.mesh(new THREE.SphereGeometry(0.45, 8, 4), black, 0, 2.17, 0, actor);
+        hat.scale.set(1.6, 0.45, 0.7);
+        for (const side of [-1, 1]) this.box(0.2, 0.08, 0.3, gold, side * 0.4, 1.48, 0, actor);
+        for (let i = 0; i < 3; i++) this.mesh(new THREE.SphereGeometry(0.035, 6, 4), gold, 0.1, 1.4 - i * 0.17, 0.34, actor);
+      }
       for (const side of [-1, 1]) this.box(0.05, 0.05, 0.03, this.material(0x283039), side * 0.1, 1.94, 0.26, actor);
       for (const side of [-1, 1]) {
         this.box(0.22, 0.6, 0.24, body, side * 0.2, 0.35, 0, actor);
@@ -408,7 +449,39 @@ export class SpatialGame {
     label.dataset.actor = foe.name;
     label.textContent = foe.name + (foe.combat ? ' · ' + Math.max(0, foe.hp) + ' HP' : '');
     this.labels.appendChild(label);
-    this.actors.push({ mesh: actor, alive: foe.alive, index, combat: foe.combat, label, name: foe.name });
+    this.actors.push({ mesh: actor, alive: foe.alive, index, combat: foe.combat, label, name: foe.name, x, z });
+  }
+
+  /** Animate only events received from Lean. Geometry never computes combat outcomes. */
+  presentReport(report) {
+    const kind = typeof report === 'string' ? report : Object.keys(report)[0];
+    const data = typeof report === 'string' ? {} : report[kind];
+    this.effect = { kind, data, started: this.elapsed };
+    if ((kind === 'damage' && data.injury > 0) || kind === 'attack') {
+      const hit = $('world-hit');
+      hit.className = 'world-hit';
+      void hit.offsetWidth;
+      hit.classList.add(kind === 'damage' && data.defender === null ? 'hurt' : 'strike');
+    }
+  }
+
+  combatActions(view, portals) {
+    const dock = $('world-combat-actions');
+    dock.hidden = view.phase !== 'fight' || !portals.length;
+    const key = JSON.stringify(portals.map(p => [p.key, p.label, p.detail]));
+    if (key === this.actionKey) return;
+    this.actionKey = key;
+    dock.replaceChildren();
+    portals.forEach((option, i) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = (i < 9 ? (i + 1) + ' · ' : '') + option.label;
+      button.title = option.detail || option.label;
+      button.dataset.inputKey = option.key;
+      button.className = option.kind;
+      button.addEventListener('click', () => this.choose(option));
+      dock.appendChild(button);
+    });
   }
 
   loadPicture(url) {
@@ -439,6 +512,7 @@ export class SpatialGame {
     }
     this.ready = ready;
     const portals = portalsForView(view);
+    this.combatActions(view, portals);
     const visits = view.reports.filter(r => r && typeof r === 'object' && r.scene).length;
     const roomKey = JSON.stringify([view.seed, view.adventure, view.scene?.id, visits, view.phase, portals.map(p => p.key)]);
     if (roomKey !== this.roomKey) {
@@ -466,7 +540,7 @@ export class SpatialGame {
     }
     $('world-location').textContent = view.scene?.title || view.adventure;
     $('world-description').textContent = view.phase === 'fight'
-      ? 'Approach a weapon or shield to choose your maneuver. Each label names its target. Creatures act when your turn resolves.'
+      ? 'Choose a maneuver below, press its number, or approach a weapon. Watch the dice resolve attacks, dodges and damage.'
       : (view.scene?.text || '');
     $('world-mode').textContent = view.phase === 'fight' ? 'Combat · round ' + view.fight.round
       : view.phase === 'dead' ? 'Adventure over' : view.phase === 'ended' ? 'Journey complete' : 'Explore · ' + portals.length + (portals.length === 1 ? ' interaction' : ' interactions');
@@ -545,7 +619,8 @@ export class SpatialGame {
         this.move(dx, dz);
       }
     }
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = this.reducedMotion.matches;
+    for (const button of $('world-combat-actions').children) button.disabled = !canMove;
     this.camera.position.set(this.position.x, 1.7 + (moving && !reduced ? Math.sin(this.elapsed * 11) * 0.025 : 0), this.position.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0);
     this.camera.updateMatrixWorld();
@@ -570,7 +645,14 @@ export class SpatialGame {
       gate.ring.material.opacity = near?.key === gate.key ? 1 : 0.55;
     }
     for (const actor of this.actors) {
+      const age = this.effect ? this.elapsed - this.effect.started : 10;
+      const pulse = age < 0.6 && !reduced ? Math.sin(Math.PI * Math.min(1, age / 0.6)) : 0;
+      const attacking = this.effect?.kind === 'attack' && this.effect.data.attacker === actor.index;
+      const hurt = this.effect?.kind === 'damage' && this.effect.data.injury > 0 && this.effect.data.defender === actor.index;
+      actor.mesh.position.z = actor.z + (attacking ? pulse * 0.75 : 0);
+      actor.mesh.position.x = actor.x + (hurt ? Math.sin(age * 45) * pulse * 0.09 : 0);
       if (actor.alive) actor.mesh.position.y = reduced ? 0 : Math.sin(this.elapsed * 2 + actor.index) * 0.03;
+      actor.label.classList.toggle('taking-hit', !!hurt && pulse > 0);
       const point = actor.mesh.localToWorld(new THREE.Vector3(0, 2.35, 0)).project(this.camera);
       actor.label.hidden = point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1;
       actor.label.style.left = ((point.x + 1) * 50) + '%';
@@ -580,5 +662,9 @@ export class SpatialGame {
     this.root.dataset.playerX = this.position.x.toFixed(3);
     this.root.dataset.playerZ = this.position.z.toFixed(3);
     this.renderer.render(this.scene, this.camera);
+    if (this.awaitingFirstFrame) {
+      this.root.dataset.firstFrameMs = (performance.now() - this.buildStarted).toFixed(2);
+      this.awaitingFirstFrame = false;
+    }
   }
 }

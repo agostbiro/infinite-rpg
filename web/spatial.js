@@ -45,7 +45,7 @@ export function appearanceFor(option) {
   if (/cloud|weather|nuage|ciel|observer|look|inspect|examin/.test(text)) return { type: 'lookout' };
   if (/chest|coffre|search|fouill|take|pick up|ramass/.test(text) && !/way|path|route/.test(text)) return { type: 'chest' };
   if (/lamp|light|lantern|phare|allum/.test(text)) return { type: 'lantern' };
-  if (/fight|attack|sword|combat|épée|attaqu/.test(text)) return { type: 'sword' };
+  if (/fight|attack|sword|combat|épée|attaqu|défier|sabre/.test(text)) return { type: 'sword' };
   if (/rest|sleep|wait|repos|dormir|attendre/.test(text)) return { type: 'camp' };
   // A traversable trail is a safe visual fallback for unfamiliar narrative text.
   return { type: 'path' };
@@ -61,7 +61,7 @@ export function figuresForView(view) {
   };
   // Recognize named subjects rather than every capitalized place or mentioned person.
   for (const match of text.matchAll(/\b((?:(?:Old )?Mother|Father|Captain|Sir|Lady|Grey) [A-Z][a-z]+)\b/g)) add(match[1]);
-  for (const match of text.matchAll(/\b([A-Z][a-z]+(?: [A-Z][a-z]+)?) (?:stands|sits|waits|says|asks|whispers|smiles|hammers|dit|attend|demande)\b/g)) {
+  for (const match of text.matchAll(/(?:^|\s)(\p{Lu}\p{Ll}+(?: \p{Lu}\p{Ll}+)?) (?:stands|sits|waits|says|asks|whispers|smiles|hammers|dit|attend|demande|observe|examine|compare|reconnaît|intervient)\b/gu)) {
     if (!/^(?:The|You|He|She|Le|La|Il|Elle)$/.test(match[1])) add(match[1]);
   }
   if (/keeper's daughter/i.test(text)) add("Keeper's daughter");
@@ -74,6 +74,7 @@ export function figuresForView(view) {
   if (/\b(?:merchant|marchand)\b/i.test(text)) add('Merchant');
   if (/\b(?:villager|villageois)\b/i.test(text)) add('Villager');
   if (/\bHollis\b/.test(text) && !figures.some(f => /Hollis/.test(f.name))) add('Grey Hollis');
+  if (/Napol[ée]on|Bonaparte/i.test(text) && !figures.some(f => /Napol|Bonaparte/.test(f.name))) add('Napoléon Bonaparte');
   if (!figures.length && /\b(?:he|she) says\b|\b(?:man|woman|homme|femme|personnage)\b/i.test(text)) add('Traveller');
   return figures;
 }
@@ -128,7 +129,7 @@ export function crossedPortal(from, to, portals, radius = 0.72) {
 export function themeFor(view) {
   const text = [view.adventure, view.world, view.scene?.title, view.scene?.text].join(' ').toLowerCase();
   if (/space|starship|station|robot|cyber|galax/.test(text)) return { name: 'Astral', sky: 0x111629, ground: 0x283347, stone: 0x536077, glow: 0x78d9e8, nature: false };
-  if (/desert|sand|dune|pyramid/.test(text)) return { name: 'Dunes', sky: 0xa29b93, ground: 0x9f7750, stone: 0xc0a077, glow: 0xffd783, nature: false };
+  if (/desert|désert|sand|sable|dune|pyramid|égypte|egypte|bonaparte/.test(text)) return { name: 'Dunes', sky: 0x829ba2, ground: 0xc3a063, stone: 0xd3b77e, glow: 0xffd783, nature: false };
   if (/shire|forest|wood|garden|acorn|hobbit|grove/.test(text)) return { name: 'Woodland', sky: 0x526f71, ground: 0x425c45, stone: 0x75816a, glow: 0xeac878, nature: true };
   return { name: 'Coast', sky: 0x3a5367, ground: 0x535b61, stone: 0x7d888a, glow: 0xeec582, nature: false };
 }

@@ -3,6 +3,7 @@
 // All rules and dice are in Lean. The page never makes up a die face: every face it
 // shows comes from a Report.
 import { SpatialGame } from './world3d.js';
+import { playbackView, reportDuration } from './playback.js';
 'use strict';
 
 (() => {
@@ -39,12 +40,15 @@ import { SpatialGame } from './world3d.js';
     gridKey: null,   // the cards on screen, as JSON, so a poll can tell if they changed
   };
   let spatial = null;
+  let playbackBase = null;
+  let playbackSpeed = 1;
 
   /** Present only the actions in the current Lean view. */
   function syncSpatial() {
     if (!spatial || !S.view) return;
     try {
-      spatial.update(S.view, !S.playing && !S.busy, pictureUrl(S.view.scene?.picture));
+      const displayed = S.playing ? playbackView(playbackBase, S.view, S.shown) : S.view;
+      spatial.update(displayed, !S.playing && !S.busy, pictureUrl(displayed.scene?.picture));
     } catch (error) {
       spatial.ready = false;
       document.body.classList.add('journal-open');
@@ -297,6 +301,28 @@ import { SpatialGame } from './world3d.js';
     }
     log.appendChild(li);
   }
+
+  /** The same dice and outcomes as the journal, visible over the 3D fight. */
+  function showSpatialReport(report) {
+    const tray = $('world-events');
+    const kind = kindOf(report);
+    if (['picked', 'round', 'maneuver'].includes(kind)) return;
+    if (kind === 'scene') { tray.hidden = true; return; }
+    tray.hidden = false;
+    const row = reportEl(report);
+    row.classList.add('world-event');
+    if (playbackSpeed !== 0) for (const die of row.querySelectorAll('.die')) die.classList.add('tumble');
+    const list = $('world-event-list');
+    list.replaceChildren(row);
+    tray.dataset.report = kind;
+    spatial?.presentReport(report);
+  }
+
+  $('world-speed').addEventListener('click', () => {
+    playbackSpeed = playbackSpeed === 1 ? 2 : playbackSpeed === 2 ? 0 : 1;
+    $('world-speed').textContent = playbackSpeed === 0 ? 'Instant' : 'Dice ×' + playbackSpeed;
+    if (playbackSpeed === 0 && S.wake) S.wake();
+  });
 
   // ---------- Fight state, read from the Reports ----------
 
@@ -835,16 +861,16 @@ import { SpatialGame } from './world3d.js';
       appendReport(i, true);
       renderMat();
       renderCharacter();
-      if (kindOf(r) === 'damage') setTimeout(() => strike(dataOf(r).defender), diceOf(r) && diceOf(r).rolled ? 1000 : 0);
+      if (spatial) showSpatialReport(r);
+      if (!spatial && kindOf(r) === 'damage') strike(dataOf(r).defender);
       scrollToMat();
-      const k = kindOf(r);
-      const dice = diceOf(r);
-      await pause(dice ? (dice.rolled ? 1500 : 900) : k === 'scene' ? 700 : 500);
+      await pause(reportDuration(r, playbackSpeed, !!spatial));
     }
     S.shown = reports.length;
     S.playing = false;
     S.skip = false;
     S.wake = null;
+    playbackBase = null;
     S.mapView = S.view;
     renderAll();
     const ms = $('maneuvers');
@@ -866,11 +892,14 @@ import { SpatialGame } from './world3d.js';
   /** Send one input, exactly as the server offered it. */
   async function send(input) {
     if (S.busy || S.playing) return;
+    const started = performance.now();
     S.busy = true;
     S.aim = null;
     if (S.view && S.view.phase !== 'title') renderMat();
     try {
       const { ok, view } = await post('/api/input', input);
+      document.body.dataset.inputResponseMs = (performance.now() - started).toFixed(1);
+      playbackBase = S.view;
       S.view = view;
       if (S.shown > view.reports.length) S.shown = view.reports.length;
       if (!ok) {
@@ -880,6 +909,7 @@ import { SpatialGame } from './world3d.js';
         return;
       }
       await play();
+      document.body.dataset.inputTotalMs = (performance.now() - started).toFixed(1);
     } catch (e) {
       toast(failText(e));
     } finally {
@@ -913,8 +943,11 @@ import { SpatialGame } from './world3d.js';
   async function startGame(path, body) {
     if (S.busy || S.playing) return;
     S.busy = true;
+    $('boot-message').textContent = 'Opening your adventure…';
+    $('boot-status').hidden = false;
     try {
       const { ok, view } = await post(path, body);
+      $('boot-status').hidden = true;
       S.view = view;
       S.mapView = view;
       S.shown = view.reports.length;
@@ -932,6 +965,7 @@ import { SpatialGame } from './world3d.js';
     } catch (e) {
       toast(failText(e));
     } finally {
+      $('boot-status').hidden = true;
       S.busy = false;
       markState();
       schedulePoll();
@@ -959,8 +993,10 @@ import { SpatialGame } from './world3d.js';
       S.shown = v.reports.length;
       S.cardsFor = -1;
       renderAll();
+      $('boot-status').hidden = true;
       schedulePoll();
     } catch (e) {
+      $('boot-message').textContent = 'Unable to open the game. Refresh the page to try again.';
       toast(failText(e));
     }
   }

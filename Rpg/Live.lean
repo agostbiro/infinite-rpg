@@ -15,12 +15,12 @@ Character and on the Adventure. A `Game` needs the proofs `LegalCharacter` and `
 So a Draft that the checker rejects can never be played.
 
 Then `Draft.toGame` runs the fairness check (admission): 1,000 games from a seed, with
-horizon 5. A Draft that fails a row is not played either. The server picks a fresh random seed for
+horizon 14 for new Wishes (15 turns), or horizon 5 for legacy saves. A Draft that fails a row is not played either. The server picks a fresh random seed for
 each try and saves it with the Adventure, so a saved Adventure gives the same result when it loads.
 A Wish uses the default rules (`liveRules`). The DM cannot change them.
 
 Before the checker runs, `sizeErrors` refuses a Draft that is too large to show well, for
-example more than 40 Scenes. These limits are not part of the spec.
+example more than 128 Scenes. These limits are not part of the spec.
 
 The JSON here has no proofs. A wrong decoder can only give the checker a different Adventure,
 and the checker then checks that Adventure.
@@ -104,6 +104,8 @@ structure Draft where
   /-- The Intro: the text the Player reads before the first Scene. An older save has none: then it
   is empty. -/
   intro : String := ""
+  /-- Versioned policy selected by the application, preserved in saved adventures. -/
+  validationProfile : String := "legacy"
   deriving Repr
 
 /-- The Picture name of a Scene in a live Adventure. -/
@@ -193,6 +195,7 @@ def Draft.ofJson (j : Json) : Except String Draft := do
   let title ← j.getObjValAs? String "title"
   let world ← optStrField j "world"
   let intro ← optStrField j "intro"
+  let profile ← optStrField j "fairnessProfile"
   let start ← j.getObjValAs? Nat "start"
   let scenes ← listField j "scenes" sceneOfJson
   let themes ← match j.getObjVal? "themeNames" with
@@ -204,7 +207,9 @@ def Draft.ofJson (j : Json) : Except String Draft := do
   let palette ← match j.getObjVal? "palette" with
     | .ok p => inCtx "palette" (fromJson? p)
     | .error _ => pure []
-  return { adventure := { title, start, scenes, themes }, hero, background, palette, world, intro }
+  return { adventure := { title, start, scenes, themes },
+           validationProfile := if profile.isEmpty then "legacy" else profile,
+           hero, background, palette, world, intro }
 
 /-- Read a Draft from JSON text. -/
 def Draft.parse (s : String) : Except String Draft := do
@@ -237,6 +242,7 @@ def Draft.toJson (d : Draft) : Json :=
     title: $(a.title),
     world: $(d.world),
     intro: $(d.intro),
+    fairnessProfile: $(d.validationProfile),
     character: $((beingToJson d.hero).setObjVal! "background" (Json.str d.background)),
     themeNames: {
       skills: $(th.skills.map fun (s, n) => json% { skill: $(s.key), name: $(n) }),
@@ -257,7 +263,7 @@ These limits keep a Draft small enough to show and to save. They are not part of
 the checker and the theorems do not depend on them. -/
 
 /-- The most Scenes a live Adventure may have. -/
-def maxScenes : Nat := 40
+def maxScenes : Nat := 128
 
 /-- The most characters in the text of one Scene. -/
 def maxSceneText : Nat := 2000
@@ -287,6 +293,8 @@ def Draft.beingNames (d : Draft) : List String :=
 def sizeErrors (d : Draft) : List String :=
   let a := d.adventure
   let th := a.themes
+  (if !["legacy", "exploration-10-v1"].contains d.validationProfile then
+    ["unknown fairness profile"] else []) ++
   (if a.scenes.length > maxScenes then
     [s!"the Adventure has {a.scenes.length} Scenes, but the limit is {maxScenes}"] else []) ++
   tooLong "the title" maxShortText a.title ++
@@ -307,7 +315,11 @@ def sizeErrors (d : Draft) : List String :=
 def liveRules : RuleSet := {}
 
 /-- The number of turns that the fairness check covers for a Wish, after the first one. -/
-def liveHorizon : Nat := 5
+def liveHorizon : Nat := 14
+
+/-- New wishes use the requested ten-turn reference median. Old saves retain their policy. -/
+def profilePolicy (profile : String) : Probability.FairnessPolicy :=
+  if profile == "legacy" then Probability.defaultPolicy else Probability.explorationPolicy
 
 /-- All errors in a Draft: the size errors, or else the checker's errors for the Character and
 for the Adventure. An empty list means the Draft passes the checker. -/
@@ -318,7 +330,7 @@ def Draft.errors (d : Draft) : List String :=
 
 /-- Run the size limits and the checker on a Draft. If both find no errors, the soundness theorems
 give the proofs that an `AdventureDefinition` needs. Else it returns the errors. -/
-private def Draft.checked (d : Draft) : Except (List String) AdventureDefinition :=
+def Draft.checked (d : Draft) : Except (List String) AdventureDefinition :=
   if sizeErrors d ≠ [] then .error (sizeErrors d) else
   if hc : checkCharacter liveRules d.hero = [] then
     if ha : check liveRules d.hero d.adventure = [] then
@@ -327,10 +339,12 @@ private def Draft.checked (d : Draft) : Except (List String) AdventureDefinition
   else .error (checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure)
 
 /-- A Draft that passed the checker, as a candidate for the fairness check. -/
-def liveCandidate (defn : AdventureDefinition) : Probability.StatisticalCandidate where
+def liveCandidate (defn : AdventureDefinition) (profile : String := "exploration-10-v1") :
+    Probability.StatisticalCandidate where
   toAdventureDefinition := defn
-  horizon := liveHorizon
-  horizonPositive := by decide
+  horizon := if profile == "legacy" then 5 else liveHorizon
+  horizonPositive := by split <;> decide
+  policy := profilePolicy profile
 
 /-- **The only way in this code from a Draft to a Game.** It runs the checker, then the fairness check with
 1,000 games from `seed`. If both pass, it returns the Game. Else it returns the errors. Each
@@ -339,10 +353,11 @@ def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
   match d.checked with
   | .error errs => .error errs
   | .ok defn =>
-    match Probability.admitWithSeed (liveCandidate defn) seed with
+    let candidate := liveCandidate defn d.validationProfile
+    match Probability.admitWithSeed candidate seed with
     | (_, some a) => .ok (Game.new a.candidate.toAdventureDefinition)
     | (counts, none) =>
-      .error ((Probability.failedRows liveHorizon counts).map ("fairness: " ++ ·))
+      .error ((Probability.failedRows candidate.horizon counts candidate.policy).map ("fairness: " ++ ·))
 
 /-- How the points of a being add up, such as "ST 11: 10, DX 12: 40, ... Total: 100". The DM
 gets this with the errors, so it can fix a build. -/
@@ -415,6 +430,20 @@ def draftErrors (s : String) : List String :=
 -- The legal fixture reads and passes the checker.
 #guard passesChecker fixtureLegal
 #guard draftErrors fixtureLegal == []
+-- A policy version survives a save; missing and unknown versions are handled explicitly.
+#guard match Draft.parse fixtureLegal with
+  | .ok d => d.validationProfile == "legacy" &&
+      (sizeErrors { d with validationProfile := "unknown" } == ["unknown fairness profile"])
+  | .error _ => false
+#guard match Draft.parse fixtureLegal with
+  | .ok d =>
+    match Draft.ofJson ({ d with validationProfile := "exploration-10-v1" }.toJson) with
+    | .ok saved => saved.validationProfile == "exploration-10-v1"
+    | .error _ => false
+  | .error _ => false
+#guard match Draft.parse fixtureLegal >>= (fun d => d.checked.mapError (String.intercalate ", ")) with
+  | .ok defn => (liveCandidate defn).horizon == 14 && (liveCandidate defn "legacy").horizon == 5
+  | .error _ => false
 -- Its Theme Names are read, and its Scenes get Picture names.
 #guard match Draft.parse fixtureLegal with
   | .ok d => d.adventure.themes.weapon .quarterstaff == "Ash Pole" &&

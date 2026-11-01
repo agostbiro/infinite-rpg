@@ -75,7 +75,7 @@ def bandText (row : Nat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   if h : row < liveHorizon + 1 then
-    let band := Probability.confidenceBands liveHorizon ⟨row, h⟩
+    let band := Probability.confidenceBands liveHorizon ⟨row, h⟩ Probability.explorationPolicy
     let what := if row = 0 then "Death on turn 1"
       else s!"Death on turn {row + 1}, of the Characters alive at turn {row - 1}"
     s!"  - {what}: {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}."
@@ -89,7 +89,7 @@ def dangerText : String :=
     "- After the checker, a program plays your Adventure 1,000 times. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
     s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range, with 90% confidence:"] ++
     (List.range (liveHorizon + 1)).map bandText ++ [
-    "- So the first turns can be safe, but the danger must rise. From turn 4 on, some Fights must be able to kill the Character.",
+    "- The reference lifetime has a median of ten scene choices. Offer meaningful danger, but also negotiation, scouting and safe detours. A human is not required to follow the uniform test policy.",
     s!"- Most paths must be at least {liveHorizon + 2} Choices long. A turn that too few games reach fails.",
     "- If the check fails, you get the numbers for each turn that failed. Make Fights harder or easier, or move them earlier or later. The rules cannot change."])
 
@@ -103,7 +103,8 @@ def dmSystemPrompt : String :=
     "",
     "## The story",
     "- Write for a PG-13 audience: danger and fights are fine; no sexual content, no gore, no cruelty for its own sake.",
-    "- Write 8 to 15 Scenes. Each Scene text has 2 to 6 sentences and at most 1,500 characters. Second person (\"you\").",
+    "- Write a long campaign of 60 to 100 Scenes in distinct chapters, with at least 40 Choices on every successful path. Each Scene has 2 to 4 concise sentences, at most 1,500 characters. Second person (\"you\").",
+    "- Include optional investigations, conversations and revisitable side routes. Returning to a place must make narrative sense. Never make a forced loop with no ending reachable.",
     "- Give the Player real choices, and more than one way to an Ending. Write 2 or more Endings.",
     "- Do not name game rules in the Scene text. A Choice that makes a roll shows the roll in brackets, with the Theme Name of the skill, such as \"Sneak past the guard (Shadow-walking -2)\".",
     "- If the Wish names a known story or world, write a new adventure in that world. Do not copy text from books or films.",

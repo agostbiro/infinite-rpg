@@ -10,6 +10,7 @@
 <script src="/app.js" type="module"></script>
 </head>
 <body>
+<div id="boot-status" class="boot-status" role="status"><p id="boot-message">Preparing your adventures…</p></div>
 <div id="seed" class="seed" title="The dice seed. The same seed and the same clicks give the same game."></div>
 
 <main id="title-screen" class="front" hidden>
@@ -93,9 +94,16 @@
       <span id="world-hp" class="world-hp"></span>
       <button id="world-journal" class="small-button" type="button" aria-expanded="false">Journal · J</button>
       <button id="world-pause" class="small-button" type="button">Pause</button>
+      <button id="world-speed" class="small-button" type="button" title="Change the dice animation speed">Dice ×1</button>
       <button id="skip" class="small-button" type="button" hidden>Skip animation</button>
     </div>
     <div class="world-crosshair" aria-hidden="true">+</div>
+    <div id="world-combat-actions" class="world-combat-actions" aria-label="Combat maneuvers" hidden></div>
+    <section id="world-events" class="world-events" aria-label="Dice and combat results" aria-live="polite" hidden>
+      <p class="world-event-heading">Dice &amp; actions</p>
+      <ol id="world-event-list"></ol>
+    </section>
+    <div id="world-hit" class="world-hit" aria-hidden="true"></div>
     <div id="world-prompt" class="world-prompt" hidden>
       <p id="world-choice"></p>
       <p id="world-detail"></p>

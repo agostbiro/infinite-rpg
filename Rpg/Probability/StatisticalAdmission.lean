@@ -13,6 +13,7 @@ open Confidence
 structure StatisticalCandidate extends AdventureDefinition where
   horizon : Nat
   horizonPositive : 0 < horizon
+  policy : FairnessPolicy := defaultPolicy
 
 /-- The fixed, independently chosen validation seed. Never search seeds for a favorable result. -/
 def validationSeed : Nat := 20261103
@@ -65,22 +66,25 @@ def validateCounts (a : StatisticalCandidate) : ValidationCounts :=
   sampleCounts a validationSeed validationGames
 
 /-- Row zero is first-turn death; subsequent rows are conditional two-turn deaths. -/
-def confidenceBands (horizon : Nat) (i : Fin (horizon+1)) : Band :=
-  ⟨if i.val = 0 then 1 - defaultPolicy.survival 1 else defaultPolicy.deathAtTwo (i.val-1),
-   defaultPolicy.tolerance⟩
+def confidenceBands (horizon : Nat) (i : Fin (horizon+1))
+    (policy : FairnessPolicy := defaultPolicy) : Band :=
+  ⟨if i.val = 0 then 1 - policy.survival 1 else policy.deathAtTwo (i.val-1),
+   policy.tolerance⟩
 
 /-- A row's actual denominator and observed death count. -/
 def ValidationCounts.observation (c : ValidationCounts) (row : Nat) : Observation :=
   ⟨c.trials[row]!, c.deaths[row]!⟩
 
 /-- Every interval from the complete fixed batch must fit its Weibull tolerance band. -/
-def ValidationAccepted (horizon : Nat) (c : ValidationCounts) : Prop :=
+def ValidationAccepted (horizon : Nat) (c : ValidationCounts)
+    (policy : FairnessPolicy := defaultPolicy) : Prop :=
   c.aborted = false ∧ c.games = validationGames ∧
   c.trials.size = horizon+1 ∧ c.deaths.size = horizon+1 ∧
   ∀ i : Fin (horizon+1), c.trials[i.val]! ≤ c.games ∧
-    acceptsCount (confidenceBands horizon i) confidenceDelta (c.observation i.val)
+    acceptsCount (confidenceBands horizon i policy) confidenceDelta (c.observation i.val)
 
-instance (horizon : Nat) (c : ValidationCounts) : Decidable (ValidationAccepted horizon c) := by
+instance (horizon : Nat) (c : ValidationCounts) (policy : FairnessPolicy) :
+    Decidable (ValidationAccepted horizon c policy) := by
   unfold ValidationAccepted
   infer_instance
 
@@ -101,7 +105,7 @@ def Fair (a : StatisticalCandidate) : Prop :=
     -- Coverage holds separately for each tested conditional expectation.
     (∀ i, intervalMissProbability law a.truth confidenceDelta i ≤ confidenceDelta) ∧
     -- Accepting the entire finite window has false-acceptance risk at most delta.
-    familyFalseAcceptance law a.truth (confidenceBands a.horizon)
+    familyFalseAcceptance law a.truth (fun i => confidenceBands a.horizon i a.policy)
       confidenceDelta ≤ confidenceDelta
 
 /-- The main fairness theorem: finite confidence intervals and Weibull-band admission are sound.
@@ -114,7 +118,7 @@ theorem StatisticalCandidate.fair (a : StatisticalCandidate) : Fair a := by
     exact rowConfidence law a.truth confidenceDelta i sampling
       (probabilities i).1 (probabilities i).2 (Rat.le_of_lt confidenceLevel_valid.1)
   -- Every row must pass; a violated row bounds false acceptance of the entire decision.
-  · exact familyFalseAcceptance_bound law a.truth (confidenceBands a.horizon)
+  · exact familyFalseAcceptance_bound law a.truth (fun i => confidenceBands a.horizon i a.policy)
       confidenceDelta valid sampling probabilities (Rat.le_of_lt confidenceLevel_valid.1)
 
 /-- An adventure that passed admission. It holds the counts, the seed they came from, and the
@@ -131,18 +135,18 @@ structure StatisticalAdventure where
   /-- The counts come from this candidate's own games with this seed. -/
   provenance : counts = sampleCounts candidate seed validationGames
   /-- Every row passed. -/
-  accepted : ValidationAccepted candidate.horizon counts
+  accepted : ValidationAccepted candidate.horizon counts candidate.policy
 
 /-- Every admitted interval fits its shared Weibull tolerance band. -/
 theorem StatisticalAdventure.intervals_fit (a : StatisticalAdventure) (i : Fin (a.candidate.horizon+1)) :
     let count := a.counts.observation i.val
     let interval := confidenceInterval confidenceDelta count.trials count.deaths
     -- The entire interval is above the band's lower bound.
-    (confidenceBands a.candidate.horizon i).target - (confidenceBands a.candidate.horizon i).tolerance ≤
+    (confidenceBands a.candidate.horizon i a.candidate.policy).target - (confidenceBands a.candidate.horizon i a.candidate.policy).tolerance ≤
       interval.lower ∧
     -- The entire interval is below the band's upper bound.
     interval.upper ≤
-      (confidenceBands a.candidate.horizon i).target + (confidenceBands a.candidate.horizon i).tolerance :=
+      (confidenceBands a.candidate.horizon i a.candidate.policy).target + (confidenceBands a.candidate.horizon i a.candidate.policy).tolerance :=
   (a.accepted.2.2.2.2 i).2.2.2
 
 /-- Play 1,000 games of `candidate` from `seed`, and admit it only if every row passes.
@@ -150,7 +154,7 @@ Returns the counts, and the admitted adventure if it passed. -/
 def admitWithSeed (candidate : StatisticalCandidate) (seed : Nat) :
     ValidationCounts × Option StatisticalAdventure :=
   let counts := sampleCounts candidate seed validationGames
-  if h : ValidationAccepted candidate.horizon counts then
+  if h : ValidationAccepted candidate.horizon counts candidate.policy then
     (counts, some ⟨candidate, candidate.fair, seed, counts, rfl, h⟩)
   else (counts, none)
 
@@ -161,7 +165,7 @@ def admitStatistically (candidate : StatisticalCandidate) :
 
 /-- One line for each row that failed, in plain words, for the DM and the server log.
 An empty list means that every row passed. -/
-def failedRows (horizon : Nat) (c : ValidationCounts) : List String :=
+def failedRows (horizon : Nat) (c : ValidationCounts) (policy : FairnessPolicy := defaultPolicy) : List String :=
   let pct (r : Rat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
@@ -171,7 +175,7 @@ def failedRows (horizon : Nat) (c : ValidationCounts) : List String :=
   general ++ (List.range (horizon + 1)).filterMap fun row =>
     if h : row < horizon + 1 then
       let i : Fin (horizon + 1) := ⟨row, h⟩
-      let band := confidenceBands horizon i
+      let band := confidenceBands horizon i policy
       let obs := c.observation row
       if acceptsCount band confidenceDelta obs then none else
       let name := if row = 0 then "death on turn 1"

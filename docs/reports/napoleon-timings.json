@@ -1,0 +1,16 @@
+{
+  "source": "Locally authored campaign; no live generative API call",
+  "campaignSha256": "8a6497c765f3bd00c84d399d7a6dfe58a123c3394d62c4a7aef8309d37161c61",
+  "assemblyMs": 1.7127500000000024,
+  "legalityMs": 673,
+  "statisticalValidationAndReportingMs": 6418,
+  "assemblyValidationInstallWallMs": 9514.417333,
+  "browserFirstSceneBuildMs": 6.5,
+  "browserFirstFrameMs": 79.1,
+  "exampleCombatResponseMs": 11.2,
+  "exampleCombatTotalMsAt2x": 1808.8,
+  "viewport": [
+    1280,
+    720
+  ]
+}

@@ -241,3 +241,21 @@ de Three.js ou de la géométrie. Les contrôles et les tests fournissent les
 éléments de validation de cette interface exécutée.
 
 Les ajouts de règles en cours de partie sont réservés à un travail ultérieur.
+
+## 12. Campagnes longues et affichage des combats
+
+Le profil des nouveaux Wishes est désormais versionné : exploration-10-v1,
+référence de Weibull de médiane discrète 10, admission sur 15 choix de scène.
+Les anciens jeux conservent le profil legacy. Les mesures et leurs limites sont
+décrites dans [le rapport de la campagne de Napoléon](napoleon-validation.md).
+Cette modification de référence a été demandée par le joueur ; la projection
+spatiale et la politique uniforme de test du §9 gardent le même sens.
+
+Une réponse du moteur contient l'état final et une suite ordonnée de rapports.
+Pendant sa lecture, l'interface présente le préfixe de ces rapports déjà affiché :
+les HP et la scène visibles correspondent à ce préfixe. Elle bloque toute nouvelle
+commande jusqu'à la fin de la lecture. Les boutons de combat et les touches
+numériques transmettent exactement les mêmes entrées que les objets spatiaux.
+
+Accélérer ou sauter l'animation modifie le temps d'affichage des rapports. Cela
+ne modifie ni les faces des dés, ni leur ordre, ni l'état final fourni par Lean.

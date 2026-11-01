@@ -1,4 +1,5 @@
 /* The spatial view is the main play surface. The existing transcript is a journal. */
+.boot-status { position: fixed; inset: 0; z-index: 20; display: grid; place-content: center; background: #10151af2; color: #e6d4aa; font: 22px var(--serif); text-align: center; padding: 24px; }
 .spatial-mode .table { display: block; max-width: 1600px; padding: 0 24px 24px; }
 .spatial-mode .top { display: flex; align-items: center; gap: 20px; padding: 17px 0; margin: 0; }
 .spatial-mode .top h1 { flex: 1; font-size: 21px; text-align: center; margin: 0; }
@@ -36,6 +37,25 @@
 .portal-number { display: block; margin-bottom: 4px; color: #e5c989; letter-spacing: .16em; font-size: 10px; }
 .portal-label.near { border-color: #f9d38a; background: #302c22e8; }
 .actor-label { position: absolute; transform: translate(-50%, -100%); font-size: 11px; white-space: nowrap; color: #eff3db; text-shadow: 0 2px 5px #000; background: #15222b96; border-radius: 4px; padding: 4px 7px; }
+.actor-label.taking-hit { color: #ffb7a0; background: #652e27; }
+.world-events { position: absolute; left: 24px; bottom: 85px; width: min(480px, calc(100% - 48px)); border: 1px solid #e4ca8c55; border-radius: 12px; padding: 14px 18px; background: #101c29ee; backdrop-filter: blur(10px); pointer-events: none; }
+.world-event-heading { font-size: 10px; color: #dfc58c; text-transform: uppercase; letter-spacing: .14em; margin: 0 0 8px; }
+#world-event-list { list-style: none; margin: 0; padding: 0; font: 15px/1.6 var(--serif); }
+.world-event .dice { display: flex; margin: 10px 0; gap: 8px; }
+.world-event .die { width: 38px; height: 38px; padding: 5px; }
+.world-event .die.tumble { animation-duration: .4s; }
+.world-combat-actions { position: absolute; left: 50%; transform: translateX(-50%); bottom: 22px; display: flex; justify-content: center; gap: 7px; max-width: 94%; z-index: 2; flex-wrap: wrap; }
+.world-combat-actions button { border: 1px solid #ecc88580; background: #302b20ed; color: #fff0cb; border-radius: 8px; padding: 12px 15px; font: 12px var(--sans); cursor: pointer; }
+.world-combat-actions button.defense { border-color: #80bbaa; background: #203a38ed; }
+.world-combat-actions button:disabled { opacity: .5; cursor: wait; }
+.world[data-phase="fight"] .world-controls { display: none; }
+.world[data-phase="fight"] .world-prompt { display: none; }
+.world[data-phase="fight"] .portal-label { display: none; }
+.world-hit { position: absolute; inset: 0; pointer-events: none; }
+.world-hit.hurt { animation: world-hurt .45s ease-out; }
+.world-hit.strike::after { content: ''; position: absolute; width: 170px; height: 8px; background: linear-gradient(90deg, transparent, #fff3c5, transparent); left: 50%; top: 51%; opacity: 0; transform: translate(-50%, -50%) rotate(-35deg); animation: world-strike .35s ease-out; }
+@keyframes world-hurt { from { box-shadow: inset 0 0 110px #b23325b0; } to { box-shadow: inset 0 0 0 transparent; } }
+@keyframes world-strike { 25% { opacity: .8; transform: translate(-50%, -50%) rotate(20deg) scale(1.5); } }
 .world-crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #fff9; font: 19px var(--sans); pointer-events: none; }
 .world-prompt { position: absolute; bottom: 88px; left: 50%; transform: translateX(-50%); width: min(520px, 85%); padding: 16px 23px; border: 1px solid #ead0a354; border-radius: 13px; background: #121f29ec; box-shadow: 0 10px 40px #0006; text-align: center; backdrop-filter: blur(12px); }
 #world-choice { margin: 0 0 6px; font: 20px/1.25 var(--serif); }
@@ -85,7 +105,13 @@ body:not(.spatial-mode) .world-over { position: static; transform: none; width: 
   #world-choice { font-size: 17px; }
   .world-loading { bottom: 155px; right: 14px; }
   .world-over { bottom: 150px; }
+  .world-events { left: 12px; bottom: 112px; width: calc(100% - 24px); padding: 10px 13px; }
+  #world-event-list { font-size: 13px; }
+  .world-combat-actions { width: calc(100% - 20px); bottom: 14px; gap: 5px; }
+  .world-combat-actions button { padding: 9px; font-size: 11px; flex: 1; }
+  .world[data-phase="fight"] .world-touch { display: none; }
 }
+@media (prefers-reduced-motion: reduce) { .world-hit, .world-hit::after, .world-event .die.tumble { animation: none !important; } }
 @media (pointer: coarse), (max-width: 760px) {
   .world-touch { position: absolute; bottom: 22px; right: 18px; display: grid; grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(2, 42px); gap: 4px; }
   .world-touch button { border: 1px solid #ece3c150; border-radius: 9px; background: #102030af; color: #eee7cb; touch-action: none; font-size: 20px; }

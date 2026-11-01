@@ -129,6 +129,11 @@ structure Generation where
   wish : String := ""
   name : String := ""
   gender : String := ""
+  /-- Monotonic timings for the current job, including all repair attempts. -/
+  startedMs : Nat := 0
+  apiMs : Nat := 0
+  validationMs : Nat := 0
+  totalMs : Nat := 0
 
 /-- Everything the server keeps. -/
 structure ServerState where
@@ -618,6 +623,7 @@ def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (j
     (d : Draft) (g : Game) (wish : String) (fairnessSeed : Nat) : IO Unit := do
   let id ← newSavedId d.adventure.title
   saveDraft id d wish fairnessSeed
+  let finished ← IO.monoMsNow
   let seed := (← IO.monoNanosNow) % 1000000
   let res ← ref.modifyGet fun s =>
     if s.gen.job != job || s.gen.state != .running then (none, s) else
@@ -628,7 +634,7 @@ def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (j
       source := { savedSource id d wish with
                   drawing := if cfg.picturesOn then d.adventure.scenes.filterMap (·.picture) else [],
                   drawRun := run },
-      gen := { s.gen with state := .ready, readyId := some id } })
+      gen := { s.gen with state := .ready, readyId := some id, totalMs := finished - s.gen.startedMs } })
   if let some (old, run) := res then
     if let some oldId := old then killOwner children (picturesOwner oldId)
     -- With Pictures off, no Picture is asked for.
@@ -653,8 +659,12 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
   for attempt in [1, 2, 3] do
     let text := if attempt == 1 then "The Dungeon Master is writing..." else "The Dungeon Master is fixing them..."
     if !(← addStep ref job { text }) then return
+    let apiStarted ← IO.monoMsNow
     let reply ← callApi cfg children (jobOwner job) (jobWanted ref job) (adventureRequest messages)
       [s!"adventure-{attempt}"]
+    let apiFinished ← IO.monoMsNow
+    ref.modify fun s => if s.gen.job != job then s else
+      { s with gen := { s.gen with apiMs := s.gen.apiMs + apiFinished - apiStarted } }
     if !(← jobWanted ref job) then return
     let (errors, hero?, content) ← match reply with
       | .refused =>
@@ -670,10 +680,16 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
         match Draft.parse text with
         | .error e => pure ([s!"the JSON does not read: {e}"], none, content)
         | .ok d =>
+          let d := { d with validationProfile := if cfg.fake.isSome then "legacy" else "exploration-10-v1" }
           -- A fresh random seed for each try, so the DM cannot tune its story to one batch of games.
           -- In test mode (`RPG_FAKE_API`) the seed is fixed, so `make run-fake` gives the same result each time.
           let fairnessSeed ← if cfg.fake.isSome then pure 1 else randomSeed
-          match d.toGame fairnessSeed with
+          let checkStarted ← IO.monoMsNow
+          let result := d.toGame fairnessSeed
+          let checkFinished ← IO.monoMsNow
+          ref.modify fun s => if s.gen.job != job then s else
+            { s with gen := { s.gen with validationMs := s.gen.validationMs + checkFinished - checkStarted } }
+          match result with
           | .ok g =>
             if !(← addStep ref job { text := "The Adventure passed the checker and the fairness check." }) then return
             adopt cfg children ref job d g wish fairnessSeed
@@ -689,10 +705,11 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
 already writing. The check and the start are one atomic step. -/
 def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
     (wish name gender : String) : IO Bool := do
+  let startedMs ← IO.monoMsNow
   let job? ← ref.modifyGet fun s =>
     if s.gen.state == .running then (none, s) else
     let job := s.gen.job + 1
-    (some job, { s with gen := { job, state := .running, wish, name, gender } })
+    (some job, { s with gen := { job, state := .running, wish, name, gender, startedMs } })
   let some job := job? | return false
   let _ ← IO.asTask (prio := .dedicated) do
     try generate cfg children ref job wish name gender
@@ -729,7 +746,9 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
                          drawing: $(s.source.drawing.length), failed: $(failedPictures cfg s), off: $(!cfg.picturesOn) }
   let gen := json% {
     available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps), readyId: $(s.gen.readyId),
-    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender)
+    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender),
+    timings: { apiMs: $(s.gen.apiMs), validationMs: $(s.gen.validationMs), totalMs: $(s.gen.totalMs),
+      source: $(if cfg.fake.isSome then "recorded-fixture" else "claude-api") }
   }
   let saved ← if g.game.phase.name == "title" then savedList cfg else pure (Json.arr #[])
   let v := base.setObjVal! "pictures" pictures

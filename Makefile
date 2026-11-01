@@ -1,4 +1,4 @@
-.PHONY: install run run-fake build check check-pictures check-rules cheats validate comparator agree test-spatial test-browser
+.PHONY: install run run-fake build check check-pictures check-rules cheats validate comparator agree test-spatial test-browser napoleon
 
 # The port of the game server: make run PORT=9000
 PORT ?= 8080
@@ -30,9 +30,14 @@ run-fake: build
 build:
 	lake build
 
+# Install the authored campaign only after the same legality and fairness checks as play.
+napoleon: build
+	lake build inspect-adventure
+	python3 scripts/create_napoleon.py --install
+
 # Spatial adapter tests need only Node.js. Browser tests use the recorded Wish hook.
 test-spatial:
-	node --test tests/spatial.test.js
+	node --test tests/spatial.test.js tests/playback.test.js
 
 test-browser: build
 	npm run test:browser

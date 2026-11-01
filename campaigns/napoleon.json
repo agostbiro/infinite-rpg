@@ -1,0 +1,2590 @@
+{
+  "title": "Bonaparte · Les Cartes du Nil",
+  "world": "Égypte, campagne de Bonaparte, 1798",
+  "intro": "Égypte, juillet 1798. Vous êtes Camille Laurent, interprète et cartographe de l'expédition. Avec Salma, vous recherchez des plans volés qui menacent l'accès à l'eau. Cette fiction historique vous mène des quais d'Alexandrie au Nil, au Caire et aux pyramides de Gizeh.",
+  "fairnessProfile": "exploration-10-v1",
+  "character": {
+    "name": "Camille Laurent",
+    "background": "Interprète et cartographe de l'expédition, vous enquêtez avec Salma pour protéger les routes de l'eau.",
+    "st": 11,
+    "dx": 12,
+    "iq": 10,
+    "ht": 12,
+    "skills": [
+      {
+        "skill": "broadsword",
+        "level": 14
+      },
+      {
+        "skill": "stealth",
+        "level": 13
+      },
+      {
+        "skill": "lockpicking",
+        "level": 12
+      },
+      {
+        "skill": "diplomacy",
+        "level": 11
+      },
+      {
+        "skill": "brawling",
+        "level": 12
+      },
+      {
+        "skill": "knife",
+        "level": 12
+      }
+    ],
+    "weapon": "broadsword",
+    "armor": "leather"
+  },
+  "start": 0,
+  "themeNames": {
+    "skills": [
+      {
+        "skill": "broadsword",
+        "name": "Escrime au sabre"
+      },
+      {
+        "skill": "stealth",
+        "name": "Discrétion"
+      },
+      {
+        "skill": "diplomacy",
+        "name": "Négociation"
+      },
+      {
+        "skill": "lockpicking",
+        "name": "Serrurerie"
+      }
+    ],
+    "weapons": [
+      {
+        "weapon": "broadsword",
+        "name": "Sabre de l'expédition"
+      }
+    ],
+    "armor": [
+      {
+        "armor": "leather",
+        "name": "Veste renforcée"
+      }
+    ]
+  },
+  "palette": [
+    "#d9b878",
+    "#b9894d",
+    "#ead9ab",
+    "#254c62",
+    "#193747",
+    "#6d4d35"
+  ],
+  "scenes": [
+    {
+      "id": 0,
+      "title": "Le camp des savants",
+      "text": "I · Les cartes volées. Napoléon Bonaparte attend devant une table couverte de cartes. Un relevé des puits du Nil a disparu ; sans lui, soldats et villages risquent de manquer d'eau.",
+      "choices": [
+        {
+          "text": "Parler à Napoléon Bonaparte",
+          "outcome": {
+            "type": "goto",
+            "next": 1
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 1,
+            "onFailure": 200
+          }
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "title": "La tente de Salma",
+      "text": "I · Les cartes volées. Salma attend sous une toile rayée. La cartographe reconnaît une marque sur l'étui abandonné : le voleur a quitté le camp par le port.",
+      "choices": [
+        {
+          "text": "Examiner la carte avec Salma",
+          "outcome": {
+            "type": "goto",
+            "next": 2
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 101
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Les quais d'Alexandrie",
+      "text": "I · Les cartes volées. Les amarres grincent au milieu des ballots. Un contrebandier tente d'écarter les curieux d'une caisse portant le sceau de l'expédition.",
+      "choices": [
+        {
+          "text": "Prendre le sentier le long des quais",
+          "outcome": {
+            "type": "goto",
+            "next": 3
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Le registre du magasinier",
+      "text": "I · Les cartes volées. Lucien Morel demande pourquoi un reçu mentionne deux fois le même bateau. Une tache d'encre masque le nom du destinataire.",
+      "choices": [
+        {
+          "text": "Examiner le registre",
+          "outcome": {
+            "type": "goto",
+            "next": 4
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 4,
+            "onFailure": 203
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "La cour des entrepôts",
+      "text": "I · Les cartes volées. Une ombre referme une caisse derrière des jarres. Vous pouvez attendre le passage des porteurs ou défier le guetteur qui surveille la cour.",
+      "choices": [
+        {
+          "text": "Suivre les porteurs par le passage",
+          "outcome": {
+            "type": "goto",
+            "next": 5
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Le balcon du négociant",
+      "text": "I · Les cartes volées. Salma attend près d'une fenêtre ouverte. Elle a retrouvé le nom d'un passeur qui connaît les canaux mieux que les officiers.",
+      "choices": [
+        {
+          "text": "Passer par la fenêtre vers le canal",
+          "outcome": {
+            "type": "goto",
+            "next": 6
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 105
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Les cordages coupés",
+      "text": "I · Les cartes volées. Youssef attend près d'une barque détachée. Quelqu'un a saboté son embarcation ; un homme armé prétend désormais percevoir un droit de passage.",
+      "choices": [
+        {
+          "text": "Parler à Youssef pour trouver une autre barque",
+          "outcome": {
+            "type": "goto",
+            "next": 7
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 7
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "La maison du pilote",
+      "text": "I · Les cartes volées. Le pilote dessine les bras du fleuve sur une dalle humide. La route de Rosette reste ouverte si vous passez avant le convoi des vivres.",
+      "choices": [
+        {
+          "text": "Examiner le dessin sur la dalle",
+          "outcome": {
+            "type": "goto",
+            "next": 8
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 8,
+            "onFailure": 207
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "La digue des salines",
+      "text": "I · Les cartes volées. Le vent pousse le sel contre vos bottes. Un garde irrégulier barre le chemin direct, mais les ouvriers empruntent une passerelle latérale.",
+      "choices": [
+        {
+          "text": "Monter l'échelle de la passerelle",
+          "outcome": {
+            "type": "goto",
+            "next": 9
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 9
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "La voile rapiécée",
+      "text": "I · Les cartes volées. Youssef attend à l'ombre d'une voile bleue. Il accepte de vous conduire jusqu'à la première écluse en échange d'un coup de main aux amarres.",
+      "choices": [
+        {
+          "text": "Monter dans la barque de Youssef",
+          "outcome": {
+            "type": "goto",
+            "next": 10
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 109
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Le poste abandonné",
+      "text": "I · Les cartes volées. Une lanterne brûle encore dans la guérite. Le guetteur revenu sur ses pas veut reprendre le carnet que vous avez aperçu.",
+      "choices": [
+        {
+          "text": "Parler au guetteur pour obtenir le passage",
+          "outcome": {
+            "type": "goto",
+            "next": 11
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 11
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "La borne du canal",
+      "text": "I · Les cartes volées. Trois traits gravés indiquent une dérivation vers les terres cultivées. Salma reconnaît la méthode d'un ingénieur de l'expédition.",
+      "choices": [
+        {
+          "text": "Examiner les trois traits",
+          "outcome": {
+            "type": "goto",
+            "next": 12
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 12,
+            "onFailure": 211
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Les greniers de Rosette",
+      "text": "I · Les cartes volées. Des sacs de grain forment un dédale silencieux. Un maraudeur protège une cache ; des habitants vous montrent une sortie vers le marché.",
+      "choices": [
+        {
+          "text": "Suivre le sentier indiqué vers le marché",
+          "outcome": {
+            "type": "goto",
+            "next": 13
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 13
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Le marché aux cordes",
+      "text": "I · Les cartes volées. Amina demande des nouvelles du convoi. Elle a vu passer un homme tenant l'étui des cartes comme s'il contenait un trésor.",
+      "choices": [
+        {
+          "text": "Parler à Amina",
+          "outcome": {
+            "type": "goto",
+            "next": 14
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 113
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "L'atelier du relieur",
+      "text": "I · Les cartes volées. Le relieur a réparé la couture d'un carnet couvert de sable. Une page arrachée porte un dessin de barrage et les initiales d'un officier.",
+      "choices": [
+        {
+          "text": "Ouvrir le coffre des papiers",
+          "outcome": {
+            "type": "goto",
+            "next": 15
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 15,
+            "onFailure": 214
+          }
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "La première halte sur le Nil",
+      "text": "I · Les cartes volées. Le fleuve devient orange au coucher du soleil. Youssef vous avertit que la prochaine étape exige de choisir entre la rive et les canaux.",
+      "choices": [
+        {
+          "text": "Rejoindre la barque au bord du Nil",
+          "outcome": {
+            "type": "goto",
+            "next": 16
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 16,
+            "onFailure": 215
+          }
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Les roseaux du delta",
+      "text": "II · Les chemins du Nil. Une étroite trouée serpente entre les roseaux. Le bruit d'une rame vous permet de suivre une embarcation sans l'approcher.",
+      "choices": [
+        {
+          "text": "Suivre le sentier des roseaux",
+          "outcome": {
+            "type": "goto",
+            "next": 17
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 17,
+            "onFailure": 216
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Le moulin à eau",
+      "text": "II · Les chemins du Nil. Une roue immobile retient les débris d'une crue. Une pièce du mécanisme ressemble au croquis du carnet volé.",
+      "choices": [
+        {
+          "text": "Monter l'escalier du moulin",
+          "outcome": {
+            "type": "goto",
+            "next": 18
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 117
+          }
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "title": "La cour des potiers",
+      "text": "II · Les chemins du Nil. Amina attend près d'un four refroidi. Les potiers ont transporté des jarres pour des hommes qui parlaient d'une citerne secrète.",
+      "choices": [
+        {
+          "text": "Parler à Amina près du four",
+          "outcome": {
+            "type": "goto",
+            "next": 19
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 19,
+            "onFailure": 218
+          }
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "La terrasse des palmiers",
+      "text": "II · Les chemins du Nil. Salma observe les ombres des palmiers. Elle en déduit que le dessin du carnet a été tracé dans une cour orientée vers l'est.",
+      "choices": [
+        {
+          "text": "Observer la rive avec la longue-vue",
+          "outcome": {
+            "type": "goto",
+            "next": 20
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 20,
+            "onFailure": 219
+          }
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Le ponton du convoi",
+      "text": "II · Les chemins du Nil. Un déserteur garde un coffre de documents militaires. Le responsable des vivres connaît toutefois un chemin qui évite son poste.",
+      "choices": [
+        {
+          "text": "Suivre le chemin du convoi",
+          "outcome": {
+            "type": "goto",
+            "next": 21
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 21
+          }
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Les tentes de l'infirmerie",
+      "text": "II · Les chemins du Nil. Le médecin vous demande d'épargner les réserves d'eau. Un blessé a entendu le nom d'un village où les cartes doivent être échangées.",
+      "choices": [
+        {
+          "text": "Parler au médecin de l'infirmerie",
+          "outcome": {
+            "type": "goto",
+            "next": 22
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 121
+          }
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "La lettre de Desaix",
+      "text": "II · Les chemins du Nil. Le général Desaix attend devant une tente ouverte. Il vous remet une autorisation de traverser les lignes sans détourner les hommes de leur mission.",
+      "choices": [
+        {
+          "text": "Parler au général Desaix",
+          "outcome": {
+            "type": "goto",
+            "next": 23
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 23,
+            "onFailure": 222
+          }
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Le jardin irrigué",
+      "text": "II · Les chemins du Nil. Un jardinier ferme successivement les petites vannes. Son récit confirme qu'un canal secondaire peut rejoindre le village recherché.",
+      "choices": [
+        {
+          "text": "Examiner la vanne du jardin",
+          "outcome": {
+            "type": "goto",
+            "next": 24
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 24,
+            "onFailure": 223
+          }
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Les marches du débarcadère",
+      "text": "II · Les chemins du Nil. Une volée de marches descend sous les palmiers. Une trace de cire rouge reste collée à la dernière pierre sèche.",
+      "choices": [
+        {
+          "text": "Descendre l'escalier vers la barque",
+          "outcome": {
+            "type": "goto",
+            "next": 25
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 25,
+            "onFailure": 224
+          }
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Le bac de la rive orientale",
+      "text": "II · Les chemins du Nil. Youssef attend le retour du bac. De l'autre côté, deux itinéraires rejoignent un caravansérail sans traverser le camp militaire.",
+      "choices": [
+        {
+          "text": "Prendre le bac",
+          "outcome": {
+            "type": "goto",
+            "next": 26
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 125
+          }
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Le caravansérail",
+      "text": "II · Les chemins du Nil. Salma demande aux voyageurs s'ils ont vu un étui marqué d'un compas. Un marchand reconnaît l'objet et indique la cour intérieure.",
+      "choices": [
+        {
+          "text": "Parler à Salma dans la cour",
+          "outcome": {
+            "type": "goto",
+            "next": 27
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 27,
+            "onFailure": 226
+          }
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "La chambre aux tapis",
+      "text": "II · Les chemins du Nil. Une fenêtre donne sur les toits. Sous un tapis roulé, vous trouvez un brouillon qui décrit le débit de plusieurs puits.",
+      "choices": [
+        {
+          "text": "Examiner le brouillon sous le tapis",
+          "outcome": {
+            "type": "goto",
+            "next": 28
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 28,
+            "onFailure": 227
+          }
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Les toits de briques",
+      "text": "II · Les chemins du Nil. Un trafiquant surveille un escalier pour empêcher qu'on le suive. Une échelle de maçon permet de contourner son poste.",
+      "choices": [
+        {
+          "text": "Grimper par l'échelle du maçon",
+          "outcome": {
+            "type": "goto",
+            "next": 29
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 29
+          }
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "title": "Le four du boulanger",
+      "text": "II · Les chemins du Nil. Le boulanger reconnaît le cachet du brouillon. Son voisin grave les sceaux des négociants et travaille encore malgré la chaleur.",
+      "choices": [
+        {
+          "text": "Prendre le sentier vers l'atelier",
+          "outcome": {
+            "type": "goto",
+            "next": 30
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 129
+          }
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "title": "L'atelier des sceaux",
+      "text": "II · Les chemins du Nil. Farid demande à voir la marque de cire. Il remarque une entaille qui identifie un faux sceau utilisé pour détourner les convois.",
+      "choices": [
+        {
+          "text": "Parler à Farid",
+          "outcome": {
+            "type": "goto",
+            "next": 31
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 31,
+            "onFailure": 230
+          }
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "title": "La nuit sur la terrasse",
+      "text": "II · Les chemins du Nil. Les étoiles se reflètent dans les bassins du toit. Salma relie les indices : les cartes servent à vendre de faux accès aux réserves d'eau.",
+      "choices": [
+        {
+          "text": "Observer les étoiles avant le départ",
+          "outcome": {
+            "type": "goto",
+            "next": 32
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 32,
+            "onFailure": 231
+          }
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "title": "La route d'Embabeh",
+      "text": "III · Les preuves du Caire. Les nouvelles de l'armée vous rattrapent sur la route. Vous devez atteindre les intendants avant que le prochain convoi ne suive une fausse carte.",
+      "choices": [
+        {
+          "text": "Suivre le sentier vers Embabeh",
+          "outcome": {
+            "type": "goto",
+            "next": 33
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 33,
+            "onFailure": 232
+          }
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "title": "Les carrés de toile",
+      "text": "III · Les preuves du Caire. Des officiers disposent des morceaux de toile sur une table pour expliquer leurs mouvements. Un messager vous indique où retrouver Bonaparte après le conseil.",
+      "choices": [
+        {
+          "text": "Examiner la table des officiers",
+          "outcome": {
+            "type": "goto",
+            "next": 34
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 133
+          }
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "title": "La tente du général",
+      "text": "III · Les preuves du Caire. Napoléon Bonaparte attend un rapport précis. Il exige des preuves du détournement et vous laisse choisir comment protéger le convoi civil.",
+      "choices": [
+        {
+          "text": "Parler à Napoléon Bonaparte",
+          "outcome": {
+            "type": "goto",
+            "next": 35
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 35,
+            "onFailure": 234
+          }
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "title": "La levée de terre",
+      "text": "III · Les preuves du Caire. Le fracas lointain de la bataille trouble les porteurs. Votre mission reste de guider les civils vers un passage à couvert, loin des affrontements.",
+      "choices": [
+        {
+          "text": "Suivre le passage derrière la levée",
+          "outcome": {
+            "type": "goto",
+            "next": 36
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 36,
+            "onFailure": 235
+          }
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "Le dépôt disputé",
+      "text": "III · Les preuves du Caire. Un homme armé tente de déplacer les réserves sous couvert du désordre. Salma propose de demander l'aide du magasinier plutôt que de l'affronter.",
+      "choices": [
+        {
+          "text": "Parler au magasinier pour protéger les réserves",
+          "outcome": {
+            "type": "goto",
+            "next": 37
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 37
+          }
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "Le refuge des familles",
+      "text": "III · Les preuves du Caire. Amina attend près d'un puits dont la corde s'est rompue. Vous pouvez rejoindre les charpentiers pour remettre le passage en service.",
+      "choices": [
+        {
+          "text": "Prendre le chemin des charpentiers",
+          "outcome": {
+            "type": "goto",
+            "next": 38
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 137
+          }
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "title": "La passerelle démontée",
+      "text": "III · Les preuves du Caire. Les charpentiers assemblent les planches récupérées. Ils ont aperçu un homme portant l'étui des cartes vers le rivage.",
+      "choices": [
+        {
+          "text": "Monter sur la passerelle",
+          "outcome": {
+            "type": "goto",
+            "next": 39
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 39,
+            "onFailure": 238
+          }
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "title": "Le départ des felouques",
+      "text": "III · Les preuves du Caire. Youssef a trouvé une embarcation légère. Les fugitifs ont pris le bras du fleuve qui longe les ruines d'un ancien quai.",
+      "choices": [
+        {
+          "text": "Monter dans la felouque",
+          "outcome": {
+            "type": "goto",
+            "next": 40
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 40,
+            "onFailure": 239
+          }
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "title": "Les colonnes du vieux quai",
+      "text": "III · Les preuves du Caire. Des colonnes brisées émergent du sable. Une inscription moderne, griffonnée à la craie, donne rendez-vous près du Caire.",
+      "choices": [
+        {
+          "text": "Examiner la colonne marquée",
+          "outcome": {
+            "type": "goto",
+            "next": 41
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 41,
+            "onFailure": 240
+          }
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "title": "La porte du Caire",
+      "text": "III · Les preuves du Caire. Salma s'entretient avec un responsable du quartier. Il accepte de vous guider si l'enquête ne devient pas un prétexte pour saisir les réserves des habitants.",
+      "choices": [
+        {
+          "text": "Parler à Salma et au responsable",
+          "outcome": {
+            "type": "goto",
+            "next": 42
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 141
+          }
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "title": "La cour des fontaines",
+      "text": "III · Les preuves du Caire. L'eau circule entre plusieurs bassins de pierre. Farid identifie sur une jarre le même faux sceau que celui du carnet.",
+      "choices": [
+        {
+          "text": "Examiner la jarre au faux sceau",
+          "outcome": {
+            "type": "goto",
+            "next": 43
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 43,
+            "onFailure": 242
+          }
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "title": "L'escalier du copiste",
+      "text": "III · Les preuves du Caire. Un copiste conserve les doubles des contrats de transport. Une page a été retirée si récemment que l'encre du feuillet voisin reste humide.",
+      "choices": [
+        {
+          "text": "Monter l'escalier du copiste",
+          "outcome": {
+            "type": "goto",
+            "next": 44
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 44,
+            "onFailure": 243
+          }
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "title": "Le coffre des contrats",
+      "text": "III · Les preuves du Caire. Un complice revient chercher le dernier contrat. Le copiste vous montre une cache d'où vous pouvez laisser passer l'homme et lire les documents.",
+      "choices": [
+        {
+          "text": "Ouvrir le coffre des contrats",
+          "outcome": {
+            "type": "goto",
+            "next": 45
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 45
+          }
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "title": "La loggia de Monge",
+      "text": "III · Les preuves du Caire. Gaspard Monge attend devant un relevé incomplet. Il confirme que le carnet mêle des mesures utiles à des indications volontairement fausses.",
+      "choices": [
+        {
+          "text": "Parler à Gaspard Monge",
+          "outcome": {
+            "type": "goto",
+            "next": 46
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 145
+          }
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "title": "Le jardin des instruments",
+      "text": "III · Les preuves du Caire. Les savants alignent leurs instruments sur une table. Salma propose de comparer les orientations du carnet à celles de la plaine de Gizeh.",
+      "choices": [
+        {
+          "text": "Observer avec la longue-vue des savants",
+          "outcome": {
+            "type": "goto",
+            "next": 47
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 47,
+            "onFailure": 246
+          }
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "title": "La barque de Gizeh",
+      "text": "III · Les preuves du Caire. Youssef attend sur la rive ouest. Les pyramides se détachent enfin de la poussière, au-delà des cultures et des palmiers.",
+      "choices": [
+        {
+          "text": "Prendre la barque vers Gizeh",
+          "outcome": {
+            "type": "goto",
+            "next": 48
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 48,
+            "onFailure": 247
+          }
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "title": "Au pied des pyramides",
+      "text": "IV · L'eau des pyramides. Salma examine une pierre qui sert de repère aux arpenteurs. Le dessin volé indique une citerne proche des voies anciennes, pas une salle secrète dans la pyramide.",
+      "choices": [
+        {
+          "text": "Examiner la pierre des arpenteurs",
+          "outcome": {
+            "type": "goto",
+            "next": 49
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 49,
+            "onFailure": 248
+          }
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "title": "Les colonnes du temple",
+      "text": "IV · L'eau des pyramides. Le vent siffle entre les colonnes. Un morceau d'étui dépasse du sable près d'une marche où quelqu'un s'est assis récemment.",
+      "choices": [
+        {
+          "text": "Monter l'escalier du temple",
+          "outcome": {
+            "type": "goto",
+            "next": 50
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 149
+          }
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "title": "Le camp des ouvriers",
+      "text": "IV · L'eau des pyramides. Farid attend avec deux ouvriers qui entretiennent les accès à l'eau. Ils ont vu les suspects descendre vers un magasin à l'écart des monuments.",
+      "choices": [
+        {
+          "text": "Parler à Farid et aux ouvriers",
+          "outcome": {
+            "type": "goto",
+            "next": 51
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 51,
+            "onFailure": 250
+          }
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "title": "La galerie fraîche",
+      "text": "IV · L'eau des pyramides. Une galerie de service protège les jarres du soleil. Les traces récentes s'arrêtent devant un battant de bois fermé de l'intérieur.",
+      "choices": [
+        {
+          "text": "Examiner la serrure de la galerie",
+          "outcome": {
+            "type": "goto",
+            "next": 52
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 52,
+            "onFailure": 251
+          }
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "title": "Le gardien du magasin",
+      "text": "IV · L'eau des pyramides. Le chef du trafic garde le dernier carnet. Salma veut négocier sa remise pendant que les ouvriers sécurisent le passage vers le puits.",
+      "choices": [
+        {
+          "text": "Parler au gardien pour récupérer le carnet",
+          "outcome": {
+            "type": "goto",
+            "next": 53
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 53
+          }
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "title": "La citerne",
+      "text": "IV · L'eau des pyramides. Vous retrouvez le plan complet sur une table basse. Les fausses indications peuvent être corrigées, mais il faut encore distinguer les relevés fiables.",
+      "choices": [
+        {
+          "text": "Examiner la carte près de la citerne",
+          "outcome": {
+            "type": "goto",
+            "next": 54
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 153
+          }
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "title": "Le relevé des ombres",
+      "text": "IV · L'eau des pyramides. Salma compare les ombres aux mesures de Monge. La véritable route de l'eau rejoint un village que les convois n'avaient pas prévu de desservir.",
+      "choices": [
+        {
+          "text": "Observer les ombres avec la longue-vue",
+          "outcome": {
+            "type": "goto",
+            "next": 55
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 55,
+            "onFailure": 254
+          }
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "title": "Le retour au village",
+      "text": "IV · L'eau des pyramides. Amina attend sur la place. Les habitants demandent que les cartes corrigées leur soient remises en même temps qu'à l'armée.",
+      "choices": [
+        {
+          "text": "Parler à Amina sur la place",
+          "outcome": {
+            "type": "goto",
+            "next": 56
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 56,
+            "onFailure": 255
+          }
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "title": "Les copies du plan",
+      "text": "IV · L'eau des pyramides. Le copiste étend plusieurs feuilles sur une table. Vous préparez deux versions lisibles du relevé afin qu'aucun groupe ne dépende d'un exemplaire unique.",
+      "choices": [
+        {
+          "text": "Examiner les copies du plan",
+          "outcome": {
+            "type": "goto",
+            "next": 57
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 57,
+            "onFailure": 256
+          }
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "title": "Le dernier passage du Nil",
+      "text": "IV · L'eau des pyramides. Youssef charge les documents dans une caisse étanche. La traversée vous ramène au camp avec les témoignages des villages.",
+      "choices": [
+        {
+          "text": "Monter dans la barque chargée de documents",
+          "outcome": {
+            "type": "goto",
+            "next": 58
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 157
+          }
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "title": "Le conseil du soir",
+      "text": "IV · L'eau des pyramides. Napoléon Bonaparte attend avec les intendants. Votre rapport distingue les faits établis des rumeurs qui ont accompagné l'enquête.",
+      "choices": [
+        {
+          "text": "Parler à Napoléon Bonaparte au conseil",
+          "outcome": {
+            "type": "goto",
+            "next": 59
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 59,
+            "onFailure": 258
+          }
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "title": "Les engagements écrits",
+      "text": "IV · L'eau des pyramides. Salma demande que les accords d'accès à l'eau soient écrits. Un officier accepte de faire porter un double au village avant le départ du convoi.",
+      "choices": [
+        {
+          "text": "Examiner les engagements sur la table",
+          "outcome": {
+            "type": "goto",
+            "next": 60
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 60,
+            "onFailure": 259
+          }
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "title": "Les derniers complices",
+      "text": "IV · L'eau des pyramides. Un complice tente encore de récupérer le faux sceau. Farid propose de le remettre aux responsables du quartier avec les preuves du trafic.",
+      "choices": [
+        {
+          "text": "Parler à Farid pour remettre les preuves",
+          "outcome": {
+            "type": "goto",
+            "next": 61
+          }
+        },
+        {
+          "text": "Défier le complice au sabre",
+          "outcome": {
+            "type": "fight",
+            "foes": [
+              {
+                "name": "Complice armé",
+                "st": 14,
+                "dx": 11,
+                "iq": 9,
+                "ht": 11,
+                "skills": [
+                  {
+                    "skill": "knife",
+                    "level": 15
+                  }
+                ],
+                "weapon": "largeKnife",
+                "armor": "none",
+                "naturalDR": 0
+              }
+            ],
+            "onWin": 61
+          }
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "title": "La route des réserves",
+      "text": "IV · L'eau des pyramides. Le premier convoi emprunte la route corrigée. Vous accompagnez les porteurs jusqu'à l'embranchement qui dessert le village.",
+      "choices": [
+        {
+          "text": "Suivre le chemin du convoi",
+          "outcome": {
+            "type": "goto",
+            "next": 62
+          }
+        },
+        {
+          "text": "Examiner les objets et les traces du lieu",
+          "outcome": {
+            "type": "goto",
+            "next": 161
+          }
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "title": "La lumière sur Gizeh",
+      "text": "IV · L'eau des pyramides. Le soleil descend derrière les palmiers et les pyramides. Salma vous rejoint pour décider à qui confier le dernier carnet de terrain.",
+      "choices": [
+        {
+          "text": "Rejoindre Salma par le sentier",
+          "outcome": {
+            "type": "goto",
+            "next": 63
+          }
+        },
+        {
+          "text": "Examiner les traces discrètement (Discrétion)",
+          "outcome": {
+            "type": "roll",
+            "against": "stealth",
+            "modifier": 0,
+            "onSuccess": 63,
+            "onFailure": 262
+          }
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "title": "Le choix du cartographe",
+      "text": "IV · L'eau des pyramides. Deux travaux vous attendent : accompagner les savants dans leurs relevés ou rester auprès des habitants pour entretenir les accès à l'eau. Bonaparte a reçu les cartes ; votre propre route vous appartient.",
+      "choices": [
+        {
+          "text": "Confier le carnet aux savants",
+          "outcome": {
+            "type": "goto",
+            "next": 64
+          }
+        },
+        {
+          "text": "Rejoindre Amina pour entretenir les accès à l'eau",
+          "outcome": {
+            "type": "goto",
+            "next": 65
+          }
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "title": "Fin · Le carnet des savants",
+      "text": "Vous accompagnez Salma et les savants dans de nouveaux relevés. Les copies des cartes restent accessibles aux habitants ; votre carnet distingue désormais ce que vous avez mesuré de ce qu'on vous a raconté.",
+      "choices": []
+    },
+    {
+      "id": 65,
+      "title": "Fin · Les gardiens de l'eau",
+      "text": "Vous restez avec Amina pour transmettre les relevés et réparer les passages. Bonaparte poursuit sa campagne ; votre aventure se termine par un travail partagé dont les villages peuvent garder la maîtrise.",
+      "choices": []
+    },
+    {
+      "id": 101,
+      "title": "La tente de Salma · Le détour",
+      "text": "Salma attend sous une toile rayée. La cartographe reconnaît une marque sur l'étui abandonné : le voleur a quitté le camp par le port. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 2
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "title": "Le balcon du négociant · Le détour",
+      "text": "Salma attend près d'une fenêtre ouverte. Elle a retrouvé le nom d'un passeur qui connaît les canaux mieux que les officiers. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 6
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "title": "La voile rapiécée · Le détour",
+      "text": "Youssef attend à l'ombre d'une voile bleue. Il accepte de vous conduire jusqu'à la première écluse en échange d'un coup de main aux amarres. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 10
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 9
+          }
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "title": "Le marché aux cordes · Le détour",
+      "text": "Amina demande des nouvelles du convoi. Elle a vu passer un homme tenant l'étui des cartes comme s'il contenait un trésor. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 14
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 13
+          }
+        }
+      ]
+    },
+    {
+      "id": 117,
+      "title": "Le moulin à eau · Le détour",
+      "text": "Une roue immobile retient les débris d'une crue. Une pièce du mécanisme ressemble au croquis du carnet volé. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 18
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 17
+          }
+        }
+      ]
+    },
+    {
+      "id": 121,
+      "title": "Les tentes de l'infirmerie · Le détour",
+      "text": "Le médecin vous demande d'épargner les réserves d'eau. Un blessé a entendu le nom d'un village où les cartes doivent être échangées. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 22
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 21
+          }
+        }
+      ]
+    },
+    {
+      "id": 125,
+      "title": "Le bac de la rive orientale · Le détour",
+      "text": "Youssef attend le retour du bac. De l'autre côté, deux itinéraires rejoignent un caravansérail sans traverser le camp militaire. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 26
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 25
+          }
+        }
+      ]
+    },
+    {
+      "id": 129,
+      "title": "Le four du boulanger · Le détour",
+      "text": "Le boulanger reconnaît le cachet du brouillon. Son voisin grave les sceaux des négociants et travaille encore malgré la chaleur. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 30
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 29
+          }
+        }
+      ]
+    },
+    {
+      "id": 133,
+      "title": "Les carrés de toile · Le détour",
+      "text": "Des officiers disposent des morceaux de toile sur une table pour expliquer leurs mouvements. Un messager vous indique où retrouver Bonaparte après le conseil. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 34
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 33
+          }
+        }
+      ]
+    },
+    {
+      "id": 137,
+      "title": "Le refuge des familles · Le détour",
+      "text": "Amina attend près d'un puits dont la corde s'est rompue. Vous pouvez rejoindre les charpentiers pour remettre le passage en service. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 38
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 37
+          }
+        }
+      ]
+    },
+    {
+      "id": 141,
+      "title": "La porte du Caire · Le détour",
+      "text": "Salma s'entretient avec un responsable du quartier. Il accepte de vous guider si l'enquête ne devient pas un prétexte pour saisir les réserves des habitants. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 42
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 41
+          }
+        }
+      ]
+    },
+    {
+      "id": 145,
+      "title": "La loggia de Monge · Le détour",
+      "text": "Gaspard Monge attend devant un relevé incomplet. Il confirme que le carnet mêle des mesures utiles à des indications volontairement fausses. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 46
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 45
+          }
+        }
+      ]
+    },
+    {
+      "id": 149,
+      "title": "Les colonnes du temple · Le détour",
+      "text": "Le vent siffle entre les colonnes. Un morceau d'étui dépasse du sable près d'une marche où quelqu'un s'est assis récemment. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 50
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 49
+          }
+        }
+      ]
+    },
+    {
+      "id": 153,
+      "title": "La citerne · Le détour",
+      "text": "Vous retrouvez le plan complet sur une table basse. Les fausses indications peuvent être corrigées, mais il faut encore distinguer les relevés fiables. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 54
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 53
+          }
+        }
+      ]
+    },
+    {
+      "id": 157,
+      "title": "Le dernier passage du Nil · Le détour",
+      "text": "Youssef charge les documents dans une caisse étanche. La traversée vous ramène au camp avec les témoignages des villages. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 58
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 57
+          }
+        }
+      ]
+    },
+    {
+      "id": 161,
+      "title": "La route des réserves · Le détour",
+      "text": "Le premier convoi emprunte la route corrigée. Vous accompagnez les porteurs jusqu'à l'embranchement qui dessert le village. Vous prenez le temps d'écouter un autre témoignage et d'en noter les détails. Les lieux peuvent être réexaminés ; poursuivre l'enquête reste votre décision.",
+      "choices": [
+        {
+          "text": "Suivre le sentier pour poursuivre l'enquête",
+          "outcome": {
+            "type": "goto",
+            "next": 62
+          }
+        },
+        {
+          "text": "Revenir au lieu principal pour comparer les indices",
+          "outcome": {
+            "type": "goto",
+            "next": 61
+          }
+        }
+      ]
+    },
+    {
+      "id": 200,
+      "title": "Le camp des savants · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": 203,
+      "title": "Le registre du magasinier · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 4
+          }
+        }
+      ]
+    },
+    {
+      "id": 207,
+      "title": "La maison du pilote · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": 211,
+      "title": "La borne du canal · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 12
+          }
+        }
+      ]
+    },
+    {
+      "id": 214,
+      "title": "L'atelier du relieur · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 15
+          }
+        }
+      ]
+    },
+    {
+      "id": 215,
+      "title": "La première halte sur le Nil · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 16
+          }
+        }
+      ]
+    },
+    {
+      "id": 216,
+      "title": "Les roseaux du delta · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 17
+          }
+        }
+      ]
+    },
+    {
+      "id": 218,
+      "title": "La cour des potiers · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 19
+          }
+        }
+      ]
+    },
+    {
+      "id": 219,
+      "title": "La terrasse des palmiers · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 20
+          }
+        }
+      ]
+    },
+    {
+      "id": 222,
+      "title": "La lettre de Desaix · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 23
+          }
+        }
+      ]
+    },
+    {
+      "id": 223,
+      "title": "Le jardin irrigué · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 24
+          }
+        }
+      ]
+    },
+    {
+      "id": 224,
+      "title": "Les marches du débarcadère · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 25
+          }
+        }
+      ]
+    },
+    {
+      "id": 226,
+      "title": "Le caravansérail · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 27
+          }
+        }
+      ]
+    },
+    {
+      "id": 227,
+      "title": "La chambre aux tapis · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 28
+          }
+        }
+      ]
+    },
+    {
+      "id": 230,
+      "title": "L'atelier des sceaux · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 31
+          }
+        }
+      ]
+    },
+    {
+      "id": 231,
+      "title": "La nuit sur la terrasse · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 32
+          }
+        }
+      ]
+    },
+    {
+      "id": 232,
+      "title": "La route d'Embabeh · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 33
+          }
+        }
+      ]
+    },
+    {
+      "id": 234,
+      "title": "La tente du général · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 35
+          }
+        }
+      ]
+    },
+    {
+      "id": 235,
+      "title": "La levée de terre · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 36
+          }
+        }
+      ]
+    },
+    {
+      "id": 238,
+      "title": "La passerelle démontée · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 39
+          }
+        }
+      ]
+    },
+    {
+      "id": 239,
+      "title": "Le départ des felouques · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 40
+          }
+        }
+      ]
+    },
+    {
+      "id": 240,
+      "title": "Les colonnes du vieux quai · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 41
+          }
+        }
+      ]
+    },
+    {
+      "id": 242,
+      "title": "La cour des fontaines · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 43
+          }
+        }
+      ]
+    },
+    {
+      "id": 243,
+      "title": "L'escalier du copiste · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 44
+          }
+        }
+      ]
+    },
+    {
+      "id": 246,
+      "title": "Le jardin des instruments · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 47
+          }
+        }
+      ]
+    },
+    {
+      "id": 247,
+      "title": "La barque de Gizeh · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 48
+          }
+        }
+      ]
+    },
+    {
+      "id": 248,
+      "title": "Au pied des pyramides · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 49
+          }
+        }
+      ]
+    },
+    {
+      "id": 250,
+      "title": "Le camp des ouvriers · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 51
+          }
+        }
+      ]
+    },
+    {
+      "id": 251,
+      "title": "La galerie fraîche · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 52
+          }
+        }
+      ]
+    },
+    {
+      "id": 254,
+      "title": "Le relevé des ombres · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 55
+          }
+        }
+      ]
+    },
+    {
+      "id": 255,
+      "title": "Le retour au village · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 56
+          }
+        }
+      ]
+    },
+    {
+      "id": 256,
+      "title": "Les copies du plan · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 57
+          }
+        }
+      ]
+    },
+    {
+      "id": 258,
+      "title": "Le conseil du soir · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 59
+          }
+        }
+      ]
+    },
+    {
+      "id": 259,
+      "title": "Les engagements écrits · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 60
+          }
+        }
+      ]
+    },
+    {
+      "id": 262,
+      "title": "La lumière sur Gizeh · Une autre piste",
+      "text": "Votre approche a attiré l'attention. Salma intervient et obtient le temps d'expliquer la mission ; cette étape vous permet de comparer les témoignages sans imposer un combat.",
+      "choices": [
+        {
+          "text": "Parler à Salma puis reprendre le chemin",
+          "outcome": {
+            "type": "goto",
+            "next": 63
+          }
+        }
+      ]
+    }
+  ],
+  "wish": "Une longue aventure avec Napoléon pendant la campagne d'Égypte, au temps de la bataille des Pyramides.",
+  "fairnessSeed": 20261103
+}

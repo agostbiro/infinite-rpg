@@ -162,7 +162,7 @@ Returns `seen` plus every Scene found. -/
 def explore (a : Adventure) : Nat → List SceneId → List SceneId
   | 0, seen => seen
   | fuel + 1, seen =>
-    let found := (seen.flatMap (successors a)).filter (· ∉ seen)
+    let found := ((seen.flatMap (successors a)).filter (· ∉ seen)).eraseDups
     if found = [] then seen else explore a fuel (seen ++ found)
 
 /-- If every Scene in `seen` can be reached, so can every Scene that `explore` returns. -/
@@ -185,13 +185,23 @@ theorem explore_reachable {a : Adventure} :
       intro x hx
       rcases List.mem_append.mp hx with hx | hx
       · exact h x hx
-      · simp only [List.mem_filter, List.mem_flatMap] at hx
+      · simp only [List.mem_eraseDups, List.mem_filter, List.mem_flatMap] at hx
         obtain ⟨⟨s, hs, hsucc⟩, _⟩ := hx
         exact Reachable.next (h s hs) (leads_of_mem_successors hsucc)
 
 /-- The Scenes that the checker finds can be reached from the start. -/
 def reachableScenes (a : Adventure) : List SceneId :=
   explore a (a.scenes.length + 1) [a.start]
+
+-- Converging choices must not multiply the work at each level of a long story.
+#guard reachableScenes {
+  title := "Converging paths", start := 0, scenes := [
+    { id := 0, title := "Start", text := "", choices := [
+      { text := "Left", outcome := .goto 1 }, { text := "Right", outcome := .goto 1 }] },
+    { id := 1, title := "Middle", text := "", choices := [
+      { text := "Left", outcome := .goto 2 }, { text := "Right", outcome := .goto 2 }] },
+    { id := 2, title := "End", text := "", choices := [] }
+  ] } == [0, 1, 2]
 
 /-- Every Scene in `reachableScenes a` can be reached from the start. -/
 theorem reachable_of_mem {a : Adventure} {x : SceneId}

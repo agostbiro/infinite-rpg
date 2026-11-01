@@ -27,6 +27,11 @@ structure FairnessPolicy where
 def defaultPolicy : FairnessPolicy :=
   ⟨weibullRetention, weibullShape, fairnessTolerance⟩
 
+/-- Exploration policy requested by the player: a discrete median of ten scene choices.
+The rational retention approximates 2^(-1/100); the tolerance is unchanged. -/
+def explorationPolicy : FairnessPolicy :=
+  ⟨99309 / 100000, 2, fairnessTolerance⟩
+
 /-- Exclude invalid Weibull parameters and vacuous tolerances. -/
 def FairnessPolicy.Valid (p : FairnessPolicy) : Prop :=
   0 < p.retention ∧ p.retention < 1 ∧ 0 < p.shape ∧
@@ -51,6 +56,15 @@ def FairnessPolicy.deathWithinTwo (p : FairnessPolicy) (t : Nat) : Rat :=
 
 /-- The chosen default parameters define a nondegenerate policy. -/
 theorem defaultPolicy_valid : defaultPolicy.Valid := by decide +kernel
+
+/-- The exploration parameters form a valid policy. -/
+theorem explorationPolicy_valid : explorationPolicy.Valid := by decide +kernel
+
+/-- The reference lifetime crosses one-half between turns nine and ten. -/
+theorem explorationPolicy_median :
+    (1 / 2 : Rat) < explorationPolicy.survival 9 ∧
+    explorationPolicy.survival 10 ≤ (1 / 2 : Rat) := by
+  decide +kernel
 
 /-- The reference lifetime starts alive with probability one. -/
 example : defaultPolicy.survival 0 = 1 := by decide +kernel
