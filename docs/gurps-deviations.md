@@ -125,3 +125,19 @@ These entries describe the full v1 design. The current v0 version leaves out mor
 **Reason:** In v0 the Character's HP change only in Fights, and there is no movement or fatigue.
 
 **Follow-up task:** Let a Scene heal the Character after a First Aid roll, by the Recovery rules.
+
+## 13. The flamethrower sprays every Creature
+
+**GURPS Basic Set (not in GURPS Lite):** A flamethrower is a ranged weapon with Liquid Projector skill. It fires a jet at one target, or sweeps an area by the area-attack rules.
+
+**This game:** The flamethrower does 3d burning damage whatever the user's ST, and needs ST 10. Each attack with it is a spray: the attacker rolls a separate attack against each living Creature, in list order. Each Creature may Dodge. Burning injury is the damage that gets past DR, with no multiplier, and the lowest basic damage is 1. There is no range, ammunition, or fire that goes on burning.
+
+**Reason:** There is no map and no range in this game. One spray attack per foe is the simple form of an area attack.
+
+## 14. The fairness model's Player picks maneuvers at random
+
+**GURPS Lite:** The rules say nothing about how a Player picks a maneuver.
+
+**This game:** This is not a change to play. The Player in the browser picks each maneuver. The fairness check (`Rpg/Probability/`) needs a model of a Player, so its Player picks Attack, All-Out Attack, or All-Out Defense with chance 1/3 each, and then a living target at random. It also picks each Choice in a Scene at random.
+
+**Reason:** A fixed and simple model of the Player keeps the fairness check exact and easy to review. Real Players can do better or worse than it.

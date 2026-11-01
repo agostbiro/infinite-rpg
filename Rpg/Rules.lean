@@ -1,8 +1,9 @@
 /-!
-# Game rules
+# Reusable GURPS Lite types and mechanics
 
-This file holds the GURPS Lite rules that the game uses: beings, skills, gear,
-point costs, the damage table, and success rolls.
+This library supplies reusable GURPS Lite defaults: beings, skills, gear,
+point costs, damage tables, and success rolls. Each adventure has its own
+`RuleSet` (see `Rpg/RuleSet.lean`) in its `Rules.lean`. Play and the fairness check get that value as an argument.
 Page numbers refer to GURPS Lite, Fourth Edition (2020).
 The file `docs/gurps-deviations.md` lists each place where these rules differ from GURPS Lite.
 -/
@@ -41,12 +42,14 @@ inductive Skill where
   | firstAid
   | fastTalk
   | staff
+  /-- Liquid Projector: the skill to aim a flamethrower (GURPS Basic Set; not in GURPS Lite). -/
+  | liquidProjector
   deriving Repr, DecidableEq
 
 /-- Every skill, in a fixed order. -/
 def Skill.all : List Skill :=
   [.broadsword, .knife, .brawling, .stealth, .lockpicking, .diplomacy, .survival, .naturalist,
-   .occultism, .riding, .climbing, .swimming, .firstAid, .fastTalk, .staff]
+   .occultism, .riding, .climbing, .swimming, .firstAid, .fastTalk, .staff, .liquidProjector]
 
 /-- `Skill.all` lists every skill. -/
 theorem Skill.mem_all (s : Skill) : s ∈ Skill.all := by
@@ -69,6 +72,7 @@ def Skill.attribute : Skill → Attribute
   | .firstAid => .iq
   | .fastTalk => .iq
   | .staff => .dx
+  | .liquidProjector => .dx
 
 /-- How hard a skill is to learn. -/
 def Skill.difficulty : Skill → Difficulty
@@ -87,6 +91,7 @@ def Skill.difficulty : Skill → Difficulty
   | .firstAid => .easy
   | .fastTalk => .average
   | .staff => .average
+  | .liquidProjector => .easy
 
 /-- The penalty to the attribute when a being uses a skill it has not learned (p. 13-17).
 `none` means the being cannot use the skill untrained.
@@ -108,6 +113,7 @@ def Skill.defaultPenalty : Skill → Option Int
   | .firstAid => some (-4)
   | .fastTalk => some (-5)
   | .staff => some (-5)
+  | .liquidProjector => some (-4)
 
 /-- The name of a skill, for display. -/
 def Skill.name : Skill → String
@@ -126,12 +132,16 @@ def Skill.name : Skill → String
   | .firstAid => "First Aid"
   | .fastTalk => "Fast-Talk"
   | .staff => "Staff"
+  | .liquidProjector => "Liquid Projector"
 
 /-- The kinds of damage in this game (p. 19). -/
 inductive DamageType where
   | crushing
   | cutting
   | impaling
+  /-- Fire. Injury equals the damage that gets past DR, as for crushing.
+  The lowest basic damage is 1, as for every type except crushing (p. 29). -/
+  | burning
   deriving Repr, DecidableEq
 
 /-- A weapon. Each weapon has one attack mode in this version. -/
@@ -144,10 +154,12 @@ inductive Weapon where
   | punch
   /-- Quarterstaff, swung, with Staff skill: sw+2 crushing, ST 7, two hands (p. 20). -/
   | quarterstaff
+  /-- Flamethrower: 3d burning, ST 10. It sprays every living foe (deviation 13). -/
+  | flamethrower
   deriving Repr, DecidableEq
 
 /-- Every weapon, in a fixed order. -/
-def Weapon.all : List Weapon := [.broadsword, .largeKnife, .punch, .quarterstaff]
+def Weapon.all : List Weapon := [.broadsword, .largeKnife, .punch, .quarterstaff, .flamethrower]
 
 /-- `Weapon.all` lists every weapon. -/
 theorem Weapon.mem_all (w : Weapon) : w ∈ Weapon.all := by
@@ -189,7 +201,7 @@ structure Being where
   armor : Armor
   /-- Natural DR, such as a stone hide. Only Creatures may have it. -/
   naturalDR : Nat := 0
-  deriving Repr
+  deriving Repr, DecidableEq
 
 /-- The score of an attribute. -/
 def Being.attr (b : Being) : Attribute → Nat
@@ -302,6 +314,7 @@ def Weapon.skill : Weapon → Skill
   | .largeKnife => .knife
   | .punch => .brawling
   | .quarterstaff => .staff
+  | .flamethrower => .liquidProjector
 
 /-- The lowest ST that can use a weapon without penalty (p. 20). -/
 def Weapon.minST : Weapon → Nat
@@ -309,6 +322,7 @@ def Weapon.minST : Weapon → Nat
   | .largeKnife => 6
   | .punch => 0
   | .quarterstaff => 7
+  | .flamethrower => 10
 
 /-- The damage type of a weapon's attack. -/
 def Weapon.damageType : Weapon → DamageType
@@ -316,6 +330,7 @@ def Weapon.damageType : Weapon → DamageType
   | .largeKnife => .impaling
   | .punch => .crushing
   | .quarterstaff => .crushing
+  | .flamethrower => .burning
 
 /-- The damage roll of a weapon in the hands of a being with a given ST. -/
 def Weapon.damage (w : Weapon) (st : Nat) : Dice :=
@@ -324,6 +339,7 @@ def Weapon.damage (w : Weapon) (st : Nat) : Dice :=
   | .largeKnife => thrust st
   | .punch => let d := thrust st; ⟨d.count, d.add - 1⟩
   | .quarterstaff => let d := swing st; ⟨d.count, d.add + 2⟩
+  | .flamethrower => ⟨3, 0⟩
 
 /-- The name of a weapon, for display. -/
 def Weapon.name : Weapon → String
@@ -331,6 +347,12 @@ def Weapon.name : Weapon → String
   | .largeKnife => "large knife"
   | .punch => "fists"
   | .quarterstaff => "quarterstaff"
+  | .flamethrower => "flamethrower"
+
+/-- `true` if the weapon attacks every living foe on each turn, not one target. -/
+def Weapon.spray : Weapon → Bool
+  | .flamethrower => true
+  | _ => false
 
 -- A quarterstaff at ST 10 swings for 1d+2: swing damage 1d, plus 2.
 #guard Weapon.quarterstaff.damage 10 == ⟨1, 2⟩
@@ -347,9 +369,6 @@ def DamageType.minDamage : DamageType → Nat
 def basicDamage (d : Dice) (t : DamageType) (diceSum : Nat) : Nat :=
   max t.minDamage ((diceSum : Int) + d.add).toNat
 
-/-- The highest basic damage a weapon can do: every die shows 6. -/
-def maxBasicDamage (d : Dice) (t : DamageType) : Nat := basicDamage d t (6 * d.count)
-
 /-- Injury from basic damage (p. 29). DR is subtracted first. Then cutting is times 1.5 and
 impaling is times 2, with fractions dropped. Any damage that gets past DR gives at least 1 injury. -/
 def injury (t : DamageType) (dr : Nat) (basic : Nat) : Nat :=
@@ -359,22 +378,19 @@ def injury (t : DamageType) (dr : Nat) (basic : Nat) : Nat :=
     | .crushing => pen
     | .cutting => pen * 3 / 2
     | .impaling => pen * 2
+    | .burning => pen
   max 1 wounded
+
+-- Burning injury is the damage that gets past DR, with no multiplier.
+example : injury .burning 2 10 = 8 := by decide
+-- The flamethrower does 3d whatever the user's ST.
+example : Weapon.flamethrower.damage 11 = ⟨3, 0⟩ := by decide
 
 /-- The level at which a being attacks with its weapon. A punch uses the higher of Brawling and DX (p. 26). -/
 def Being.attackLevel (b : Being) : Int :=
   match b.weapon with
   | .punch => max ((b.learnedLevel .brawling).getD 0 : Int) b.dx
   | w => (b.skillLevel w.skill).getD 0
-
-/-- `a` can hurt `b`: `a` can make an attack roll (attack level 3 or more, p. 2),
-and the best possible hit from `a` gets past the DR of `b`. -/
-def Being.canHurt (a b : Being) : Prop :=
-  3 ≤ a.attackLevel ∧
-  b.dr < maxBasicDamage (a.weapon.damage a.st) a.weapon.damageType
-
-instance (a b : Being) : Decidable (a.canHurt b) := by
-  unfold Being.canHurt; infer_instance
 
 /-! ## Success rolls -/
 

@@ -16,8 +16,8 @@ namespace Rpg
 open Lean
 
 /-- Basic Speed as text with two decimals, such as "6.00". -/
-def speedText (b : Being) : String :=
-  let x := b.speedX4
+def speedText (rules : RuleSet) (b : Being) : String :=
+  let x := rules.speedX4 b
   s!"{x / 4}.{["00", "25", "50", "75"].getD (x % 4) "00"}"
 
 /-- The name of a Maneuver for a button. -/
@@ -48,28 +48,28 @@ def withWeaponText (th : ThemeNames) (w : Weapon) : String :=
   | none => if w = .punch then "with bare fists" else s!"with a {w.name}"
 
 /-- The damage of a being's weapon as text, such as "1d+2 cutting". -/
-def damageText (b : Being) : String :=
-  s!"{(b.weapon.damage b.st).show} {b.weapon.damageType.name}"
+def damageText (rules : RuleSet) (b : Being) : String :=
+  s!"{(rules.damage b.weapon b.st).show} {b.weapon.damageType.name}"
 
 /-- The Character panel: attributes, skills, Gear, and HP. Names are Theme Names. -/
-def characterJson (th : ThemeNames) (b : Being) (hp : Int) : Json :=
+def characterJson (rules : RuleSet) (th : ThemeNames) (b : Being) (hp : Int) : Json :=
   json% {
     name: $(b.name), st: $(b.st), dx: $(b.dx), iq: $(b.iq), ht: $(b.ht),
-    hp: $(hp), maxHP: $(b.maxHP), dodge: $(b.dodge), speed: $(speedText b),
+    hp: $(hp), maxHP: $(rules.maxHP b), dodge: $(rules.dodge b), speed: $(speedText rules b),
     skills: $(b.skills.map fun (s, l) => json% { name: $(th.skill s), level: $(l) }),
     weapon: $(th.weapon b.weapon),
-    damage: $(damageText b),
-    attack: $(b.attackLevel),
-    armor: $(th.armorName b.armor), dr: $(b.dr)
+    damage: $(damageText rules b),
+    attack: $(rules.attackLevel b),
+    armor: $(th.armorName b.armor), dr: $(rules.dr b)
   }
 
 /-- One being in a Fight, for its card. -/
-def fighterJson (th : ThemeNames) (who : Actor) (f : Fighter) : Json :=
+def fighterJson (rules : RuleSet) (th : ThemeNames) (who : Actor) (f : Fighter) : Json :=
   json% {
-    actor: $(who), name: $(f.being.name), hp: $(f.hp), maxHP: $(f.being.maxHP),
+    actor: $(who), name: $(f.being.name), hp: $(f.hp), maxHP: $(rules.maxHP f.being),
     alive: $(f.alive), maneuver: $(f.maneuver.label), weapon: $(th.weapon f.being.weapon),
-    damage: $(damageText f.being),
-    attack: $(f.being.attackLevel), dodge: $(f.dodge), dr: $(f.being.dr)
+    damage: $(damageText rules f.being),
+    attack: $(rules.attackLevel f.being), dodge: $(f.dodge rules), dr: $(rules.dr f.being)
   }
 
 /-- A card at the start of a Fight, with the weapon's Theme Name. -/
@@ -96,7 +96,7 @@ def reportJson (th : ThemeNames) : Report → Json
   | r => toJson r
 
 /-- The Fight part of the view. Each Maneuver lists the inputs it offers. -/
-def fightJson (th : ThemeNames) (offered : List Input) (f : FightPhase) : Json :=
+def fightJson (rules : RuleSet) (th : ThemeNames) (offered : List Input) (f : FightPhase) : Json :=
   let maneuvers := maneuverMenu.map fun m =>
     let options := offered.filterMap fun i =>
       match i with
@@ -105,8 +105,8 @@ def fightJson (th : ThemeNames) (offered : List Input) (f : FightPhase) : Json :
     json% { label: $(m.label), help: $(m.help), attacks: $(m.attacks), options: $(options) }
   json% {
     round: $(f.round),
-    hero: $(fighterJson th none f.state.hero),
-    foes: $(f.state.foes.zipIdx.map fun (x, i) => fighterJson th (some i) x),
+    hero: $(fighterJson rules th none f.state.hero),
+    foes: $(f.state.foes.zipIdx.map fun (x, i) => fighterJson rules th (some i) x),
     maneuvers: $(maneuvers)
   }
 
@@ -135,14 +135,14 @@ def viewJson (g : Game) (seed : Nat) (reports : Array Report) (fresh : Nat)
     | _ => g.hp
   let th := g.adventure.themes
   let fight := match g.phase with
-    | .fight f => fightJson th g.inputs f
-    | .dead f => fightJson th [] f
+    | .fight f => fightJson g.rules th g.inputs f
+    | .dead f => fightJson g.rules th [] f
     | _ => Json.null
   json% {
     seed: $(seed),
     adventure: $(g.adventure.title),
     phase: $(g.phase.name),
-    character: $(characterJson th g.hero hp),
+    character: $(characterJson g.rules th g.hero hp),
     scene: $(match g.sceneId? with | some id => sceneJson g id | none => Json.null),
     fight: $(fight),
     map: $(g.map),

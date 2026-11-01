@@ -1,4 +1,5 @@
 import Rpg.View
+import Rpg.Probability.StatisticalAdmission
 
 /-!
 # Live Adventures
@@ -7,10 +8,16 @@ The Player types a Wish, and the DM (an LLM, large language model) sends back an
 Character as JSON (JavaScript Object Notation). This file reads that JSON into a `Draft` and turns
 a `Draft` into a `Game`.
 
-`Draft.toGame` is the only way from a Draft to a Game. It runs the proved checker on the
+`Draft.toGame` is the only way in this code from a Draft to a Game. This holds by convention, not
+by type: `Game.new` is public, and the server calls only `Draft.toGame`. It runs the proved checker on the
 Character and on the Adventure. A `Game` needs the proofs `LegalCharacter` and `LegalAdventure`
 (see `Game.new`), and `Draft.toGame` gets them only from `checkCharacter_sound` and `check_sound`.
 So a Draft that the checker rejects can never be played.
+
+Then `Draft.toGame` runs the fairness check (admission): 1,000 games from a seed, with
+horizon 5. A Draft that fails a row is not played either. The server picks a fresh random seed for
+each try and saves it with the Adventure, so a saved Adventure gives the same result when it loads.
+A Wish uses the default rules (`liveRules`). The DM cannot change them.
 
 Before the checker runs, `sizeErrors` refuses a Draft that is too large to show well, for
 example more than 40 Scenes. These limits are not part of the spec.
@@ -42,6 +49,7 @@ def Skill.key : Skill → String
   | .firstAid => "firstAid"
   | .fastTalk => "fastTalk"
   | .staff => "staff"
+  | .liquidProjector => "liquidProjector"
 
 /-- The JSON name of a weapon, such as "largeKnife". -/
 def Weapon.key : Weapon → String
@@ -49,6 +57,7 @@ def Weapon.key : Weapon → String
   | .largeKnife => "largeKnife"
   | .punch => "punch"
   | .quarterstaff => "quarterstaff"
+  | .flamethrower => "flamethrower"
 
 /-- The JSON name of a type of armor. -/
 def Armor.key : Armor → String
@@ -270,23 +279,46 @@ def sizeErrors (d : Draft) : List String :=
 
 /-! ## From a Draft to a Game -/
 
+/-- The rules of every Wish: the default rules. -/
+def liveRules : RuleSet := {}
+
+/-- The number of turns that the fairness check covers for a Wish, after the first one. -/
+def liveHorizon : Nat := 5
+
 /-- All errors in a Draft: the size errors, or else the checker's errors for the Character and
-for the Adventure. An empty list means the Draft can be played. -/
+for the Adventure. An empty list means the Draft passes the checker. -/
 def Draft.errors (d : Draft) : List String :=
   match sizeErrors d with
-  | [] => checkCharacter d.hero ++ check d.hero d.adventure
+  | [] => checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure
   | errs => errs
 
-/-- **The only way from a Draft to a Game.** It runs the checker on the Character and on the
-Adventure. If both find no errors, the soundness theorems give the proofs that `Game.new` needs.
-Else it returns the errors. -/
-def Draft.toGame (d : Draft) : Except (List String) Game :=
+/-- Run the size limits and the checker on a Draft. If both find no errors, the soundness theorems
+give the proofs that an `AdventureDefinition` needs. Else it returns the errors. -/
+private def Draft.checked (d : Draft) : Except (List String) AdventureDefinition :=
   if sizeErrors d ≠ [] then .error (sizeErrors d) else
-  if hc : checkCharacter d.hero = [] then
-    if ha : check d.hero d.adventure = [] then
-      .ok (Game.new d.hero (checkCharacter_sound hc) ⟨d.adventure, check_sound ha⟩)
-    else .error (check d.hero d.adventure)
-  else .error (checkCharacter d.hero ++ check d.hero d.adventure)
+  if hc : checkCharacter liveRules d.hero = [] then
+    if ha : check liveRules d.hero d.adventure = [] then
+      .ok ⟨liveRules, d.hero, checkCharacter_sound hc, d.adventure, check_sound ha⟩
+    else .error (check liveRules d.hero d.adventure)
+  else .error (checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure)
+
+/-- A Draft that passed the checker, as a candidate for the fairness check. -/
+def liveCandidate (defn : AdventureDefinition) : Probability.StatisticalCandidate where
+  toAdventureDefinition := defn
+  horizon := liveHorizon
+  horizonPositive := by decide
+
+/-- **The only way in this code from a Draft to a Game.** It runs the checker, then the fairness check with
+1,000 games from `seed`. If both pass, it returns the Game. Else it returns the errors. Each
+fairness error starts with "fairness:" and names the row that failed. -/
+def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
+  match d.checked with
+  | .error errs => .error errs
+  | .ok defn =>
+    match Probability.admitWithSeed (liveCandidate defn) seed with
+    | (_, some a) => .ok (Game.new a.candidate.toAdventureDefinition)
+    | (counts, none) =>
+      .error ((Probability.failedRows liveHorizon counts).map ("fairness: " ++ ·))
 
 /-- How the points of a being add up, such as "ST 11: 10, DX 12: 40, ... Total: 100". The DM
 gets this with the errors, so it can fix a build. -/
@@ -337,10 +369,10 @@ def fixtureIllegal : String :=
 def fixtureTooLong : String :=
   fixtureLegal.replace "You reach the mill." ("".pushn 'x' 2001)
 
-/-- `true` if the JSON text reads as a Draft and the Draft can be played. -/
-def playable (s : String) : Bool :=
+/-- `true` if the JSON text reads as a Draft and the Draft passes the checker. -/
+def passesChecker (s : String) : Bool :=
   match Draft.parse s with
-  | .ok d => (d.toGame matches .ok _)
+  | .ok d => (d.checked matches .ok _)
   | .error _ => false
 
 /-- The errors for JSON text: the decoder's error, or the Draft's errors. -/
@@ -349,15 +381,15 @@ def draftErrors (s : String) : List String :=
   | .ok d => d.errors
   | .error e => [e]
 
--- The legal fixture reads, passes the checker, and can be played.
-#guard playable fixtureLegal
+-- The legal fixture reads and passes the checker.
+#guard passesChecker fixtureLegal
 #guard draftErrors fixtureLegal == []
 -- Its Theme Names are read, and its Scenes get Picture names.
 #guard match Draft.parse fixtureLegal with
   | .ok d => d.adventure.themes.weapon .quarterstaff == "Ash Pole" &&
       d.adventure.themes.skill .swimming == "Swimming" &&
       d.adventure.scenes.map (·.picture) == [some "scene-0", some "scene-1", some "scene-2"] &&
-      d.hero.points == 100
+      d.hero.points == liveRules.characterPoints
   | .error _ => false
 -- Writing a Draft as JSON and reading it back gives the same Draft.
 #guard match Draft.parse fixtureLegal with
@@ -365,20 +397,28 @@ def draftErrors (s : String) : List String :=
   | .error _ => false
 -- The illegal fixture fails the checker: the Character costs 120 points, and Scene 1 has
 -- no way to an Ending.
-#guard !playable fixtureIllegal
+#guard !passesChecker fixtureIllegal
 #guard (draftErrors fixtureIllegal).any (·.startsWith "Wren: costs 120 points")
 #guard (draftErrors fixtureIllegal).any (·.startsWith "Scene 1 (The Otter) has no way to an Ending")
 -- The long fixture fails the size limit, and the checker does not run.
 #guard draftErrors fixtureTooLong == ["the text of Scene 2 has 2001 characters, but the limit is 2000"]
-#guard !playable fixtureTooLong
+#guard !passesChecker fixtureTooLong
 -- Bad JSON gives a plain error that names the place.
 #guard draftErrors (fixtureLegal.replace "\"swimming\", \"modifier\"" "\"flying\", \"modifier\"") ==
-  ["scenes 1: Scene 0: choices 1: outcome: \"flying\" is not a roll target. Use one of: broadsword, knife, brawling, stealth, lockpicking, diplomacy, survival, naturalist, occultism, riding, climbing, swimming, firstAid, fastTalk, staff, ST, DX, IQ, HT"]
+  ["scenes 1: Scene 0: choices 1: outcome: \"flying\" is not a roll target. Use one of: broadsword, knife, brawling, stealth, lockpicking, diplomacy, survival, naturalist, occultism, riding, climbing, swimming, firstAid, fastTalk, staff, liquidProjector, ST, DX, IQ, HT"]
 #guard (draftErrors "{\"title\": 3}").length == 1
 -- The points of the legal Character add up to 100.
 #guard match Draft.parse fixtureLegal with
   | .ok d => pointsBreakdown d.hero ==
       "ST 10: 0, DX 11: 20, IQ 12: 40, HT 12: 20, Staff 13: 8, Swimming 12: 1, Naturalist 12: 4, Survival 12: 2, First Aid 13: 2, Climbing 11: 2, Fast-Talk 11: 1. Total: 100"
+  | .error _ => false
+
+-- The legal fixture passes the checker but fails the fairness check: it is too short and too safe.
+-- Every row from turn 4 on has no games in it, so those rows cannot pass.
+#guard match Draft.parse fixtureLegal with
+  | .ok d => match d.toGame 1 with
+    | .ok _ => false
+    | .error errs => errs.all (·.startsWith "fairness: ") && !errs.isEmpty
   | .error _ => false
 
 end Rpg

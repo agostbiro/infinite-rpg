@@ -1,0 +1,15 @@
+{
+  "challenge_module": "Comparator.Statements",
+  "solution_module": "Comparator.Proofs",
+  "theorem_names": [
+    "Verified.check_sound",
+    "Verified.checkCharacter_sound",
+    "Verified.lighthouse_legal",
+    "Verified.lighthouse_reaches_ending",
+    "Verified.step_rejects",
+    "Verified.mem_inputs_iff",
+    "Verified.lighthouse_default_rules",
+    "Verified.fair"
+  ],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+}

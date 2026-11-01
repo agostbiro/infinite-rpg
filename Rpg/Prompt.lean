@@ -45,7 +45,9 @@ def skillLine (s : Skill) : String :=
 def weaponLine (w : Weapon) : String :=
   let d := w.damage 10
   let st := if w.minST = 0 then "has no ST minimum" else s!"needs ST {w.minST} or more"
-  let extra := if w = .punch then " A punch attacks at the higher of Brawling and DX." else ""
+  let extra := if w = .punch then " A punch attacks at the higher of Brawling and DX."
+    else if w.spray then " It sprays: each attack hits at every living Creature, with a separate roll for each."
+    else ""
   s!"- {w.key}: uses the {w.skill.name} skill, {st}, does {d.show} {w.damageType.name} at ST 10.{extra}"
 
 /-- One line of the armor table. -/
@@ -65,7 +67,31 @@ def rulesText : String :=
     "- Attributes start at 10 for 0 points. ST and HT cost 10 points per level above 10, DX and IQ cost 20. A level below 10 gives the same points back.",
     "- A skill level is counted from its attribute. The lowest level you can buy is the attribute +0 for Easy, -1 for Average, -2 for Hard. In total, that lowest level costs 1 point, one level above it costs 2, two levels above cost 4, three above cost 8, and each further level adds 4 (four above cost 12, five above cost 16).",
     "- A skill may be listed only once, and never below the lowest level you can buy.",
-    s!"- Example, Mara: {pointsBreakdown mara}."])
+    s!"- Example, Mara: {pointsBreakdown Lighthouse.mara}."])
+
+/-- The allowed death range of one row of the fairness check, as text. -/
+def bandText (row : Nat) : String :=
+  let pct (r : Rat) : String :=
+    let tenths := (r * 1000).floor
+    s!"{tenths / 10}.{tenths % 10}%"
+  if h : row < liveHorizon + 1 then
+    let band := Probability.confidenceBands liveHorizon ⟨row, h⟩
+    let what := if row = 0 then "Death on turn 1"
+      else s!"Death on turn {row + 1}, of the Characters alive at turn {row - 1}"
+    s!"  - {what}: {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}."
+  else ""
+
+/-- The part of the DM prompt about the fairness check. The numbers come from the policy in
+`Rpg/Probability/Weibull.lean`, so the prompt cannot drift from the check. -/
+def dangerText : String :=
+  "\n".intercalate ([
+    "## Danger (the fairness check)",
+    "- After the checker, a program plays your Adventure 1,000 times. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
+    s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range, with 90% confidence:"] ++
+    (List.range (liveHorizon + 1)).map bandText ++ [
+    "- So the first turns can be safe, but the danger must rise. From turn 4 on, some Fights must be able to kill the Character.",
+    s!"- Most paths must be at least {liveHorizon + 2} Choices long. A turn that too few games reach fails.",
+    "- If the check fails, you get the numbers for each turn that failed. Make Fights harder or easier, or move them earlier or later. The rules cannot change."])
 
 /-- The DM's instructions for an Adventure. They are the same on every try and every Wish, and
 `requestBody` marks them for the prompt cache. -/
@@ -108,7 +134,10 @@ def dmSystemPrompt : String :=
     "- Each attribute is from 1 to 20. A Creature costs at most 150 points (low attributes give points back). Its skills follow the same buying rules.",
     "- ST must be at least its weapon's ST. `naturalDR` is a tough hide; it costs 5 points per level. Use 0 for most Creatures.",
     "- Every Fight has at least one Creature, and each Fight can end: the Character can hurt the Creature, or the Creature can hurt the Character. To hurt, the attack level must be 3 or more, and the best hit (every die a 6) must do more damage than the DR of the target.",
+    "- The Player picks a maneuver on each turn of a Fight: Attack; All-Out Attack (+4 to hit, but no Dodge until the next turn); or All-Out Defense (no attack, but +2 to Dodge). Creatures always Attack.",
     "- Make most Fights winnable: 1 to 3 Creatures, each with a weapon skill of 9 to 13.",
+    "",
+    dangerText,
     "",
     "## Theme Names",
     "- `themeNames` gives display names that fit the world to the Character's skills, weapon, and armor. For example, in a school for wizards, Broadsword could show as \"Wand Duelling\" and the broadsword as \"Holly Wand\".",
@@ -533,6 +562,8 @@ def sseFixtureMessage : String :=
 
 -- The fix turn counts the errors.
 #guard (fixMessage ["a", "b"] none).startsWith "The checker found 2 errors:\n- a\n- b"
+-- The prompt gives the range of every row of the fairness check.
+#guard (List.range (liveHorizon + 1)).all fun row => (dmSystemPrompt.splitOn (bandText row)).length == 2
 -- The schema names every skill, and the prompt has a line for each one.
 #guard Skill.all.all fun s => (dmSystemPrompt.splitOn s!"- {s.key} (").length == 2
 

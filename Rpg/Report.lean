@@ -45,6 +45,7 @@ def DamageType.name : DamageType → String
   | .crushing => "crushing"
   | .cutting => "cutting"
   | .impaling => "impaling"
+  | .burning => "burning"
 
 /-- A Picture name is safe if it has only lowercase letters, digits, and dashes.
 The page builds the file name `pictures/<name>.svg` from it. -/
@@ -62,10 +63,10 @@ structure Card where
   dr : Nat
   deriving ToJson, BEq
 
-/-- The card of a being with `hp` HP. -/
-def Being.card (b : Being) (hp : Int) : Card :=
-  { name := b.name, hp, maxHP := b.maxHP, weapon := b.weapon,
-    damage := s!"{(b.weapon.damage b.st).show} {b.weapon.damageType.name}", dr := b.dr }
+/-- The card of a being with `hp` HP, under `rules`. -/
+def Being.card (rules : RuleSet) (b : Being) (hp : Int) : Card :=
+  { name := b.name, hp, maxHP := rules.maxHP b, weapon := b.weapon,
+    damage := s!"{(rules.damage b.weapon b.st).show} {b.weapon.damageType.name}", dr := rules.dr b }
 
 /-- One thing the Engine did or found out during play. -/
 inductive Report where

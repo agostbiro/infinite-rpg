@@ -72,14 +72,16 @@ inductive Phase where
 
 /-- One game of an Adventure, played by one Character. -/
 structure Game where
+  /-- The rules of the Adventure. They do not change during play. -/
+  rules : RuleSet
   /-- The Character. -/
   hero : Being
-  /-- The Character is a legal build. -/
-  heroLegal : LegalCharacter hero
+  /-- The Character is a legal build under `rules`. -/
+  heroLegal : LegalCharacter rules hero
   /-- The Adventure. It does not change during play. -/
   adventure : Adventure
-  /-- The Adventure is legal for the Character. -/
-  legal : LegalAdventure hero adventure
+  /-- The Adventure is legal for the Character under `rules`. -/
+  legal : LegalAdventure rules hero adventure
   /-- The Character's HP now. -/
   hp : Int
   /-- Where play is. -/
@@ -88,13 +90,12 @@ structure Game where
   trail : List Taken
 
 /-- A new game on the title screen, with the Character at full HP.
-It needs a proof that the Character is a legal build, and an Adventure with a proof that it is
-legal for this Character. The server gets these proofs only from `checkCharacter_sound` and
+It needs an `AdventureDefinition`, which holds the proofs that the Character and the Adventure
+are legal under the rules. The server gets these proofs only from `checkCharacter_sound` and
 `check_sound`, or from a shipped theorem such as `lighthouse_legal`. -/
-def Game.new (hero : Being) (heroLegal : LegalCharacter hero)
-    (a : {a : Adventure // LegalAdventure hero a}) : Game :=
-  { hero, heroLegal, adventure := a.val, legal := a.property, hp := hero.maxHP, phase := .title,
-    trail := [] }
+def Game.new (d : AdventureDefinition) : Game :=
+  { rules := d.rules, hero := d.hero, heroLegal := d.heroLegal, adventure := d.story,
+    legal := d.legal, hp := d.rules.maxHP d.hero, phase := .title, trail := [] }
 
 /-- The Scene that play is in now, if any. In a Fight, this is the Scene where it started. -/
 def Game.sceneId? (g : Game) : Option SceneId :=

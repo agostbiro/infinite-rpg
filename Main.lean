@@ -1,4 +1,5 @@
 import Rpg.Prompt
+import Rpg.Catalog
 import Std.Http
 
 /-!
@@ -11,7 +12,8 @@ It keeps one game in memory. The page draws the view that the server sends,
 and sends back the Player's inputs. All rules and dice stay in Lean (`Rpg.step`).
 
 The Player can also type a Wish. The server then asks the Claude API for an Adventure and a
-Character, in the background, and checks them with the proved checker (`Draft.toGame`).
+Character, in the background, and checks them with the proved checker and then the fairness check
+(`Draft.toGame`).
 Only a Draft that passes can become a `Game`, because `Game.new` needs the proofs.
 Adventures that pass are saved under `adventures/<id>/`.
 
@@ -57,8 +59,9 @@ structure Session where
 def Session.start (g : Game) (seed : Nat) : Session :=
   { fresh := g, game := g, dice := ⟨seed.toUInt64⟩, seed, reports := #[] }
 
-/-- The built-in game: The Drowned Lighthouse for Mara. The proofs are the shipped theorems. -/
-def builtinGame : Game := Game.new mara mara_legal ⟨lighthouse, lighthouse_legal⟩
+/-- The built-in game: The Drowned Lighthouse for Mara. The proofs are the shipped theorems.
+`main` runs the fairness check on it before the server starts, and stops if it fails. -/
+def builtinGame : Game := Game.new Lighthouse.lighthouseDefinition
 
 /-- Apply one input. Returns the new session, or the reason the input was refused.
 A refused input leaves the session as it was. -/
@@ -212,23 +215,35 @@ def fileStamp (p : System.FilePath) : IO String := do
   | .ok text => return s!"{text.length}/{hash text}"
   | .error _ => return ""
 
-/-- Check one saved Adventure for the list: its title, and `none` if it passes `Draft.toGame`,
-or else the first error. The Pictures are checked only on load. -/
+/-- The fairness seed saved with an Adventure, or `none` if it has none (it was saved before
+the fairness check). -/
+def savedSeed (text : String) : Option Nat :=
+  (Json.parse text >>= (·.getObjValAs? Nat "fairnessSeed")).toOption
+
+/-- Check a saved Adventure again: the checker, then the fairness check with its saved seed. -/
+def checkSavedText (text : String) : Except (List String) (Draft × Game) := do
+  let d ← (Draft.parse text).mapError (fun e => [e])
+  let some seed := savedSeed text
+    | throw ["it was saved before the fairness check, so it has no fairness seed"]
+  let g ← d.toGame seed
+  return (d, g)
+
+/-- Check one saved Adventure for the list: its title, and `none` if it passes the checker and
+the fairness check, or else the first error. The Pictures are checked only on load. -/
 def checkSavedEntry (id : String) : IO (String × Option String) := do
   match ← readText (savedRoot / id / "adventure.json") with
   | .error e => return (id, some e)
   | .ok text =>
     let title := (Json.parse text >>= (·.getObjValAs? String "title")).toOption.getD id
-    match Draft.parse text with
-    | .error e => return (title, some e)
-    | .ok d =>
-      match d.toGame with
-      | .ok _ => return (title, none)
-      | .error errs => return (title, some (errs.headD "it fails the checker"))
+    match checkSavedText text with
+    | .ok _ => return (title, none)
+    | .error errs => return (title, some (errs.headD "it fails the checker"))
 
 /-- The list of saved Adventures for the title screen: each id, title, and whether it passes the
 checker now. A saved Adventure that fails is listed with `ok: false` and the reason, and the page
-does not let the Player play it. Each file is checked once per version (see `GameConfig.savedCache`). -/
+does not let the Player play it. Each file is checked once per version (see `GameConfig.savedCache`). 
+Each check also runs the fairness check (1,000 games), so the first view after start can take
+a second or two for each saved Adventure. -/
 def savedList (cfg : GameConfig) : IO Json := do
   let cache ← cfg.savedCache.get
   let mut fresh : List SavedEntry := []
@@ -249,11 +264,11 @@ def markRefused (cfg : GameConfig) (id : String) (why : String) : IO Unit := do
   cfg.savedCache.modify fun c =>
     c.map fun (i, st, t, w) => if i == id then (i, stamp, t, some why) else (i, st, t, w)
 
-/-- Save a Draft that passed the checker. -/
-def saveDraft (id : String) (d : Draft) (wish : String) : IO Unit := do
+/-- Save a Draft that passed the checker and the fairness check with seed `seed`. -/
+def saveDraft (id : String) (d : Draft) (wish : String) (seed : Nat) : IO Unit := do
   let dir := savedRoot / id
   IO.FS.createDirAll dir
-  let j := d.toJson.setObjVal! "wish" (Json.str wish)
+  let j := (d.toJson.setObjVal! "wish" (Json.str wish)).setObjVal! "fairnessSeed" (toJson seed)
   IO.FS.writeFile (dir / "adventure.json") j.pretty
 
 /-! ## Pictures -/
@@ -522,9 +537,9 @@ def drawPictures (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerSt
 
 /-- Start play of a Draft that passed: save it, make it the session, and draw its Pictures. -/
 def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
-    (d : Draft) (g : Game) (wish : String) : IO Unit := do
+    (d : Draft) (g : Game) (wish : String) (fairnessSeed : Nat) : IO Unit := do
   let id ← newSavedId d.adventure.title
-  saveDraft id d wish
+  saveDraft id d wish fairnessSeed
   let seed := (← IO.monoNanosNow) % 1000000
   let res ← ref.modifyGet fun s =>
     if s.gen.job != job || s.gen.state != .running then (none, s) else
@@ -542,9 +557,14 @@ def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (j
     if cfg.picturesOn then
       let _ ← IO.asTask (drawPictures cfg children ref id run d d.adventure.scenes) .dedicated
 
-/-- The step text for the checker's errors. -/
+/-- The step text for the errors of the checker and the fairness check. -/
 def errorsText (n : Nat) : String :=
-  if n = 1 then "The checker found 1 error:" else s!"The checker found {n} errors:"
+  if n = 1 then "The checks found 1 error:" else s!"The checks found {n} errors:"
+
+/-- A random seed for the fairness check of a Wish, from the operating system. -/
+def randomSeed : IO Nat := do
+  let bytes ← IO.getRandomBytes 8
+  return bytes.foldl (fun acc b => acc * 256 + b.toNat) 0
 
 /-- Ask the DM for an Adventure for a Wish: up to 3 tries. After a failed try, the DM gets the
 errors and sends a fixed version. -/
@@ -572,17 +592,20 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
         match Draft.parse text with
         | .error e => pure ([s!"the JSON does not read: {e}"], none, content)
         | .ok d =>
-          match d.toGame with
+          -- A fresh random seed for each try, so the DM cannot tune its story to one batch of games.
+          -- In test mode (`RPG_FAKE_API`) the seed is fixed, so `make run-fake` gives the same result each time.
+          let fairnessSeed ← if cfg.fake.isSome then pure 1 else randomSeed
+          match d.toGame fairnessSeed with
           | .ok g =>
-            if !(← addStep ref job { text := "The Adventure passed the checker." }) then return
-            adopt cfg children ref job d g wish
+            if !(← addStep ref job { text := "The Adventure passed the checker and the fairness check." }) then return
+            adopt cfg children ref job d g wish fairnessSeed
             return
           | .error errs => pure (errs, some d.hero, content)
     lastErrors := errors
     if !(← addStep ref job { text := errorsText errors.length, errors }) then return
     messages := messages ++ [assistantTurn content, userTurn (fixMessage errors hero?)]
   endJob ref job .failed
-    { text := "The DM could not write a legal Adventure in 3 tries.", errors := lastErrors }
+    { text := "The DM could not write a legal and fair Adventure in 3 tries.", errors := lastErrors }
 
 /-- Start the work on a Wish in the background. Returns `false`, and does nothing, if the DM is
 already writing. The check and the start are one atomic step. -/
@@ -760,12 +783,9 @@ def loadSaved (id : String) : IO (Except String (Game × Source × Draft)) := do
   let path := savedRoot / id / "adventure.json"
   if !(← path.pathExists) then return .error "There is no saved Adventure with that name."
   let text ← IO.FS.readFile path
-  match Draft.parse text with
-  | .error e => return .error s!"The saved Adventure does not read: {e}"
-  | .ok d =>
-    match d.toGame with
-    | .error errs => return .error s!"The saved Adventure failed the check: {"; ".intercalate errs}"
-    | .ok g =>
+  match checkSavedText text with
+  | .error errs => return .error s!"The saved Adventure failed the check: {"; ".intercalate errs}"
+  | .ok (d, g) =>
       let pictures ← checkedPictures id d.adventure
       return .ok (g, { savedId := some id, background := some d.background, pictures }, d)
 
@@ -924,10 +944,18 @@ def main (args : List String) : IO UInt32 := do
   -- Check the Adventure again, on the value the program will play.
   -- The theorem covers the value Lean proved things about. A trick such as `implemented_by`
   -- can make the compiled value different, and this check catches that.
-  let errs := checkCharacter mara ++ check mara lighthouse
+  let errs := checkCharacter Lighthouse.rules Lighthouse.mara ++
+    check Lighthouse.rules Lighthouse.mara Lighthouse.lighthouse
   if !errs.isEmpty then
     IO.eprintln "The Adventure failed the check, so the game will not start:"
     for e in errs do IO.eprintln s!"  ERROR: {e}"
+    return 1
+  -- The built-in Adventure must also pass the fairness check, with the fixed validation seed.
+  let (counts, admitted) := Probability.admitStatistically Lighthouse.statisticalCandidate
+  if admitted.isNone then
+    IO.eprintln "The Adventure failed the fairness check, so the game will not start:"
+    for e in Probability.failedRows Lighthouse.statisticalCandidate.horizon counts do
+      IO.eprintln s!"  ERROR: {e}"
     return 1
   let webRoot : System.FilePath := "web"
   if !(← (webRoot / "index.html").pathExists) then

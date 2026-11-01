@@ -31,8 +31,20 @@ The text the Player types to ask the DM for an Adventure, such as "I love LOTR, 
 _Avoid_: prompt, request, query
 
 **Legal Adventure**:
-An Adventure that obeys every rule in the spec. Only a Legal Adventure can be played.
+An Adventure that obeys every rule in the spec, under its RuleSet. Only a Legal Adventure can be played.
 _Avoid_: valid adventure, verified adventure
+
+**RuleSet**:
+The rules of one Adventure: limits such as the point budget, and the rule functions such as the success roll. Each field defaults to the GURPS Lite rule. People own the RuleSet; every Adventure in this repo uses the defaults.
+_Avoid_: ruleset config, house rules
+
+**Admission**:
+The fairness check that an Adventure must pass after the checker and before play. It plays the Adventure 1,000 times from a seed, and compares the deaths on each turn with a target curve.
+_Avoid_: certification, validation (except for the run with the fixed seed)
+
+**Horizon**:
+How many turns after the first one the fairness check looks at. With horizon 5, it looks at turns 1 to 6.
+_Avoid_: window size
 
 **Scene**:
 One step of an Adventure: some text and a list of Choices. A Scene can also name a Picture.

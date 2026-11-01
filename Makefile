@@ -1,4 +1,4 @@
-.PHONY: install run run-fake build check check-pictures cheats
+.PHONY: install run run-fake build check check-pictures check-rules cheats validate comparator agree
 
 # The port of the game server: make run PORT=9000
 PORT ?= 8080
@@ -42,9 +42,25 @@ PICTURES ?= web/pictures
 # It also fails if a DM file uses a forbidden word, or a Picture uses a forbidden SVG feature.
 check: build
 	lake check
-	@if grep -rnE '$(FORBIDDEN)' Rpg/Adventures Rpg/Characters.lean; then \
+	@if grep -rnE '$(FORBIDDEN)' Rpg/Adventures; then \
 	  echo "error: a forbidden word is used above"; exit 1; fi
+	@$(MAKE) --no-print-directory check-rules
 	@$(MAKE) --no-print-directory check-pictures
+
+# People own the rules of each Adventure. A DM may not change them.
+# Each Rules.lean under Rpg/Adventures may only say `def rules : RuleSet := {}` (the default rules),
+# unless a person puts its path on RULES_ALLOW. No other Adventure file may name `RuleSet` or
+# change a rules value with `{ ... with ... }`.
+RULES_ALLOW ?=
+RULES_LINE = ^(import Rpg\.RuleSet|namespace Rpg\.[A-Za-z]+|end Rpg\.[A-Za-z]+|def rules : RuleSet := \{\}|/--.*-/|)$$
+check-rules:
+	@bad=0; for f in $$(find Rpg/Adventures -name Rules.lean); do \
+	  case " $(RULES_ALLOW) " in *" $$f "*) continue;; esac; \
+	  if grep -nvE '$(RULES_LINE)' $$f; then echo "error: $$f changes the rules (see check-rules in the Makefile)"; bad=1; fi; \
+	done; \
+	if grep -rnE 'RuleSet|rules with' Rpg/Adventures --include=*.lean | grep -v '/Rules.lean:'; then \
+	  echo "error: an Adventure file names RuleSet or changes a rules value"; bad=1; fi; \
+	exit $$bad
 
 # Pictures may not run code or load things from elsewhere. scripts/check_pictures.py parses each
 # SVG file and rejects scripts, event handlers, outside links, and more (see its docstring).
@@ -55,3 +71,16 @@ check-pictures:
 # Show the checker rejecting the cheating Adventures.
 cheats:
 	lake exe cheats
+
+# Run the fairness check on the Lighthouse, and print each row with its interval and range.
+validate:
+	lake exe validate
+
+# Check that the main theorems in Comparator/Proofs.lean prove the statements in
+# Comparator/Statements.lean, pass the kernel, and use only the standard axioms (see comparator.json).
+comparator:
+	lake comparator
+
+# Compare the exact Fight model with the simulator on the Lighthouse Fights. This takes minutes.
+agree:
+	lake exe agree

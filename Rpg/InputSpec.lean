@@ -44,7 +44,7 @@ def AllowedInput (g : Game) (i : Input) : Prop :=
 Each example uses Mara in The Drowned Lighthouse. -/
 
 /-- A new game on the title screen. -/
-def titleGame : Game := Game.new mara mara_legal ⟨lighthouse, lighthouse_legal⟩
+def titleGame : Game := Game.new Lighthouse.lighthouseDefinition
 
 /-- A game in The Shore, the first Scene. It has 2 Choices. -/
 def shoreGame : Game := { titleGame with phase := .scene 0 }
@@ -57,8 +57,8 @@ def wreckerFight : FightPhase where
   order := [none, some 0, some 1]
   round := 2
   state := {
-    hero := { being := mara, hp := 9 },
-    foes := [{ being := wrecker 1, hp := -1 }, { being := wrecker 2, hp := 4 }] }
+    hero := { being := Lighthouse.mara, hp := 9 },
+    foes := [{ being := Lighthouse.wrecker 1, hp := -1 }, { being := Lighthouse.wrecker 2, hp := 4 }] }
 
 /-- A game in the Fight `wreckerFight`. -/
 def fightGame : Game := { titleGame with phase := .fight wreckerFight }
@@ -87,7 +87,7 @@ example : AllowedInput fightGame (.maneuver .allOutDefense none) :=
 -- Rejected: The Shore has no third Choice.
 example : ¬ AllowedInput shoreGame (.choose 2) := by
   rintro ⟨sc, hsc, hk⟩
-  simp [shoreGame, titleGame, Game.new, lighthouse, Adventure.scene?] at hsc
+  simp [shoreGame, titleGame, Game.new, Lighthouse.lighthouseDefinition, Lighthouse.lighthouse, Adventure.scene?] at hsc
   subst hsc
   simp at hk
 
@@ -125,7 +125,7 @@ example : ¬ AllowedInput endedGame (.choose 0) := id
 /-- A Fight where both wreckers are down. The Fight is over. -/
 def wonFight : FightPhase :=
   { wreckerFight with state := { wreckerFight.state with
-      foes := [{ being := wrecker 1, hp := -1 }, { being := wrecker 2, hp := 0 }] } }
+      foes := [{ being := Lighthouse.wrecker 1, hp := -1 }, { being := Lighthouse.wrecker 2, hp := 0 }] } }
 
 -- Rejected: the Fight is over, so the Character cannot choose a Maneuver.
 example : ¬ AllowedInput { titleGame with phase := .fight wonFight } (.maneuver .allOutDefense none) := by

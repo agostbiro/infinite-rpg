@@ -1,4 +1,4 @@
-import Rpg.Rules
+import Rpg.RuleSet
 
 /-!
 # Adventures
@@ -26,11 +26,11 @@ inductive RollTarget where
   | attribute (a : Attribute)
   deriving Repr, DecidableEq
 
-/-- The level of a being for a Success Roll against a target, before modifiers.
+/-- The level of being `b` for a Success Roll against a target, under `rules`, before modifiers.
 `none` means the being cannot use the skill, not even at its default. -/
-def Being.rollLevel (b : Being) : RollTarget → Option Int
-  | .skill s => b.skillLevel s
-  | .attribute a => some (b.attr a)
+def RuleSet.rollLevel (rules : RuleSet) (b : Being) : RollTarget → Option Int
+  | .skill s => rules.skillLevel b s
+  | .attribute a => some (rules.attr b a)
 
 /-- The short name of an attribute, such as "DX". -/
 def Attribute.name : Attribute → String

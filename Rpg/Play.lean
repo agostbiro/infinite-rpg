@@ -62,23 +62,6 @@ def Game.record (g : Game) (id : SceneId) (k : Nat) (target : SceneId) (rolled :
 
 /-! ## Fights -/
 
-/-- The Creatures that act before the Character in each round. -/
-def beforeCharacter (order : List Actor) : List Actor :=
-  order.takeWhile (· != none)
-
-/-- The Creatures that act after the Character in each round. -/
-def afterCharacter (order : List Actor) : List Actor :=
-  (order.dropWhile (· != none)).drop 1
-
-/-- Run the turns of the Creatures in `actors`, in order. -/
-def foeTurns (s : FightState) : List Actor → Roll (FightState × List Report)
-  | [] => return (s, [])
-  | none :: rest => foeTurns s rest
-  | some i :: rest => do
-    let (s, first) ← foeTurn s i
-    let (s, later) ← foeTurns s rest
-    return (s, first ++ later)
-
 /-- After the Creature turns: the Character died, or won, or has the next turn. -/
 def Game.settle (g : Game) (f : FightPhase) : Game × List Report :=
   let g := { g with hp := f.state.hero.hp }
@@ -94,24 +77,24 @@ def Game.settle (g : Game) (f : FightPhase) : Game × List Report :=
 Character act first. -/
 def Game.startFight (g : Game) (id : SceneId) (k : Nat) (foes : List Being) (onWin : SceneId) :
     Roll (Game × List Report) := do
-  let order := turnOrder g.hero foes
+  let order := turnOrder g.rules g.hero foes
   let s : FightState :=
-    { hero := { being := g.hero, hp := g.hp }, foes := foes.map fun b => { being := b, hp := b.maxHP } }
-  let (s, first) ← foeTurns s (beforeCharacter order)
+    { hero := { being := g.hero, hp := g.hp }, foes := foes.map fun b => { being := b, hp := g.rules.maxHP b } }
+  let (s, first) ← foeTurns g.rules s (beforeCharacter order)
   let (g, last) := g.settle ⟨id, k, onWin, order, 1, s⟩
-  let cards := foes.map fun b => b.card b.maxHP
-  return (g, [.fightStarts (g.hero.card g.hp) cards, .round 1] ++ first ++ last)
+  let cards := foes.map fun b => b.card g.rules (g.rules.maxHP b)
+  return (g, [.fightStarts (g.hero.card g.rules g.hp) cards, .round 1] ++ first ++ last)
 
 /-- The Character's turn with Maneuver `m` at `target`. Then every Creature turn up to the
 Character's next turn: the rest of this round, and the start of the next round. -/
 def Game.characterTurn (g : Game) (f : FightPhase) (m : Maneuver) (target : Option Nat) :
     Roll (Game × List Report) := do
-  let (s, mine) ← heroTurn f.state m (target.getD 0)
-  let (s, after) ← foeTurns s (afterCharacter f.order)
+  let (s, mine) ← heroTurn g.rules f.state m (target.getD 0)
+  let (s, after) ← foeTurns g.rules s (afterCharacter f.order)
   let (s, round, next) ←
     if s.over then pure (s, f.round, [])
     else do
-      let (s, before) ← foeTurns s (beforeCharacter f.order)
+      let (s, before) ← foeTurns g.rules s (beforeCharacter f.order)
       pure (s, f.round + 1, .round (f.round + 1) :: before)
   let (g, last) := g.settle { f with state := s, round }
   return (g, mine ++ after ++ next ++ last)
@@ -126,7 +109,7 @@ def Game.choose (g : Game) (id : SceneId) (k : Nat) (ch : Choice) : Roll (Game �
     let (g, reports) := (g.record id k n none).enter n
     return (g, picked :: reports)
   | .roll t m onSuccess onFailure =>
-    let (res, roll) ← makeRoll g.hero.name t m ((g.hero.rollLevel t).map (· + m))
+    let (res, roll) ← makeRoll g.rules g.hero.name t m ((g.rules.rollLevel g.hero t).map (· + m))
     let n := if res.succeeded then onSuccess else onFailure
     let (g, reports) := (g.record id k n (some res.succeeded)).enter n
     return (g, picked :: roll :: reports)

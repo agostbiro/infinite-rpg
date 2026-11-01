@@ -11,8 +11,27 @@ globs = ["Rpg.+"]
 name = "rpg"
 root = "Main"
 
-# Prints the checker's errors for each cheating Adventure. It is not a default target, so `lake check`
-# does not load two `main` functions at once. `lake exe cheats` builds it when needed.
+# These programs are not default targets, so `lake check` does not load two `main` functions
+# at once. `lake exe <name>` builds each one when needed.
+
+# Prints the checker's errors for each cheating Adventure.
 [[lean_exe]]
 name = "cheats"
 root = "Cheats"
+
+# Runs the fairness check on the Lighthouse and prints each row.
+[[lean_exe]]
+name = "validate"
+root = "Validate"
+
+# Compares the exact Fight model with the simulator, for the add-mechanic skill.
+[[lean_exe]]
+name = "agree"
+srcDir = ".agents/skills/add-mechanic"
+root = "agree"
+
+# The main theorems for `lake comparator` (see comparator.json). Not a default target:
+# `Comparator.Statements` has `sorry` on purpose, as the list of statements.
+[[lean_lib]]
+name = "Comparator"
+globs = ["Comparator.+"]
