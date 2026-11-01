@@ -7,8 +7,9 @@ The model's death chance comes from `combatDistribution`; the simulation's from
 `validationGames` runs of `Simulation.fight`, with the admission round limit.
 The check says `ok` when the model's chance is inside the simulation's exact
 binomial interval at the admission confidence level (`confidenceDelta`).
-`DISAGREE` means the mechanic reaches one path but not the other.
-Run from the repo root: `lake exe agree`. It runs as compiled code; the exact model is too slow in the interpreter.
+`DISAGREE` flags a discrepancy; sampling alone can also produce it.
+Run as compiled code: `lake exe agree`. Exact model enumeration can still be
+expensive independently of the simulation run count.
 -/
 open Rpg Rpg.Probability Rpg.Probability.Confidence
 
@@ -56,13 +57,21 @@ def percent (r : Rat) : String :=
   s!"{hundredths / 100}.{if cents < 10 then "0" else ""}{cents}%"
 
 /-- Print one line per fight in `cases`: `ok`, `DISAGREE`, or `ABORTED`. -/
-def main : IO Unit := do
+def main : IO UInt32 := do
+  IO.println s!"Agreement: {validationGames} simulated fights per case; round limit={validationRoundLimit}; interval failure bound={confidenceDelta}; endpoint steps={intervalSteps}"
+  let mut passed := true
   for c in cases do
+    IO.println s!"Checking {c.name} (exact model and simulated fights)..."
+    (← IO.getStdout).flush
     let model := modelDeath c
     let (deaths, timeouts) := simulate c
     if timeouts > 0 then
       IO.println s!"{c.name}: ABORTED: {timeouts} fights hit the round limit"
+      passed := false
       continue
     let interval := confidenceInterval confidenceDelta validationGames deaths
-    let verdict := if interval.Contains model then "ok" else "DISAGREE"
+    let ok := decide (interval.Contains model)
+    passed := passed && ok
+    let verdict := if ok then "ok" else "DISAGREE"
     IO.println s!"{c.name}: model {percent model}, simulation {deaths}/{validationGames}, interval [{percent interval.lower}, {percent interval.upper}]: {verdict}"
+  return if passed then 0 else 1

@@ -5,234 +5,162 @@ description: Add a game mechanic, described in plain words, to the RPG and keep 
 
 # Add a mechanic and keep the game fair
 
-The user describes a **mechanic** in plain words. You build it, then keep every
-adventure fair. If the mechanic breaks fairness, you add a second, fun
-**counter-mechanic** that pulls the numbers back inside the bounds. The user's
-mechanic stays in, at the strength the user asked for.
+Implement the requested rule at its requested strength. Keep every registered
+adventure legal and admitted under `StatisticalCandidate.fair`. If balancing is
+needed, propose and implement a fun counter-rule that preserves the original
+mechanic's appeal.
 
-You decide every open detail of the mechanic yourself: pick the **most fun**
-option, meaning the one the player feels most in play (bigger moments, more
-visible log lines), within the rules. List each choice in the report.
+Read `Rpg/RuleSet.lean`, `Rpg/Engine.lean`, `Rpg/Probability/SharedRules.lean`,
+`Rpg/Probability/StatisticalAdmission.lean`, and `docs/statistical-confidence.md`.
 
-Read `Rpg/RuleSet.lean`, `Rpg/Engine.lean`, `Rpg/Probability/Combat.lean`,
-`Rpg/Probability/StatisticalAdmission.lean`, and `docs/statistical-confidence.md`
-before step 1.
+## Preserve the specification
 
-## What "fair" means here
+Keep the shared Weibull policy, confidence level, game count, combat round limit,
+validation seed, adventure horizons, catalog, and theorem statements fixed unless
+the user has authorized a change. Existing authorization is sufficient; do not
+ask again. A rule request may authorize changing its hero or story (for example,
+giving Mara a weapon); make only that content change and keep it legal.
 
-`Rpg.Probability.StatisticalCandidate.fair` proves `Fair a` once, for every
-candidate. It says the admission test is sound: each confidence interval misses
-the true death chance with probability at most 10%, and so does a false
-"accept". The true death chances come from the **model** (`adventureGraph`).
-The proof assumes the **simulation** that admission runs draws games with the
-model's chances.
+The main theorem proves per-row interval coverage and bounds false admission of
+the finite Weibull checks under the accepted conditional-binomial sampling model.
+It is not simultaneous interval coverage or a proof that the PRNG is IID.
+Do not replace the proof, reduce the number of runs, widen a band, remove a late
+row, discard timeouts, or search for a seed to make a mechanic pass.
 
-A mechanic can break three things:
+## Shared parameters
 
-- **Agreement.** If the mechanic reaches the simulation but not the model (or
-  the reverse), admission can still pass, but `fair` is then about a different
-  game. Nothing in the build catches this. Step 2 prevents it.
-- **The build.** Each adventure's `fair` theorem (`Rpg.Harbor.fair`,
-  `Rpg.Lighthouse.fair`) and its legality proofs must still compile.
-- **Admission.** At start-up, `admitStatistically` plays many games with the
-  fixed `validationSeed` and checks each row: death on turn 1, and death on turn
-  `t+2` given alive at turn `t`, for `t` below the adventure's `horizon`. A row
-  passes when its whole 90% exact binomial interval enclosure fits in
-  the Weibull band. An adventure that fails is left out of the menu.
+Use the Lean definitions directly, not copied numeric defaults or helper-specific
+run limits:
 
-So the goal is: every adventure in `statisticalCandidates` (`Rpg/Catalog.lean`)
-keeps play, simulation, and model in agreement, still builds, and still passes
-admission.
+| Definition | Source | Use |
+|---|---|---|
+| `validationGames` | `StatisticalAdmission.lean` | Total games per adventure; simulated fights per optional agreement case |
+| `validationRoundLimit` | `StatisticalAdmission.lean` | Maximum simulated rounds per fight |
+| `confidenceDelta` | `Confidence.lean` | Binomial interval failure bound |
+| `intervalSteps` | `Confidence.lean` | Endpoint precision through `confidenceInterval` |
+| `defaultPolicy` | `Weibull.lean` | Targets and tolerance through `confidenceBands` |
+| Candidate `horizon` | Adventure certification | Conditional death rows to test |
 
-## Fixed ground
+Screening uses the fixed `screenSeed` and `sampleCounts`. Final admission uses
+`validationSeed` and `admitStatistically`, including source-bound evidence. Late
+rows use their actual qualifying counts; zero observations fail.
 
-The fairness bar is fixed. You move the game to meet it:
+## Build the rule in shared code
 
-- `Rpg/Probability/Weibull.lean`, `Rpg/Probability/Binomial.lean`,
-  `Rpg/Probability/Confidence.lean`,
-  `Rpg/Probability/StatisticalAdmission.lean`, `Rpg/Probability/Graph.lean`,
-  `Rpg/Probability/Combat.lean`, and `Rpg/Spec.lean` keep their meaning. This
-  includes the policy constants, confidence level, interval precision,
-  validation seed, fixed game count, and round limit.
-- Each adventure's `fairnessHorizon` stays as it is (in
-  `Rpg/Adventures/Harbor/Certification.lean` and
-  `Rpg/Adventures/Lighthouse/Confidence.lean`).
-- The constants in `screen.lean` and `agree.lean` stay as they are. You only add
-  fights to `cases` in `agree.lean`.
-- The catalog keeps every adventure it has. Stories, heroes, and creatures stay
-  as they are; only mechanics change. The exception is a mechanic that is itself
-  a change to them ("give the hero a flamethrower"): make only that change, and
-  keep the hero legal.
-- The numbers you fix in step 1 for the user's mechanic stay as they are.
-- Proofs use no `sorry`, `axiom`, `native_decide`, or `maxHeartbeats 0`.
+State the trigger, effect, and numbers before editing. Decide unspecified details
+that fit the user's idea; do not silently change a once-per-fight rule into a
+repeating rule to avoid tracking state.
 
-If a step seems to need any of these, stop and ask the user. These are the only
-questions you ask.
+- Put combat mechanics in `attackWith`, `takeTurnWith`, their shared helpers,
+  or adventure `RuleSet` fields they read. These reach play, simulation, and model.
+- Put scene-roll mechanics in `RuleSet.successRoll` or `Being.rollLevel`.
+- Keep `attack`, `takeTurn`, `fightRound`, model adapters, and simulator adapters
+  routing through the shared functions. `Rpg/Probability/SharedRules.lean` checks
+  these contracts for every input. Do not weaken them to permit a one-sided rule.
+- Keep HP between fights. New persistent state, healing inside combat, new scene
+  outcomes, or graph changes require corresponding model/specification work;
+  they are not covered by the routine fast path. Use existing authorization or
+  ask for the missing scope before making such changes.
+- Select a new configurable mechanic in the target adventures' `Rules.lean`.
+  Its default preserves existing behavior for other adventures.
+- Add small deterministic tests under `Rpg/` showing the trigger, effect, and
+  disabled behavior. Test the new rule itself, not just that admission passes.
+  Retain negative fixtures and adapt their data when the new rule changes them.
+- Write a short play-log line when the mechanic fires.
 
-## Steps
+The routing contracts check shared implementation structure. They do not prove
+full stochastic model equivalence; the accepted sampling assumptions still apply.
 
-### 1. Pin the mechanic down
+## Make counter-rules fun
 
-Rewrite the request as a rule with exact numbers: when it fires, what it
-changes, and by how much. Then name the code it touches:
+When a screen fails, identify which risk moved and why. Sketch two distinct,
+named counter-rule ideas, then choose the one that adds the best player moment
+while moving that risk in the needed direction. Do this without waiting for a
+choice unless the user requested one.
 
-- **Rule mechanic**: changes how dice, damage, defense, or turn order work. It
-  lives in `RuleSet`. Use an existing field if one fits. Otherwise add a field
-  whose default is today's behaviour.
-- **Content mechanic**: needs a new kind of thing in a story (for example a new
-  `Outcome`). This changes `Rpg/Adventure.lean` and `Rpg/Spec.lean`, which are the
-  trusted spec. Ask the user before you edit them.
+For the chosen proposal, state:
 
-**Memory.** The model knows only each fighter's HP and the current scene. A
-mechanic that must remember something ("once per fight", a cooldown, a potion
-count) has nowhere to keep it. Rephrase it as a condition on current HP or on
-the dice: "once per fight, when you first fall below 1/3 HP" becomes "while you
-are below 1/3 HP". Pick the most fun version that needs no memory. Real memory
-needs new fields in `FightState` and `Node` and a new
-termination measure in `solveCombat`, which are fixed ground.
+- **The moment:** what surprising or dramatic thing the player sees happen.
+- **The decision or payoff:** a new tactical choice, comeback opportunity, or
+  satisfying risk/reward tradeoff; explain why it is fun in this adventure.
+- **The rule:** an exact trigger and effect, with numbers and a sample log line.
+- **The balance:** which failing rows it should improve and why the original
+  requested mechanic remains powerful and recognizable.
 
-Target adventures: the ones the user names, else every adventure in
-`statisticalCandidates`.
+Prefer a thematic behavior over a hidden numerical penalty. For example, stronger
+criticals can pair with **Last Stand**, a visible low-HP defensive burst. A powerful
+spray attack can provoke **Scorched Fury**: badly wounded enemies strike twice,
+creating a reason to finish a dangerous target first. These are ideas, not required
+mechanics; use the actual game's constraints and direction of imbalance.
 
-**Open choices.** The request often leaves details open: the numbers, which
-foes it hits, how the hero pays the points for it. Decide each one: pick the
-most fun option.
+Avoid canceling the new rule with an equal opposite modifier, tedious bookkeeping,
+or arbitrary nerfs presented as exciting mechanics. Give the counter-rule its own
+configuration and tests. Show the original rule working alongside it. Fairness
+checks establish the statistical constraint; a short play-through checks whether
+the moment is understandable and feels rewarding.
 
-Done when you can state the rule in one sentence with numbers, it needs no
-memory, and every open choice is decided.
+Tune only on exploratory screens. A small margin inside nontrivial policy bounds
+is useful; it is a design buffer, not another confidence theorem. If several
+reasonable ideas fail, report the tradeoff rather than weaken the specification.
 
-### 2. Build it in the shared code
+## One-minute verification
 
-Play (`Main.lean`), simulation (`Simulation.trajectory`), and model
-(`adventureGraph`) share only some functions. Put the mechanic only there:
+From the repository root, run:
 
-- **Fights**: `attackWith`, `takeTurnWith`, `turnOrder`, and the helpers they
-  call (`Fighter.dodge`, `hurtFoe`, `FightState.over`), or a `RuleSet` field
-  that these read. Play and simulation reach them through `fightRound`; the
-  model reaches them through `roundDistribution` in `Combat.lean`. Code in
-  `fightRound`, `takeTurn`, `attack`, or `Simulation.fight` reaches play and
-  simulation only.
-- **Scene rolls**: the `successRoll` field and `Being.rollLevel`. Play and
-  simulation use `makeRoll`; the model uses `rollProbability`. Both read these.
-- **Between scenes** (HP changes after a scene): there is no shared function.
-  This needs edits to `Graph.lean`, which is fixed ground. Ask the user.
-
-Turn the mechanic on in each target adventure's `Rules.lean` by adding the field
-to the existing value, for example `{ halveDodgeBelowThird := false, myMechanic := true }`.
-
-Traps:
-
-- `solveCombat` treats any fight round that changes the state but does not
-  lower total living HP as `stalled`: a game that never ends. Healing inside a
-  fight does this. Mechanics may only lower HP or leave the state unchanged.
-- A fight that lasts more than `validationRoundLimit` (200) rounds inside the
-  window aborts admission. Mechanics that add defense make fights longer.
-- Admission uses 1,000 total games and each row’s actual qualifying count.
-  A mechanic that ends games early can leave late intervals too wide to pass;
-  zero qualifying observations always fail.
-- The new field's default must keep old behaviour exactly.
-- Tests that use the hero can break, for example the cheat stories in
-  `NegativeExamples.lean`. Update the test data so the test keeps its point;
-  keep the test.
-
-Add tests next to the code:
-
-- The mechanic fires when on, and nothing changes when off (`#guard` or `example`).
-- **Agreement**: run [`agree.lean`](agree.lean) with the mechanic on
-  (`lake exe agree`). It compares the
-  model's death chance for a fight with `validationGames` simulated fights,
-  using the admission round limit and confidence level. Add one fight from
-  each target story to `cases`. Every line must say `ok` (the model's chance
-  is inside the simulation's 90% interval).
-
-Write a line to the play log when the mechanic fires, so the player sees it.
-
-Done when `lake build` passes and all tests pass.
-
-### 3. Screen fairness
-
-Run [`screen.lean`](screen.lean) from the repo root:
-
-```
-lake env lean .agents/skills/add-mechanic/screen.lean
+```sh
+python3 .agents/skills/add-mechanic/scripts/check.py
 ```
 
-It plays every adventure in `statisticalCandidates` the same way admission does,
-with its own seed and the same fixed 1,000-game batch. Each row shows its
-qualifying count, interval, policy band, and `ok`, `FAIL`, or `NO DATA`.
-`ABORTED` means a fight hit the round limit or a game was invalid.
+The runner gives the entire verification one shared 60-second deadline. It builds
+all `Rpg` proofs and regression modules plus compiled game/helper targets, checks
+the axioms of every project theorem, and runs the compiled exploratory screen for
+every catalog adventure. A failed check or timeout returns a nonzero status;
+timeouts terminate child processes and report `INCOMPLETE`. Changed source inputs
+also invalidate the result. Do not run another Lake process in this checkout at
+the same time.
 
-Run it with the mechanic off and with it on. Keep both outputs for the report.
+Record a baseline before the rule and compare it with the finished rule. Each
+verification has its own deadline. The budget concerns checking a completed
+candidate, not design, implementation, dependency installation, or every tuning
+iteration combined. Large changes or a cold build can exceed it; never call an
+unfinished check a pass or reduce the shared sampling parameters to meet it.
 
-Done when you have before and after numbers for every target. If every row is
-`ok` with at least 2 points of margin, go to step 5. Otherwise go to step 4.
+Runtime checks use compiled executables, never `#eval` or `lean --run`. The
+runner's `lake env lean` call only audits proof metadata. Small build-time
+regression checks remain allowed; do not add full held-out simulations to builds.
 
-### 4. Counterbalance with a fun mechanic
+## Freeze, then validate once
 
-Design one counter-mechanic that pushes the failing rows back inside their
-range. It is its own `RuleSet` field, separate from the user's mechanic. It is a
-real mechanic, not a number tweak to the hero or a creature. It follows the
-step 1 and step 2 rules: no memory, shared code only. It is fun:
+Once the mechanics are final, run:
 
-- The player feels it: a dramatic moment, a comeback, a choice, or a log line
-  worth reading.
-- It fits the theme of the user's mechanic (deadlier critical hits pair well
-  with a "last stand" dodge bonus below 1/3 HP; a cursed weapon pairs with a
-  lucky parry on a defense roll of 4 or less).
-- The user's mechanic keeps its step 1 numbers and its step 2 test.
-
-Build it with step 2's rules, then screen again with step 3. Adjust its numbers,
-or try a different counter-mechanic, until every row is `ok` with at least 2
-points of margin from each nontrivial policy bound. The margin is an
-exploratory design buffer, not an additional confidence guarantee.
-
-Done when the screen passes for every target. If three different
-counter-mechanics fail, stop and report the numbers to the user.
-
-### 5. Freeze, then admit once
-
-Tune only with the screen. The validation seed is a held-out test: it counts
-only if you look at it after the mechanics are final. Freeze the mechanics, then
-run:
-
-```
-make check
-make run < /dev/null
+```sh
+python3 .agents/skills/add-mechanic/scripts/check.py --final
 ```
 
-`make check` builds and replays every proof in the kernel; it fails on `sorry`
-and on new axioms. `make run < /dev/null` runs admission for every adventure,
-prints `passed` or `not admitted` for each, then exits.
+Within the same deadline this also runs compiled, source-bound admission for all
+adventures. On Linux it additionally requests `lake check`. On macOS it explicitly
+reports isolated replay as pending; do not claim Comparator/replay passed. Final
+proof replay requirements in `CLAUDE.md` still apply.
 
-If an adventure is not admitted, stop and report to the user with the screen
-numbers. Changes tuned after a failed validation need a fresh held-out seed,
-and that choice is the user's.
+If held-out validation fails, report it. Do not tune against that result and rerun
+until success; changed mechanics then need an independently precommitted holdout.
+Replaying an unchanged seed is reproducibility, not new independent evidence.
 
-As a second axiom check, write a scratch file outside the repo with
-`import Rpg.Catalog` and one `#print axioms Rpg.<Adventure>.fair` line per
-target, and run it with `lake env lean <file>`. Only `propext`,
-`Classical.choice`, and `Quot.sound` may appear.
+The old full-fight diagnostic remains available as `lake exe agree`. It uses
+`validationGames`, `validationRoundLimit`, and `confidenceDelta`, but also exactly
+enumerates all combat outcomes, which can exceed a minute. It is a separate deep
+check, not part of the routine deadline or a proof of model equivalence. If work
+changes model/sampler correspondence, additional checks or proofs are necessary;
+do not describe the routine routing contracts as a substitute for that work.
 
-Done when `make check` passes, every target prints `passed`, and the axioms are
-clean.
+## Report and document
 
-### 6. Document
+Explain the new rule, the chosen counter-rule and why it is cool, the visible
+player moment, and the before/after rows that moved. Report elapsed verification
+time, admission status, and any incomplete deep checks or proof replay. Do not
+claim fun has been mathematically proved.
 
-- Add an entry per new mechanic to `docs/gurps-deviations.md`, in its existing
-  format. Add new terms to `GLOSSARY.md`.
-- If Lighthouse's counts changed, update them from `make validate` in two
-  places: the table in `docs/statistical-confidence.md`, and
-  `recordedValidation` in `Rpg/Adventures/Lighthouse/ValidationExample.lean`.
-  The build checks that the recorded counts match the current fixed batch.
-
-## Report
-
-Tell the user, briefly:
-
-- The mechanic as built, in one sentence with numbers.
-- Each open choice you decided, and why it is the most fun.
-- The counter-mechanic, if any, and why it was needed.
-- Before and after screen numbers per target, for the rows that moved.
-- The agreement test results.
-- The admission result per adventure, and the axiom list.
-- Anything you had to ask about or could not do.
+Document new mechanics in `docs/gurps-deviations.md` and new terms in `GLOSSARY.md`.
+After final validation, update the historical result table in
+`docs/statistical-confidence.md` if it changed. Use the final command's output;
+do not rerun the held-out batch merely to copy its numbers.

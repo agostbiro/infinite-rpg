@@ -14,8 +14,14 @@ root = "Main"
 name = "validate"
 root = "Validate"
 
-# Model and simulation agreement check for the add-mechanic skill. Run: lake exe agree
+# Optional exact combat diagnostic; outside the one-minute routine check. Run: lake exe agree
 [[lean_exe]]
 name = "agree"
 srcDir = ".agents/skills/add-mechanic"
 root = "agree"
+
+# Exploratory fairness screen for the add-mechanic skill. Run: lake exe screen
+[[lean_exe]]
+name = "screen"
+srcDir = ".agents/skills/add-mechanic"
+root = "screen"
