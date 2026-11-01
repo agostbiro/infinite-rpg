@@ -11,7 +11,7 @@ def GraphValid (a : StatisticalCandidate) (seed : Nat) (counts : ValidationCount
   LegalCharacter a.rules a.hero ∧
   LegalAdventure a.rules a.hero a.story ∧
   a.story.NoShortCycles ∧
-  counts = sampleCounts a seed validationGames ∧
+  counts = sampleCounts a seed (validationGamesFor a.policy) ∧
   ValidationAccepted a.horizon counts a.policy
 
 /-- The result of the graph validity test, with its source-bound balance certificate. -/
@@ -20,7 +20,7 @@ structure ValidatedGraph where
   eventCycles : statistical.candidate.story.NoShortCycles
 
 /-- An accepted graph satisfies legality, event structure and the balance test together. -/
-theorem ValidatedGraph.equilibrium (g : ValidatedGraph) :
+theorem ValidatedGraph.balanced (g : ValidatedGraph) :
     GraphValid g.statistical.candidate g.statistical.seed g.statistical.counts := by
   exact ⟨g.statistical.candidate.heroLegal, g.statistical.candidate.legal,
     g.eventCycles, g.statistical.provenance, g.statistical.accepted⟩
@@ -29,7 +29,7 @@ theorem ValidatedGraph.equilibrium (g : ValidatedGraph) :
 def validateGraph (a : StatisticalCandidate) (seed : Nat) :
     Except (List String) ValidatedGraph :=
   if hc : a.story.NoShortCycles then
-    let counts := sampleCounts a seed validationGames
+    let counts := sampleCounts a seed (validationGamesFor a.policy)
     if accepted : ValidationAccepted a.horizon counts a.policy then
       .ok ⟨⟨a, a.fair, seed, counts, rfl, accepted⟩, hc⟩
     else .error ((failedRows a.horizon counts a.policy).map ("fairness: " ++ ·))

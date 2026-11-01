@@ -15,8 +15,8 @@ Character and on the Adventure. A `Game` needs the proofs `LegalCharacter` and `
 (see `Game.new`), and `Draft.toGame` gets them only from `checkCharacter_sound` and `check_sound`.
 So a Draft that the checker rejects can never be played.
 
-Then `Draft.toGame` runs the fairness check (admission): 1,000 games from a seed, with
-horizon 14 for new Wishes (15 turns), or horizon 5 for legacy saves. A Draft that fails a row is not played either. The server tunes on separate training games, freezes the draft, then picks one final random seed
+Then `Draft.toGame` runs the fairness check (admission): the policy's fixed batch from a seed, with
+horizon 9 for new Wishes (10 turns), horizon 14 for v1 saves, or horizon 5 for legacy saves. A Draft that fails a row is not played either. The server tunes on separate training games, freezes the draft, then picks one final random seed
 and saves it with the Adventure, so a saved Adventure gives the same result when it loads.
 A Wish uses the default rules (`liveRules`). The DM cannot change them.
 
@@ -327,13 +327,13 @@ def sizeErrors (d : Draft) : List String :=
 def liveRules : RuleSet := {}
 
 /-- The number of turns that the fairness check covers for a Wish, after the first one. -/
-def liveHorizon : Nat := 14
+def liveHorizon : Nat := 9
 
-/-- New wishes use the requested ten-turn reference median. Old saves retain their policy. -/
+/-- New wishes use the selected ten-choice survival target. Old saves retain their policy. -/
 def profilePolicy (profile : String) : Probability.FairnessPolicy :=
   if profile == "legacy" then Probability.defaultPolicy
   else match Probability.Difficulty.ofProfile profile with
-    | some d => d.policy
+    | some d => if profile.endsWith "-v1" then d.legacyPolicy else d.policy
     | none => Probability.explorationPolicy
 
 /-- All errors in a Draft: the size errors, or else the checker's errors for the Character and
@@ -358,12 +358,17 @@ def Draft.checked (d : Draft) : Except (List String) AdventureDefinition :=
 def liveCandidate (defn : AdventureDefinition) (profile : String := "exploration-10-v1") :
     Probability.StatisticalCandidate where
   toAdventureDefinition := defn
-  horizon := if profile == "legacy" then 5 else liveHorizon
-  horizonPositive := by split <;> decide
+  horizon := if profile == "legacy" then 5 else if profile.endsWith "-v2" then liveHorizon else 14
+  horizonPositive := by
+    split
+    -- The legacy horizon is five.
+    · decide
+    -- Both the current and historical exploration horizons are positive.
+    · split <;> decide
   policy := profilePolicy profile
 
 /-- **The only way in this code from a Draft to a Game.** It runs the checker, then the fairness check with
-1,000 games from `seed`. If both pass, it returns the Game. Else it returns the errors. Each
+the policy's fixed batch from `seed`. If both pass, it returns the Game. Else it returns the errors. Each
 fairness error starts with "fairness:" and names the row that failed. -/
 def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
   match d.checked with
@@ -493,7 +498,8 @@ def fixtureWorld : WorldEnvironment := {
     | .error _ => false
   | .error _ => false
 #guard match Draft.parse fixtureLegal >>= (fun d => d.checked.mapError (String.intercalate ", ")) with
-  | .ok defn => (liveCandidate defn).horizon == 14 && (liveCandidate defn "legacy").horizon == 5
+  | .ok defn => (liveCandidate defn).horizon == 14 && (liveCandidate defn "legacy").horizon == 5 &&
+      (liveCandidate defn Probability.Difficulty.easy.profile).horizon == 9
   | .error _ => false
 -- Its Theme Names are read, and its Scenes get Picture names.
 #guard match Draft.parse fixtureLegal with

@@ -51,9 +51,9 @@ Comparator and `lake check` require their Linux sandbox and remain unexecuted su
 
 ## Graph validity and automatic balancing — 1 November 2026
 
-The new theorem names are `equilibrium` and `non-cyclic`. Their complete statements are in
+The new theorem names are `balanced` and `noSmallCycles`. Their complete statements are in
 `3d-formalization.md`, alongside the reference to the fairness theorem. They compile in Lean;
-axiom audits find only `propext`, `Quot.sound` and `Classical.choice`. The non-cyclic proof uses
+axiom audits find only `propext`, `Quot.sound` and `Classical.choice`. The noSmallCycles proof uses
 only `propext` and `Quot.sound`. Comparator entries include both names; Linux sandbox replay
 with `lake comparator` / `lake check` remains unavailable on this macOS host.
 

@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 240000,
   expect: { timeout: 15000 },
   use: {
-    baseURL: 'http://127.0.0.1:8094',
+    baseURL: 'http://127.0.0.1:8093',
     viewport: { width: 1360, height: 900 },
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
@@ -17,8 +17,9 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: 'RPG_FAKE_API=tests/fake-api .lake/build/bin/rpg --port 8094 --seed 7',
-    url: 'http://127.0.0.1:8094/api/view',
+    command: 'RPG_FAKE_API=tests/fake-api .lake/build/bin/rpg --port 8093 --seed 7',
+    url: 'http://127.0.0.1:8093/api/view',
+    // Refuse an occupied port instead of running tests against the player's game.
     reuseExistingServer: false,
     timeout: 120000,
   },

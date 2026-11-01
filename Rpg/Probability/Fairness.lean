@@ -64,6 +64,17 @@ def Graph.deathAtTwo (g : Graph) (t : Nat) : Option Rat :=
   let p := g.activeAt t
   if p = 0 then none else some ((g.deadBy (t + 2) - g.deadBy (t + 1)) / p)
 
+/-- P(t < T ≤ t+2 | T > t). Successful endings have T = infinity. -/
+def Graph.deathWithinTwo (g : Graph) (t : Nat) : Option Rat :=
+  let p := 1 - g.deadBy t
+  if p = 0 then none else some ((g.deadBy (t + 2) - g.deadBy t) / p)
+
+/-- Use the same conditional event as the recorded policy. -/
+def Graph.conditionalDeath (g : Graph) (policy : FairnessPolicy) (t : Nat) : Option Rat :=
+  match policy.protocol with
+  | .legacyPoint => g.deathAtTwo t
+  | .twoEventWindow => g.deathWithinTwo t
+
 /-- Absolute error is at most the policy tolerance, using exact rationals. -/
 def WithinTolerance (actual target tolerance : Rat) : Prop :=
   target - tolerance ≤ actual ∧ actual ≤ target + tolerance
@@ -78,21 +89,27 @@ inductive FairnessViolation where
   | notInitiallyActive
   | firstTurn (actual target : Rat)
   | atTwo (turn : Nat) (actual target : Rat)
+  | byTen (actual target : Rat)
   deriving Repr, DecidableEq
 
 /-- An exact check for small graphs: the policy, the start state, and the death chance of each row.
-It is a test tool. Admission before play uses the 1,000-game check instead. -/
+It is a test tool. Admission before play uses the policy's fixed simulation batch instead. -/
 def checkFairnessThrough (policy : FairnessPolicy) (g : Graph) (horizon : Nat) : List FairnessViolation :=
   let policyErrors := if policy.Valid then [] else [.invalidPolicy]
   let initialErrors := if g.activeAt 0 = 1 then [] else [.notInitiallyActive]
   let firstTarget := 1 - policy.survival 1
   let firstErrors := if WithinTolerance (g.deadBy 1) firstTarget policy.tolerance then []
     else [.firstTurn (g.deadBy 1) firstTarget]
-  let laterErrors := (List.range horizon).filterMap fun t => match g.deathAtTwo t with
+  let laterErrors := (List.range horizon).filterMap fun t => match g.conditionalDeath policy t with
     | none => none
-    | some actual => if WithinTolerance actual (policy.deathAtTwo t) policy.tolerance then none
-      else some (.atTwo t actual (policy.deathAtTwo t))
-  policyErrors ++ initialErrors ++ firstErrors ++ laterErrors
+    | some actual => if WithinTolerance actual (policy.deathTarget t) policy.tolerance then none
+      else some (.atTwo t actual (policy.deathTarget t))
+  let tenErrors := if policy.protocol == .twoEventWindow then
+    let target := 1 - policy.survival 10
+    if WithinTolerance (g.deadBy 10) target policy.tolerance then []
+    else [.byTen (g.deadBy 10) target]
+    else []
+  policyErrors ++ initialErrors ++ firstErrors ++ laterErrors ++ tenErrors
 
 /-- The graph always uses this definition's rules, character, and story. -/
 def _root_.Rpg.AdventureDefinition.graph (a : AdventureDefinition) : Graph :=

@@ -51,34 +51,15 @@ Fight takes minutes in the interpreter. Do not assume large fights are cheap to 
 
 ## Meaning of `fair`
 
-The shared theorem is finite statistical confidence. For a preselected positive
-horizon `H`, it covers first-turn death and, for `0 <= t < H`,
+For new Wishes, the true quantity is
 
-```
-p_t = E[1{death at t+2} | game active at t]
-w_t = (S(t+1) - S(t+2)) / S(t),  S(t) = q^(t^shape).
-```
+`q_t = E[1{t < T <= t+2} | T > t]`,
 
-The expectation is of a death indicator, not a death time. Completed successful
-games are excluded from the conditioning event. Each row uses its actual
-qualifying count from a fixed batch of 1,000 games to construct an exact binomial
-interval, enclosed by outward-rounded rational endpoints.
-Admission requires the whole interval inside `[w_t - tolerance, w_t + tolerance]`.
-The first-turn row uses target `1 - S(1)` to reject immediate-death loopholes.
+with target `1-S(t+2)/S(t)` and `S(t) = q^(t^2)`. Successful endings have infinite death time and remain survivors. It is an expectation of a death indicator, not an expected lifetime.
 
-`StatisticalCandidate.fair` proves per-row interval coverage and a false-acceptance
-bound for the entire finite decision under the explicitly accepted binomial
-sampling model. With the current constants, each risk is at most 10%.
-This does not assert simultaneous 90% coverage of all displayed intervals.
-There is no requirement or claim about times beyond the selected horizon.
-Lighthouse and every Wish use `H=5`.
+The v2 protocol checks 9 such windows through choice ten, first-choice death, and death by ten using 5,000 fixed trajectories. Each 95% exact-binomial interval must fit its ±0.05 band. Death-by-ten is an explicit check because approximate conditional risks can accumulate errors. Late sparse rows can be inconclusive and prevent admission.
 
-With shape 2, the targets rise from 5% on turn 1 to 27% on turn 6. The tolerance is
-20 percentage points, so the first three rows only cap the risk, and from turn 4 on each
-row also has a lower edge above 0. An Adventure where the Character never dies fails. It does not guarantee victory, behavior under
-every player strategy, or closeness of the entire lifetime distribution to a
-Weibull law. `checkFairnessThrough` remains an exact finite diagnostic for small
-graphs; admission uses the proved exact-binomial confidence protocol.
+`StatisticalCandidate.fair` proves per-row coverage and a 5% false-acceptance bound for the whole decision under `BinomialSampling`. It does not prove simultaneous coverage or a posterior probability of fairness. See [the full statistical specification](statistical-confidence.md), including historical policy compatibility and the distinction between rare-state tests and aggregate conditional risks.
 
 ## Expectations
 

@@ -31,7 +31,7 @@ inductive EventWalk (a : Adventure) : SceneId → SceneId → Nat → Prop where
   | step {s t u n} : (s, t) ∈ a.eventEdges → EventWalk a t u n → EventWalk a s u (n+1)
 
 /-- Every nonempty closed event walk in a checked graph has at least four edges. -/
-theorem Adventure.«non-cyclic» (a : Adventure)
+theorem Adventure.noSmallCycles (a : Adventure)
     (checked : a.checkEventCycles = true)
     (walk : EventWalk a s s n)
     (positive : 0 < n) : 4 ≤ n := by
@@ -69,7 +69,7 @@ example : ¬ (eventCycleExample [(0,0)]).NoShortCycles := by decide
 example : ¬ (eventCycleExample [(0,1),(1,0)]).NoShortCycles := by decide
 example : ¬ (eventCycleExample [(0,1),(1,2),(2,0)]).NoShortCycles := by decide
 example : 4 ≤ 4 :=
-  (eventCycleExample [(0,1),(1,2),(2,3),(3,0)]).«non-cyclic» (by decide)
+  (eventCycleExample [(0,1),(1,2),(2,3),(3,0)]).noSmallCycles (by decide)
     (.step (t := 1) (by decide) (.step (t := 2) (by decide)
       (.step (t := 3) (by decide) (.step (t := 0) (by decide) (.nil 0))))) (by decide)
 

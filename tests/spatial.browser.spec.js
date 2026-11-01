@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { portalsForView } from '../web/spatial.js';
-import {environmentFor,placeForScene,worldLayout} from '../web/environment.js';
+import {environmentFor,placeForScene,eventAnchorForScene,worldLayout} from '../web/environment.js';
 
 async function view(page) { return (await page.request.get('/api/view')).json(); }
 
@@ -10,6 +10,7 @@ async function settled(page) {
   if (await page.locator('#skip').isVisible()) await page.locator('#skip').click();
   await expect(page.locator('body')).toHaveAttribute('data-state', 'ready', { timeout: 30000 });
   await expect(page.locator('#world')).toHaveAttribute('data-ready', 'true');
+  await expect(page.locator('#world')).toHaveAttribute('data-travelling', 'false', { timeout: 15000 });
 }
 
 /** Reach a real interaction with keyboard events, never by changing app state. */
@@ -18,7 +19,7 @@ async function walkThrough(page, index) {
   const before = await view(page);
   const env=environmentFor(before);
   const place=placeForScene(env,before.scene.id);
-  const gate=worldLayout(portalsForView(before),place).portals[index];
+  const gate=worldLayout(portalsForView(before),place,null,eventAnchorForScene(env,before.scene.id)).portals[index];
   expect(gate).toBeTruthy();
   const world = page.locator('#world');
   await page.locator('#world-canvas').focus();

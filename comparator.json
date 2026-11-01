@@ -10,8 +10,8 @@
     "Verified.mem_inputs_iff",
     "Verified.lighthouse_default_rules",
     "Verified.fair",
-    "Verified.equilibrium",
-    "Verified.non-cyclic"
+    "Verified.balanced",
+    "Verified.noSmallCycles"
   ],
   "permitted_axioms": [
     "propext",

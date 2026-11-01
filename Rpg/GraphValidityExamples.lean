@@ -17,6 +17,6 @@ example : safeCandidate.story.NoShortCycles := by decide
 example : ∀ g, validateGraph safeCandidate 1 = .ok g →
     GraphValid g.statistical.candidate g.statistical.seed g.statistical.counts := by
   intro g _
-  exact g.equilibrium
+  exact g.balanced
 
 end Rpg

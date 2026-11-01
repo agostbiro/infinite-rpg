@@ -50,15 +50,15 @@ theorem lighthouse_default_rules :
 theorem fair (a : Probability.StatisticalCandidate) : Probability.Fair a := sorry
 
 /-- The graph validity certificate includes legality, event structure and observed balance. -/
-theorem equilibrium (g : ValidatedGraph) :
+theorem balanced (g : ValidatedGraph) :
     GraphValid g.statistical.candidate g.statistical.seed g.statistical.counts :=
-  g.equilibrium
+  g.balanced
 
 /-- Every nonempty closed event walk of a checked graph has at least four edges. -/
-theorem «non-cyclic» (a : Adventure)
+theorem noSmallCycles (a : Adventure)
     (checked : a.checkEventCycles = true)
     (walk : EventWalk a s s n)
     (positive : 0 < n) : 4 ≤ n :=
-  a.«non-cyclic» checked walk positive
+  a.noSmallCycles checked walk positive
 
 end Verified

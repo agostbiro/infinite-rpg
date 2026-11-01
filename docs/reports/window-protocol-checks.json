@@ -1,0 +1,66 @@
+{
+  "aborted": false,
+  "admitted": false,
+  "deaths": [
+    0,
+    0,
+    864,
+    1845,
+    1536,
+    1125,
+    821,
+    534,
+    575,
+    559,
+    427,
+    288,
+    252,
+    236,
+    200,
+    4063
+  ],
+  "games": 5000,
+  "horizon": 14,
+  "legalityMs": 736,
+  "profile": "difficulty-hard-v2",
+  "seed": 20261103,
+  "title": "Bonaparte \u00b7 Maps of the Nile",
+  "totalMs": 794,
+  "trials": [
+    5000,
+    5000,
+    5000,
+    5000,
+    4136,
+    3155,
+    2600,
+    2030,
+    1779,
+    1496,
+    1204,
+    937,
+    777,
+    649,
+    525,
+    5000
+  ],
+  "validationMs": 58,
+  "interpretation": "Diagnostic of an existing v1 Hard campaign under v2. Early rejection is correct; this is not a passing v2 campaign or a full successful-validation benchmark.",
+  "detailedReport": {
+    "status": "cancelled",
+    "elapsedSecondsLowerBound": 236,
+    "reason": "Full exact interval diagnostics did not finish; no finished-report latency is claimed."
+  },
+  "verification": {
+    "leanBuild": "Rpg, rpg, inspect-adventure and Comparator.Proofs passed",
+    "windowTests": "Passed: endpoints, success conditioning, overlapping counts, budgets, interval acceptance and rejection",
+    "axioms": [
+      "propext",
+      "Classical.choice",
+      "Quot.sound"
+    ],
+    "comparator": "Unavailable on macOS: bwrap requires Linux namespaces",
+    "runningGame": "Servers and active games were not restarted",
+    "directRareStateMode": "Design documented; not implemented"
+  }
+}

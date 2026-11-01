@@ -1,0 +1,1476 @@
+{"world": "Egypt, Bonaparte's expedition, 1798",
+ "title": "Bonaparte · Maps of the Nile",
+ "themeNames":
+ {"weapons": [{"weapon": "broadsword", "name": "Expedition Sabre"}],
+  "skills":
+  [{"skill": "broadsword", "name": "Sabre Fencing"},
+   {"skill": "stealth", "name": "Stealth"},
+   {"skill": "diplomacy", "name": "Negotiation"},
+   {"skill": "lockpicking", "name": "Lockpicking"}],
+  "armor": [{"name": "Reinforced Coat", "armor": "leather"}]},
+ "start": 0,
+ "scenes":
+ [{"title": "The Scholars' Camp",
+   "text":
+   "I · The Stolen Maps. Napoleon Bonaparte waits beside a table covered in maps. A survey of the Nile's wells has vanished; soldiers and villages alike depend on finding it.",
+   "id": 0,
+   "choices":
+   [{"text": "Talk to Napoleon Bonaparte",
+     "outcome": {"type": "goto", "next": 1}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 1,
+      "onFailure": 200,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "Salma's Tent",
+   "text":
+   "I · The Stolen Maps. Salma waits beneath a striped awning. The cartographer recognises a mark on the abandoned map case: the thief left through the harbour.",
+   "id": 1,
+   "choices":
+   [{"text": "Examine the map with Salma",
+     "outcome": {"type": "goto", "next": 2}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 101}}]},
+  {"title": "Alexandria Harbour",
+   "text":
+   "I · The Stolen Maps. Mooring ropes creak among the cargo bales. A smuggler is keeping curious eyes away from a crate bearing the expedition's seal.",
+   "id": 2,
+   "choices":
+   [{"text": "Follow the path along the quay",
+     "outcome": {"type": "goto", "next": 3}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 3,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Storekeeper's Ledger",
+   "text":
+   "I · The Stolen Maps. Lucien Morel asks why one receipt lists the same boat twice. A splash of ink hides the recipient's name.",
+   "id": 3,
+   "choices":
+   [{"text": "Examine the ledger", "outcome": {"type": "goto", "next": 4}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 4,
+      "onFailure": 203,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Warehouse Yard",
+   "text":
+   "I · The Stolen Maps. A shadow closes a crate behind a row of jars. You can follow the porters through their passage or challenge the armed lookout.",
+   "id": 4,
+   "choices":
+   [{"text": "Follow the porters through the passage",
+     "outcome": {"type": "goto", "next": 5}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 5,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Merchant's Balcony",
+   "text":
+   "I · The Stolen Maps. Salma waits beside an open window. She has found the name of a ferryman who knows the canals better than the officers do.",
+   "id": 5,
+   "choices":
+   [{"text": "Climb through the window towards the canal",
+     "outcome": {"type": "goto", "next": 6}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 105}}]},
+  {"title": "The Severed Ropes",
+   "text":
+   "I · The Stolen Maps. Youssef waits beside his damaged boat. Someone has cut the mooring lines; an armed man now claims the right to collect a crossing fee.",
+   "id": 6,
+   "choices":
+   [{"text": "Talk to Youssef about another boat",
+     "outcome": {"type": "goto", "next": 7}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 7,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Pilot's House",
+   "text":
+   "I · The Stolen Maps. The pilot draws the river channels on a damp stone. The route to Rosetta remains open if you leave before the supply convoy.",
+   "id": 7,
+   "choices":
+   [{"text": "Examine the drawing on the stone",
+     "outcome": {"type": "goto", "next": 8}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 8,
+      "onFailure": 207,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Salt Marsh Causeway",
+   "text":
+   "I · The Stolen Maps. The wind drives salt against your boots. An irregular guard blocks the direct road, but workers use a raised walkway to the side.",
+   "id": 8,
+   "choices":
+   [{"text": "Climb the ladder to the walkway",
+     "outcome": {"type": "goto", "next": 9}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 9,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Patched Sail",
+   "text":
+   "I · The Stolen Maps. Youssef waits beneath a blue sail. He will take you to the first lock if you help him prepare the boat.",
+   "id": 9,
+   "choices":
+   [{"text": "Board Youssef's boat", "outcome": {"type": "goto", "next": 10}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 109}}]},
+  {"title": "The Abandoned Watchpost",
+   "text":
+   "I · The Stolen Maps. A lantern still burns in the empty watchpost. Its returning lookout wants the notebook you spotted, but he may listen to an explanation.",
+   "id": 10,
+   "choices":
+   [{"text": "Talk to the lookout about passing through",
+     "outcome": {"type": "goto", "next": 11}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 11,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Canal Marker",
+   "text":
+   "I · The Stolen Maps. Three carved lines indicate a channel towards cultivated fields. Salma recognises a surveying method used by an expedition engineer.",
+   "id": 11,
+   "choices":
+   [{"text": "Examine the three carved lines",
+     "outcome": {"type": "goto", "next": 12}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 12,
+      "onFailure": 211,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Granaries of Rosetta",
+   "text":
+   "I · The Stolen Maps. Grain sacks form a quiet maze. A marauder guards a hidden cache; local residents show you a way out towards the market.",
+   "id": 12,
+   "choices":
+   [{"text": "Follow the path towards the market",
+     "outcome": {"type": "goto", "next": 13}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 13,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Rope Market",
+   "text":
+   "I · The Stolen Maps. Amina asks for news of the convoy. She saw a man carrying the stolen case as though it held a treasure.",
+   "id": 13,
+   "choices":
+   [{"text": "Talk to Amina", "outcome": {"type": "goto", "next": 14}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 113}}]},
+  {"title": "The Bookbinder's Workshop",
+   "text":
+   "I · The Stolen Maps. The bookbinder repaired a sand-covered notebook. A torn page shows a small dam and an officer's initials.",
+   "id": 14,
+   "choices":
+   [{"text": "Open the chest of papers",
+     "outcome": {"type": "goto", "next": 15}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 15,
+      "onFailure": 214,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The First Nile Camp",
+   "text":
+   "I · The Stolen Maps. The river turns orange at sunset. Youssef warns that the next stage will take you along the banks and into the irrigation canals.",
+   "id": 15,
+   "choices":
+   [{"text": "Board the boat beside the Nile",
+     "outcome": {"type": "goto", "next": 16}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 16,
+      "onFailure": 215,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Delta Reeds",
+   "text":
+   "II · The Nile Routes. A narrow track winds between the reeds. The sound of an oar lets you follow another boat without approaching it.",
+   "id": 16,
+   "choices":
+   [{"text": "Follow the reed-lined path",
+     "outcome": {"type": "goto", "next": 17}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 17,
+      "onFailure": 216,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Water Mill",
+   "text":
+   "II · The Nile Routes. A motionless wheel holds debris from a flood. One part of its mechanism resembles the sketch in the stolen notebook.",
+   "id": 17,
+   "choices":
+   [{"text": "Climb the mill stairs", "outcome": {"type": "goto", "next": 18}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 117}}]},
+  {"title": "The Potters' Courtyard",
+   "text":
+   "II · The Nile Routes. Amina waits beside a cooled kiln. The potters carried jars for men who spoke of a concealed cistern.",
+   "id": 18,
+   "choices":
+   [{"text": "Talk to Amina by the kiln",
+     "outcome": {"type": "goto", "next": 19}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 19,
+      "onFailure": 218,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Palm Terrace",
+   "text":
+   "II · The Nile Routes. Salma studies the palm shadows. She concludes that the notebook's drawing was made in an east-facing courtyard.",
+   "id": 19,
+   "choices":
+   [{"text": "Look across the river through the telescope",
+     "outcome": {"type": "goto", "next": 20}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 20,
+      "onFailure": 219,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Convoy Landing",
+   "text":
+   "II · The Nile Routes. A deserter guards a chest of military papers. The supply officer knows a path around his post.",
+   "id": 20,
+   "choices":
+   [{"text": "Follow the convoy path", "outcome": {"type": "goto", "next": 21}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 21,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Infirmary Tents",
+   "text":
+   "II · The Nile Routes. The doctor asks you to conserve drinking water. A wounded courier heard the name of a village where the maps are to change hands.",
+   "id": 21,
+   "choices":
+   [{"text": "Talk to the infirmary doctor",
+     "outcome": {"type": "goto", "next": 22}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 121}}]},
+  {"title": "Desaix's Letter",
+   "text":
+   "II · The Nile Routes. General Desaix waits outside an open tent. He grants you passage through the lines without diverting soldiers from their duties.",
+   "id": 22,
+   "choices":
+   [{"text": "Talk to General Desaix", "outcome": {"type": "goto", "next": 23}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 23,
+      "onFailure": 222,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Irrigated Garden",
+   "text":
+   "II · The Nile Routes. A gardener closes the little sluices one by one. His account confirms that a side canal reaches the village you seek.",
+   "id": 23,
+   "choices":
+   [{"text": "Examine the garden sluice",
+     "outcome": {"type": "goto", "next": 24}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 24,
+      "onFailure": 223,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Landing Steps",
+   "text":
+   "II · The Nile Routes. Stone steps descend beneath the palms. Red sealing wax clings to the last dry step.",
+   "id": 24,
+   "choices":
+   [{"text": "Descend the stairs to the boat",
+     "outcome": {"type": "goto", "next": 25}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 25,
+      "onFailure": 224,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Eastern Ferry",
+   "text":
+   "II · The Nile Routes. Youssef waits for the ferry. Across the river, two routes lead to a caravanserai without entering the military camp.",
+   "id": 25,
+   "choices":
+   [{"text": "Board the ferry", "outcome": {"type": "goto", "next": 26}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 125}}]},
+  {"title": "The Caravanserai",
+   "text":
+   "II · The Nile Routes. Salma asks travellers about a case marked with a compass. A merchant recognises it and points towards the inner courtyard.",
+   "id": 26,
+   "choices":
+   [{"text": "Talk to Salma in the courtyard",
+     "outcome": {"type": "goto", "next": 27}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 27,
+      "onFailure": 226,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Carpet Room",
+   "text":
+   "II · The Nile Routes. An open window overlooks the rooftops. Beneath a rolled carpet lies a draft survey describing the flow of several wells.",
+   "id": 27,
+   "choices":
+   [{"text": "Examine the survey beneath the carpet",
+     "outcome": {"type": "goto", "next": 28}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 28,
+      "onFailure": 227,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Brick Rooftops",
+   "text":
+   "II · The Nile Routes. A trafficker watches the stairs to discourage pursuit. A mason's ladder offers another way around his post.",
+   "id": 28,
+   "choices":
+   [{"text": "Climb the mason's ladder",
+     "outcome": {"type": "goto", "next": 29}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 29,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Baker's Oven",
+   "text":
+   "II · The Nile Routes. The baker recognises the stamp on the survey. His neighbour engraves merchants' seals and is still working despite the heat.",
+   "id": 29,
+   "choices":
+   [{"text": "Follow the path to the workshop",
+     "outcome": {"type": "goto", "next": 30}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 129}}]},
+  {"title": "The Seal Maker",
+   "text":
+   "II · The Nile Routes. Farid asks to see the wax impression. A tiny notch identifies a forged seal used to divert supply convoys.",
+   "id": 30,
+   "choices":
+   [{"text": "Talk to Farid", "outcome": {"type": "goto", "next": 31}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 31,
+      "onFailure": 230,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "Night on the Terrace",
+   "text":
+   "II · The Nile Routes. Stars shimmer in the rooftop pools. Salma connects the clues: the maps are being used to sell false access to water reserves.",
+   "id": 31,
+   "choices":
+   [{"text": "Watch the stars before setting out",
+     "outcome": {"type": "goto", "next": 32}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 32,
+      "onFailure": 231,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Road to Embabeh",
+   "text":
+   "III · The Cairo Evidence. News of the army catches up with you. You must reach the quartermasters before another convoy follows a false map.",
+   "id": 32,
+   "choices":
+   [{"text": "Follow the path towards Embabeh",
+     "outcome": {"type": "goto", "next": 33}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 33,
+      "onFailure": 232,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Officers' Map Table",
+   "text":
+   "III · The Cairo Evidence. Officers arrange cloth squares on a table to explain their movements. A messenger tells you where Bonaparte will be after the council.",
+   "id": 33,
+   "choices":
+   [{"text": "Examine the officers' map table",
+     "outcome": {"type": "goto", "next": 34}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 133}}]},
+  {"title": "The General's Tent",
+   "text":
+   "III · The Cairo Evidence. Napoleon Bonaparte waits for a precise report. He wants evidence of the diversions and leaves you to decide how to protect the civilian convoy.",
+   "id": 34,
+   "choices":
+   [{"text": "Talk to Napoleon Bonaparte",
+     "outcome": {"type": "goto", "next": 35}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 35,
+      "onFailure": 234,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Earthen Embankment",
+   "text":
+   "III · The Cairo Evidence. The distant noise of battle unsettles the porters. Your task is to guide civilians through a sheltered passage, away from the fighting.",
+   "id": 35,
+   "choices":
+   [{"text": "Follow the passage behind the embankment",
+     "outcome": {"type": "goto", "next": 36}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 36,
+      "onFailure": 235,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Disputed Storehouse",
+   "text":
+   "III · The Cairo Evidence. An armed man is moving supplies under cover of the confusion. Salma suggests asking the storekeeper for help instead of confronting him.",
+   "id": 36,
+   "choices":
+   [{"text": "Talk to the storekeeper about protecting the supplies",
+     "outcome": {"type": "goto", "next": 37}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 37,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Families' Refuge",
+   "text":
+   "III · The Cairo Evidence. Amina waits beside a well with a broken rope. The carpenters can help restore the crossing used by the families.",
+   "id": 37,
+   "choices":
+   [{"text": "Take the path to the carpenters",
+     "outcome": {"type": "goto", "next": 38}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 137}}]},
+  {"title": "The Broken Footbridge",
+   "text":
+   "III · The Cairo Evidence. The carpenters assemble salvaged planks. They saw a man carrying the map case towards the river.",
+   "id": 38,
+   "choices":
+   [{"text": "Cross the repaired footbridge",
+     "outcome": {"type": "goto", "next": 39}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 39,
+      "onFailure": 238,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Departing Feluccas",
+   "text":
+   "III · The Cairo Evidence. Youssef has found a light boat. The fugitives followed the channel beside the ruins of an old quay.",
+   "id": 39,
+   "choices":
+   [{"text": "Board the felucca", "outcome": {"type": "goto", "next": 40}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 40,
+      "onFailure": 239,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Old Quay Columns",
+   "text":
+   "III · The Cairo Evidence. Broken columns rise from the sand. A fresh chalk message arranges a meeting near Cairo.",
+   "id": 40,
+   "choices":
+   [{"text": "Examine the marked column",
+     "outcome": {"type": "goto", "next": 41}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 41,
+      "onFailure": 240,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Cairo Gate",
+   "text":
+   "III · The Cairo Evidence. Salma speaks with a neighbourhood official. He will help if the inquiry is not used as an excuse to seize the residents' water.",
+   "id": 41,
+   "choices":
+   [{"text": "Talk to Salma and the official",
+     "outcome": {"type": "goto", "next": 42}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 141}}]},
+  {"title": "The Fountain Courtyard",
+   "text":
+   "III · The Cairo Evidence. Water runs between stone basins. Farid finds the same forged seal on a jar that he saw on the notebook.",
+   "id": 42,
+   "choices":
+   [{"text": "Examine the jar with the forged seal",
+     "outcome": {"type": "goto", "next": 43}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 43,
+      "onFailure": 242,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Copyist's Stairs",
+   "text":
+   "III · The Cairo Evidence. A copyist keeps duplicates of transport contracts. A page was removed so recently that the ink on its neighbour is still damp.",
+   "id": 43,
+   "choices":
+   [{"text": "Climb the copyist's stairs",
+     "outcome": {"type": "goto", "next": 44}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 44,
+      "onFailure": 243,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Contract Chest",
+   "text":
+   "III · The Cairo Evidence. An accomplice returns for the last contract. The copyist shows you a hiding place where you can let him pass and then read the papers.",
+   "id": 44,
+   "choices":
+   [{"text": "Open the contract chest",
+     "outcome": {"type": "goto", "next": 45}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 45,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "Monge's Loggia",
+   "text":
+   "III · The Cairo Evidence. Gaspard Monge waits beside an incomplete survey. He confirms that the notebook combines useful measurements with deliberately false directions.",
+   "id": 45,
+   "choices":
+   [{"text": "Talk to Gaspard Monge", "outcome": {"type": "goto", "next": 46}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 145}}]},
+  {"title": "The Instrument Garden",
+   "text":
+   "III · The Cairo Evidence. The scholars arrange their instruments on a table. Salma proposes comparing the notebook's bearings with the plain of Giza.",
+   "id": 46,
+   "choices":
+   [{"text": "Look through the scholars' telescope",
+     "outcome": {"type": "goto", "next": 47}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 47,
+      "onFailure": 246,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Boat to Giza",
+   "text":
+   "III · The Cairo Evidence. Youssef waits on the western bank. Beyond the fields and palms, the pyramids finally emerge from the dust.",
+   "id": 47,
+   "choices":
+   [{"text": "Board the boat to Giza", "outcome": {"type": "goto", "next": 48}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 48,
+      "onFailure": 247,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "At the Pyramids",
+   "text":
+   "IV · Water at the Pyramids. Salma examines a survey marker. The stolen sketch indicates a cistern near the ancient paths, not a secret chamber inside a pyramid.",
+   "id": 48,
+   "choices":
+   [{"text": "Examine the survey stone",
+     "outcome": {"type": "goto", "next": 49}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 49,
+      "onFailure": 248,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Temple Columns",
+   "text":
+   "IV · Water at the Pyramids. Wind whistles between the columns. Part of a map case protrudes from the sand beside a recently disturbed step.",
+   "id": 49,
+   "choices":
+   [{"text": "Climb the temple stairs",
+     "outcome": {"type": "goto", "next": 50}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 149}}]},
+  {"title": "The Workers' Camp",
+   "text":
+   "IV · Water at the Pyramids. Farid waits with two workers who maintain the water access routes. They saw the suspects descend to a storehouse away from the monuments.",
+   "id": 50,
+   "choices":
+   [{"text": "Talk to Farid and the workers",
+     "outcome": {"type": "goto", "next": 51}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 51,
+      "onFailure": 250,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Cool Gallery",
+   "text":
+   "IV · Water at the Pyramids. A service gallery shelters the water jars from the sun. Fresh tracks stop at a wooden door secured from within.",
+   "id": 51,
+   "choices":
+   [{"text": "Examine the gallery lock",
+     "outcome": {"type": "goto", "next": 52}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 52,
+      "onFailure": 251,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Storehouse Keeper",
+   "text":
+   "IV · Water at the Pyramids. The leader of the scheme guards the last notebook. Salma wants to negotiate its return while the workers secure the path to the well.",
+   "id": 52,
+   "choices":
+   [{"text": "Talk to the keeper about returning the notebook",
+     "outcome": {"type": "goto", "next": 53}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 53,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Cistern",
+   "text":
+   "IV · Water at the Pyramids. The complete plan lies on a low table. You can correct the false directions once you identify which measurements are trustworthy.",
+   "id": 53,
+   "choices":
+   [{"text": "Examine the map beside the cistern",
+     "outcome": {"type": "goto", "next": 54}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 153}}]},
+  {"title": "The Shadow Survey",
+   "text":
+   "IV · Water at the Pyramids. Salma compares the shadows with Monge's measurements. The true water route reaches a village the convoy had not planned to serve.",
+   "id": 54,
+   "choices":
+   [{"text": "Observe the shadows through the telescope",
+     "outcome": {"type": "goto", "next": 55}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 55,
+      "onFailure": 254,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "Return to the Village",
+   "text":
+   "IV · Water at the Pyramids. Amina waits in the square. The residents ask to receive corrected maps at the same time as the army.",
+   "id": 55,
+   "choices":
+   [{"text": "Talk to Amina in the square",
+     "outcome": {"type": "goto", "next": 56}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 56,
+      "onFailure": 255,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "Copies of the Plan",
+   "text":
+   "IV · Water at the Pyramids. The copyist spreads sheets across a table. You prepare two clear copies so that no group depends on a single precious original.",
+   "id": 56,
+   "choices":
+   [{"text": "Examine the copied plans",
+     "outcome": {"type": "goto", "next": 57}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 57,
+      "onFailure": 256,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Last Nile Crossing",
+   "text":
+   "IV · Water at the Pyramids. Youssef packs the documents into a watertight chest. You cross back to camp carrying the villagers' testimony.",
+   "id": 57,
+   "choices":
+   [{"text": "Board the boat carrying the documents",
+     "outcome": {"type": "goto", "next": 58}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 157}}]},
+  {"title": "The Evening Council",
+   "text":
+   "IV · Water at the Pyramids. Napoleon Bonaparte waits with the quartermasters. Your report separates established facts from the rumours that surrounded the investigation.",
+   "id": 58,
+   "choices":
+   [{"text": "Talk to Napoleon Bonaparte at the council",
+     "outcome": {"type": "goto", "next": 59}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 59,
+      "onFailure": 258,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Written Agreement",
+   "text":
+   "IV · Water at the Pyramids. Salma asks for the water access arrangements in writing. An officer agrees to deliver a copy to the village before the convoy leaves.",
+   "id": 59,
+   "choices":
+   [{"text": "Examine the agreement on the table",
+     "outcome": {"type": "goto", "next": 60}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 60,
+      "onFailure": 259,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Last Accomplice",
+   "text":
+   "IV · Water at the Pyramids. An accomplice still wants the forged seal. Farid proposes handing it to the neighbourhood officials with the evidence of the scheme.",
+   "id": 60,
+   "choices":
+   [{"text": "Talk to Farid about handing over the evidence",
+     "outcome": {"type": "goto", "next": 61}},
+    {"text": "Challenge the smuggler with your sabre",
+     "outcome":
+     {"type": "fight",
+      "onWin": 61,
+      "foes":
+      [{"weapon": "largeKnife",
+        "st": 14,
+        "skills": [{"skill": "knife", "level": 15}],
+        "naturalDR": 0,
+        "name": "Armed Smuggler",
+        "iq": 9,
+        "ht": 11,
+        "dx": 11,
+        "armor": "none"}]}}]},
+  {"title": "The Supply Road",
+   "text":
+   "IV · Water at the Pyramids. The first convoy follows the corrected route. You accompany the porters as far as the branch leading to the village.",
+   "id": 61,
+   "choices":
+   [{"text": "Follow the supply convoy path",
+     "outcome": {"type": "goto", "next": 62}},
+    {"text": "Examine the objects and tracks nearby",
+     "outcome": {"type": "goto", "next": 161}}]},
+  {"title": "Evening over Giza",
+   "text":
+   "IV · Water at the Pyramids. The sun sinks behind the palms and pyramids. Salma joins you to decide who should keep the last field notebook.",
+   "id": 62,
+   "choices":
+   [{"text": "Follow the path to Salma",
+     "outcome": {"type": "goto", "next": 63}},
+    {"text": "Examine the tracks quietly (Stealth)",
+     "outcome":
+     {"type": "roll",
+      "onSuccess": 63,
+      "onFailure": 262,
+      "modifier": 0,
+      "against": "stealth"}}]},
+  {"title": "The Cartographer's Choice",
+   "text":
+   "IV · Water at the Pyramids. Two tasks await: accompany the scholars on their surveys, or help the residents maintain their water routes. Bonaparte has his maps; your own road is yours to choose.",
+   "id": 63,
+   "choices":
+   [{"text": "Give the notebook to the scholars",
+     "outcome": {"type": "goto", "next": 64}},
+    {"text": "Join Amina to maintain the water routes",
+     "outcome": {"type": "goto", "next": 65}}]},
+  {"title": "Ending · The Scholars' Notebook",
+   "text":
+   "You join Salma and the scholars on new surveys. The residents retain copies of the maps. Your notebook carefully separates measurements from the stories you were told.",
+   "id": 64,
+   "choices": []},
+  {"title": "Ending · Guardians of the Water",
+   "text":
+   "You stay with Amina to share the surveys and repair the crossings. Bonaparte continues his campaign; your adventure ends with work the villages can maintain for themselves.",
+   "id": 65,
+   "choices": []},
+  {"title": "Salma's Tent · The Detour",
+   "text":
+   "Salma waits beneath a striped awning. The cartographer recognises a mark on the abandoned map case: the thief left through the harbour. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 101,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 2}},
+    {"text": "Continue to the harbour",
+     "outcome": {"type": "goto", "next": 2}}]},
+  {"title": "The Merchant's Balcony · The Detour",
+   "text":
+   "Salma waits beside an open window. She has found the name of a ferryman who knows the canals better than the officers do. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 105,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 6}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 3}}]},
+  {"title": "The Patched Sail · The Detour",
+   "text":
+   "Youssef waits beneath a blue sail. He will take you to the first lock if you help him prepare the boat. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 109,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 10}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 7}}]},
+  {"title": "The Rope Market · The Detour",
+   "text":
+   "Amina asks for news of the convoy. She saw a man carrying the stolen case as though it held a treasure. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 113,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 14}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 11}}]},
+  {"title": "The Water Mill · The Detour",
+   "text":
+   "A motionless wheel holds debris from a flood. One part of its mechanism resembles the sketch in the stolen notebook. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 117,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 18}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 15}}]},
+  {"title": "The Infirmary Tents · The Detour",
+   "text":
+   "The doctor asks you to conserve drinking water. A wounded courier heard the name of a village where the maps are to change hands. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 121,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 22}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 19}}]},
+  {"title": "The Eastern Ferry · The Detour",
+   "text":
+   "Youssef waits for the ferry. Across the river, two routes lead to a caravanserai without entering the military camp. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 125,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 26}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 23}}]},
+  {"title": "The Baker's Oven · The Detour",
+   "text":
+   "The baker recognises the stamp on the survey. His neighbour engraves merchants' seals and is still working despite the heat. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 129,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 30}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 27}}]},
+  {"title": "The Officers' Map Table · The Detour",
+   "text":
+   "Officers arrange cloth squares on a table to explain their movements. A messenger tells you where Bonaparte will be after the council. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 133,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 34}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 31}}]},
+  {"title": "The Families' Refuge · The Detour",
+   "text":
+   "Amina waits beside a well with a broken rope. The carpenters can help restore the crossing used by the families. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 137,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 38}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 35}}]},
+  {"title": "The Cairo Gate · The Detour",
+   "text":
+   "Salma speaks with a neighbourhood official. He will help if the inquiry is not used as an excuse to seize the residents' water. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 141,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 42}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 39}}]},
+  {"title": "Monge's Loggia · The Detour",
+   "text":
+   "Gaspard Monge waits beside an incomplete survey. He confirms that the notebook combines useful measurements with deliberately false directions. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 145,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 46}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 43}}]},
+  {"title": "The Temple Columns · The Detour",
+   "text":
+   "Wind whistles between the columns. Part of a map case protrudes from the sand beside a recently disturbed step. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 149,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 50}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 47}}]},
+  {"title": "The Cistern · The Detour",
+   "text":
+   "The complete plan lies on a low table. You can correct the false directions once you identify which measurements are trustworthy. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 153,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 54}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 51}}]},
+  {"title": "The Last Nile Crossing · The Detour",
+   "text":
+   "Youssef packs the documents into a watertight chest. You cross back to camp carrying the villagers' testimony. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 157,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 58}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 55}}]},
+  {"title": "The Supply Road · The Detour",
+   "text":
+   "The first convoy follows the corrected route. You accompany the porters as far as the branch leading to the village. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
+   "id": 161,
+   "choices":
+   [{"text": "Follow the path to continue the investigation",
+     "outcome": {"type": "goto", "next": 62}},
+    {"text": "Return along the survey route",
+     "outcome": {"type": "goto", "next": 59}}]},
+  {"title": "The Scholars' Camp · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 200,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 1}}]},
+  {"title": "The Storekeeper's Ledger · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 203,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 4}}]},
+  {"title": "The Pilot's House · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 207,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 8}}]},
+  {"title": "The Canal Marker · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 211,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 12}}]},
+  {"title": "The Bookbinder's Workshop · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 214,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 15}}]},
+  {"title": "The First Nile Camp · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 215,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 16}}]},
+  {"title": "The Delta Reeds · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 216,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 17}}]},
+  {"title": "The Potters' Courtyard · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 218,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 19}}]},
+  {"title": "The Palm Terrace · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 219,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 20}}]},
+  {"title": "Desaix's Letter · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 222,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 23}}]},
+  {"title": "The Irrigated Garden · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 223,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 24}}]},
+  {"title": "The Landing Steps · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 224,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 25}}]},
+  {"title": "The Caravanserai · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 226,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 27}}]},
+  {"title": "The Carpet Room · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 227,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 28}}]},
+  {"title": "The Seal Maker · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 230,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 31}}]},
+  {"title": "Night on the Terrace · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 231,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 32}}]},
+  {"title": "The Road to Embabeh · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 232,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 33}}]},
+  {"title": "The General's Tent · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 234,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 35}}]},
+  {"title": "The Earthen Embankment · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 235,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 36}}]},
+  {"title": "The Broken Footbridge · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 238,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 39}}]},
+  {"title": "The Departing Feluccas · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 239,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 40}}]},
+  {"title": "The Old Quay Columns · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 240,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 41}}]},
+  {"title": "The Fountain Courtyard · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 242,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 43}}]},
+  {"title": "The Copyist's Stairs · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 243,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 44}}]},
+  {"title": "The Instrument Garden · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 246,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 47}}]},
+  {"title": "The Boat to Giza · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 247,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 48}}]},
+  {"title": "At the Pyramids · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 248,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 49}}]},
+  {"title": "The Workers' Camp · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 250,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 51}}]},
+  {"title": "The Cool Gallery · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 251,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 52}}]},
+  {"title": "The Shadow Survey · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 254,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 55}}]},
+  {"title": "Return to the Village · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 255,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 56}}]},
+  {"title": "Copies of the Plan · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 256,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 57}}]},
+  {"title": "The Evening Council · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 258,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 59}}]},
+  {"title": "The Written Agreement · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 259,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 60}}]},
+  {"title": "Evening over Giza · Another Lead",
+   "text":
+   "Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.",
+   "id": 262,
+   "choices":
+   [{"text": "Talk to Salma and resume the journey",
+     "outcome": {"type": "goto", "next": 63}}]}],
+ "palette": ["#d9b878", "#b9894d", "#ead9ab", "#254c62", "#193747", "#6d4d35"],
+ "intro":
+ "Egypt, July 1798. You are Camille Laurent, an interpreter and cartographer with the expedition. Alongside Salma, you search for stolen surveys that threaten access to water. This historical fiction takes you from Alexandria to the Nile, Cairo and the pyramids of Giza.",
+ "fairnessSeed": 20261103,
+ "fairnessProfile": "difficulty-easy-v1",
+ "environment":
+ {"theme": "desert",
+  "scenes":
+  [{"scene": 200, "place": 0, "npcs": ["Salma"]},
+   {"scene": 0, "place": 0, "npcs": ["Napoleon Bonaparte"]},
+   {"scene": 101, "place": 0, "npcs": ["Salma"]},
+   {"scene": 1, "place": 0, "npcs": ["Salma"]},
+   {"scene": 2, "place": 1, "npcs": []},
+   {"scene": 203, "place": 4, "npcs": ["Salma"]},
+   {"scene": 3, "place": 4, "npcs": []},
+   {"scene": 4, "place": 1, "npcs": []},
+   {"scene": 105, "place": 4, "npcs": ["Salma"]},
+   {"scene": 5, "place": 4, "npcs": ["Salma"]},
+   {"scene": 6, "place": 1, "npcs": ["Youssef"]},
+   {"scene": 207, "place": 2, "npcs": ["Salma"]},
+   {"scene": 7, "place": 2, "npcs": []},
+   {"scene": 8, "place": 7, "npcs": []},
+   {"scene": 109, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 9, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 10, "place": 7, "npcs": []},
+   {"scene": 211, "place": 2, "npcs": ["Salma"]},
+   {"scene": 11, "place": 2, "npcs": ["Salma"]},
+   {"scene": 12, "place": 4, "npcs": []},
+   {"scene": 113, "place": 4, "npcs": ["Amina"]},
+   {"scene": 13, "place": 4, "npcs": ["Amina"]},
+   {"scene": 214, "place": 3, "npcs": ["Salma"]},
+   {"scene": 14, "place": 3, "npcs": []},
+   {"scene": 215, "place": 2, "npcs": ["Salma"]},
+   {"scene": 15, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 216, "place": 3, "npcs": ["Salma"]},
+   {"scene": 16, "place": 3, "npcs": []},
+   {"scene": 117, "place": 2, "npcs": []},
+   {"scene": 17, "place": 2, "npcs": []},
+   {"scene": 218, "place": 3, "npcs": ["Salma"]},
+   {"scene": 18, "place": 3, "npcs": ["Amina"]},
+   {"scene": 219, "place": 5, "npcs": ["Salma"]},
+   {"scene": 19, "place": 5, "npcs": ["Salma"]},
+   {"scene": 20, "place": 2, "npcs": []},
+   {"scene": 121, "place": 0, "npcs": []},
+   {"scene": 21, "place": 0, "npcs": []},
+   {"scene": 222, "place": 0, "npcs": ["Salma"]},
+   {"scene": 22, "place": 0, "npcs": ["Desaix"]},
+   {"scene": 223, "place": 3, "npcs": ["Salma"]},
+   {"scene": 23, "place": 3, "npcs": []},
+   {"scene": 224, "place": 2, "npcs": ["Salma"]},
+   {"scene": 24, "place": 2, "npcs": []},
+   {"scene": 125, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 25, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 226, "place": 4, "npcs": ["Salma"]},
+   {"scene": 26, "place": 4, "npcs": ["Salma"]},
+   {"scene": 227, "place": 4, "npcs": ["Salma"]},
+   {"scene": 27, "place": 4, "npcs": []},
+   {"scene": 28, "place": 5, "npcs": []},
+   {"scene": 129, "place": 3, "npcs": []},
+   {"scene": 29, "place": 3, "npcs": []},
+   {"scene": 230, "place": 4, "npcs": ["Salma"]},
+   {"scene": 30, "place": 4, "npcs": ["Farid"]},
+   {"scene": 231, "place": 5, "npcs": ["Salma"]},
+   {"scene": 31, "place": 5, "npcs": ["Salma"]},
+   {"scene": 232, "place": 7, "npcs": ["Salma"]},
+   {"scene": 32, "place": 7, "npcs": []},
+   {"scene": 133, "place": 0, "npcs": []},
+   {"scene": 33, "place": 0, "npcs": []},
+   {"scene": 234, "place": 0, "npcs": ["Salma"]},
+   {"scene": 34, "place": 0, "npcs": ["Napoleon Bonaparte"]},
+   {"scene": 235, "place": 7, "npcs": ["Salma"]},
+   {"scene": 35, "place": 7, "npcs": []},
+   {"scene": 36, "place": 4, "npcs": ["Salma"]},
+   {"scene": 137, "place": 3, "npcs": ["Amina"]},
+   {"scene": 37, "place": 3, "npcs": ["Amina"]},
+   {"scene": 238, "place": 2, "npcs": ["Salma"]},
+   {"scene": 38, "place": 2, "npcs": []},
+   {"scene": 239, "place": 2, "npcs": ["Salma"]},
+   {"scene": 39, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 240, "place": 1, "npcs": ["Salma"]},
+   {"scene": 40, "place": 1, "npcs": []},
+   {"scene": 141, "place": 4, "npcs": ["Salma"]},
+   {"scene": 41, "place": 4, "npcs": ["Salma"]},
+   {"scene": 242, "place": 3, "npcs": ["Salma"]},
+   {"scene": 42, "place": 3, "npcs": ["Farid"]},
+   {"scene": 243, "place": 5, "npcs": ["Salma"]},
+   {"scene": 43, "place": 5, "npcs": []},
+   {"scene": 44, "place": 4, "npcs": []},
+   {"scene": 145, "place": 5, "npcs": ["Monge"]},
+   {"scene": 45, "place": 5, "npcs": ["Monge"]},
+   {"scene": 246, "place": 5, "npcs": ["Salma"]},
+   {"scene": 46, "place": 5, "npcs": ["Salma"]},
+   {"scene": 247, "place": 2, "npcs": ["Salma"]},
+   {"scene": 47, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 248, "place": 6, "npcs": ["Salma"]},
+   {"scene": 48, "place": 6, "npcs": ["Salma"]},
+   {"scene": 149, "place": 6, "npcs": []},
+   {"scene": 49, "place": 6, "npcs": []},
+   {"scene": 250, "place": 7, "npcs": ["Salma"]},
+   {"scene": 50, "place": 7, "npcs": ["Farid"]},
+   {"scene": 251, "place": 6, "npcs": ["Salma"]},
+   {"scene": 51, "place": 6, "npcs": []},
+   {"scene": 52, "place": 7, "npcs": ["Salma"]},
+   {"scene": 153, "place": 3, "npcs": []},
+   {"scene": 53, "place": 3, "npcs": []},
+   {"scene": 254, "place": 6, "npcs": ["Salma"]},
+   {"scene": 54, "place": 6, "npcs": ["Salma", "Monge"]},
+   {"scene": 255, "place": 3, "npcs": ["Salma"]},
+   {"scene": 55, "place": 3, "npcs": ["Amina"]},
+   {"scene": 256, "place": 0, "npcs": ["Salma"]},
+   {"scene": 56, "place": 0, "npcs": []},
+   {"scene": 157, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 57, "place": 2, "npcs": ["Youssef"]},
+   {"scene": 258, "place": 0, "npcs": ["Salma"]},
+   {"scene": 58, "place": 0, "npcs": ["Napoleon Bonaparte"]},
+   {"scene": 259, "place": 4, "npcs": ["Salma"]},
+   {"scene": 59, "place": 4, "npcs": ["Salma"]},
+   {"scene": 60, "place": 7, "npcs": ["Farid"]},
+   {"scene": 161, "place": 3, "npcs": []},
+   {"scene": 61, "place": 3, "npcs": []},
+   {"scene": 262, "place": 6, "npcs": ["Salma"]},
+   {"scene": 62, "place": 6, "npcs": ["Salma"]},
+   {"scene": 63, "place": 0, "npcs": []},
+   {"scene": 64, "place": 0, "npcs": ["Salma"]},
+   {"scene": 65, "place": 3, "npcs": ["Amina"]}],
+  "props":
+  [{"z": -78, "x": -58, "scale": 150, "kind": "pyramid", "heading": 0},
+   {"z": -91, "x": -6, "scale": 180, "kind": "pyramid", "heading": 0},
+   {"z": -68, "x": -86, "scale": 80, "kind": "pyramid", "heading": 0},
+   {"z": 20, "x": -6, "scale": 120, "kind": "river", "heading": 0},
+   {"z": 44, "x": -7, "scale": 100, "kind": "boat", "heading": 0},
+   {"z": 48, "x": -32, "scale": 100, "kind": "palm", "heading": 0},
+   {"z": 78, "x": 9, "scale": 140, "kind": "palm", "heading": 0},
+   {"z": 41, "x": 68, "scale": 130, "kind": "palm", "heading": 0},
+   {"z": 1, "x": -33, "scale": 120, "kind": "palm", "heading": 0},
+   {"z": -54, "x": 73, "scale": 150, "kind": "rock", "heading": 30},
+   {"z": 74, "x": -83, "scale": 150, "kind": "rock", "heading": 40},
+   {"z": 70, "x": 75, "scale": 150, "kind": "house", "heading": 0},
+   {"z": -65, "x": 48, "scale": 140, "kind": "column", "heading": 0},
+   {"z": -65, "x": 59, "scale": 140, "kind": "column", "heading": 0}],
+  "places":
+  [{"z": 55, "x": -55, "name": "Scholars' Camp", "kind": "camp", "id": 0},
+   {"z": 15,
+    "x": -55,
+    "name": "Alexandria Harbour",
+    "kind": "harbour",
+    "id": 1},
+   {"z": 15, "x": -15, "name": "Nile Landing", "kind": "harbour", "id": 2},
+   {"z": 50, "x": 25, "name": "Reed Village", "kind": "village", "id": 3},
+   {"z": 5, "x": 50, "name": "Cairo Market", "kind": "market", "id": 4},
+   {"z": -35, "x": 25, "name": "Old Observatory", "kind": "ruins", "id": 5},
+   {"z": -55, "x": -25, "name": "Giza Plateau", "kind": "temple", "id": 6},
+   {"z": -30, "x": -65, "name": "Desert Outpost", "kind": "outpost", "id": 7}],
+  "paths":
+  [{"toPlace": 1, "fromPlace": 0},
+   {"toPlace": 2, "fromPlace": 1},
+   {"toPlace": 3, "fromPlace": 2},
+   {"toPlace": 4, "fromPlace": 3},
+   {"toPlace": 5, "fromPlace": 4},
+   {"toPlace": 6, "fromPlace": 5},
+   {"toPlace": 7, "fromPlace": 6},
+   {"toPlace": 1, "fromPlace": 7},
+   {"toPlace": 5, "fromPlace": 2}]},
+ "character":
+ {"weapon": "broadsword",
+  "st": 11,
+  "skills":
+  [{"skill": "broadsword", "level": 14},
+   {"skill": "stealth", "level": 13},
+   {"skill": "lockpicking", "level": 12},
+   {"skill": "diplomacy", "level": 11},
+   {"skill": "brawling", "level": 12},
+   {"skill": "knife", "level": 12}],
+  "naturalDR": 0,
+  "name": "Camille Laurent",
+  "iq": 10,
+  "ht": 12,
+  "dx": 12,
+  "background":
+  "An interpreter and cartographer with the expedition, you investigate with Salma to protect the water routes.",
+  "armor": "leather"}}

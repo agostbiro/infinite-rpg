@@ -33,8 +33,9 @@ export function environmentFor(view) {
 
 export function placeForScene(environment, sceneId) {
   const id = environment.scenes.find(s => s.scene === sceneId)?.place;
-  return environment.places.find(p => p.id === id)
-    || environment.places[Math.floor((sceneId || 0) / 4) % environment.places.length];
+  const place = environment.places.find(p => p.id === id);
+  if (environment.scenes.length && !place) throw new Error('The current scene has no valid place in this world.');
+  return place || environment.places[Math.floor((sceneId || 0) / 4) % environment.places.length];
 }
 
 /** Stable event positions within the checked clear area, distinct from its centre. */

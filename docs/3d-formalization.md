@@ -18,6 +18,10 @@ An adventure file supplies `E = (L,P,D,m,N)`:
 
 The map is a bounded part of `R³`, navigated on its horizontal surface. It is shared by the whole adventure. The plan contains no commands or probabilistic outcomes. A physical path in `P` is not an extra edge in the story graph.
 
+Thus `(L,P)` is a navigation graph alongside the game graph, linked by `m`. Several
+story scenes may share a place, and one game edge may require several physical path
+segments. No one-to-one correspondence between game edges and physical paths is required.
+
 Claude supplies `E` in the same JSON response as the graph. The server checks references, size bounds, connectivity and clearances before accepting the file. The renderer uses a finite library of procedural models. The Napoleon environment is one instance of this format.
 
 ## 3. Projection and continuous movement
@@ -56,7 +60,29 @@ These are checked geometry and implementation tests, not a formal proof of all b
 
 The browser sends `β(p)` to `/api/input`. Lean resolves it and returns the new view and reports. Inputs are locked during the request and report playback, preventing duplicate submissions. The server independently rejects commands outside `Game.inputs` without consuming dice or changing logical state.
 
-The static environment, player position and camera persist across scene transitions. The next scene's current options appear at its mapped place. If that place is different, the player walks there. The mini-map and objective distance guide this trip. A fresh adventure may set a new spawn.
+The static environment persists across scene transitions. After Lean resolves the
+selected command and report playback finishes, the next scene's options appear at
+its mapped place. The browser automatically guides the player along the current
+undirected navigation paths to a point five metres in front of those options.
+Routes use the same collision checks as manual movement. Automatic movement does
+not call the interaction-crossing detector or submit an input; E is also disabled
+during the journey. Arrival is outside every option's contact and E ranges.
+
+The player can wait, use “Skip travel”, or take control with a fresh movement key
+or touch control. Pause, the journal and inactive tabs suspend travel. A key held
+from the previous scene cannot select the next option on arrival. Reduced-motion
+mode places the player directly at the safe arrival point. Combat rounds do not
+start a new journey. If no clear route is found from an off-trail position, manual
+exploration remains available.
+
+The scene id, scene-entry reports and world data identify each journey. Repeated
+polls do not restart it. Changed environment data rebuilds the terrain and route;
+changed choices or NPC descriptions refresh the interactions even when their
+command keys are unchanged. An authored mapping with a missing scene or place
+fails closed. The fallback mapping is used only for old worlds without mappings.
+This synchronizes presentation with the returned game view; it does not invent a
+new place assignment when an author adds a scene. The updated adventure file must
+still supply a complete mapping and pass the environment checks.
 
 Combat animations present the engine reports in order. They never invent die faces, injury, range bonuses or a different result. With the same seed and command sequence, the spatial interface and the previous interface use the same logical execution.
 
@@ -78,31 +104,36 @@ Under the same decision policy and dice distribution, erasing movement and anima
 
 The implemented contract combines the unchanged Lean input guarantees with an audited adapter and navigation tests. It is not an end-to-end theorem about WebGL or the browser.
 
+`tests/travel.test.js` exercises every Napoleon outcome through the actual route
+planner and collision movement, safe arrivals, changed paths, missing mappings,
+and the renderer's input lock and refresh behavior. It adds no fairness turns or
+statistical sampling policy changes.
+
 ## 9. Difficulty and admission
 
 New Wishes select one of three shape-two Weibull reference curves. At ten scene choices their survival targets are 50%, 30% and 10%. The rational parameters, approximation theorem and limitations of statistical admission are documented in [Wish-generated worlds](wish-worlds.md).
 
-The server tests 1,000 uniform-player games through 15 choices, using the existing confidence intervals, row definitions and tolerance. Scene walking and environment construction do not participate in those simulations. The geometry of a new world does not require probabilistic model checking of 3D physics.
+For new Wishes, the server tests 5,000 uniform-player games through 10 choices. It checks death within the next two choices conditional on survival, first-choice death, and cumulative death by choice ten. Every 95% interval must fit its reference band of ±5 percentage points. See [the statistical specification](statistical-confidence.md) for the exact Weibull implication and sample-size limits. Scene walking and environment construction do not participate in those simulations. The geometry of a new world does not require probabilistic model checking of 3D physics.
 
-## 10. Theorem `equilibrium`: validity includes balance
+## 10. Theorem `balanced`: validity includes balance
 
 A validity claim concerns the tuple `X = (G, hero, rules, πU, policy, H, seed)`, not an unlabelled graph alone. Changing encounters, rules or the test player's policy can change its balance even when its edges stay the same.
 
-Let `C = sampleCounts(X, 1000)` be the counts obtained from the actual engine. Define:
+Let `C = sampleCounts(X, N(policy))` be the counts obtained from the actual engine. Define:
 
-`Valid(X,C) := LegalCharacter(hero,rules) ∧ LegalAdventure(G,hero,rules) ∧ NoShortCycles(G) ∧ C = sampleCounts(X,1000) ∧ BalanceAccepted(policy,H,C)`.
+`Valid(X,C) := LegalCharacter(hero,rules) ∧ LegalAdventure(G,hero,rules) ∧ NoShortCycles(G) ∧ C = sampleCounts(X,N(policy)) ∧ BalanceAccepted(policy,H,C)`.
 
-`LegalAdventure` includes existing destinations, unique scene IDs, reachability of every scene and a route to an ending from every scene. `BalanceAccepted` is the existing statistical admission test: a complete batch, no unresolved in-window fights, valid row sizes, and every 90% confidence interval contained in its Weibull tolerance band. Empty observations fail. The tolerance remains 1/5.
+`LegalAdventure` includes existing destinations, unique scene IDs, reachability of every scene and a route to an ending from every scene. `BalanceAccepted` requires a complete batch, no unresolved in-window fights, valid row sizes, and every confidence interval contained in its policy band. For v2, N = 5,000, confidence is 95% and tolerance is 1/20; all 11 comparisons must pass. Empty or insufficiently precise observations prevent admission. Historical policies retain N = 1,000, 90% confidence and tolerance 1/5.
 
-**Theorem `equilibrium`.** Every certificate returned by the graph validator satisfies `Valid(X,C)` for its recorded candidate, seed and observations.
+**Theorem `balanced`.** Every certificate returned by the graph validator satisfies `Valid(X,C)` for its recorded candidate, seed and observations.
 
-Lean: `Rpg.ValidatedGraph.equilibrium` in `Rpg/GraphValidity.lean`. The game is constructed from that certificate's candidate. The counts cannot be replaced by counts from another game. World layout checks run before this validator and remain separate runtime geometry checks.
+Lean: `Rpg.ValidatedGraph.balanced` in `Rpg/GraphValidity.lean`. The game is constructed from that certificate's candidate. The counts cannot be replaced by counts from another game. World layout checks run before this validator and remain separate runtime geometry checks.
 
-This is a theorem about successful validation. The separate fairness theorem, `StatisticalCandidate.fair`, bounds the test's false acceptance probability under its explicit binomial sampling assumptions. Passing a test is not a proof that the true survival probability equals the reference curve. Nor does `equilibrium` assert that every possible prompt has a valid solution.
+This is a theorem about successful validation. The separate fairness theorem, `StatisticalCandidate.fair`, bounds the test's false acceptance probability under its explicit binomial sampling assumptions. Passing a test is not a proof that the true survival probability equals the reference curve. Nor does `balanced` assert that every possible prompt has a valid solution.
 
-Generation tunes enemy parameters on training data, preserving graph destinations and the chosen policy. A failed training test asks the author to repair encounter frequency or branches. Once frozen, the candidate receives one independent final batch. A failed final batch is not repeatedly sampled until it passes. The 10% false acceptance bound applies to one frozen candidate and its batch, not to an unlimited sequence of user retries.
+Generation tunes enemy parameters on training data, preserving graph destinations and the chosen policy. A failed training test asks the author to repair encounter frequency or branches. Once frozen, the candidate receives one independent final batch. A failed final batch is not repeatedly sampled until it passes. The v2 5% false acceptance bound applies to one frozen candidate and its batch, not to an unlimited sequence of user retries.
 
-## 11. Theorem `non-cyclic`: no event cycle shorter than four
+## 11. Theorem `noSmallCycles`: no event cycle shorter than four
 
 Define the directed event graph with one vertex per scene and an edge for every `goto` destination, both `roll` outcomes, and every fight's `onWin` destination. This uses the actual adventure data. Death is terminal and has no outgoing edge. Combat rounds and physical walking paths are not event edges.
 
@@ -112,8 +143,8 @@ Define `NoShortCycles(G)` by:
 2. For every edge `(u,v)`, `(v,u)` is absent.
 3. For every two edges `(u,v)` and `(v,w)`, `(w,u)` is absent.
 
-**Theorem `non-cyclic`.** If the event-cycle checker accepts `G`, every nonempty closed event walk of length `n` satisfies `n ≥ 4`.
+**Theorem `noSmallCycles`.** If the event-cycle checker accepts `G`, every nonempty closed event walk of length `n` satisfies `n ≥ 4`.
 
-Thus `A → A`, `A → B → A` and `A → B → C → A` are rejected. `A → B → C → D → A` is permitted if the other validity requirements also hold. Despite the requested name, this is not a claim that the graph is acyclic. Returning to the same physical place in different scenes is also permitted.
+Thus `A → A`, `A → B → A` and `A → B → C → A` are rejected. `A → B → C → D → A` is permitted if the other validity requirements also hold. This is not a claim that the graph is acyclic. Returning to the same physical place in different scenes is also permitted.
 
-Lean: `Rpg.Adventure.«non-cyclic»` in `Rpg/EventGraph.lean`. The check includes every authored outcome, even an outcome with a very small or zero probability under the current hero. Kernel-checked examples reject all three prohibited lengths and instantiate the theorem on a permitted four-edge cycle.
+Lean: `Rpg.Adventure.noSmallCycles` in `Rpg/EventGraph.lean`. The check includes every authored outcome, even an outcome with a very small or zero probability under the current hero. Kernel-checked examples reject all three prohibited lengths and instantiate the theorem on a permitted four-edge cycle.

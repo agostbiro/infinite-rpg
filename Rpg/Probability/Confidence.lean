@@ -1,4 +1,4 @@
-import Rpg.Probability.Binomial
+import Rpg.Probability.FastBinomial
 import Rpg.Probability.Fairness
 
 /-!

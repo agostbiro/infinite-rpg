@@ -51,7 +51,7 @@ theorem zero_sampling (n : Nat) (f : Nat → Rat) : binomialExpectation 0 n f = 
 theorem safe_truth_zero : ∀ i, TestStory.safeCandidate.truth i = 0 := by decide +kernel
 
 /-- The safe story's actual deterministic observation law for the fixed game batch. -/
-def zeroLaw : Distribution (Fin (TestStory.safeCandidate.horizon+1) → Observation) := pure (fun _ => ⟨validationGames, 0⟩)
+def zeroLaw : Distribution (Fin (validationRows TestStory.safeCandidate.horizon TestStory.safeCandidate.policy) → Observation) := pure (fun _ => ⟨validationGames, 0⟩)
 
 /-- A concrete normalized law discharges the main theorem's probability premise. -/
 theorem zeroLaw_valid : zeroLaw.Valid := by
@@ -73,7 +73,7 @@ def zeroLaw_sampling : BinomialSampling zeroLaw TestStory.safeCandidate.truth wh
 /-- Both conclusions of fair hold for a real adventure with all model premises supplied. -/
 example :
     (∀ i, intervalMissProbability zeroLaw TestStory.safeCandidate.truth confidenceDelta i ≤ confidenceDelta) ∧
-    familyFalseAcceptance zeroLaw TestStory.safeCandidate.truth (confidenceBands 1)
+    familyFalseAcceptance zeroLaw TestStory.safeCandidate.truth (confidenceBands 1 defaultPolicy)
       confidenceDelta ≤ confidenceDelta := by
   apply TestStory.safeCandidate.fair zeroLaw zeroLaw_valid zeroLaw_sampling
   intro i

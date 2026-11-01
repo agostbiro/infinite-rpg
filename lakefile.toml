@@ -28,6 +28,11 @@ root = "Validate"
 name = "inspect-adventure"
 root = "InspectAdventure"
 
+# Fixed-seed diagnostic: all rows and checked coverage, without issuing a certificate.
+[[lean_exe]]
+name = "benchmark-fairness"
+root = "BenchmarkFairness"
+
 [[lean_exe]]
 name = "balance-adventure"
 root = "BalanceAdventure"

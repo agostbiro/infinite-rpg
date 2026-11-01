@@ -326,7 +326,7 @@ def AdventureCard.toJson (c : AdventureCard) : Json :=
 /-- The list of saved Adventures for the Front Page: each id, title, and whether it passes the
 checker now. A saved Adventure that fails is listed with `ok: false` and the reason, and the page
 does not let the Player play it. Each file is checked once per version (see `GameConfig.savedCache`). 
-Each check also runs the fairness check (1,000 games), so the first view after start can take
+Each check also runs the fairness check (the recorded policy's fixed batch), so the first view after start can take
 a second or two for each saved Adventure. -/
 def savedList (cfg : GameConfig) : IO Json := do
   let cache ← cfg.savedCache.get
@@ -696,7 +696,7 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
           match result with
           | .ok balanced =>
             -- Freeze the candidate before selecting its one holdout batch.
-            if !(← addStep ref job { text := "Checking graph validity and fairness on 1,000 fresh games..." }) then return
+            if !(← addStep ref job { text := s!"Checking graph validity and fairness on {Probability.validationGamesFor difficulty.policy} fresh games..." }) then return
             let fairnessSeed ← if cfg.fake.isSome then pure 20261103 else randomSeed
             let heldoutStart ← IO.monoMsNow
             let finalCheck := balanced.toGame fairnessSeed
@@ -1074,7 +1074,7 @@ def parseIPv4 (s : String) : Option Net.IPv4Addr :=
 #guard (parseIPv4 "10.211.55.256").isNone
 
 /-- Check the Adventure, then serve the game until Ctrl-C. Options: `--seed N` for the first
-game, `--port N` (default 8080), `--host A.B.C.D` (default 127.0.0.1). The environment variable
+game, `--port N` (default 8093), `--host A.B.C.D` (default 127.0.0.1). The environment variable
 `ANTHROPIC_API_KEY` turns on Wishes. `RPG_FAKE_API=<folder>` is a test hook: the server reads
 recorded API replies from the folder and never calls the API. -/
 def main (args : List String) : IO UInt32 := do
@@ -1101,7 +1101,7 @@ def main (args : List String) : IO UInt32 := do
   let seed ← match natArg "--seed" args with
     | some s => pure s
     | none => freshSeed
-  let port := (natArg "--port" args).getD 8080
+  let port := (natArg "--port" args).getD 8093
   let host := (stringArg "--host" args).getD "127.0.0.1"
   let some ip := parseIPv4 host
     | IO.eprintln s!"--host must be an IPv4 address such as 10.0.0.5, not {host}."

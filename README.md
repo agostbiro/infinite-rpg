@@ -4,11 +4,10 @@ A single-player RPG (role-playing game) based on GURPS Lite, played in the brows
 
 ```
 make install
-make run              # play: opens http://127.0.0.1:8080/ in your browser
+make run              # play: opens http://127.0.0.1:8093/ in your browser
 ANTHROPIC_API_KEY=sk-... make run   # the same, with Wishes turned on
 make run-fake         # test hook: Wishes use recorded replies from tests/fake-api, no key needed
 make run SEED=7       # the first game uses dice seed 7, so you can replay it
-make run PORT=9000    # use another port
 make run HOST=10.211.55.6   # listen on this IPv4 (Internet Protocol version 4) address, for example to play from the host of a VM (virtual machine)
 make napoleon         # assemble, check and install Bonaparte · Les Cartes du Nil
 make cheats           # watch the checker catch a cheating DM
@@ -22,6 +21,11 @@ Every admitted Adventure, including one made from a Wish, opens as a 3D space.
 Use **WASD**, **ZQSD**, or the **arrow keys** to move. Drag on the view to look,
 and hold **Shift** to run. Approach the marked object or character to select its choice.
 Near an interaction, **E** or **Choose** also selects it. Touch screens have a direction pad.
+
+After a scene choice resolves, the player travels automatically to the next scene's
+location and stops in front of its options. Choose the next action yourself. Use
+**Skip travel** to arrive immediately, or press a movement key to take control.
+Automatic travel never chooses an option or rolls dice; the landscape stays fixed.
 
 There is one spatial interaction for each choice the Engine offers. A weapon or shield selects an
 existing maneuver and target; Lean still rolls the dice and resolves the turn.
@@ -51,7 +55,8 @@ With Node.js installed, `make test-spatial` tests the actual adapter, interactio
 movement, and crossing detection. It needs no npm dependencies.
 
 For the browser test, run `npm ci`, `npx playwright install chromium`, then
-`make test-browser`. It starts a separate server on port 8094 and sends a Wish
+`make test-browser`. Stop the running game first: the test uses the same port 8093
+and refuses to run while it is occupied. It starts a temporary test server and sends a Wish
 through the existing recorded-response hook, legality checks, and fairness
 admission. It then navigates with real keyboard events, plays combat, checks
 terminal/replay behavior, and captures desktop and mobile screenshots. This test
@@ -97,7 +102,7 @@ The game ends at an Ending, or when the Character dies, which is not an Ending. 
        .ok ⟨liveRules, d.hero, checkCharacter_sound hc, d.adventure, check_sound ha⟩
    ```
    `Game.new` takes an `AdventureDefinition`, and a `Game` keeps both proofs as fields. So no code can make a `Game`, and so no code can play an Adventure, without the proofs. The built-in game uses the theorems `mara_legal` and `lighthouse_legal`.
-6. Then `Draft.toGame` runs the fairness check (see below) with a fresh random seed from the operating system, and horizon 14 (15 turns) for a new Wish. If a row fails, the DM gets one error for each row that failed, with the numbers, and the try counts as a failed try. If every row passes, the game starts, and the seed is saved with the Adventure.
+6. Then `Draft.toGame` runs the fairness check (see below) with a fresh random seed from the operating system, and horizon 9 (10 turns) for a new Wish. If a row fails, the DM gets one error for each row that failed, with the numbers, and the try counts as a failed try. If every row passes, the game starts, and the seed is saved with the Adventure.
 7. Then the server asks the DM for one Picture per Scene, at most 4 at a time, and checks each one with `scripts/check_pictures.py` before it serves it. A Picture that fails, or is still drawing, shows the plain backdrop. Pictures appear as they finish, and you can begin before they are all done. If you switch to another Adventure, the server stops the drawing. When you load the Adventure again, it draws the Pictures that are still missing. A Picture that the check refused is listed in `refused-pictures.txt` in the save folder and is not drawn again.
 
 ## How it works
@@ -139,19 +144,18 @@ The Character must be a legal build: attributes 7 to 14, exactly 100 points, ski
 
 ## The fairness check
 
-The check plays an Adventure 1,000 times with a seeded random generator (`Rpg/Probability/StatisticalAdmission.lean`). On each turn it picks a Choice at random. In a Fight, the Player picks Attack, All-Out Attack, or All-Out Defense, each with chance 1/3, and then a living target at random. One turn is one Choice, with its whole Fight.
+The check plays an Adventure 5,000 times for new Wishes (1,000 for historical policies) with a seeded random generator (`Rpg/Probability/StatisticalAdmission.lean`). On each turn it picks a Choice at random. In a Fight, the Player picks Attack, All-Out Attack, or All-Out Defense, each with chance 1/3, and then a living target at random. One turn is one Choice, with its whole Fight.
 
-New Wishes use the versioned profile `exploration-10-v1`: the first **15 turns**
-(horizon 14), Weibull shape 2, retention q = 99309/100000 and tolerance 1/5.
-The reference survival is q^(t²), crossing 1/2 at turn 10. This is a reference
-median, not a guarantee that every admitted adventure has exactly that median.
-Each row tests first-turn death or death on turn t+2 conditional on being alive
-at t. Its exact conservative 90% binomial confidence interval must lie entirely
-inside its target band. A row without observations cannot pass.
+New Wishes use `difficulty-*-v2`: shape-two Weibull targets with survival at ten of
+50% (Easy), 30% (Medium) and 10% (Hard). The budget is 5,000 games. Admission checks
+first-choice death, 9 conditional two-choice death windows, and death by ten.
+Every conservative 95% binomial interval must lie entirely inside its ±5-point
+band. Insufficient precision is reported as inconclusive and does not admit a game.
 
-Old saves, the built-in Lighthouse and the recorded test hook keep the `legacy`
-profile: six turns, q = 19/20, shape 2 and the same tolerance. Profile versions
-are saved and rechecked; the application sets the profile of a new live Wish.
+Historical saves retain their recorded parameters and observation meaning.
+They are not evidence that the new policy passes. Full definitions, the ten-choice
+implication and the limits of rare-state testing are in
+[the statistical specification](docs/statistical-confidence.md).
 
 The locally authored **Bonaparte · Les Cartes du Nil** campaign has 117 scenes,
 two endings and at least 64 choices before success. Safe routes and revisitable
@@ -161,20 +165,28 @@ scenes and at least 40 choices to a successful ending; these minimum lengths are
 prompt instructions, not new legality theorems.
 
 [The campaign report](docs/napoleon-validation.md) gives the 15-, 30- and 60-turn
-results, timings, reproducible commands and limitations. Only the 15-turn window
-passes admission; the longer diagnostics must not be described as certified.
+historical results, timings, reproducible commands and limitations under the old policy.
+They do not establish admission under the current ten-choice, ±5-point protocol.
 
 
-The theorem `StatisticalCandidate.fair` is about the test, not about one Adventure. If the games follow the sampling model (`BinomialSampling`), each interval misses the true chance at most 10% of the time, and the test accepts an Adventure that breaks a range at most 10% of the time. The theorem holds for every Adventure, the cheats too. What admits an Adventure is the run-time check `admitStatistically`, or `admitWithSeed` for a Wish.
-
-The built-in Adventure uses the fixed seed 20261103. The build does not replay this run; the server runs it at start-up, and `make validate` prints it (the counts are in `docs/statistical-confidence.md`). The curve values were picked on a separate screening seed (1), and the fixed seed was then run once. A Wish uses a fresh random seed on each of its 3 tries. So for a Wish the chance to accept an Adventure that breaks a range is at most 30%, not 10%.
+The theorem `StatisticalCandidate.fair` bounds false acceptance of a frozen candidate
+by 5% for v2 under `BinomialSampling`. Generation uses training repairs, then one
+independent final batch. Repeatedly retrying validation until it passes is not allowed.
+Historical default-policy tests retain their 10% bound. The theorem is about the
+test; observed interval containment is the admission condition.
 
 The exact model (`Rpg/Probability/Combat.lean` and `Graph.lean`) works out the true chances with the same Engine code as play. `lake exe agree` compares it with the simulator on the Lighthouse Fights. The model solves the states of a Fight that have the same HP together, as a small system of linear equations, because a round can change the Character's maneuver without a hit.
+
+The exact binomial evaluator now uses a proved linear recurrence, compiled by Lean
+into C. [Current benchmarks](docs/fairness-benchmark.md) include every interval and
+report the current campaigns' failures. Run `lake build benchmark-fairness` and
+`python3 scripts/benchmark_fairness.py --output work/fairness-replay.json` to replay
+the recorded three batches.
 
 ## What is trusted
 
 - The spec (`Rpg/Spec.lean`) and the definitions it uses in `Rpg/Rules.lean`, `Rpg/RuleSet.lean`, and `Rpg/Adventure.lean`. Read these to know what the theorems mean. The `RuleSet` has 26 fields, 14 of them functions. Each default is the rule in `Rpg/Rules.lean`.
-- The fairness check. `fair` assumes the binomial sampling model: given the number of games in a row, its deaths follow a binomial law with the model's chance. The seeded generator is treated as fair dice and fair random choices; this is not proved. The model's Player (random Choices, each maneuver at 1/3, random targets) is a choice of this design, not a fact about real Players. The curve and its values are design choices too (see `docs/statistical-confidence.md`). For a Wish the bound is at most 30%, because of the 3 tries.
+- The fairness check. `fair` assumes the binomial sampling model: given the number of games in a row, its deaths follow a binomial law with the model's chance. The seeded generator is treated as fair dice and fair random choices; this is not proved. The model's Player (random Choices, each maneuver at 1/3, random targets) is a choice of this design, not a fact about real Players. The curve and its values are design choices too (see `docs/statistical-confidence.md`). For one frozen v2 candidate and its final batch the false-acceptance bound is 5%; repeated user retries do not preserve that same bound.
 - For a live Adventure, the compiled `check` and `checkCharacter` must give the same answer as the ones in the proofs. A shipped Adventure has a theorem that the Lean kernel checked; a live one has only the run-time check, with `check_sound` as the reason it is enough.
 - The Claude API, `curl`, the prompts, and the JSON decoder (`Rpg/Live.lean`) are not trusted, and do not need to be for legality. Whatever comes back, the checker runs on the `Draft` that the decoder made, and only that `Draft` is played. A wrong decoder can only give the checker a different Adventure.
 - The Picture check at run time (`scripts/check_pictures.py`), as for the built-in Pictures.

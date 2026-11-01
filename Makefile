@@ -1,7 +1,7 @@
 .PHONY: install run run-fake build check check-pictures check-rules cheats validate comparator agree test-spatial test-browser napoleon
 
-# The port of the game server: make run PORT=9000
-PORT ?= 8080
+# Use the same local site for normal play and browser tests.
+PORT ?= 8093
 # The IPv4 address the game server listens on. The default lets only this machine connect.
 # To play from the host of a VM (virtual machine), use the VM's address: make run HOST=10.211.55.6
 HOST ?= 127.0.0.1
@@ -37,7 +37,7 @@ napoleon: build
 
 # Spatial adapter tests need only Node.js. Browser tests use the recorded Wish hook.
 test-spatial:
-	node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js
+	node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js tests/travel.test.js
 
 test-browser: build
 	npm run test:browser

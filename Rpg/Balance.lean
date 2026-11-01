@@ -22,17 +22,18 @@ def Draft.tune (d : Draft) (strength skill : Int) : Draft :=
         | other => other } } } }
 
 /-- Prefer observations near the policy centre, with a large penalty for sparse rows.
-The ten-turn survival target guides tuning; admission still uses the original interval test. -/
+The ten-turn survival target guides tuning; admission requires every interval, including death by ten, to fit its band. -/
 def balanceScore (a : StatisticalCandidate) (c : ValidationCounts) : Rat :=
   if c.aborted then 100000 else Id.run do
     let mut score : Rat := 0
-    for row in [:a.horizon+1] do
+    for row in [:validationRows a.horizon a.policy] do
       let n := c.trials[row]!
       let p : Rat := (c.deaths[row]! : Rat) / max 1 n
-      let target := if row == 0 then 1 - a.policy.survival 1 else a.policy.deathAtTwo (row-1)
+      let target := (confidenceBand a.horizon row a.policy).target
       let difference := p-target
       score := score + difference*difference + (if n < 20 then 10 else 0)
-    let deaths : Nat := (List.range 10).foldl (fun n i => n + c.deaths[i]!) 0
+    let perTurn := c.deathsPerTurn a.policy
+    let deaths : Nat := (List.range 10).foldl (fun n i => n + perTurn[i]!) 0
     let difference := 1 - (deaths : Rat)/max 1 c.games - a.policy.survival 10
     return score + 4*difference*difference
 

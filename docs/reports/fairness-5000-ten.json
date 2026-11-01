@@ -1,0 +1,3209 @@
+{
+  "date": "2026-11-01",
+  "protocol": "5000 initial-state games per difficulty, first ten choices; 11 comparisons; confidence 95%; absolute tolerance 1/20",
+  "plan": {
+    "games_per_difficulty": 5000,
+    "horizon": 9,
+    "choices_covered": 10,
+    "confidence": "95%",
+    "tolerance": "1/20",
+    "seed_selection": "Reused the three recorded seeds; no seed search; candidates unchanged",
+    "runs": [
+      {
+        "difficulty": "easy",
+        "file": "work/balanced-easy.json",
+        "seed": 461306454689629901,
+        "sha256": "50a939b91e788377fea5ed5c4a864e21041ab9670d4af677a6aec24b9bc1096e",
+        "archivedInput": "docs/reports/fairness-inputs/easy.json"
+      },
+      {
+        "difficulty": "medium",
+        "file": "work/balanced-medium.json",
+        "seed": 3397969856431803334,
+        "sha256": "02604d084d96fad49462a0a3ec351eccb2b482cd17a2480e788af727f2bde1ba",
+        "archivedInput": "docs/reports/fairness-inputs/medium.json"
+      },
+      {
+        "difficulty": "hard",
+        "file": "work/balanced-hard.json",
+        "seed": 2815492620410608345,
+        "sha256": "fdaae4937c9a644e9b3327221afb5adb65f1bf786cee4ef774a3cd04607dc595",
+        "archivedInput": "docs/reports/fairness-inputs/hard.json"
+      }
+    ]
+  },
+  "baseline5000First15": {
+    "seed": 71001,
+    "sourceSHA256": "fdaae4937c9a644e9b3327221afb5adb65f1bf786cee4ef774a3cd04607dc595",
+    "before": [
+      {
+        "aborted": false,
+        "difficulty": "hard",
+        "games": 5000,
+        "legalityNs": 632057833,
+        "phase": "simulation",
+        "simulationNs": 28534833
+      },
+      {
+        "deaths": 0,
+        "phase": "interval-start",
+        "row": 0,
+        "trials": 5000
+      },
+      {
+        "deaths": 0,
+        "lower": "0",
+        "nanoseconds": 9408542,
+        "phase": "interval",
+        "row": 0,
+        "status": "accepted",
+        "trials": 5000,
+        "upper": "1/256"
+      },
+      {
+        "deaths": 0,
+        "phase": "interval-start",
+        "row": 1,
+        "trials": 5000
+      },
+      {
+        "deaths": 0,
+        "lower": "0",
+        "nanoseconds": 9698083,
+        "phase": "interval",
+        "row": 1,
+        "status": "outside-band",
+        "trials": 5000,
+        "upper": "1/256"
+      },
+      {
+        "deaths": 870,
+        "phase": "interval-start",
+        "row": 2,
+        "trials": 5000
+      },
+      {
+        "deaths": 870,
+        "lower": "41/256",
+        "nanoseconds": 33363114542,
+        "phase": "interval",
+        "row": 2,
+        "status": "accepted",
+        "trials": 5000,
+        "upper": "3/16"
+      },
+      {
+        "deaths": 1836,
+        "phase": "interval-start",
+        "row": 3,
+        "trials": 5000
+      },
+      {
+        "deaths": 1836,
+        "lower": "45/128",
+        "nanoseconds": 70974807334,
+        "phase": "interval",
+        "row": 3,
+        "status": "outside-band",
+        "trials": 5000,
+        "upper": "49/128"
+      },
+      {
+        "deaths": 1533,
+        "phase": "interval-start",
+        "row": 4,
+        "trials": 4130
+      },
+      {
+        "deaths": 1533,
+        "lower": "91/256",
+        "nanoseconds": 43416667875,
+        "phase": "interval",
+        "row": 4,
+        "status": "inconclusive",
+        "trials": 4130,
+        "upper": "99/256"
+      },
+      {
+        "deaths": 1179,
+        "phase": "interval-start",
+        "row": 5,
+        "trials": 3164
+      },
+      {
+        "deaths": 1179,
+        "lower": "91/256",
+        "nanoseconds": 22683112750,
+        "phase": "interval",
+        "row": 5,
+        "status": "accepted",
+        "trials": 3164,
+        "upper": "25/64"
+      },
+      {
+        "deaths": 889,
+        "phase": "interval-start",
+        "row": 6,
+        "trials": 2597
+      },
+      {
+        "deaths": 889,
+        "lower": "41/128",
+        "nanoseconds": 12916792292,
+        "phase": "interval",
+        "row": 6,
+        "status": "outside-band",
+        "trials": 2597,
+        "upper": "93/256"
+      },
+      {
+        "deaths": 533,
+        "phase": "interval-start",
+        "row": 7,
+        "trials": 1985
+      },
+      {
+        "deaths": 533,
+        "lower": "63/256",
+        "nanoseconds": 5656860959,
+        "phase": "interval",
+        "row": 7,
+        "status": "outside-band",
+        "trials": 1985,
+        "upper": "37/128"
+      },
+      {
+        "deaths": 542,
+        "phase": "interval-start",
+        "row": 8,
+        "trials": 1708
+      },
+      {
+        "deaths": 542,
+        "lower": "75/256",
+        "nanoseconds": 4630225792,
+        "phase": "interval",
+        "row": 8,
+        "status": "outside-band",
+        "trials": 1708,
+        "upper": "11/32"
+      },
+      {
+        "deaths": 579,
+        "phase": "interval-start",
+        "row": 9,
+        "trials": 1452
+      },
+      {
+        "deaths": 579,
+        "lower": "95/256",
+        "nanoseconds": 4438647458,
+        "phase": "interval",
+        "row": 9,
+        "status": "outside-band",
+        "trials": 1452,
+        "upper": "109/256"
+      },
+      {
+        "deaths": 435,
+        "phase": "interval-start",
+        "row": 10,
+        "trials": 1166
+      },
+      {
+        "deaths": 435,
+        "lower": "11/32",
+        "nanoseconds": 2271761250,
+        "phase": "interval",
+        "row": 10,
+        "status": "outside-band",
+        "trials": 1166,
+        "upper": "103/256"
+      },
+      {
+        "deaths": 265,
+        "phase": "interval-start",
+        "row": 11,
+        "trials": 873
+      },
+      {
+        "deaths": 265,
+        "lower": "69/256",
+        "nanoseconds": 1003585667,
+        "phase": "interval",
+        "row": 11,
+        "status": "outside-band",
+        "trials": 873,
+        "upper": "43/128"
+      },
+      {
+        "deaths": 222,
+        "phase": "interval-start",
+        "row": 12,
+        "trials": 731
+      },
+      {
+        "deaths": 222,
+        "lower": "69/256",
+        "nanoseconds": 659943791,
+        "phase": "interval",
+        "row": 12,
+        "status": "outside-band",
+        "trials": 731,
+        "upper": "87/256"
+      },
+      {
+        "deaths": 204,
+        "phase": "interval-start",
+        "row": 13,
+        "trials": 608
+      },
+      {
+        "deaths": 204,
+        "lower": "19/64",
+        "nanoseconds": 491263500,
+        "phase": "interval",
+        "row": 13,
+        "status": "outside-band",
+        "trials": 608,
+        "upper": "3/8"
+      },
+      {
+        "deaths": 176,
+        "phase": "interval-start",
+        "row": 14,
+        "trials": 509
+      },
+      {
+        "deaths": 176,
+        "lower": "77/256",
+        "nanoseconds": 346990292,
+        "phase": "interval",
+        "row": 14,
+        "status": "outside-band",
+        "trials": 509,
+        "upper": "25/64"
+      },
+      {
+        "deaths": 4127,
+        "phase": "interval-start",
+        "row": 15,
+        "trials": 5000
+      },
+      {
+        "deaths": 4127,
+        "lower": "13/16",
+        "nanoseconds": 154121788833,
+        "phase": "interval",
+        "row": 15,
+        "status": "outside-band",
+        "trials": 5000,
+        "upper": "107/128"
+      },
+      {
+        "allIntervalsFit": false,
+        "calculationsNs": 357004888750,
+        "difficulty": "hard",
+        "file": "work/balanced-hard.json",
+        "games": 5000,
+        "horizon": 14,
+        "legalityNs": 632057833,
+        "phase": "complete",
+        "simulationNs": 28534833,
+        "totalNs": 357665481416
+      }
+    ],
+    "after": [
+      {
+        "aborted": false,
+        "difficulty": "hard",
+        "games": 5000,
+        "legalityNs": 618815208,
+        "phase": "simulation",
+        "simulationNs": 27509958
+      },
+      {
+        "deaths": 0,
+        "phase": "interval-start",
+        "row": 0,
+        "trials": 5000
+      },
+      {
+        "deaths": 0,
+        "lower": "0",
+        "nanoseconds": 164875,
+        "phase": "interval",
+        "row": 0,
+        "status": "accepted",
+        "trials": 5000,
+        "upper": "1/256"
+      },
+      {
+        "deaths": 0,
+        "phase": "interval-start",
+        "row": 1,
+        "trials": 5000
+      },
+      {
+        "deaths": 0,
+        "lower": "0",
+        "nanoseconds": 114167,
+        "phase": "interval",
+        "row": 1,
+        "status": "outside-band",
+        "trials": 5000,
+        "upper": "1/256"
+      },
+      {
+        "deaths": 870,
+        "phase": "interval-start",
+        "row": 2,
+        "trials": 5000
+      },
+      {
+        "deaths": 870,
+        "lower": "41/256",
+        "nanoseconds": 55783916,
+        "phase": "interval",
+        "row": 2,
+        "status": "accepted",
+        "trials": 5000,
+        "upper": "3/16"
+      },
+      {
+        "deaths": 1836,
+        "phase": "interval-start",
+        "row": 3,
+        "trials": 5000
+      },
+      {
+        "deaths": 1836,
+        "lower": "45/128",
+        "nanoseconds": 116749500,
+        "phase": "interval",
+        "row": 3,
+        "status": "outside-band",
+        "trials": 5000,
+        "upper": "49/128"
+      },
+      {
+        "deaths": 1533,
+        "phase": "interval-start",
+        "row": 4,
+        "trials": 4130
+      },
+      {
+        "deaths": 1533,
+        "lower": "91/256",
+        "nanoseconds": 87878125,
+        "phase": "interval",
+        "row": 4,
+        "status": "inconclusive",
+        "trials": 4130,
+        "upper": "99/256"
+      },
+      {
+        "deaths": 1179,
+        "phase": "interval-start",
+        "row": 5,
+        "trials": 3164
+      },
+      {
+        "deaths": 1179,
+        "lower": "91/256",
+        "nanoseconds": 59262500,
+        "phase": "interval",
+        "row": 5,
+        "status": "accepted",
+        "trials": 3164,
+        "upper": "25/64"
+      },
+      {
+        "deaths": 889,
+        "phase": "interval-start",
+        "row": 6,
+        "trials": 2597
+      },
+      {
+        "deaths": 889,
+        "lower": "41/128",
+        "nanoseconds": 41112541,
+        "phase": "interval",
+        "row": 6,
+        "status": "outside-band",
+        "trials": 2597,
+        "upper": "93/256"
+      },
+      {
+        "deaths": 533,
+        "phase": "interval-start",
+        "row": 7,
+        "trials": 1985
+      },
+      {
+        "deaths": 533,
+        "lower": "63/256",
+        "nanoseconds": 22327666,
+        "phase": "interval",
+        "row": 7,
+        "status": "outside-band",
+        "trials": 1985,
+        "upper": "37/128"
+      },
+      {
+        "deaths": 542,
+        "phase": "interval-start",
+        "row": 8,
+        "trials": 1708
+      },
+      {
+        "deaths": 542,
+        "lower": "75/256",
+        "nanoseconds": 22036458,
+        "phase": "interval",
+        "row": 8,
+        "status": "outside-band",
+        "trials": 1708,
+        "upper": "11/32"
+      },
+      {
+        "deaths": 579,
+        "phase": "interval-start",
+        "row": 9,
+        "trials": 1452
+      },
+      {
+        "deaths": 579,
+        "lower": "95/256",
+        "nanoseconds": 22324958,
+        "phase": "interval",
+        "row": 9,
+        "status": "outside-band",
+        "trials": 1452,
+        "upper": "109/256"
+      },
+      {
+        "deaths": 435,
+        "phase": "interval-start",
+        "row": 10,
+        "trials": 1166
+      },
+      {
+        "deaths": 435,
+        "lower": "11/32",
+        "nanoseconds": 16227500,
+        "phase": "interval",
+        "row": 10,
+        "status": "outside-band",
+        "trials": 1166,
+        "upper": "103/256"
+      },
+      {
+        "deaths": 265,
+        "phase": "interval-start",
+        "row": 11,
+        "trials": 873
+      },
+      {
+        "deaths": 265,
+        "lower": "69/256",
+        "nanoseconds": 9269250,
+        "phase": "interval",
+        "row": 11,
+        "status": "outside-band",
+        "trials": 873,
+        "upper": "43/128"
+      },
+      {
+        "deaths": 222,
+        "phase": "interval-start",
+        "row": 12,
+        "trials": 731
+      },
+      {
+        "deaths": 222,
+        "lower": "69/256",
+        "nanoseconds": 7495667,
+        "phase": "interval",
+        "row": 12,
+        "status": "outside-band",
+        "trials": 731,
+        "upper": "87/256"
+      },
+      {
+        "deaths": 204,
+        "phase": "interval-start",
+        "row": 13,
+        "trials": 608
+      },
+      {
+        "deaths": 204,
+        "lower": "19/64",
+        "nanoseconds": 6706291,
+        "phase": "interval",
+        "row": 13,
+        "status": "outside-band",
+        "trials": 608,
+        "upper": "3/8"
+      },
+      {
+        "deaths": 176,
+        "phase": "interval-start",
+        "row": 14,
+        "trials": 509
+      },
+      {
+        "deaths": 176,
+        "lower": "77/256",
+        "nanoseconds": 5402625,
+        "phase": "interval",
+        "row": 14,
+        "status": "outside-band",
+        "trials": 509,
+        "upper": "25/64"
+      },
+      {
+        "deaths": 4127,
+        "phase": "interval-start",
+        "row": 15,
+        "trials": 5000
+      },
+      {
+        "deaths": 4127,
+        "lower": "13/16",
+        "nanoseconds": 251052541,
+        "phase": "interval",
+        "row": 15,
+        "status": "outside-band",
+        "trials": 5000,
+        "upper": "107/128"
+      },
+      {
+        "allIntervalsFit": false,
+        "calculationsNs": 724294084,
+        "difficulty": "hard",
+        "file": "work/balanced-hard.json",
+        "games": 5000,
+        "horizon": 14,
+        "legalityNs": 618815208,
+        "phase": "complete",
+        "simulationNs": 27509958,
+        "totalNs": 1370619250
+      }
+    ],
+    "identicalIntervals": 16
+  },
+  "reports": [
+    {
+      "certificateIssued": false,
+      "choicesCovered": 10,
+      "completeTotalNs": 1251578792,
+      "confidenceRisk": "1/20",
+      "coverage": [
+        {
+          "games": 5000,
+          "scene": 0,
+          "title": "The Scholars' Camp",
+          "minimumGraphDepth": 0
+        },
+        {
+          "games": 5000,
+          "scene": 1,
+          "title": "Salma's Tent",
+          "minimumGraphDepth": 1
+        },
+        {
+          "games": 5000,
+          "scene": 2,
+          "title": "Alexandria Harbour",
+          "minimumGraphDepth": 2
+        },
+        {
+          "games": 4331,
+          "scene": 3,
+          "title": "The Storekeeper's Ledger",
+          "minimumGraphDepth": 3
+        },
+        {
+          "games": 4331,
+          "scene": 4,
+          "title": "The Warehouse Yard",
+          "minimumGraphDepth": 4
+        },
+        {
+          "games": 3512,
+          "scene": 5,
+          "title": "The Merchant's Balcony",
+          "minimumGraphDepth": 5
+        },
+        {
+          "games": 2780,
+          "scene": 6,
+          "title": "The Severed Ropes",
+          "minimumGraphDepth": 6
+        },
+        {
+          "games": 2091,
+          "scene": 7,
+          "title": "The Pilot's House",
+          "minimumGraphDepth": 7
+        },
+        {
+          "games": 1990,
+          "scene": 8,
+          "title": "The Salt Marsh Causeway",
+          "minimumGraphDepth": 8
+        },
+        {
+          "games": 1132,
+          "scene": 9,
+          "title": "The Patched Sail",
+          "minimumGraphDepth": 9
+        },
+        {
+          "games": 219,
+          "scene": 10,
+          "title": "The Abandoned Watchpost",
+          "minimumGraphDepth": 10
+        },
+        {
+          "games": 0,
+          "scene": 11,
+          "title": "The Canal Marker",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 12,
+          "title": "The Granaries of Rosetta",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 13,
+          "title": "The Rope Market",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 14,
+          "title": "The Bookbinder's Workshop",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 15,
+          "title": "The First Nile Camp",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 16,
+          "title": "The Delta Reeds",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 17,
+          "title": "The Water Mill",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 18,
+          "title": "The Potters' Courtyard",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 19,
+          "title": "The Palm Terrace",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 20,
+          "title": "The Convoy Landing",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 21,
+          "title": "The Infirmary Tents",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 22,
+          "title": "Desaix's Letter",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 23,
+          "title": "The Irrigated Garden",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 24,
+          "title": "The Landing Steps",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 25,
+          "title": "The Eastern Ferry",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 26,
+          "title": "The Caravanserai",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 27,
+          "title": "The Carpet Room",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 28,
+          "title": "The Brick Rooftops",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 29,
+          "title": "The Baker's Oven",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 30,
+          "title": "The Seal Maker",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 31,
+          "title": "Night on the Terrace",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 32,
+          "title": "The Road to Embabeh",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 33,
+          "title": "The Officers' Map Table",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 34,
+          "title": "The General's Tent",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 35,
+          "title": "The Earthen Embankment",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 36,
+          "title": "The Disputed Storehouse",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 37,
+          "title": "The Families' Refuge",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 38,
+          "title": "The Broken Footbridge",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 39,
+          "title": "The Departing Feluccas",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 40,
+          "title": "The Old Quay Columns",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 41,
+          "title": "The Cairo Gate",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 42,
+          "title": "The Fountain Courtyard",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 43,
+          "title": "The Copyist's Stairs",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 44,
+          "title": "The Contract Chest",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 45,
+          "title": "Monge's Loggia",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 46,
+          "title": "The Instrument Garden",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 47,
+          "title": "The Boat to Giza",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 48,
+          "title": "At the Pyramids",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 49,
+          "title": "The Temple Columns",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 50,
+          "title": "The Workers' Camp",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 51,
+          "title": "The Cool Gallery",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 52,
+          "title": "The Storehouse Keeper",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 53,
+          "title": "The Cistern",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 54,
+          "title": "The Shadow Survey",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 55,
+          "title": "Return to the Village",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 56,
+          "title": "Copies of the Plan",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 57,
+          "title": "The Last Nile Crossing",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 58,
+          "title": "The Evening Council",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 59,
+          "title": "The Written Agreement",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 60,
+          "title": "The Last Accomplice",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 61,
+          "title": "The Supply Road",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 62,
+          "title": "Evening over Giza",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 63,
+          "title": "The Cartographer's Choice",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 64,
+          "title": "Ending \u00b7 The Scholars' Notebook",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 65,
+          "title": "Ending \u00b7 Guardians of the Water",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 2422,
+          "scene": 101,
+          "title": "Salma's Tent \u00b7 The Detour",
+          "minimumGraphDepth": 2
+        },
+        {
+          "games": 1754,
+          "scene": 105,
+          "title": "The Merchant's Balcony \u00b7 The Detour",
+          "minimumGraphDepth": 6
+        },
+        {
+          "games": 208,
+          "scene": 109,
+          "title": "The Patched Sail \u00b7 The Detour",
+          "minimumGraphDepth": 10
+        },
+        {
+          "games": 0,
+          "scene": 113,
+          "title": "The Rope Market \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 117,
+          "title": "The Water Mill \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 121,
+          "title": "The Infirmary Tents \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 125,
+          "title": "The Eastern Ferry \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 129,
+          "title": "The Baker's Oven \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 133,
+          "title": "The Officers' Map Table \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 137,
+          "title": "The Families' Refuge \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 141,
+          "title": "The Cairo Gate \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 145,
+          "title": "Monge's Loggia \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 149,
+          "title": "The Temple Columns \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 153,
+          "title": "The Cistern \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 157,
+          "title": "The Last Nile Crossing \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 161,
+          "title": "The Supply Road \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 398,
+          "scene": 200,
+          "title": "The Scholars' Camp \u00b7 Another Lead",
+          "minimumGraphDepth": 1
+        },
+        {
+          "games": 426,
+          "scene": 203,
+          "title": "The Storekeeper's Ledger \u00b7 Another Lead",
+          "minimumGraphDepth": 4
+        },
+        {
+          "games": 168,
+          "scene": 207,
+          "title": "The Pilot's House \u00b7 Another Lead",
+          "minimumGraphDepth": 8
+        },
+        {
+          "games": 0,
+          "scene": 211,
+          "title": "The Canal Marker \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 214,
+          "title": "The Bookbinder's Workshop \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 215,
+          "title": "The First Nile Camp \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 216,
+          "title": "The Delta Reeds \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 218,
+          "title": "The Potters' Courtyard \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 219,
+          "title": "The Palm Terrace \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 222,
+          "title": "Desaix's Letter \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 223,
+          "title": "The Irrigated Garden \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 224,
+          "title": "The Landing Steps \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 226,
+          "title": "The Caravanserai \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 227,
+          "title": "The Carpet Room \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 230,
+          "title": "The Seal Maker \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 231,
+          "title": "Night on the Terrace \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 232,
+          "title": "The Road to Embabeh \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 234,
+          "title": "The General's Tent \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 235,
+          "title": "The Earthen Embankment \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 238,
+          "title": "The Broken Footbridge \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 239,
+          "title": "The Departing Feluccas \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 240,
+          "title": "The Old Quay Columns \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 242,
+          "title": "The Fountain Courtyard \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 243,
+          "title": "The Copyist's Stairs \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 246,
+          "title": "The Instrument Garden \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 247,
+          "title": "The Boat to Giza \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 248,
+          "title": "At the Pyramids \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 250,
+          "title": "The Workers' Camp \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 251,
+          "title": "The Cool Gallery \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 254,
+          "title": "The Shadow Survey \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 255,
+          "title": "Return to the Village \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 256,
+          "title": "Copies of the Plan \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 258,
+          "title": "The Evening Council \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 259,
+          "title": "The Written Agreement \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 262,
+          "title": "Evening over Giza \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        }
+      ],
+      "coverageNs": 85547042,
+      "coverageReplayMatches": true,
+      "deaths": [
+        0,
+        0,
+        331,
+        641,
+        684,
+        784,
+        637,
+        492,
+        596,
+        662,
+        2579
+      ],
+      "difficulty": "easy",
+      "endedWithinWindow": 0,
+      "games": 5000,
+      "horizon": 9,
+      "legalityNs": 676284167,
+      "meetsAllBands": false,
+      "productionValidationGames": 5000,
+      "profile": "difficulty-easy-v2",
+      "retention": "198618499/200000000",
+      "rows": [
+        {
+          "deaths": 0,
+          "lower": "0",
+          "row": 0,
+          "status": "accepted",
+          "target": "1381501/200000000",
+          "trials": 5000,
+          "upper": "1/256"
+        },
+        {
+          "deaths": 0,
+          "lower": "0",
+          "row": 1,
+          "status": "accepted",
+          "target": "43752086879810898064613540973999/1600000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "1/256"
+        },
+        {
+          "deaths": 331,
+          "lower": "15/256",
+          "row": 2,
+          "status": "accepted",
+          "target": "138092432909056352880975704360617144957409380640597352358405947999/2560000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "19/256"
+        },
+        {
+          "deaths": 641,
+          "lower": "15/128",
+          "row": 3,
+          "status": "inconclusive",
+          "target": "326911402944724572511232731856543933442789863764336728994736357219996427143393369240993658594921999/4096000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "9/64"
+        },
+        {
+          "deaths": 684,
+          "lower": "17/128",
+          "row": 4,
+          "status": "inconclusive",
+          "target": "687963736467626296735443870516957504256301213094349795127038039789061240781414302530074904375405289515330632173126979142938107895999/6553600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 4669,
+          "upper": "41/256"
+        },
+        {
+          "deaths": 784,
+          "lower": "43/256",
+          "row": 5,
+          "status": "inconclusive",
+          "target": "1357375805755639861564861422349199302092495760846748312582540281571086774603237753883931629218759677334054065170450268412121626258693578231761327492592978620944869999/10485760000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 4359,
+          "upper": "25/128"
+        },
+        {
+          "deaths": 637,
+          "lower": "19/128",
+          "row": 6,
+          "status": "accepted",
+          "target": "2571187147547895624112518515223250790598092949684892617147404063160656386905089746636329464273937088928006189196281911509686296797624922746482048919030288047799407467403567059384916118703131105843999/16777216000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 3985,
+          "upper": "11/64"
+        },
+        {
+          "deaths": 492,
+          "lower": "1/8",
+          "row": 7,
+          "status": "inconclusive",
+          "target": "4735442844646217782722532320877581959682016047195815932402641463762933250399702817613025786638386961087683772483467211750259467654524400283213970465815689631408388287787271181488061315236107640509503714217425767365471542892590817999/26843545600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 3575,
+          "upper": "39/256"
+        },
+        {
+          "deaths": 596,
+          "lower": "21/128",
+          "row": 8,
+          "status": "accepted",
+          "target": "8543984183933973832044214408683067325113014919576299526338178306446643489116863521313227223631287909728019317674739946559310847119397821892485243475782047860961384397170344633371702308315143589092995654392142269119375588251449057559963488811991197069748329399791999/42949672960000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 3348,
+          "upper": "49/256"
+        },
+        {
+          "deaths": 662,
+          "lower": "51/256",
+          "row": 9,
+          "status": "accepted",
+          "target": "15175695378784533590451639800873445243864492114238101786046374496563682943611430860136061696503654394181311121089914591484260200717785878668578654534891118263883541617626164547633795249357719498227361966514167292611161163193283463232445746920227235367331687974140900323504605920250458593865532765999/68719476736000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 3083,
+          "upper": "59/256"
+        },
+        {
+          "deaths": 2579,
+          "lower": "1/2",
+          "row": 10,
+          "status": "accepted",
+          "target": "63382532800722704310196037219040925140317137995181293439394877712766501339605463900116977381628672115867231938668586418855244385441298091224406717807146095475552884921228643886739393452173789727730006323428677847892365700477520590853179213266468274496380084769571385222812361167312999905425409678949428761886906955555872012540836085078743411881955588320214534549356595642108255953627475338973140702338124669359905760249783853960816544179250373106615878404881128014935019931839862512288038046707270550123998396532754046114696770997250231603115627159028005486556901123525490530328443892884587342552205481657744325501928354186693246400566496090428845618630337934327720288090099616776569721310082511682674551208680358157618312235003929675594343085254834704131647590468602709345496267441441851015025897546917542551123992129935724349999/126765060022822940149670320537600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "17/32"
+        }
+      ],
+      "seed": 461306454689629901,
+      "shape": 2,
+      "simulationNs": 42062125,
+      "source": "docs/reports/fairness-inputs/easy.json",
+      "statisticsNs": 447685458,
+      "title": "Bonaparte \u00b7 Maps of the Nile",
+      "tolerance": "1/20",
+      "trials": [
+        5000,
+        5000,
+        5000,
+        5000,
+        4669,
+        4359,
+        3985,
+        3575,
+        3348,
+        3083,
+        5000
+      ],
+      "validationTotalNs": 1166031750,
+      "processWallSeconds": 3.208764,
+      "sourceSHA256": "50a939b91e788377fea5ed5c4a864e21041ab9670d4af677a6aec24b9bc1096e",
+      "independentExactIntervalsMatch": true,
+      "graphReachableWithinWindow": 17,
+      "visitedScenes": 17,
+      "unvisitedWithinWindow": []
+    },
+    {
+      "certificateIssued": false,
+      "choicesCovered": 10,
+      "completeTotalNs": 1394044416,
+      "confidenceRisk": "1/20",
+      "coverage": [
+        {
+          "games": 5000,
+          "scene": 0,
+          "title": "The Scholars' Camp",
+          "minimumGraphDepth": 0
+        },
+        {
+          "games": 5000,
+          "scene": 1,
+          "title": "Salma's Tent",
+          "minimumGraphDepth": 1
+        },
+        {
+          "games": 5000,
+          "scene": 2,
+          "title": "Alexandria Harbour",
+          "minimumGraphDepth": 2
+        },
+        {
+          "games": 3676,
+          "scene": 3,
+          "title": "The Storekeeper's Ledger",
+          "minimumGraphDepth": 3
+        },
+        {
+          "games": 3676,
+          "scene": 4,
+          "title": "The Warehouse Yard",
+          "minimumGraphDepth": 4
+        },
+        {
+          "games": 2607,
+          "scene": 5,
+          "title": "The Merchant's Balcony",
+          "minimumGraphDepth": 5
+        },
+        {
+          "games": 2056,
+          "scene": 6,
+          "title": "The Severed Ropes",
+          "minimumGraphDepth": 6
+        },
+        {
+          "games": 1363,
+          "scene": 7,
+          "title": "The Pilot's House",
+          "minimumGraphDepth": 7
+        },
+        {
+          "games": 1312,
+          "scene": 8,
+          "title": "The Salt Marsh Causeway",
+          "minimumGraphDepth": 8
+        },
+        {
+          "games": 630,
+          "scene": 9,
+          "title": "The Patched Sail",
+          "minimumGraphDepth": 9
+        },
+        {
+          "games": 127,
+          "scene": 10,
+          "title": "The Abandoned Watchpost",
+          "minimumGraphDepth": 10
+        },
+        {
+          "games": 0,
+          "scene": 11,
+          "title": "The Canal Marker",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 12,
+          "title": "The Granaries of Rosetta",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 13,
+          "title": "The Rope Market",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 14,
+          "title": "The Bookbinder's Workshop",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 15,
+          "title": "The First Nile Camp",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 16,
+          "title": "The Delta Reeds",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 17,
+          "title": "The Water Mill",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 18,
+          "title": "The Potters' Courtyard",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 19,
+          "title": "The Palm Terrace",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 20,
+          "title": "The Convoy Landing",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 21,
+          "title": "The Infirmary Tents",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 22,
+          "title": "Desaix's Letter",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 23,
+          "title": "The Irrigated Garden",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 24,
+          "title": "The Landing Steps",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 25,
+          "title": "The Eastern Ferry",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 26,
+          "title": "The Caravanserai",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 27,
+          "title": "The Carpet Room",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 28,
+          "title": "The Brick Rooftops",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 29,
+          "title": "The Baker's Oven",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 30,
+          "title": "The Seal Maker",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 31,
+          "title": "Night on the Terrace",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 32,
+          "title": "The Road to Embabeh",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 33,
+          "title": "The Officers' Map Table",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 34,
+          "title": "The General's Tent",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 35,
+          "title": "The Earthen Embankment",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 36,
+          "title": "The Disputed Storehouse",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 37,
+          "title": "The Families' Refuge",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 38,
+          "title": "The Broken Footbridge",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 39,
+          "title": "The Departing Feluccas",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 40,
+          "title": "The Old Quay Columns",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 41,
+          "title": "The Cairo Gate",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 42,
+          "title": "The Fountain Courtyard",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 43,
+          "title": "The Copyist's Stairs",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 44,
+          "title": "The Contract Chest",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 45,
+          "title": "Monge's Loggia",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 46,
+          "title": "The Instrument Garden",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 47,
+          "title": "The Boat to Giza",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 48,
+          "title": "At the Pyramids",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 49,
+          "title": "The Temple Columns",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 50,
+          "title": "The Workers' Camp",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 51,
+          "title": "The Cool Gallery",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 52,
+          "title": "The Storehouse Keeper",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 53,
+          "title": "The Cistern",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 54,
+          "title": "The Shadow Survey",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 55,
+          "title": "Return to the Village",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 56,
+          "title": "Copies of the Plan",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 57,
+          "title": "The Last Nile Crossing",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 58,
+          "title": "The Evening Council",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 59,
+          "title": "The Written Agreement",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 60,
+          "title": "The Last Accomplice",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 61,
+          "title": "The Supply Road",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 62,
+          "title": "Evening over Giza",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 63,
+          "title": "The Cartographer's Choice",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 64,
+          "title": "Ending \u00b7 The Scholars' Notebook",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 65,
+          "title": "Ending \u00b7 Guardians of the Water",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 2526,
+          "scene": 101,
+          "title": "Salma's Tent \u00b7 The Detour",
+          "minimumGraphDepth": 2
+        },
+        {
+          "games": 1288,
+          "scene": 105,
+          "title": "The Merchant's Balcony \u00b7 The Detour",
+          "minimumGraphDepth": 6
+        },
+        {
+          "games": 104,
+          "scene": 109,
+          "title": "The Patched Sail \u00b7 The Detour",
+          "minimumGraphDepth": 10
+        },
+        {
+          "games": 0,
+          "scene": 113,
+          "title": "The Rope Market \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 117,
+          "title": "The Water Mill \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 121,
+          "title": "The Infirmary Tents \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 125,
+          "title": "The Eastern Ferry \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 129,
+          "title": "The Baker's Oven \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 133,
+          "title": "The Officers' Map Table \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 137,
+          "title": "The Families' Refuge \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 141,
+          "title": "The Cairo Gate \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 145,
+          "title": "Monge's Loggia \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 149,
+          "title": "The Temple Columns \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 153,
+          "title": "The Cistern \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 157,
+          "title": "The Last Nile Crossing \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 161,
+          "title": "The Supply Road \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 397,
+          "scene": 200,
+          "title": "The Scholars' Camp \u00b7 Another Lead",
+          "minimumGraphDepth": 1
+        },
+        {
+          "games": 348,
+          "scene": 203,
+          "title": "The Storekeeper's Ledger \u00b7 Another Lead",
+          "minimumGraphDepth": 4
+        },
+        {
+          "games": 110,
+          "scene": 207,
+          "title": "The Pilot's House \u00b7 Another Lead",
+          "minimumGraphDepth": 8
+        },
+        {
+          "games": 0,
+          "scene": 211,
+          "title": "The Canal Marker \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 214,
+          "title": "The Bookbinder's Workshop \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 215,
+          "title": "The First Nile Camp \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 216,
+          "title": "The Delta Reeds \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 218,
+          "title": "The Potters' Courtyard \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 219,
+          "title": "The Palm Terrace \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 222,
+          "title": "Desaix's Letter \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 223,
+          "title": "The Irrigated Garden \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 224,
+          "title": "The Landing Steps \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 226,
+          "title": "The Caravanserai \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 227,
+          "title": "The Carpet Room \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 230,
+          "title": "The Seal Maker \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 231,
+          "title": "Night on the Terrace \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 232,
+          "title": "The Road to Embabeh \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 234,
+          "title": "The General's Tent \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 235,
+          "title": "The Earthen Embankment \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 238,
+          "title": "The Broken Footbridge \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 239,
+          "title": "The Departing Feluccas \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 240,
+          "title": "The Old Quay Columns \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 242,
+          "title": "The Fountain Courtyard \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 243,
+          "title": "The Copyist's Stairs \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 246,
+          "title": "The Instrument Garden \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 247,
+          "title": "The Boat to Giza \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 248,
+          "title": "At the Pyramids \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 250,
+          "title": "The Workers' Camp \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 251,
+          "title": "The Cool Gallery \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 254,
+          "title": "The Shadow Survey \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 255,
+          "title": "Return to the Village \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 256,
+          "title": "Copies of the Plan \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 258,
+          "title": "The Evening Council \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 259,
+          "title": "The Written Agreement \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 262,
+          "title": "Evening over Giza \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        }
+      ],
+      "coverageNs": 66812000,
+      "coverageReplayMatches": true,
+      "deaths": [
+        0,
+        0,
+        602,
+        1270,
+        1184,
+        1049,
+        765,
+        534,
+        623,
+        667,
+        3520
+      ],
+      "difficulty": "medium",
+      "endedWithinWindow": 0,
+      "games": 5000,
+      "horizon": 9,
+      "legalityNs": 698783750,
+      "meetsAllBands": false,
+      "productionValidationGames": 5000,
+      "profile": "difficulty-medium-v2",
+      "retention": "988032459/1000000000",
+      "rows": [
+        {
+          "deaths": 0,
+          "lower": "0",
+          "row": 0,
+          "status": "accepted",
+          "target": "11967541/1000000000",
+          "trials": 5000,
+          "upper": "1/256"
+        },
+        {
+          "deaths": 0,
+          "lower": "0",
+          "row": 1,
+          "status": "accepted",
+          "target": "47017667324355552103020561411404239/1000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "1/256"
+        },
+        {
+          "deaths": 602,
+          "lower": "7/64",
+          "row": 2,
+          "status": "accepted",
+          "target": "91824673608087332424072657741564282838114095854509231831630394132830879/1000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "17/128"
+        },
+        {
+          "deaths": 1270,
+          "lower": "61/256",
+          "row": 3,
+          "status": "outside-band",
+          "target": "134524958976570303119429040348328984248185667737412629646653843827035830171757739930927967899809528309303919/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "69/256"
+        },
+        {
+          "deaths": 1184,
+          "lower": "65/256",
+          "row": 4,
+          "status": "outside-band",
+          "target": "175217576532942894567809573377783801895777954572918234098063249784158619883332876998406175451059279582127461292767425019784273506083305584087359/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 4398,
+          "upper": "73/256"
+        },
+        {
+          "deaths": 1049,
+          "lower": "17/64",
+          "row": 5,
+          "status": "outside-band",
+          "target": "213996922134492729349528803493110195584113503637627048783664935552132861905864301815141830859706262612325280206522962828632235076366547711674322465089161215387655398385690561085199/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 3730,
+          "upper": "19/64"
+        },
+        {
+          "deaths": 765,
+          "lower": "57/256",
+          "row": 6,
+          "status": "accepted",
+          "target": "250952953365492683262791602488205927289834639357281879237166655604562393382831692457124488424342404890070338283354451598121550358207710374424391342830626531311606329692631610970592855366041764182643176450621691241439/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 3214,
+          "upper": "65/256"
+        },
+        {
+          "deaths": 534,
+          "lower": "47/256",
+          "row": 7,
+          "status": "outside-band",
+          "target": "286171398214444987352477803668196394211807267230929140626432410472491254720653818053067216129064384124179707191524975560844202179535553158253167173763343627475841700234203633785528693287299207973398051642826774366768320154853679433999429810643822940079/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 2681,
+          "upper": "55/256"
+        },
+        {
+          "deaths": 623,
+          "lower": "15/64",
+          "row": 8,
+          "status": "inconclusive",
+          "target": "319733953939808088586400695731553392874940452480048745139179823560856427747897458355679505232694274004098303539606962639417092240454874157093144847385575604555792602189194071777701729787941194250358060608236595939773006793401248159421864453005505422738048082520276473238555958967056405119/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 2449,
+          "upper": "35/128"
+        },
+        {
+          "deaths": 667,
+          "lower": "37/128",
+          "row": 9,
+          "status": "inconclusive",
+          "target": "351718476585520922780131169717809142177257789941100611753221978107355975440438618313638730529332487285170935306551127824759738847321234584038577857282724810162480102773378159487205419398442338748901681062737725089355730429702069366411201256330881198016348906823468526074588205899439493456447766264500018180240281822942100559/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 2147,
+          "upper": "85/256"
+        },
+        {
+          "deaths": 3520,
+          "lower": "11/16",
+          "row": 10,
+          "status": "accepted",
+          "target": "700000014753979023608435353430522931997894820754034271128507489840238924414171825351983653096482858663247090861467754892197508856380102717899377997156366552808391407455455381247538608690697605944691775225545816045725713560527215222262226686527365324378691956905057555581184074768942060693436940098559194440865156955667279094837147242011872719314681697683677731710952831473816339824612599451927514229280748504105638240242624651043543864699099816981887845094258851662591930794027408441260125484419801422159755566522620734622137907418815412507286800888730266618146333503349940251599511480513730740336251507673101406539491912414701908253392769191712424581559454973504203198939524596120734085246732418516278225030722831025347208776335705221563506957574200559937204542788186701306715006698509587949844992380413686390811568171352914331253669499153980434669950375924913327544085014108064220272442050295025999/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "23/32"
+        }
+      ],
+      "seed": 3397969856431803334,
+      "shape": 2,
+      "simulationNs": 32568458,
+      "source": "docs/reports/fairness-inputs/medium.json",
+      "statisticsNs": 595880208,
+      "title": "Bonaparte \u00b7 Maps of the Nile",
+      "tolerance": "1/20",
+      "trials": [
+        5000,
+        5000,
+        5000,
+        5000,
+        4398,
+        3730,
+        3214,
+        2681,
+        2449,
+        2147,
+        5000
+      ],
+      "validationTotalNs": 1327232416,
+      "processWallSeconds": 1.4121507500000003,
+      "sourceSHA256": "02604d084d96fad49462a0a3ec351eccb2b482cd17a2480e788af727f2bde1ba",
+      "independentExactIntervalsMatch": true,
+      "graphReachableWithinWindow": 17,
+      "visitedScenes": 17,
+      "unvisitedWithinWindow": []
+    },
+    {
+      "certificateIssued": false,
+      "choicesCovered": 10,
+      "completeTotalNs": 1452865042,
+      "confidenceRisk": "1/20",
+      "coverage": [
+        {
+          "games": 5000,
+          "scene": 0,
+          "title": "The Scholars' Camp",
+          "minimumGraphDepth": 0
+        },
+        {
+          "games": 5000,
+          "scene": 1,
+          "title": "Salma's Tent",
+          "minimumGraphDepth": 1
+        },
+        {
+          "games": 5000,
+          "scene": 2,
+          "title": "Alexandria Harbour",
+          "minimumGraphDepth": 2
+        },
+        {
+          "games": 3125,
+          "scene": 3,
+          "title": "The Storekeeper's Ledger",
+          "minimumGraphDepth": 3
+        },
+        {
+          "games": 3125,
+          "scene": 4,
+          "title": "The Warehouse Yard",
+          "minimumGraphDepth": 4
+        },
+        {
+          "games": 1881,
+          "scene": 5,
+          "title": "The Merchant's Balcony",
+          "minimumGraphDepth": 5
+        },
+        {
+          "games": 1469,
+          "scene": 6,
+          "title": "The Severed Ropes",
+          "minimumGraphDepth": 6
+        },
+        {
+          "games": 897,
+          "scene": 7,
+          "title": "The Pilot's House",
+          "minimumGraphDepth": 7
+        },
+        {
+          "games": 862,
+          "scene": 8,
+          "title": "The Salt Marsh Causeway",
+          "minimumGraphDepth": 8
+        },
+        {
+          "games": 378,
+          "scene": 9,
+          "title": "The Patched Sail",
+          "minimumGraphDepth": 9
+        },
+        {
+          "games": 83,
+          "scene": 10,
+          "title": "The Abandoned Watchpost",
+          "minimumGraphDepth": 10
+        },
+        {
+          "games": 0,
+          "scene": 11,
+          "title": "The Canal Marker",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 12,
+          "title": "The Granaries of Rosetta",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 13,
+          "title": "The Rope Market",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 14,
+          "title": "The Bookbinder's Workshop",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 15,
+          "title": "The First Nile Camp",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 16,
+          "title": "The Delta Reeds",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 17,
+          "title": "The Water Mill",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 18,
+          "title": "The Potters' Courtyard",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 19,
+          "title": "The Palm Terrace",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 20,
+          "title": "The Convoy Landing",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 21,
+          "title": "The Infirmary Tents",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 22,
+          "title": "Desaix's Letter",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 23,
+          "title": "The Irrigated Garden",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 24,
+          "title": "The Landing Steps",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 25,
+          "title": "The Eastern Ferry",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 26,
+          "title": "The Caravanserai",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 27,
+          "title": "The Carpet Room",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 28,
+          "title": "The Brick Rooftops",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 29,
+          "title": "The Baker's Oven",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 30,
+          "title": "The Seal Maker",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 31,
+          "title": "Night on the Terrace",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 32,
+          "title": "The Road to Embabeh",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 33,
+          "title": "The Officers' Map Table",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 34,
+          "title": "The General's Tent",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 35,
+          "title": "The Earthen Embankment",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 36,
+          "title": "The Disputed Storehouse",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 37,
+          "title": "The Families' Refuge",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 38,
+          "title": "The Broken Footbridge",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 39,
+          "title": "The Departing Feluccas",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 40,
+          "title": "The Old Quay Columns",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 41,
+          "title": "The Cairo Gate",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 42,
+          "title": "The Fountain Courtyard",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 43,
+          "title": "The Copyist's Stairs",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 44,
+          "title": "The Contract Chest",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 45,
+          "title": "Monge's Loggia",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 46,
+          "title": "The Instrument Garden",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 47,
+          "title": "The Boat to Giza",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 48,
+          "title": "At the Pyramids",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 49,
+          "title": "The Temple Columns",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 50,
+          "title": "The Workers' Camp",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 51,
+          "title": "The Cool Gallery",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 52,
+          "title": "The Storehouse Keeper",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 53,
+          "title": "The Cistern",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 54,
+          "title": "The Shadow Survey",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 55,
+          "title": "Return to the Village",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 56,
+          "title": "Copies of the Plan",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 57,
+          "title": "The Last Nile Crossing",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 58,
+          "title": "The Evening Council",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 59,
+          "title": "The Written Agreement",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 60,
+          "title": "The Last Accomplice",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 61,
+          "title": "The Supply Road",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 62,
+          "title": "Evening over Giza",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 63,
+          "title": "The Cartographer's Choice",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 64,
+          "title": "Ending \u00b7 The Scholars' Notebook",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 65,
+          "title": "Ending \u00b7 Guardians of the Water",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 2501,
+          "scene": 101,
+          "title": "Salma's Tent \u00b7 The Detour",
+          "minimumGraphDepth": 2
+        },
+        {
+          "games": 928,
+          "scene": 105,
+          "title": "The Merchant's Balcony \u00b7 The Detour",
+          "minimumGraphDepth": 6
+        },
+        {
+          "games": 57,
+          "scene": 109,
+          "title": "The Patched Sail \u00b7 The Detour",
+          "minimumGraphDepth": 10
+        },
+        {
+          "games": 0,
+          "scene": 113,
+          "title": "The Rope Market \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 117,
+          "title": "The Water Mill \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 121,
+          "title": "The Infirmary Tents \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 125,
+          "title": "The Eastern Ferry \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 129,
+          "title": "The Baker's Oven \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 133,
+          "title": "The Officers' Map Table \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 137,
+          "title": "The Families' Refuge \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 141,
+          "title": "The Cairo Gate \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 145,
+          "title": "Monge's Loggia \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 149,
+          "title": "The Temple Columns \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 153,
+          "title": "The Cistern \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 157,
+          "title": "The Last Nile Crossing \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 161,
+          "title": "The Supply Road \u00b7 The Detour",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 395,
+          "scene": 200,
+          "title": "The Scholars' Camp \u00b7 Another Lead",
+          "minimumGraphDepth": 1
+        },
+        {
+          "games": 288,
+          "scene": 203,
+          "title": "The Storekeeper's Ledger \u00b7 Another Lead",
+          "minimumGraphDepth": 4
+        },
+        {
+          "games": 71,
+          "scene": 207,
+          "title": "The Pilot's House \u00b7 Another Lead",
+          "minimumGraphDepth": 8
+        },
+        {
+          "games": 0,
+          "scene": 211,
+          "title": "The Canal Marker \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 214,
+          "title": "The Bookbinder's Workshop \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 215,
+          "title": "The First Nile Camp \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 216,
+          "title": "The Delta Reeds \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 218,
+          "title": "The Potters' Courtyard \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 219,
+          "title": "The Palm Terrace \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 222,
+          "title": "Desaix's Letter \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 223,
+          "title": "The Irrigated Garden \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 224,
+          "title": "The Landing Steps \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 226,
+          "title": "The Caravanserai \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 227,
+          "title": "The Carpet Room \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 230,
+          "title": "The Seal Maker \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 231,
+          "title": "Night on the Terrace \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 232,
+          "title": "The Road to Embabeh \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 234,
+          "title": "The General's Tent \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 235,
+          "title": "The Earthen Embankment \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 238,
+          "title": "The Broken Footbridge \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 239,
+          "title": "The Departing Feluccas \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 240,
+          "title": "The Old Quay Columns \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 242,
+          "title": "The Fountain Courtyard \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 243,
+          "title": "The Copyist's Stairs \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 246,
+          "title": "The Instrument Garden \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 247,
+          "title": "The Boat to Giza \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 248,
+          "title": "At the Pyramids \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 250,
+          "title": "The Workers' Camp \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 251,
+          "title": "The Cool Gallery \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 254,
+          "title": "The Shadow Survey \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 255,
+          "title": "Return to the Village \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 256,
+          "title": "Copies of the Plan \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 258,
+          "title": "The Evening Council \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 259,
+          "title": "The Written Agreement \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        },
+        {
+          "games": 0,
+          "scene": 262,
+          "title": "Evening over Giza \u00b7 Another Lead",
+          "minimumGraphDepth": null
+        }
+      ],
+      "coverageNs": 54213125,
+      "coverageReplayMatches": true,
+      "deaths": [
+        0,
+        0,
+        846,
+        1795,
+        1532,
+        1230,
+        889,
+        502,
+        530,
+        550,
+        4077
+      ],
+      "difficulty": "hard",
+      "endedWithinWindow": 0,
+      "games": 5000,
+      "horizon": 9,
+      "legalityNs": 691755959,
+      "meetsAllBands": false,
+      "productionValidationGames": 5000,
+      "profile": "difficulty-hard-v2",
+      "retention": "48861861/50000000",
+      "rows": [
+        {
+          "deaths": 0,
+          "lower": "0",
+          "row": 0,
+          "status": "accepted",
+          "target": "1138139/50000000",
+          "trials": 5000,
+          "upper": "1/256"
+        },
+        {
+          "deaths": 0,
+          "lower": "0",
+          "row": 1,
+          "status": "outside-band",
+          "target": "549932276325924838395745010959/6250000000000000000000000000000",
+          "trials": 5000,
+          "upper": "1/256"
+        },
+        {
+          "deaths": 846,
+          "lower": "5/32",
+          "row": 2,
+          "status": "accepted",
+          "target": "6571727945529047127472777151519551873303145287017060969900319/39062500000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "47/256"
+        },
+        {
+          "deaths": 1795,
+          "lower": "11/32",
+          "row": 3,
+          "status": "outside-band",
+          "target": "58941023895058501266988924163468303134925342656267471459704322518213335659823505088207404079/244140625000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "3/8"
+        },
+        {
+          "deaths": 1532,
+          "lower": "45/128",
+          "row": 4,
+          "status": "inconclusive",
+          "target": "470228637554409376224861170432580716665812623429241822399633146264029081233433864573603191006270873794012954409091203698239/1525878906250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 4154,
+          "upper": "99/256"
+        },
+        {
+          "deaths": 1230,
+          "lower": "93/256",
+          "row": 5,
+          "status": "accepted",
+          "target": "3519465139982898947529339296485655338586728131098463407733994390432092298513932546470448960283166144236646457652818107649622960694248687262927905615998799/9536743164062500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 3205,
+          "upper": "103/256"
+        },
+        {
+          "deaths": 889,
+          "lower": "41/128",
+          "row": 6,
+          "status": "outside-band",
+          "target": "25305752525961176601595968296656611798410729163422732399185982374470878665752001544656742240927428955108143131021435921188455309970214619042398205300627178169951009505300075644014161759/59604644775390625000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 2622,
+          "upper": "23/64"
+        },
+        {
+          "deaths": 502,
+          "lower": "15/64",
+          "row": 7,
+          "status": "outside-band",
+          "target": "177023021177443710932682049827110820732701378182254945357216809711670384288037310770779005135475485983566574952728395633878581534220688955489606306104561018673121593756601114357811742124559813570668216529933346283119/372529029846191406250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 1975,
+          "upper": "71/256"
+        },
+        {
+          "deaths": 530,
+          "lower": "9/32",
+          "row": 8,
+          "status": "outside-band",
+          "target": "1213908946741623607765628729776008286618370120025293909777456618649081475921041485194714649798367195701978386346802883607048558434568372772939141017891591701511549731007344784559294960164779660975054340961243301630879439641441080713925529428298879/2328306436538696289062500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 1733,
+          "upper": "85/256"
+        },
+        {
+          "deaths": 550,
+          "lower": "89/256",
+          "row": 9,
+          "status": "outside-band",
+          "target": "8199774065431148328068925423751675601710471184706639880539902325125073554976506556536622651388612732252402976703999112585697510973254347300626314629091155501195156927292997439210016635750917991934737675754560375039989283483427166864280598901917630372613589058831381125417585039/14551915228366851806640625000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 1473,
+          "upper": "103/256"
+        },
+        {
+          "deaths": 4077,
+          "lower": "205/256",
+          "row": 10,
+          "status": "outside-band",
+          "target": "70997482241455660824917637207028022615483680316159963767218980533247501316891433518361156279926727663003835857943423235550970192411926656232981532222091130381548887283866944124166755818648328222935934814510320632916245931956392023826966185219993619420164366593253812786941456200852508972970689777108299008418876996481785355295474588069729507579438375667271955681390893695258656082368609174733903321230722507299056902907035845213039580340575430547887292849623401857058219182056857709956438815921556097700018492433478469661500839116181818555785020791081424537958427695403437035212313882220777591689151932302898846262847965253639815519041482961396234888026666299535140302984654762862941733225348051294762581760104714898847415667508230325886431711607780593870886806785593999/78886090522101180541172856528278622967320643510902300477027893066406250000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "trials": 5000,
+          "upper": "53/64"
+        }
+      ],
+      "seed": 2815492620410608345,
+      "shape": 2,
+      "simulationNs": 26302583,
+      "source": "docs/reports/fairness-inputs/hard.json",
+      "statisticsNs": 680593375,
+      "title": "Bonaparte \u00b7 Maps of the Nile",
+      "tolerance": "1/20",
+      "trials": [
+        5000,
+        5000,
+        5000,
+        5000,
+        4154,
+        3205,
+        2622,
+        1975,
+        1733,
+        1473,
+        5000
+      ],
+      "validationTotalNs": 1398651917,
+      "processWallSeconds": 1.4699957499999998,
+      "sourceSHA256": "fdaae4937c9a644e9b3327221afb5adb65f1bf786cee4ef774a3cd04607dc595",
+      "independentExactIntervalsMatch": true,
+      "graphReachableWithinWindow": 17,
+      "visitedScenes": 17,
+      "unvisitedWithinWindow": []
+    }
+  ],
+  "host": {
+    "os": "macOS",
+    "architecture": "arm64",
+    "toolchain": "leanprover/lean4:v4.35.0",
+    "nativeOptimization": "-O3",
+    "timingNote": "Single sequential batches. Process time includes executable startup; internal times use IO.monoNanosNow. Build and Claude generation are excluded."
+  },
+  "verifiedReplay": {
+    "note": "Replay timings, not new independent statistical evidence.",
+    "allCountsIntervalsStatusesAndCoverageMatch": true,
+    "timings": [
+      {
+        "difficulty": "easy",
+        "processWallSeconds": 1.3654584170000001
+      },
+      {
+        "difficulty": "medium",
+        "processWallSeconds": 1.404385083
+      },
+      {
+        "difficulty": "hard",
+        "processWallSeconds": 1.4529862910000002
+      }
+    ]
+  }
+}
