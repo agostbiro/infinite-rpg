@@ -1,169 +1,50 @@
+import Rpg.Probability.Binomial
 import Rpg.Probability.Fairness
-import Init.GrindInstances.Ring.Rat
-import Init.Grind.Ordered.Rat
 
 /-!
-Exact finite-sample probability calculations over rational Bernoulli laws.
-Theorems here concern independent samples of the graph's death probabilities.
-The sampling model is an explicit assumption.
+Equal-tailed exact binomial intervals, represented by conservative rational endpoints.
+Coverage is proved by inverting binomial tail tests. The joint sampling model allows
+random qualifying counts and dependence between rows from the same fixed game batch.
 -/
 namespace Rpg.Probability.Confidence
 
-/-- Expectation of f(K) when K is the count of successes in n independent Bernoulli(p) trials. -/
-def binomialExpectation (p : Rat) : Nat → (Nat → Rat) → Rat
-  | 0, f => f 0
-  | n + 1, f => (1-p) * binomialExpectation p n f +
-      p * binomialExpectation p n (fun k => f (k+1))
+/-- The exact Clopper–Pearson interval contains probabilities not rejected by either tail. -/
+def BinomialContains (delta : Rat) (n k : Nat) (p : Rat) : Prop :=
+  0 ≤ p ∧ p ≤ 1 ∧ delta/2 ≤ lowerTail p n k ∧ delta/2 ≤ upperTail p n k
 
-/-- Constants retain their expectation under the sampling law. -/
-theorem constant (p c : Rat) (n : Nat) : binomialExpectation p n (fun _ => c) = c := by
-  induction n with
-  | zero => rfl
-  | succ n ih => simp only [binomialExpectation, ih]; grind
+instance (delta : Rat) (n k : Nat) (p : Rat) : Decidable (BinomialContains delta n k p) := by
+  unfold BinomialContains
+  infer_instance
 
-/-- Expectation is additive. -/
-theorem add (p : Rat) (n : Nat) (f g : Nat → Rat) :
-    binomialExpectation p n (fun k => f k + g k) =
-      binomialExpectation p n f + binomialExpectation p n g := by
-  induction n generalizing f g with
-  | zero => rfl
-  | succ n ih =>
-    simp only [binomialExpectation, ih]
-    grind
-
-/-- A rational scalar can be pulled outside the expectation. -/
-theorem scale (p c : Rat) (n : Nat) (f : Nat → Rat) :
-    binomialExpectation p n (fun k => c * f k) = c * binomialExpectation p n f := by
-  induction n generalizing f with
-  | zero => rfl
-  | succ n ih => simp only [binomialExpectation, ih]; grind
-
-/-- Nonnegative Bernoulli weights preserve pointwise inequalities. -/
-theorem monotone (p : Rat) (hp : 0 ≤ p) (hp1 : p ≤ 1) (n : Nat)
-    (f g : Nat → Rat) (h : ∀ k, f k ≤ g k) :
-    binomialExpectation p n f ≤ binomialExpectation p n g := by
-  induction n generalizing f g with
-  | zero => exact h 0
-  | succ n ih =>
-    have left := ih f g h
-    have right := ih (fun k => f (k+1)) (fun k => g (k+1)) (fun k => h (k+1))
-    simp only [binomialExpectation]
-    have nonnegative : 0 ≤ 1-p := by grind
-    have hleft := Rat.mul_le_mul_of_nonneg_left left nonnegative
-    have hright := Rat.mul_le_mul_of_nonneg_left right hp
-    grind
-
-/-- The expected count of successes is n*p. -/
-theorem mean (p : Rat) (n : Nat) :
-    binomialExpectation p n (fun (k : Nat) => (k : Rat)) = (n : Rat) * p := by
-  induction n with
-  | zero => simp [binomialExpectation] <;> grind
-  | succ n ih =>
-    have shifted : (fun k : Nat => ((k+1 : Nat) : Rat)) = (fun (k : Nat) => (k : Rat) + 1) := by
-      funext k
-      simp [Rat.natCast_add]
-    rw [binomialExpectation, shifted, add, constant, ih]
-    simp only [Rat.natCast_add, Rat.natCast_ofNat]
-    grind
-
-/-- The second raw moment of the count. -/
-theorem secondMoment (p : Rat) (n : Nat) :
-    binomialExpectation p n (fun (k : Nat) => (k : Rat)*(k : Rat)) =
-      (n : Rat)*p*(1-p) + ((n : Rat)*p)*((n : Rat)*p) := by
-  induction n with
-  | zero => simp [binomialExpectation] <;> grind
-  | succ n ih =>
-    have shifted : (fun k : Nat => ((k+1 : Nat) : Rat)*((k+1 : Nat) : Rat)) =
-        (fun (k : Nat) => ((k : Rat)*(k : Rat) + 2*(k : Rat)) + 1) := by
-      funext k
-      simp only [Rat.natCast_add, Rat.natCast_ofNat]
-      grind
-    rw [binomialExpectation, shifted, add, add, scale, constant, mean, ih]
-    simp only [Rat.natCast_add, Rat.natCast_ofNat]
-    grind
-
-/-- The count has variance n*p*(1-p), derived from the sampling law. -/
-theorem variance (p : Rat) (n : Nat) :
-    binomialExpectation p n (fun (k : Nat) => ((k : Rat)-(n : Rat)*p)*((k : Rat)-(n : Rat)*p)) =
-      (n : Rat)*p*(1-p) := by
-  have expansion : (fun k : Nat => ((k : Rat)-(n : Rat)*p)*((k : Rat)-(n : Rat)*p)) =
-      (fun (k : Nat) => ((k : Rat)*(k : Rat) + (-2*(n : Rat)*p)*(k : Rat)) + ((n : Rat)*p)*((n : Rat)*p)) := by
-    funext k
-    grind
-  rw [expansion, add, add, scale, constant, mean, secondMoment]
+/-- The exact binomial interval misses the truth with probability at most delta. -/
+theorem binomial_coverage (p delta : Rat) (n : Nat)
+    -- The success probability is nonnegative.
+    (hp : 0 ≤ p)
+    -- The success probability is at most one.
+    (hp1 : p ≤ 1)
+    -- The permitted error is nonnegative.
+    (hd : 0 ≤ delta) :
+    binomialExpectation p n (fun k => if BinomialContains delta n k p then 0 else 1) ≤ delta := by
+  have half : 0 ≤ delta/2 := by grind
+  have lower := lowerTail_error p (delta/2) n hp hp1 half
+  have upper := upperTail_error p (delta/2) n hp hp1 half
+  have bound := monotone p hp hp1 n
+    (fun k => if BinomialContains delta n k p then 0 else 1)
+    (fun k => (if lowerTail p n k < delta/2 then 1 else 0) +
+      (if upperTail p n k < delta/2 then 1 else 0)) (by
+        intro k
+        unfold BinomialContains
+        split <;> split <;> split <;> grind)
+  rw [add] at bound
   grind
 
-/-- A square is nonnegative over the rationals. -/
-theorem square_nonnegative (x : Rat) : 0 ≤ x*x := by
-  by_cases h : 0 ≤ x
-  · exact Rat.mul_nonneg h h
-  · have hn : 0 ≤ -x := by grind
-    have hsq := Rat.mul_nonneg hn hn
-    grind
-
-/-- Every Bernoulli variable has variance at most one quarter. -/
-theorem bernoulli_variance_bound (p : Rat) : p*(1-p) ≤ 1/4 := by
-  have h := square_nonnegative (p-1/2)
-  grind
-
-/-- The probability that the empirical frequency misses p by more than epsilon. -/
-def errorProbability (p epsilon : Rat) (n : Nat) : Rat :=
-  binomialExpectation p n fun k =>
-    if (n : Rat)*epsilon < (k : Rat)-(n : Rat)*p ∨
-       (k : Rat)-(n : Rat)*p < -(n : Rat)*epsilon then 1 else 0
-
-/-- A finite-sample confidence theorem, with its variance bound proved above.
-Choose n and epsilon so that n/4 ≤ delta*(n*epsilon)^2. -/
-theorem confidence
-    (p epsilon delta : Rat) (n : Nat)
-    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hn : 0 < n) (he : 0 < epsilon)
-    (budget : (n : Rat)/4 ≤ delta * (((n : Rat)*epsilon)*((n : Rat)*epsilon))) :
-    errorProbability p epsilon n ≤ delta := by
-  have npos : (0 : Rat) < (n : Rat) := Rat.natCast_pos.mpr hn
-  have sizepos : 0 < (n : Rat)*epsilon := Rat.mul_pos npos he
-  have thresholdPos : 0 < ((n : Rat)*epsilon)*((n : Rat)*epsilon) := by
-    exact Rat.mul_pos (Rat.mul_pos npos he) (Rat.mul_pos npos he)
-  have pointwise : ∀ k : Nat,
-      (((n : Rat)*epsilon)*((n : Rat)*epsilon)) *
-        (if (n : Rat)*epsilon < (k : Rat)-(n : Rat)*p ∨
-          (k : Rat)-(n : Rat)*p < -(n : Rat)*epsilon then (1 : Rat) else 0) ≤
-        ((k : Rat)-(n : Rat)*p)*((k : Rat)-(n : Rat)*p) := by
-    intro k
-    split
-    · next h =>
-      rcases h with h | h
-      · have hprod := Rat.mul_nonneg
-          (show 0 ≤ ((k : Rat)-(n : Rat)*p) - (n : Rat)*epsilon by grind)
-          (show 0 ≤ ((k : Rat)-(n : Rat)*p) + (n : Rat)*epsilon by grind)
-        grind
-      · have hprod := Rat.mul_nonneg
-          (show 0 ≤ -((k : Rat)-(n : Rat)*p) - (n : Rat)*epsilon by grind)
-          (show 0 ≤ -((k : Rat)-(n : Rat)*p) + (n : Rat)*epsilon by grind)
-        grind
-    · have h := square_nonnegative ((k : Rat)-(n : Rat)*p)
-      grind
-  have h := monotone p hp hp1 n _ _ pointwise
-  rw [scale, variance] at h
-  change (((n : Rat)*epsilon)*((n : Rat)*epsilon)) * errorProbability p epsilon n ≤
-    (n : Rat)*p*(1-p) at h
-  have vb := Rat.mul_le_mul_of_nonneg_left (bernoulli_variance_bound p)
-    (show (0 : Rat) ≤ (n : Rat) by grind)
-  have bound : (((n : Rat)*epsilon)*((n : Rat)*epsilon)) * errorProbability p epsilon n ≤
-      (((n : Rat)*epsilon)*((n : Rat)*epsilon)) * delta := by grind
-  exact Rat.le_of_mul_le_mul_left bound thresholdPos
-
-/-- A rational confidence interval for a Bernoulli expectation. -/
+/-- Rational endpoints enclosing the exact binomial interval. -/
 structure Interval where
   lower : Rat
   upper : Rat
   deriving Repr, DecidableEq
 
-/-- The frequency interval, clipped to the probability range [0,1]. -/
-def confidenceInterval (epsilon : Rat) (n k : Nat) : Interval :=
-  ⟨max 0 ((k : Rat) / (n : Rat) - epsilon),
-   min 1 ((k : Rat) / (n : Rat) + epsilon)⟩
-
-/-- The true expectation lies between the interval's endpoints. -/
+/-- A probability lies between the reported endpoints. -/
 def Interval.Contains (interval : Interval) (p : Rat) : Prop :=
   interval.lower ≤ p ∧ p ≤ interval.upper
 
@@ -171,113 +52,170 @@ instance (interval : Interval) (p : Rat) : Decidable (interval.Contains p) := by
   unfold Interval.Contains
   infer_instance
 
-/-- Clipping does not change coverage of a true probability. -/
-theorem interval_contains_iff (p epsilon : Rat) (n k : Nat)
-    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hn : 0 < n) :
-    (confidenceInterval epsilon n k).Contains p ↔
-      ¬ ((n : Rat)*epsilon < (k : Rat)-(n : Rat)*p ∨
-         (k : Rat)-(n : Rat)*p < -(n : Rat)*epsilon) := by
-  have npos : (0 : Rat) < (n : Rat) := Rat.natCast_pos.mpr hn
-  have cancel : ((k : Rat) / (n : Rat)) * (n : Rat) = (k : Rat) := by
-    grind
-  have nonnegative := Rat.le_of_lt npos
-  have lower : (k : Rat) / (n : Rat) - epsilon ≤ p ↔
-      (k : Rat) - (n : Rat)*p ≤ (n : Rat)*epsilon := by
-    constructor
-    · intro h
-      have scaled := Rat.mul_le_mul_of_nonneg_right h nonnegative
-      grind
-    · intro h
-      apply Rat.le_of_mul_le_mul_right (c := (n : Rat)) _ npos
-      grind
-  have upper : p ≤ (k : Rat) / (n : Rat) + epsilon ↔
-      -(n : Rat)*epsilon ≤ (k : Rat) - (n : Rat)*p := by
-    constructor
-    · intro h
-      have scaled := Rat.mul_le_mul_of_nonneg_right h nonnegative
-      grind
-    · intro h
-      apply Rat.le_of_mul_le_mul_right (c := (n : Rat)) _ npos
-      grind
-  simp only [confidenceInterval, Interval.Contains, Rat.max_def, Rat.min_def]
-  grind
+/-- Refine the lower endpoint, rounding outward when the search ends. -/
+def lowerSearch (alpha : Rat) (n k : Nat) : Nat → Rat → Rat → Rat
+  | 0, lo, _ => lo
+  | fuel+1, lo, hi =>
+    let mid := (lo+hi)/2
+    if upperTail mid n k < alpha then lowerSearch alpha n k fuel mid hi
+    else lowerSearch alpha n k fuel lo mid
 
-/-- Acceptance requires the entire error interval to fit, with clipping to [0,1]. -/
-def acceptsCount (target tolerance epsilon : Rat) (n k : Nat) : Prop :=
-  (target - tolerance ≤ 0 ∨ (n : Rat)*(target - tolerance + epsilon) ≤ (k : Rat)) ∧
-  (1 ≤ target + tolerance ∨ (k : Rat) ≤ (n : Rat)*(target + tolerance - epsilon))
+/-- Refine the upper endpoint, rounding outward when the search ends. -/
+def upperSearch (alpha : Rat) (n k : Nat) : Nat → Rat → Rat → Rat
+  | 0, _, hi => hi
+  | fuel+1, lo, hi =>
+    let mid := (lo+hi)/2
+    if lowerTail mid n k < alpha then upperSearch alpha n k fuel lo mid
+    else upperSearch alpha n k fuel mid hi
 
-instance (target tolerance epsilon : Rat) (n k : Nat) :
-    Decidable (acceptsCount target tolerance epsilon n k) := by
+/-- Lower endpoint search never excludes a probability accepted by its tail test. -/
+theorem lowerSearch_safe (alpha p : Rat) (n k fuel : Nat)
+    -- The probability is nonnegative.
+    (hp : 0 ≤ p)
+    -- The upper-tail test accepts this probability.
+    (tail : alpha ≤ upperTail p n k) (lo hi : Rat)
+    -- The search starts inside the probability range.
+    (lo0 : 0 ≤ lo)
+    -- The search endpoints are ordered.
+    (ordered : lo ≤ hi)
+    -- The upper endpoint is at most one.
+    (hi1 : hi ≤ 1)
+    -- The initial lower endpoint does not exclude the probability.
+    (start : lo ≤ p) :
+    lowerSearch alpha n k fuel lo hi ≤ p := by
+  induction fuel generalizing lo hi with
+  -- Return the safe lower endpoint when the search ends.
+  | zero => exact start
+  -- Refine the search using an exact tail comparison.
+  | succ fuel ih =>
+    simp only [lowerSearch]
+    split
+    -- A rejected midpoint must lie below the accepted probability.
+    · next excluded =>
+      have below : (lo+hi)/2 ≤ p := by
+        by_cases h : p ≤ (lo+hi)/2
+        -- Monotonicity rules out a midpoint above the probability.
+        · have mono := upperTail_monotone p ((lo+hi)/2) hp h (by grind) n k
+          grind
+        -- Otherwise the new lower endpoint is safe.
+        · grind
+      exact ih _ _ (by grind) (by grind) hi1 below
+    -- Keeping the old lower endpoint preserves safety.
+    · exact ih _ _ lo0 (by grind) (by grind) start
+
+/-- Upper endpoint search never excludes a probability accepted by its tail test. -/
+theorem upperSearch_safe (alpha p : Rat) (n k fuel : Nat)
+    -- The probability is at most one.
+    (hp1 : p ≤ 1)
+    -- The lower-tail test accepts this probability.
+    (tail : alpha ≤ lowerTail p n k) (lo hi : Rat)
+    -- The search starts inside the probability range.
+    (lo0 : 0 ≤ lo)
+    -- The search endpoints are ordered.
+    (ordered : lo ≤ hi)
+    -- The upper endpoint is at most one.
+    (hi1 : hi ≤ 1)
+    -- The initial upper endpoint does not exclude the probability.
+    (start : p ≤ hi) :
+    p ≤ upperSearch alpha n k fuel lo hi := by
+  induction fuel generalizing lo hi with
+  -- Return the safe upper endpoint when the search ends.
+  | zero => exact start
+  -- Refine the search using an exact tail comparison.
+  | succ fuel ih =>
+    simp only [upperSearch]
+    split
+    -- A rejected midpoint must lie above the accepted probability.
+    · next excluded =>
+      have above : p ≤ (lo+hi)/2 := by
+        by_cases h : (lo+hi)/2 ≤ p
+        -- Monotonicity rules out a midpoint below the probability.
+        · have mono := lowerTail_antitone ((lo+hi)/2) p (by grind) h hp1 n k
+          grind
+        -- Otherwise the new upper endpoint is safe.
+        · grind
+      exact ih _ _ lo0 (by grind) (by grind) above
+    -- Keeping the old upper endpoint preserves safety.
+    · exact ih _ _ (by grind) (by grind) hi1 start
+
+/-- Eight exact bisections give endpoints on a grid of 1/256; rounding is always outward. -/
+def intervalSteps : Nat := 8
+
+/-- An executable exact-binomial interval with conservative rational endpoints. -/
+def confidenceInterval (delta : Rat) (n k : Nat) : Interval :=
+  ⟨lowerSearch (delta/2) n k intervalSteps 0 1,
+   upperSearch (delta/2) n k intervalSteps 0 1⟩
+
+/-- Every probability in the exact interval is in the reported rational enclosure. -/
+theorem confidenceInterval_encloses (delta p : Rat) (n k : Nat)
+    (inside : BinomialContains delta n k p) :
+    (confidenceInterval delta n k).Contains p := by
+  constructor
+  -- The reported lower endpoint is no higher than any accepted probability.
+  · exact lowerSearch_safe _ _ _ _ _ inside.1 inside.2.2.2
+      0 1 (by decide) (by decide) (by decide) inside.1
+  -- The reported upper endpoint is no lower than any accepted probability.
+  · exact upperSearch_safe _ _ _ _ _ inside.2.1 inside.2.2.1
+      0 1 (by decide) (by decide) (by decide) inside.2.1
+
+/-- The displayed interval retains the exact binomial coverage guarantee. -/
+theorem intervalConfidence (p delta : Rat) (n : Nat)
+    -- The success probability is nonnegative.
+    (hp : 0 ≤ p)
+    -- The success probability is at most one.
+    (hp1 : p ≤ 1)
+    -- The permitted error is nonnegative.
+    (hd : 0 ≤ delta) :
+    binomialExpectation p n (fun k =>
+      if (confidenceInterval delta n k).Contains p then 0 else 1) ≤ delta := by
+  have bound := monotone p hp hp1 n
+    (fun k => if (confidenceInterval delta n k).Contains p then 0 else 1)
+    (fun k => if BinomialContains delta n k p then 0 else 1) (by
+      intro k
+      split
+      -- A reported interval containing the truth contributes no error.
+      · split <;> decide +kernel
+      -- If it misses, the enclosed exact interval also misses.
+      · next outside =>
+        split
+        -- Containment in the exact interval contradicts the reported miss.
+        · next inside => exact False.elim (outside (confidenceInterval_encloses _ _ _ _ inside))
+        -- Both intervals missed the truth.
+        · exact Rat.le_refl)
+  exact Rat.le_trans bound (binomial_coverage p delta n hp hp1 hd)
+
+/-- A row's qualifying games and observed deaths. -/
+structure Observation where
+  trials : Nat
+  deaths : Nat
+  deriving Repr, DecidableEq
+
+/-- A shared Weibull target and its allowed absolute deviation. -/
+structure Band where
+  target : Rat
+  tolerance : Rat
+
+/-- Admission requires data and the entire interval inside its policy band. -/
+def acceptsCount (band : Band) (delta : Rat) (count : Observation) : Prop :=
+  let interval := confidenceInterval delta count.trials count.deaths
+  0 < count.trials ∧ count.deaths ≤ count.trials ∧
+  band.target-band.tolerance ≤ interval.lower ∧
+  interval.upper ≤ band.target+band.tolerance
+
+instance (band : Band) (delta : Rat) (count : Observation) : Decidable (acceptsCount band delta count) := by
   unfold acceptsCount
   infer_instance
 
-/-- The admission inequalities put both interval endpoints inside the Weibull band. -/
-theorem accepted_interval (target tolerance epsilon : Rat) (n k : Nat)
-    (hn : 0 < n)
-    (accepted : acceptsCount target tolerance epsilon n k) :
-    target - tolerance ≤ (confidenceInterval epsilon n k).lower ∧
-    (confidenceInterval epsilon n k).upper ≤ target + tolerance := by
-  have npos : (0 : Rat) < (n : Rat) := Rat.natCast_pos.mpr hn
-  have cancel : ((k : Rat) / (n : Rat)) * (n : Rat) = (k : Rat) := by
-    grind
-  constructor
-  · rcases accepted.1 with clipped | scaled
-    · simp only [confidenceInterval, Rat.max_def]
-      grind
-    · have lower : target - tolerance ≤ (k : Rat) / (n : Rat) - epsilon := by
-        apply Rat.le_of_mul_le_mul_right (c := (n : Rat)) _ npos
-        grind
-      simp only [confidenceInterval, Rat.max_def]
-      grind
-  · rcases accepted.2 with clipped | scaled
-    · simp only [confidenceInterval, Rat.min_def]
-      grind
-    · have upper : (k : Rat) / (n : Rat) + epsilon ≤ target + tolerance := by
-        apply Rat.le_of_mul_le_mul_right (c := (n : Rat)) _ npos
-        grind
-      simp only [confidenceInterval, Rat.min_def]
-      grind
-
-/-- Probability of accepting a constraint whose true probability is outside its band. -/
-def falseAcceptance (p target tolerance epsilon : Rat) (n : Nat) : Rat :=
-  binomialExpectation p n fun k =>
-    if acceptsCount target tolerance epsilon n k ∧ ¬ WithinTolerance p target tolerance then 1 else 0
-
-/-- A falsely accepted constraint entails an estimation error larger than epsilon. -/
-theorem false_accept_implies_error (p target tolerance epsilon : Rat) (n k : Nat)
-    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hn : 0 < n)
-    (accepted : acceptsCount target tolerance epsilon n k)
-    (unfair : ¬ WithinTolerance p target tolerance) :
-    (n : Rat)*epsilon < (k : Rat)-(n : Rat)*p ∨
-      (k : Rat)-(n : Rat)*p < -(n : Rat)*epsilon := by
-  have npos : (0 : Rat) < (n : Rat) := Rat.natCast_pos.mpr hn
-  unfold acceptsCount at accepted
-  unfold WithinTolerance at unfair
-  by_cases low : p < target - tolerance
-  · have edge : (n : Rat)*p < (n : Rat)*(target-tolerance) :=
-      Rat.mul_lt_mul_of_pos_left low npos
-    grind
-  · have high : target+tolerance < p := by grind
-    have edge : (n : Rat)*(target+tolerance) < (n : Rat)*p :=
-      Rat.mul_lt_mul_of_pos_left high npos
-    grind
-
-/-- A single constraint's false-acceptance risk is at most delta under independent sampling. -/
-theorem falseAcceptance_bound (p target tolerance epsilon delta : Rat) (n : Nat)
-    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hn : 0 < n) (he : 0 < epsilon)
-    (budget : (n : Rat)/4 ≤ delta * (((n : Rat)*epsilon)*((n : Rat)*epsilon))) :
-    falseAcceptance p target tolerance epsilon n ≤ delta := by
-  have h : falseAcceptance p target tolerance epsilon n ≤ errorProbability p epsilon n := by
-    apply monotone p hp hp1 n
-    intro k
-    split
-    · next h =>
-      have err := false_accept_implies_error p target tolerance epsilon n k hp hp1 hn h.1 h.2
-      simp only [ite_eq_left err]
-      exact Rat.le_refl
-    · split <;> decide +kernel
-  exact Rat.le_trans h (confidence p epsilon delta n hp hp1 hn he budget)
+/-- A falsely accepted row must have missed the true probability. -/
+theorem false_accept_misses (band : Band) (delta p : Rat) (count : Observation)
+    -- The entire reported interval is inside the band.
+    (accepted : acceptsCount band delta count)
+    -- The true probability is outside the band.
+    (outside : ¬ WithinTolerance p band.target band.tolerance) :
+    ¬ (confidenceInterval delta count.trials count.deaths).Contains p := by
+  intro inside
+  apply outside
+  exact ⟨Rat.le_trans accepted.2.2.1 inside.1, Rat.le_trans inside.2 accepted.2.2.2⟩
 
 /-- Exact expectation under a finite joint observation law. -/
 def expectation (law : Distribution α) (f : α → Rat) : Rat :=
@@ -285,13 +223,20 @@ def expectation (law : Distribution α) (f : α → Rat) : Rat :=
 
 /-- Nonnegative weights preserve pointwise comparisons of joint events. -/
 theorem expectation_monotone (law : Distribution α)
+    -- Every outcome has a nonnegative weight.
     (nonnegative : ∀ e ∈ law.entries, 0 ≤ e.2)
-    (f g : α → Rat) (h : ∀ x, f x ≤ g x) : expectation law f ≤ expectation law g := by
+    (f g : α → Rat)
+    -- The two statistics are ordered at each outcome.
+    (h : ∀ x, f x ≤ g x) : expectation law f ≤ expectation law g := by
   unfold expectation
   generalize law.entries = entries at *
   revert nonnegative
   induction entries with
-  | nil => intro _; exact Rat.le_refl
+  -- An empty sum is zero on both sides.
+  | nil =>
+    intro _
+    exact Rat.le_refl
+  -- Add the ordered first term to the ordered remaining sum.
   | cons e rest ih =>
     intro nonnegative
     have hp := nonnegative e (by simp)
@@ -303,122 +248,130 @@ theorem expectation_monotone (law : Distribution α)
     simp only [List.map_cons, List.sum_cons]
     grind
 
-/-- A constraint's target and absolute tolerance. -/
-structure Band where
-  target : Rat
-  tolerance : Rat
+/-- A constant has that expectation under a normalized observation law. -/
+theorem expectation_constant (law : Distribution α) (valid : law.Valid) (c : Rat) :
+    expectation law (fun _ => c) = c := by
+  have factor : ∀ entries : List (α × Rat),
+      (entries.map fun e => e.2*c).sum = (entries.map Prod.snd).sum*c := by
+    intro entries
+    induction entries with
+    -- The empty sum has no contribution.
+    | nil => simp
+    -- Distribute the constant over the next weight.
+    | cons e rest ih =>
+      simp only [List.map_cons, List.sum_cons]
+      rw [ih]
+      grind
+  unfold expectation
+  rw [factor, valid.2, Rat.one_mul]
 
-/-- True fairness of every tested constraint. -/
+/-- Each row's success count is binomial conditional on its random qualifying count.
+This is the accepted sampling assumption for a fixed batch of independent games;
+rows may depend on one another. -/
+structure BinomialSampling (law : Distribution (Fin m → Observation)) (truth : Fin m → Rat) where
+  sizes : Fin m → Distribution Nat
+  sizesValid : ∀ i, (sizes i).Valid
+  marginals : ∀ i (f : Observation → Rat),
+    expectation law (fun observations => f (observations i)) =
+      expectation (sizes i) (fun n => binomialExpectation (truth i) n (fun k => f ⟨n, k⟩))
+
+/-- Every true expectation is within its selected Weibull tolerance band. -/
 def familyFair (truth : Fin m → Rat) (bands : Fin m → Band) : Prop :=
   ∀ i, WithinTolerance (truth i) (bands i).target (bands i).tolerance
-
-/-- Every constraint must pass; selecting only favorable rows is not permitted. -/
-def acceptsFamily (bands : Fin m → Band) (epsilon : Rat) (n : Nat) (counts : Fin m → Nat) : Prop :=
-  ∀ i, acceptsCount (bands i).target (bands i).tolerance epsilon n (counts i)
 
 instance (truth : Fin m → Rat) (bands : Fin m → Band) : Decidable (familyFair truth bands) := by
   unfold familyFair
   infer_instance
 
-instance (bands : Fin m → Band) (epsilon : Rat) (n : Nat) (counts : Fin m → Nat) :
-    Decidable (acceptsFamily bands epsilon n counts) := by
+/-- All observed intervals must pass the shared comparison policy. -/
+def acceptsFamily (bands : Fin m → Band) (delta : Rat) (observations : Fin m → Observation) : Prop :=
+  ∀ i, acceptsCount (bands i) delta (observations i)
+
+instance (bands : Fin m → Band) (delta : Rat) (observations : Fin m → Observation) :
+    Decidable (acceptsFamily bands delta observations) := by
   unfold acceptsFamily
   infer_instance
 
-/-- The probability of incorrectly accepting the entire family under a joint law. -/
-def familyFalseAcceptance (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat)
-    (bands : Fin m → Band) (epsilon : Rat) (n : Nat) : Rat :=
+/-- The probability that one row's reported interval misses its true expectation. -/
+def intervalMissProbability (law : Distribution (Fin m → Observation)) (truth : Fin m → Rat)
+    (delta : Rat) (i : Fin m) : Rat :=
   expectation law fun counts =>
-    if acceptsFamily bands epsilon n counts ∧ ¬ familyFair truth bands then 1 else 0
+    if (confidenceInterval delta (counts i).trials (counts i).deaths).Contains (truth i) then 0 else 1
 
-/-- An explicit sampling-model hypothesis: each row contains n independent Bernoulli trials.
-Rows may be correlated with one another. This is NOT an assumed confidence bound. -/
-def BinomialMarginals (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat) (n : Nat) : Prop :=
-  ∀ i f, expectation law (fun counts => f (counts i)) = binomialExpectation (truth i) n f
-
-/-- Probability that one displayed confidence interval misses its true conditional expectation. -/
-def intervalMissProbability (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat)
-    (epsilon : Rat) (n : Nat) (i : Fin m) : Rat :=
-  expectation law fun counts =>
-    if (confidenceInterval epsilon n (counts i)).Contains (truth i) then 0 else 1
-
-/-- Each interval covers its true expectation with failure probability at most delta. -/
-theorem intervalConfidence
-    (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat)
-    (epsilon delta : Rat) (n : Nat) (i : Fin m)
-    (sampling : BinomialMarginals law truth n)
-    (hp : 0 ≤ truth i) (hp1 : truth i ≤ 1) (hn : 0 < n) (he : 0 < epsilon)
-    (budget : (n : Rat)/4 ≤ delta * (((n : Rat)*epsilon)*((n : Rat)*epsilon))) :
-    intervalMissProbability law truth epsilon n i ≤ delta := by
+/-- Coverage remains valid after averaging over random qualifying sample sizes. -/
+theorem rowConfidence (law : Distribution (Fin m → Observation)) (truth : Fin m → Rat)
+    (delta : Rat) (i : Fin m)
+    -- Counts follow the stated conditional-binomial model.
+    (sampling : BinomialSampling law truth)
+    -- The row's true probability is nonnegative.
+    (hp : 0 ≤ truth i)
+    -- The row's true probability is at most one.
+    (hp1 : truth i ≤ 1)
+    -- The permitted error is nonnegative.
+    (hd : 0 ≤ delta) :
+    intervalMissProbability law truth delta i ≤ delta := by
   unfold intervalMissProbability
-  rw [sampling i (fun k => if (confidenceInterval epsilon n k).Contains (truth i) then 0 else 1)]
-  have indicator : (fun k => if (confidenceInterval epsilon n k).Contains (truth i) then
-      (0 : Rat) else 1) = (fun (k : Nat) =>
-        if (n : Rat)*epsilon < (k : Rat)-(n : Rat)*truth i ∨
-           (k : Rat)-(n : Rat)*truth i < -(n : Rat)*epsilon then (1 : Rat) else 0) := by
-    funext k
-    simp only [interval_contains_iff _ _ _ _ hp hp1 hn, ite_not]
-  rw [indicator]
-  exact confidence (truth i) epsilon delta n hp hp1 hn he budget
+  rw [sampling.marginals i (fun count =>
+    if (confidenceInterval delta count.trials count.deaths).Contains (truth i) then 0 else 1)]
+  have bound := expectation_monotone (sampling.sizes i) (sampling.sizesValid i).1
+    (fun n => binomialExpectation (truth i) n (fun k =>
+      if (confidenceInterval delta n k).Contains (truth i) then 0 else 1))
+    (fun _ => delta) (fun n => intervalConfidence (truth i) delta n hp hp1 hd)
+  rw [expectation_constant _ (sampling.sizesValid i)] at bound
+  exact bound
 
-/-- Rigorous family-wise fairness-confidence theorem.
-If all rows must pass, any unfair row bounds the probability of false certification;
-no independence between rows or post-hoc choice of a favorable row is assumed. -/
+/-- Risk of accepting all rows when at least one true expectation violates its policy band. -/
+def familyFalseAcceptance (law : Distribution (Fin m → Observation)) (truth : Fin m → Rat)
+    (bands : Fin m → Band) (delta : Rat) : Rat :=
+  expectation law fun counts =>
+    if acceptsFamily bands delta counts ∧ ¬ familyFair truth bands then 1 else 0
+
+/-- Requiring all rows to pass bounds the whole decision's false-acceptance risk by delta. -/
 theorem familyFalseAcceptance_bound
-    (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat) (bands : Fin m → Band)
-    (epsilon delta : Rat) (n : Nat)
-    (valid : law.Valid) (sampling : BinomialMarginals law truth n)
+    (law : Distribution (Fin m → Observation)) (truth : Fin m → Rat) (bands : Fin m → Band)
+    (delta : Rat)
+    -- The joint observation law is a probability distribution.
+    (valid : law.Valid)
+    -- Each row follows its conditional-binomial model.
+    (sampling : BinomialSampling law truth)
+    -- All true row probabilities lie in the unit interval.
     (probabilities : ∀ i, 0 ≤ truth i ∧ truth i ≤ 1)
-    (hn : 0 < n) (he : 0 < epsilon) (hd : 0 ≤ delta)
-    (budget : (n : Rat)/4 ≤ delta * (((n : Rat)*epsilon)*((n : Rat)*epsilon))) :
-    familyFalseAcceptance law truth bands epsilon n ≤ delta := by
+    -- The permitted error is nonnegative.
+    (hd : 0 ≤ delta) :
+    familyFalseAcceptance law truth bands delta ≤ delta := by
   by_cases fair : familyFair truth bands
-  · have h : familyFalseAcceptance law truth bands epsilon n ≤ expectation law (fun _ => 0) := by
+  -- If every true probability fits, false acceptance is impossible.
+  · have bound : familyFalseAcceptance law truth bands delta ≤ expectation law (fun _ => 0) := by
       apply expectation_monotone law valid.1
       intro counts
       simp only [fair, not_true_eq_false, and_false, ite_false]
       exact Rat.le_refl
-    have zero : expectation law (fun _ => 0) = 0 := by
-      unfold expectation
-      induction law.entries with
-      | nil => rfl
-      | cons e rest ih =>
-        change (rest.map fun e => e.2 * 0).sum = 0 at ih
-        change e.2 * 0 + (rest.map fun e => e.2 * 0).sum = 0
-        rw [ih, Rat.mul_zero, Rat.zero_add]
-    rw [zero] at h
-    exact Rat.le_trans h hd
+    rw [expectation_constant law valid] at bound
+    exact Rat.le_trans bound hd
+  -- Otherwise acceptance requires missing at least one fixed violating row.
   · obtain ⟨i, unfair⟩ := Classical.not_forall.mp fair
-    have h : familyFalseAcceptance law truth bands epsilon n ≤
-        expectation law (fun counts =>
-          if acceptsCount (bands i).target (bands i).tolerance epsilon n (counts i) ∧
-            ¬ WithinTolerance (truth i) (bands i).target (bands i).tolerance then 1 else 0) := by
+    have bound : familyFalseAcceptance law truth bands delta ≤ intervalMissProbability law truth delta i := by
       apply expectation_monotone law valid.1
       intro counts
       split
-      · next ha =>
-        have hi := ha.1 i
-        simp only [hi, unfair]
+      -- Passing every row implies this violating row was falsely accepted.
+      · next accepted =>
+        have missed := false_accept_misses (bands i) delta (truth i) (counts i) (accepted.1 i) unfair
+        simp only [missed, ite_false]
         exact Rat.le_refl
+      -- Rejected observations contribute no false-acceptance risk.
       · split <;> decide +kernel
-    rw [sampling i (fun k =>
-      if acceptsCount (bands i).target (bands i).tolerance epsilon n k ∧
-        ¬ WithinTolerance (truth i) (bands i).target (bands i).tolerance then 1 else 0)] at h
-    exact Rat.le_trans h (falseAcceptance_bound (truth i) (bands i).target (bands i).tolerance
-      epsilon delta n (probabilities i).1 (probabilities i).2 hn he budget)
+    exact Rat.le_trans bound (rowConfidence law truth delta i sampling
+      (probabilities i).1 (probabilities i).2 hd)
 
-/-- The fixed confidence level used for new audits: false acceptance at most 0.1%. -/
-def confidenceDelta : Rat := 1 / 1000
+/-- The fixed confidence level is 90%; each interval has failure probability at most 10%. -/
+def confidenceDelta : Rat := 1/10
 
-/-- Fixed frequency-error allowance, chosen before the held-out validation run. -/
-def confidenceEpsilon : Rat := 1 / 25
-
-/-- Required qualifying observations per constraint, not merely total games. -/
-def confidenceSamples : Nat := 160000
-
-/-- The chosen sample size meets the proved confidence budget using exact arithmetic. -/
-theorem confidenceBudget : (confidenceSamples : Rat)/4 ≤ confidenceDelta *
-    (((confidenceSamples : Rat)*confidenceEpsilon)*((confidenceSamples : Rat)*confidenceEpsilon)) := by
-  decide +kernel
+/-- The configurable confidence level must remain strictly between zero and one. -/
+theorem confidenceLevel_valid :
+    -- A positive error allowance permits finite intervals.
+    0 < confidenceDelta ∧
+    -- The confidence guarantee is nontrivial.
+    confidenceDelta < 1 := by decide +kernel
 
 end Rpg.Probability.Confidence

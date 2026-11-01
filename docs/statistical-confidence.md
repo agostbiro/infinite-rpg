@@ -1,144 +1,92 @@
-# Finite fairness confidence
+# Exact binomial fairness intervals
 
-## The main theorem: `fair`
+`Rpg.Probability.StatisticalCandidate.fair` is the main theorem, specialized as
+`Rpg.Lighthouse.fair` and `Rpg.Harbor.fair`.
 
-`Rpg/Probability/StatisticalAdmission.lean` defines `Fair candidate` and proves
-`StatisticalCandidate.fair`. Adventures specialize it as `Rpg.Lighthouse.fair`
-and `Rpg.Harbor.fair`. This is the shared finite statistical guarantee used for
-admission.
+## Protocol
 
-An adventure selects a positive `horizon = H` before validation. Row zero checks
-first-turn death. Rows `t+1`, for `0 <= t < H`, estimate
+- Run **1,000 games total**, fixed before validation.
+- Use **90% confidence**: `confidenceDelta = 1/10`.
+- First-turn death is row zero. For each `0 <= t < horizon`, another row measures
+  `P(death exactly at t+2 | game active at t)`.
+- Use each row's actual qualifying count. Do not continue sampling until an
+  interval passes or reaches a chosen width.
+- Admit the adventure only when every complete interval fits its Weibull band.
 
-```
-p_t = E[1{death at t+2} | game active at t]
-    = P(death exactly at t+2 | game active at t).
-```
+The constants are `validationGames` and `validationSeed` in
+`Rpg/Probability/StatisticalAdmission.lean`, and `confidenceDelta` in
+`Rpg/Probability/Confidence.lean`. The frozen seed is 20261103. Lighthouse uses
+horizon 6; Harbor uses horizon 1. There is no claim beyond the selected window.
 
-Their Weibull targets are `(S(t+1) - S(t+2)) / S(t)`, where
-`S(t) = q^(t^shape)`. The first-turn target is `1 - S(1)`.
-Lighthouse uses `H = 6`, so its conditional rows cover deaths at turns 2 through
-7. Harbor uses `H = 1`. No claim is made about later times.
+## What Lean proves
 
-For `k` deaths among `n` qualifying observations, the exact rational interval is
-
-```
-[max(0, k/n - epsilon), min(1, k/n + epsilon)].
-```
-
-The theorem `fair` proves two conclusions under the sampling model:
-
-1. For each row, the probability that its interval misses the true conditional
-   expectation is at most `delta`.
-2. The probability of accepting every row when any true expectation lies outside
-   its Weibull tolerance band is at most `delta`.
-
-The first statement is per-row coverage, not simultaneous coverage of all
-intervals. The second is a guarantee for the whole finite admission decision:
-if any fixed row violates its band, approving all rows requires falsely approving
-that row. Independence between rows is unnecessary.
-
-Admission requires the **whole interval** to fit inside the target's tolerance
-band. `StatisticalAdventure.intervals_fit` proves that the executable rational
-checks enforce this containment. The `fair` theorem is a guarantee for the
-validation procedure; a candidate also needs passing source-bound observations
-to become playable.
-
-## Statistical proof and accepted model
-
-`Rpg/Probability/Confidence.lean` defines exact binomial expectations from
-independent Bernoulli trials. It proves their moments, the variance bound
-`p*(1-p) <= 1/4`, and the confidence bound used above. No statistical inequality
-is assumed. The required arithmetic budget is
+For an observed `k` deaths among `n` qualifying games, the Clopper–Pearson interval
+contains probabilities `p` satisfying both exact binomial tail inequalities:
 
 ```
-n / 4 <= delta * (n * epsilon)^2.
+P_p(K <= k) >= delta/2
+P_p(K >= k) >= delta/2
 ```
 
-The editable protocol constants are:
+`binomial_coverage` proves that the true probability is excluded with probability
+at most `delta`. The proof bounds each tail's rejection probability and combines
+them; it does not assume a concentration inequality or a normal approximation.
 
-- `confidenceSamples = 160000` qualifying observations per row.
-- `confidenceEpsilon = 1/25` (four percentage points).
-- `confidenceDelta = 1/1000` (0.1% failure probability).
+The endpoints need not be rational. Eight bisection steps produce a conservative
+rational enclosure on a 1/256 grid. Tail evaluations use exact integer arithmetic,
+and `exactExpectation_correct` proves they equal the independent-Bernoulli model.
+`confidenceInterval_encloses` proves that outward rounding cannot reduce coverage.
+For zero observations the interval is `[0,1]`, and admission fails.
 
-`confidenceBudget` proves the budget using exact arithmetic. The confidence and
-fairness proofs use only standard Lean axioms, with no `sorry`, new axioms, or
-`native_decide`.
+`fair` proves:
 
-The accepted sampling model consists of a valid joint observation law, true
-probabilities in `[0,1]`, and binomial row marginals with those graph-derived
-probabilities. It models independent ideal trajectories and the first fixed
-number of qualifying observations; rows can share trajectories. Correspondence
-between the seeded executable sampler and that ideal model is assumed, including
-the idealization of PRNG and modulo-based choices. SplitMix64 is not proved IID.
-There are no additional graph-normalization, active-start, or tail hypotheses
-in `fair`.
+1. Each reported interval covers its true conditional expectation with probability
+   at least 90%, including when its qualifying count is random.
+2. Accepting the entire finite window while any true expectation violates its
+   Weibull band has probability at most 10%.
 
-The error bound concerns repeated experiments under that model. It is not a
-Bayesian probability that this particular adventure is fair after observing its
-counts.
+These are per-interval coverage and a bound on false acceptance of the whole
+check, not simultaneous coverage of every interval or a posterior probability
+that an accepted adventure is fair. Rows may depend on one another.
 
-## Frozen experiment
+## Accepted sampling assumptions
 
-The initial exploratory run used 100,000 games and seed 20261101. Under the old
-policy (`q=0.99`, shape 2, tolerance 0.05), it found a clear estimated violation:
-death at turn 5 conditional on activity at turn 3 was approximately 27.4%, while
-the old upper allowance was approximately 13.1%.
+`BinomialSampling` states that, conditional on a row's qualifying count `n`, its
+death count is binomial with that row's graph-derived probability. The theorem
+averages over the distribution of `n`; no fixed denominator is assumed.
+The joint observation law and sample-size laws are valid probability laws, and
+the true probabilities lie in `[0,1]`.
 
-At the user's request, the policy was changed to `q=0.8`, shape 1, tolerance 0.2.
-This is a deliberate relaxation, not merely a computational approximation:
+Independent ideal trajectories and correspondence of the seeded simulator to this
+model remain accepted assumptions. SplitMix64 and modulo-based choices are not
+proved IID. No coverage theorem is assumed. The Lean proofs use only standard
+axioms, with no `sorry`, new axioms, or `native_decide`.
 
-- The reference first-turn death probability is 20%; its allowed band is 0–40%.
-- The reference conditional two-turn point probability is 16%; its band is 0–36%.
-- The tolerance is **20 percentage points**, not 20% relative error.
-- These bounds impose no positive minimum death rate; they function mainly as
-  upper risk caps for this short adventure.
+## Admission and validation
 
-Those constants were frozen before validation with seed 20261102. The held-out
-run took 12.362 seconds on the development machine, used 979,266 trajectories,
-and had no censored or invalid runs. It collected exactly 160,000 observations
-per row:
+`StatisticalAdventure` carries `fair`, source-bound counts, and passing interval
+checks. Its provenance requires `counts = validateCounts candidate`; observations
+from a different story, hero, ruleset, or horizon cannot be substituted.
+`intervals_fit` proves that admitted intervals lie inside the shared policy bands.
 
-| Constraint | Deaths | Qualifying observations | Frequency |
-|---|---:|---:|---:|
-| First turn | 0 | 160000 | 0% |
-| Death at 2, active at 0 | 0 | 160000 | 0% |
-| Death at 3, active at 1 | 1374 | 160000 | 0.85875% |
-| Death at 4, active at 2 | 16060 | 160000 | 10.0375% |
-| Death at 5, active at 3 | 43753 | 160000 | 27.345625% |
-| Death at 6, active at 4 | 22175 | 160000 | 13.859375% |
-| Death at 7, active at 5 | 0 | 160000 | 0% |
+Invalid trajectories or unresolved combat inside the tested window abort admission.
+Continuing beyond the window is allowed. Zero qualifying observations cannot pass.
+A failed batch is not retried until it passes; a changed protocol or tuning against
+validation data needs a fresh precommitted experiment.
 
-All rational acceptance checks passed. The player rules and combat mechanics
-were not changed to obtain this result.
+The 1,000-game Lighthouse run passed with these observations and rational interval
+enclosures, using the unchanged policy `q=4/5`, shape `1`, tolerance `1/5`:
 
-## Admission and finite observation window
+| Row | Deaths / qualifying games | Interval |
+|---|---:|---:|
+| First turn | 0 / 1000 | [0, 1/256] |
+| Death at 2, active at 0 | 0 / 1000 | [0, 1/256] |
+| Death at 3, active at 1 | 7 / 1000 | [0, 1/64] |
+| Death at 4, active at 2 | 113 / 1000 | [3/32, 17/128] |
+| Death at 5, active at 3 | 266 / 955 | [65/256, 39/128] |
+| Death at 6, active at 4 | 102 / 652 | [17/128, 47/256] |
+| Death at 7, active at 5 | 0 / 165 | [0, 5/256] |
 
-Both adventures use the same `admitStatistically` gate. A playable
-`StatisticalAdventure` carries the `fair` theorem, source-bound counts, and a
-proof that every numerical check passed. Its `provenance` equality requires
-`counts = validateCounts candidate`; a different story, ruleset, hero, or window
-cannot supply the evidence.
-
-`make validate` prints Lighthouse's rational intervals and Weibull targets.
-`make run` checks both adventures before showing them in the menu. Gameplay
-`--seed` does not change the validation seed.
-
-Only the first 160,000 qualifying trajectories contribute to each row. Sampling
-does not stop based on death rates. The largest tested death turn is `H+1`, so
-trajectories are observed only through that turn. An unresolved combat outcome
-inside that window aborts validation; continued play beyond the window is allowed.
-Invalid trajectories or failure to fill every row within two million games also
-prevent admission. A conditioning event that never occurs cannot fill its row
-and therefore cannot pass. No termination or decreasing-rank proof is required.
-
-Replaying the same seed is reproducibility, not new independent evidence. The
-finite refactor preserves Lighthouse's window, policy, sample size, and recorded
-counts. After tuning those inputs using validation results, choose a fresh
-precommitted held-out experiment; do not search for favorable seeds.
-
-## Exploratory diagnostics
-
-`make audit` remains separate from admission. It reports floating-point estimates
-and capped lifetime intervals using an exploratory concentration calculation.
-Those intervals do not supply the `fair` theorem or admission evidence.
+`make validate` reproduces the batch and prints the intervals. `make run` checks
+both adventures before play. Replaying a fixed seed is reproducibility, not new
+independent evidence.

@@ -27,8 +27,9 @@ Do not import another adventure's cast or use a global player character.
 
 For horizon `H`, the finite window checks first-turn death and death at `t+2`
 conditional on activity at `t`, for `0 <= t < H`. The `fair` theorem proves
-confidence interval coverage and bounds false acceptance of the finite window.
-Its IID/binomial sampling model is an accepted assumption. No termination,
+exact binomial interval coverage and bounds false acceptance of the finite window.
+Use the fixed 1,000-game batch and each row’s actual qualifying count. Its
+conditional-binomial sampling model is an accepted assumption. No termination,
 decreasing-rank, graph-normalization, or tail proof is required for admission.
 If a conditional row has no qualifying observations, it cannot be admitted.
 
@@ -39,8 +40,7 @@ choose a fresh precommitted holdout; do not search for favorable seeds.
 
 Use `checkCharacter rules hero` and `check rules hero story` for legality errors.
 Do not weaken shared specifications to make an adventure pass. Do not use
-`sorry`, `axiom`, `native_decide`, or unlimited heartbeats. Exploratory `make audit`
-output does not supply admission evidence.
+`sorry`, `axiom`, `native_decide`, or unlimited heartbeats.
 
 Run `make build` and the confidence tests. Run `make check` on Linux; on macOS,
 report that the separate `lake check` replay requires Linux namespaces.

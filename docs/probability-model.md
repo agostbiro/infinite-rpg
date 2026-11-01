@@ -52,15 +52,16 @@ w_t = (S(t+1) - S(t+2)) / S(t),  S(t) = q^(t^shape).
 ```
 
 The expectation is of a death indicator, not a death time. Completed successful
-games are excluded from the conditioning event. Each observed frequency has an
-exact rational interval of radius `confidenceEpsilon`, clipped to `[0,1]`.
+games are excluded from the conditioning event. Each row uses its actual
+qualifying count from a fixed batch of 1,000 games to construct an exact binomial
+interval, enclosed by outward-rounded rational endpoints.
 Admission requires the whole interval inside `[w_t - tolerance, w_t + tolerance]`.
 The first-turn row uses target `1 - S(1)` to reject immediate-death loopholes.
 
 `StatisticalCandidate.fair` proves per-row interval coverage and a false-acceptance
 bound for the entire finite decision under the explicitly accepted binomial
-sampling model. With the current constants, each risk is at most 0.1%.
-This does not assert simultaneous 99.9% coverage of all displayed intervals.
+sampling model. With the current constants, each risk is at most 10%.
+This does not assert simultaneous 90% coverage of all displayed intervals.
 There is no requirement or claim about times beyond the selected horizon.
 Lighthouse uses `H=6`; Harbor uses `H=1`.
 
@@ -68,7 +69,7 @@ The chosen tolerance is 20 percentage points, so the current geometric policy
 mainly imposes upper risk caps. It does not guarantee victory, behavior under
 every player strategy, or closeness of the entire lifetime distribution to a
 Weibull law. `checkFairnessThrough` remains an exact finite diagnostic for small
-graphs; admission uses the cheaper proved confidence protocol.
+graphs; admission uses the proved exact-binomial confidence protocol.
 
 ## Expectations
 
@@ -106,8 +107,8 @@ d6/attack/dodge turn structure; this is not an arbitrary combat-language interpr
 
 `Probability.AdventureDefinition` bundles the rules, character, and raw story,
 plus **both** `LegalCharacter rules hero` and `LegalAdventure rules hero story`.
-The earlier version accidentally omitted the character proof. The graph is derived
-from those exact values, and `playStatistical` passes the same rules to the engine.
+The graph is derived from those exact values, and `playStatistical` passes the
+same rules to the engine.
 Changing rules or characters requires rechecking their dependent certificates.
 The shared Weibull fairness policy remains fixed across adventures.
 
@@ -119,7 +120,7 @@ counts and requires every interval to fit the shared Weibull band. Its resulting
 There is one admission path for Harbor and Lighthouse.
 
 See [statistical confidence](statistical-confidence.md) for the theorem, accepted
-sampling assumptions, fixed protocol, and Lighthouse's recorded results. The
+sampling assumptions, fixed game batch, and Lighthouse's recorded results. The
 admission interface has no graph-validity or tail premises. The probability and
 lifetime fixtures remain, along with interval, boundary, censoring, and sampling
 model tests.
@@ -130,12 +131,12 @@ The probability specification, graph builder, distribution operations, and
 combat elimination algorithm are part of the trusted definitions. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
 but there is not yet a general theorem proving the elimination algorithm equals
-the infinite stochastic operational execution. The ideal sampling correspondence is an accepted assumption of `fair`, including
-the idealization of SplitMix64 and modulo-based choices.
+the infinite stochastic operational execution. The ideal sampling correspondence
+is an accepted assumption of `fair`, including the idealization of SplitMix64 and
+modulo-based choices.
 
 All stated theorems use kernel proofs; none use `sorry`, additional axioms, or
 `native_decide`. Compiled `#guard` checks are regression tests, not theorems.
-The seeded engine refactor was compared with its previous implementation on
-1,024 rounds, checking HP, combat logs, and final RNG state. `lake check` provides
-an additional proof replay, but requires Linux namespaces and does not run on
-macOS. A normal `lake build` still kernel-checks the theorem declarations.
+`lake check` provides an additional proof replay, but requires Linux namespaces
+and does not run on macOS. A normal `lake build` still kernel-checks the theorem
+declarations.

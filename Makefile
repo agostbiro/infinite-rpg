@@ -21,12 +21,7 @@ check: build
 cheats:
 	lake exe rpg --cheats
 
-# Fast diagnostics only; this command never creates a fairness proof.
-.PHONY: audit
-audit:
-	lake exe audit $(if $(SAMPLES),--samples $(SAMPLES),) $(if $(SEED),--seed $(SEED),)
-
-# Frozen validation protocol backed by the Lean statistical risk theorem.
+# Fixed game batch with exact binomial intervals and Lean-proved coverage.
 .PHONY: validate
 validate:
 	lake exe validate

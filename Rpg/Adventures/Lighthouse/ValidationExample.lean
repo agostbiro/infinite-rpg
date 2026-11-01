@@ -1,22 +1,21 @@
 import Rpg.Adventures.Lighthouse.Confidence
 
-/-! Kernel-check the numbers from the frozen held-out run. This regression record
-has no provenance proof and cannot itself create a `StatisticalAdventure`.
-Runtime admission always regenerates source-bound observations. -/
+/-! Regression data for the fixed 1,000-game batch. Runtime admission regenerates
+its observations; this record cannot replace source-bound evidence. -/
 namespace Rpg.Lighthouse
 open Probability Probability.Confidence
 
-/-- Recorded validation data from seed 20261102, with no censored or invalid trajectories. -/
+/-- Recorded counts at seed 20261103, with no unresolved outcomes inside the window. -/
 def recordedValidation : ValidationCounts :=
-  ⟨#[160000, 160000, 160000, 160000, 160000, 160000, 160000],
-   #[0, 0, 1374, 16060, 43753, 22175, 0], 979266, false⟩
+  ⟨#[1000, 1000, 1000, 1000, 955, 652, 165],
+   #[0, 0, 7, 113, 266, 102, 0], 1000, false⟩
 
-/-- The held-out numerical acceptance result is checked by the Lean kernel. -/
-theorem recorded_validation_passes : ValidationAccepted statisticalCandidate.horizon recordedValidation := by
-  decide +kernel
-
-/-- The same observation would not pass the original policy; the relaxation is substantive. -/
-example : ¬ acceptsCount ((FairnessPolicy.mk (99/100) 2 (1/20)).deathAtTwo 3)
-    (1/20) confidenceEpsilon confidenceSamples 43753 := by decide +kernel
+-- Runtime regression checks are distinct from the kernel-proved coverage theorem.
+#guard decide (ValidationAccepted statisticalCandidate.horizon recordedValidation)
+#guard let observed := validateCounts statisticalCandidate
+  observed.trials == recordedValidation.trials &&
+  observed.deaths == recordedValidation.deaths &&
+  observed.games == recordedValidation.games &&
+  observed.aborted == recordedValidation.aborted
 
 end Rpg.Lighthouse

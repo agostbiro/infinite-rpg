@@ -2,7 +2,7 @@
 
 A single-player text RPG (role-playing game) based on GURPS Lite. Adventures own
 all their characters and selected rules. **The Drowned Lighthouse** and
-**A Safe Harbor** become playable after their finite confidence intervals pass
+**A Safe Harbor** become playable after their exact binomial confidence intervals pass
 the shared Weibull policy. The main theorem is called `fair`: Lean proves interval
 coverage and the finite decision's false-acceptance bound under the accepted
 IID/binomial sampling model.
@@ -12,8 +12,7 @@ make install
 make run          # validates both adventures, then opens the game menu
 make cheats       # watch the checker catch a cheating DM
 make run SEED=7   # replay a game with the same dice
-make validate     # frozen statistical protocol, about 12 seconds on the development machine
-make audit        # fast exploratory diagnostics; not admission evidence
+make validate     # fixed 1,000-game batch with 90% binomial intervals
 make check        # build, then replay every proof through the Lean kernel
 ```
 
@@ -26,16 +25,17 @@ make check        # build, then replay every proof through the Lean kernel
   finite `fair` theorem, and source-bound observations that passed admission.
   `StatisticalAdventure.intervals_fit` proves that every admitted interval fits
   its Weibull target's tolerance band.
-- `Rpg/Probability/Confidence.lean` proves the variance bound, interval coverage,
-  and false-acceptance bound. `StatisticalCandidate.fair` combines them for the
-  adventure's finite window: `t < 6` for Lighthouse and `t < 1` for Harbor,
-  together with a first-turn death check. Each interval has 99.9% coverage;
-  accepting the entire window when any tested constraint is false has risk at
-  most 0.1%. This is not simultaneous coverage of every interval.
+- `Rpg/Probability/Binomial.lean` proves that the exact tail computation matches
+  independent Bernoulli trials. `Confidence.lean` proves binomial interval coverage
+  and the false-acceptance bound, including random qualifying counts.
+  `StatisticalCandidate.fair` applies these to the adventure's finite window:
+  `t < 6` for Lighthouse and `t < 1` for Harbor, plus first-turn death.
+  With 1,000 total games, each interval has at least 90% coverage and the whole
+  check has false-acceptance risk at most 10%. This is not simultaneous coverage
+  of every interval. Reported endpoints are conservative rational enclosures.
 - `Rpg/Probability/Weibull.lean` defines editable shared defaults: retention
   `4/5`, integer shape `1`, and absolute tolerance `1/5` (20 percentage points).
-  These were deliberately relaxed after exploration, then frozen before a new
-  validation seed was used. They are not universal RPG standards.
+  These are game-design choices, not universal RPG standards.
 - `Rpg/Probability/Fairness.lean` defines expected termination time, expected death
   time, and death time conditional on eventual death. Infinite expectations and
   undefined conditioning events are distinguished.
@@ -75,8 +75,7 @@ probabilities. It does not guarantee victory or fairness under every strategy.
   does not prove that SplitMix64 or the game implementation induces that law.
   These sampling assumptions are accepted; `fair` has no additional
   graph-normalization, active-start, or tail premises.
-- The Engine and terminal have no overall correctness proof. Shared combat code
-  was regression-checked against the previous engine on 1,024 seeded rounds.
+- The Engine and terminal have no overall correctness proof.
 - `lake check` requires Linux namespaces. On macOS, `lake build` checks declarations,
   but the additional isolated replay cannot run.
 - Axioms: the theorems use only the standard Lean axioms (`propext`, `Classical.choice`, `Quot.sound`).
