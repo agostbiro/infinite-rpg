@@ -44,7 +44,7 @@ def assemble():
                 "text": text + " You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.",
                 "choices": [
                     goto("Follow the path to continue the investigation", i + 1),
-                    goto("Return to compare the clues", i),
+                    goto("Return along the survey route", max(0, i - 2)) if i > 1 else goto("Continue to the harbour", i + 1),
                 ],
             })
         elif i not in risky:
@@ -80,16 +80,17 @@ def assemble():
         (7, "Desert Outpost", "outpost", -65, -30),
     ]
     routes = [(0,1),(1,2),(2,3),(3,4),(4,5),(5,6),(6,7),(7,1),(2,5)]
+    # Locations follow the activity, with regular trips inside each chapter.
+    itinerary = [
+        0,0,1,4,1,4,1,2,7,2,7,2,4,4,3,2,
+        3,2,3,5,2,0,0,3,2,2,4,4,5,3,4,5,
+        7,0,0,7,4,3,2,2,1,4,3,5,4,5,5,2,
+        6,6,7,6,7,3,6,3,0,2,0,4,7,3,6,0,
+        0,3,
+    ]
     def place_for(scene):
         main = scene if scene < 100 else scene % 100
-        if main < 2: return 0
-        if main < 8: return 1
-        if main < 16: return 2
-        if main < 24: return 3
-        if main < 36: return 4
-        if main < 44: return 5
-        if main < 60: return 6
-        return 0 if main < 64 else 3
+        return itinerary[main]
     environment = {
         "theme": "desert",
         "places": [dict(id=i, name=n, kind=k, x=x, z=z) for i,n,k,x,z in places],

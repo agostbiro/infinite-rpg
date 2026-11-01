@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { portalsForView, crossedPortal, inputKey, themeFor, figuresForView } from './spatial.js';
 
-import { environmentFor, placeForScene, worldLayout, sceneryFor, propRadius, moveInWorld } from './environment.js';
+import { environmentFor, placeForScene, eventAnchorForScene, worldLayout, sceneryFor, propRadius, moveInWorld } from './environment.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
@@ -328,9 +328,11 @@ export class SpatialGame {
       const a=e.places.find(q=>q.id===p.fromPlace),b=e.places.find(q=>q.id===p.toPlace);
       ctx.beginPath();ctx.moveTo(coord(a.x),coord(a.z));ctx.lineTo(coord(b.x),coord(b.z));ctx.stroke();
     }
-    for(const p of e.places) {
+    for(const [index,p] of e.places.entries()) {
       ctx.fillStyle=p.id===this.layout.place.id?'#ffd491':'#a5b5b5';
       ctx.beginPath();ctx.arc(coord(p.x),coord(p.z),p.id===this.layout.place.id?4:2.5,0,Math.PI*2);ctx.fill();
+      ctx.font='bold 11px sans-serif'; ctx.textAlign='left';
+      ctx.fillText(String(index+1),coord(p.x)+5,coord(p.z)-4);
     }
     ctx.save();ctx.translate(coord(this.position.x),coord(this.position.z));ctx.rotate(-this.yaw);
     ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(-3.5,4);ctx.lineTo(3.5,4);ctx.closePath();ctx.fill();ctx.restore();
@@ -338,7 +340,9 @@ export class SpatialGame {
     const angle=Math.atan2(p.x-this.position.x,-(p.z-this.position.z))+this.yaw;
     const arrow=['↑','↗','→','↘','↓','↙','←','↖'][(Math.round(angle/(Math.PI/4))+8)%8];
     $('world-objective').textContent=distance<10?'Explore '+p.name:arrow+' '+p.name+' · '+Math.round(distance)+' m';
-    canvas.setAttribute('aria-label','World map. Your objective: '+p.name+'. '+Math.round(distance)+' metres away.');
+    const legend=e.places.map((place,i)=>(i+1)+': '+place.name).join('; ');
+    canvas.title=legend;
+    canvas.setAttribute('aria-label','World map. '+legend+'. Your objective: '+p.name+'. '+Math.round(distance)+' metres away.');
     this.root.dataset.placeId=String(p.id);
   }
 
@@ -607,7 +611,7 @@ export class SpatialGame {
       this.roomKey = roomKey;
       const place = placeForScene(this.environment, view.scene?.id);
       if(view.phase==='fight' && this.previousPhase!=='fight') this.combatAnchor={...this.position};
-      this.layout = worldLayout(portals, place, view.phase==='fight'?this.combatAnchor:null);
+      this.layout = worldLayout(portals, place, view.phase==='fight'?this.combatAnchor:null, eventAnchorForScene(this.environment, view.scene?.id));
       this.buildRoom(view, this.layout, pictureURL);
       // State transitions move only the options, never the player or the landscape.
       this.keys.clear(); this.touches.clear();

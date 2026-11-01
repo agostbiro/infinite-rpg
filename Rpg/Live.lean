@@ -1,6 +1,6 @@
 import Rpg.View
 import Rpg.Environment
-import Rpg.Probability.StatisticalAdmission
+import Rpg.GraphValidity
 
 /-!
 # Live Adventures
@@ -16,8 +16,8 @@ Character and on the Adventure. A `Game` needs the proofs `LegalCharacter` and `
 So a Draft that the checker rejects can never be played.
 
 Then `Draft.toGame` runs the fairness check (admission): 1,000 games from a seed, with
-horizon 14 for new Wishes (15 turns), or horizon 5 for legacy saves. A Draft that fails a row is not played either. The server picks a fresh random seed for
-each try and saves it with the Adventure, so a saved Adventure gives the same result when it loads.
+horizon 14 for new Wishes (15 turns), or horizon 5 for legacy saves. A Draft that fails a row is not played either. The server tunes on separate training games, freezes the draft, then picks one final random seed
+and saves it with the Adventure, so a saved Adventure gives the same result when it loads.
 A Wish uses the default rules (`liveRules`). The DM cannot change them.
 
 Before the checker runs, `sizeErrors` refuses a Draft that is too large to show well, for
@@ -340,13 +340,14 @@ def profilePolicy (profile : String) : Probability.FairnessPolicy :=
 for the Adventure. An empty list means the Draft passes the checker. -/
 def Draft.errors (d : Draft) : List String :=
   match sizeErrors d with
-  | [] => checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure
+  | [] => checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure ++ d.adventure.eventCycleErrors
   | errs => errs
 
 /-- Run the size limits and the checker on a Draft. If both find no errors, the soundness theorems
 give the proofs that an `AdventureDefinition` needs. Else it returns the errors. -/
 def Draft.checked (d : Draft) : Except (List String) AdventureDefinition :=
   if sizeErrors d ≠ [] then .error (sizeErrors d) else
+  if !d.adventure.checkEventCycles then .error d.adventure.eventCycleErrors else
   if hc : checkCharacter liveRules d.hero = [] then
     if ha : check liveRules d.hero d.adventure = [] then
       .ok ⟨liveRules, d.hero, checkCharacter_sound hc, d.adventure, check_sound ha⟩
@@ -369,10 +370,9 @@ def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
   | .error errs => .error errs
   | .ok defn =>
     let candidate := liveCandidate defn d.validationProfile
-    match Probability.admitWithSeed candidate seed with
-    | (_, some a) => .ok (Game.new a.candidate.toAdventureDefinition)
-    | (counts, none) =>
-      .error ((Probability.failedRows candidate.horizon counts candidate.policy).map ("fairness: " ++ ·))
+    match validateGraph candidate seed with
+    | .ok certified => .ok (Game.new certified.statistical.candidate.toAdventureDefinition)
+    | .error errors => .error errors
 
 /-- How the points of a being add up, such as "ST 11: 10, DX 12: 40, ... Total: 100". The DM
 gets this with the errors, so it can fix a build. -/

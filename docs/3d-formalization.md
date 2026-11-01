@@ -83,3 +83,37 @@ The implemented contract combines the unchanged Lean input guarantees with an au
 New Wishes select one of three shape-two Weibull reference curves. At ten scene choices their survival targets are 50%, 30% and 10%. The rational parameters, approximation theorem and limitations of statistical admission are documented in [Wish-generated worlds](wish-worlds.md).
 
 The server tests 1,000 uniform-player games through 15 choices, using the existing confidence intervals, row definitions and tolerance. Scene walking and environment construction do not participate in those simulations. The geometry of a new world does not require probabilistic model checking of 3D physics.
+
+## 10. Theorem `equilibrium`: validity includes balance
+
+A validity claim concerns the tuple `X = (G, hero, rules, πU, policy, H, seed)`, not an unlabelled graph alone. Changing encounters, rules or the test player's policy can change its balance even when its edges stay the same.
+
+Let `C = sampleCounts(X, 1000)` be the counts obtained from the actual engine. Define:
+
+`Valid(X,C) := LegalCharacter(hero,rules) ∧ LegalAdventure(G,hero,rules) ∧ NoShortCycles(G) ∧ C = sampleCounts(X,1000) ∧ BalanceAccepted(policy,H,C)`.
+
+`LegalAdventure` includes existing destinations, unique scene IDs, reachability of every scene and a route to an ending from every scene. `BalanceAccepted` is the existing statistical admission test: a complete batch, no unresolved in-window fights, valid row sizes, and every 90% confidence interval contained in its Weibull tolerance band. Empty observations fail. The tolerance remains 1/5.
+
+**Theorem `equilibrium`.** Every certificate returned by the graph validator satisfies `Valid(X,C)` for its recorded candidate, seed and observations.
+
+Lean: `Rpg.ValidatedGraph.equilibrium` in `Rpg/GraphValidity.lean`. The game is constructed from that certificate's candidate. The counts cannot be replaced by counts from another game. World layout checks run before this validator and remain separate runtime geometry checks.
+
+This is a theorem about successful validation. The separate fairness theorem, `StatisticalCandidate.fair`, bounds the test's false acceptance probability under its explicit binomial sampling assumptions. Passing a test is not a proof that the true survival probability equals the reference curve. Nor does `equilibrium` assert that every possible prompt has a valid solution.
+
+Generation tunes enemy parameters on training data, preserving graph destinations and the chosen policy. A failed training test asks the author to repair encounter frequency or branches. Once frozen, the candidate receives one independent final batch. A failed final batch is not repeatedly sampled until it passes. The 10% false acceptance bound applies to one frozen candidate and its batch, not to an unlimited sequence of user retries.
+
+## 11. Theorem `non-cyclic`: no event cycle shorter than four
+
+Define the directed event graph with one vertex per scene and an edge for every `goto` destination, both `roll` outcomes, and every fight's `onWin` destination. This uses the actual adventure data. Death is terminal and has no outgoing edge. Combat rounds and physical walking paths are not event edges.
+
+Define `NoShortCycles(G)` by:
+
+1. For every edge `(u,v)`, `u ≠ v`.
+2. For every edge `(u,v)`, `(v,u)` is absent.
+3. For every two edges `(u,v)` and `(v,w)`, `(w,u)` is absent.
+
+**Theorem `non-cyclic`.** If the event-cycle checker accepts `G`, every nonempty closed event walk of length `n` satisfies `n ≥ 4`.
+
+Thus `A → A`, `A → B → A` and `A → B → C → A` are rejected. `A → B → C → D → A` is permitted if the other validity requirements also hold. Despite the requested name, this is not a claim that the graph is acyclic. Returning to the same physical place in different scenes is also permitted.
+
+Lean: `Rpg.Adventure.«non-cyclic»` in `Rpg/EventGraph.lean`. The check includes every authored outcome, even an outcome with a very small or zero probability under the current hero. Kernel-checked examples reject all three prohibited lengths and instantiate the theorem on a permitted four-edge cycle.

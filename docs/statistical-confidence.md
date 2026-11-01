@@ -72,6 +72,12 @@ axioms, with no `sorry`, new axioms, or `native_decide`.
 
 ## Admission and validation
 
+The additional graph theorems are **`equilibrium`** (validity includes source-bound
+statistical balance acceptance) and **`non-cyclic`** (every nonempty event cycle
+has at least four edges). Their definitions and statements are in sections 10–11
+of [the mathematical formalization](3d-formalization.md#10-theorem-equilibrium-validity-includes-balance).
+They do not replace or strengthen the sampling assumptions of `fair`.
+
 `StatisticalAdventure` carries `fair`, source-bound counts, and passing interval
 checks. Its provenance requires `counts = sampleCounts candidate seed validationGames`, with the seed it records; observations
 from a different story, hero, ruleset, or horizon cannot be substituted.

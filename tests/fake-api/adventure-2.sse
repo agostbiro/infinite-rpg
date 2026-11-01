@@ -56,82 +56,82 @@ event: content_block_delta
 data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"kind\": \"column\", \"x\": 59, \"z\": -65, \"scale\": 140, \"heading\": 0}], \"scenes\": [{\"scene\": 200, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 0, \"place\": 0, \"npcs\": [\"Napoleon Bonaparte\"]}, {\"scene\": 101, \""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 1, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 2, \"place\": 1, \"npcs\": []}, {\"scene\": 203, \"place\": 1, \"npcs\": [\"Salma\"]}, {\"scene\": 3, \"place\": 1, \"npcs\": []}, {"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 1, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 2, \"place\": 1, \"npcs\": []}, {\"scene\": 203, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 3, \"place\": 4, \"npcs\": []}, {"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"scene\": 4, \"place\": 1, \"npcs\": []}, {\"scene\": 105, \"place\": 1, \"npcs\": [\"Salma\"]}, {\"scene\": 5, \"place\": 1, \"npcs\": [\"Salma\"]}, {\"scene\": 6, \"place\": 1, \"npcs\": [\"Youssef\"]}, {\"scene\": 207, \"place\": "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"scene\": 4, \"place\": 1, \"npcs\": []}, {\"scene\": 105, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 5, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 6, \"place\": 1, \"npcs\": [\"Youssef\"]}, {\"scene\": 207, \"place\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "1, \"npcs\": [\"Salma\"]}, {\"scene\": 7, \"place\": 1, \"npcs\": []}, {\"scene\": 8, \"place\": 2, \"npcs\": []}, {\"scene\": 109, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 9, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"sce"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "2, \"npcs\": [\"Salma\"]}, {\"scene\": 7, \"place\": 2, \"npcs\": []}, {\"scene\": 8, \"place\": 7, \"npcs\": []}, {\"scene\": 109, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 9, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"sce"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ne\": 10, \"place\": 2, \"npcs\": []}, {\"scene\": 211, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 11, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 12, \"place\": 2, \"npcs\": []}, {\"scene\": 113, \"place\": 2, \"npcs\":"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ne\": 10, \"place\": 7, \"npcs\": []}, {\"scene\": 211, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 11, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 12, \"place\": 4, \"npcs\": []}, {\"scene\": 113, \"place\": 4, \"npcs\":"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " [\"Amina\"]}, {\"scene\": 13, \"place\": 2, \"npcs\": [\"Amina\"]}, {\"scene\": 214, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 14, \"place\": 2, \"npcs\": []}, {\"scene\": 215, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " [\"Amina\"]}, {\"scene\": 13, \"place\": 4, \"npcs\": [\"Amina\"]}, {\"scene\": 214, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 14, \"place\": 3, \"npcs\": []}, {\"scene\": 215, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": 15, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 216, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 16, \"place\": 3, \"npcs\": []}, {\"scene\": 117, \"place\": 3, \"npcs\": []}, {\"scene\": 17, \"place\": 3, \"npcs\": "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": 15, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 216, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 16, \"place\": 3, \"npcs\": []}, {\"scene\": 117, \"place\": 2, \"npcs\": []}, {\"scene\": 17, \"place\": 2, \"npcs\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "[]}, {\"scene\": 218, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 18, \"place\": 3, \"npcs\": [\"Amina\"]}, {\"scene\": 219, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 19, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\":"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "[]}, {\"scene\": 218, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 18, \"place\": 3, \"npcs\": [\"Amina\"]}, {\"scene\": 219, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 19, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\":"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " 20, \"place\": 3, \"npcs\": []}, {\"scene\": 121, \"place\": 3, \"npcs\": []}, {\"scene\": 21, \"place\": 3, \"npcs\": []}, {\"scene\": 222, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 22, \"place\": 3, \"npcs\": [\"Desaix\"]"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " 20, \"place\": 2, \"npcs\": []}, {\"scene\": 121, \"place\": 0, \"npcs\": []}, {\"scene\": 21, \"place\": 0, \"npcs\": []}, {\"scene\": 222, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 22, \"place\": 0, \"npcs\": [\"Desaix\"]"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}, {\"scene\": 223, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 23, \"place\": 3, \"npcs\": []}, {\"scene\": 224, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 24, \"place\": 4, \"npcs\": []}, {\"scene\": 125, \"place\": 4"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}, {\"scene\": 223, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 23, \"place\": 3, \"npcs\": []}, {\"scene\": 224, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 24, \"place\": 2, \"npcs\": []}, {\"scene\": 125, \"place\": 2"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"npcs\": [\"Youssef\"]}, {\"scene\": 25, \"place\": 4, \"npcs\": [\"Youssef\"]}, {\"scene\": 226, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 26, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 227, \"place\": 4, \"npcs\": "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"npcs\": [\"Youssef\"]}, {\"scene\": 25, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 226, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 26, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 227, \"place\": 4, \"npcs\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "[\"Salma\"]}, {\"scene\": 27, \"place\": 4, \"npcs\": []}, {\"scene\": 28, \"place\": 4, \"npcs\": []}, {\"scene\": 129, \"place\": 4, \"npcs\": []}, {\"scene\": 29, \"place\": 4, \"npcs\": []}, {\"scene\": 230, \"place\": 4, \"npc"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "[\"Salma\"]}, {\"scene\": 27, \"place\": 4, \"npcs\": []}, {\"scene\": 28, \"place\": 5, \"npcs\": []}, {\"scene\": 129, \"place\": 3, \"npcs\": []}, {\"scene\": 29, \"place\": 3, \"npcs\": []}, {\"scene\": 230, \"place\": 4, \"npc"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "s\": [\"Salma\"]}, {\"scene\": 30, \"place\": 4, \"npcs\": [\"Farid\"]}, {\"scene\": 231, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 31, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 232, \"place\": 4, \"npcs\": [\"Salma\"]}"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "s\": [\"Salma\"]}, {\"scene\": 30, \"place\": 4, \"npcs\": [\"Farid\"]}, {\"scene\": 231, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 31, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 232, \"place\": 7, \"npcs\": [\"Salma\"]}"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", {\"scene\": 32, \"place\": 4, \"npcs\": []}, {\"scene\": 133, \"place\": 4, \"npcs\": []}, {\"scene\": 33, \"place\": 4, \"npcs\": []}, {\"scene\": 234, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 34, \"place\": 4, \"npcs\":"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", {\"scene\": 32, \"place\": 7, \"npcs\": []}, {\"scene\": 133, \"place\": 0, \"npcs\": []}, {\"scene\": 33, \"place\": 0, \"npcs\": []}, {\"scene\": 234, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 34, \"place\": 0, \"npcs\":"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " [\"Napoleon Bonaparte\"]}, {\"scene\": 235, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 35, \"place\": 4, \"npcs\": []}, {\"scene\": 36, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 137, \"place\": 5, \"npcs\": [\"Amina"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " [\"Napoleon Bonaparte\"]}, {\"scene\": 235, \"place\": 7, \"npcs\": [\"Salma\"]}, {\"scene\": 35, \"place\": 7, \"npcs\": []}, {\"scene\": 36, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 137, \"place\": 3, \"npcs\": [\"Amina"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"]}, {\"scene\": 37, \"place\": 5, \"npcs\": [\"Amina\"]}, {\"scene\": 238, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 38, \"place\": 5, \"npcs\": []}, {\"scene\": 239, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 39, \"p"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"]}, {\"scene\": 37, \"place\": 3, \"npcs\": [\"Amina\"]}, {\"scene\": 238, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 38, \"place\": 2, \"npcs\": []}, {\"scene\": 239, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 39, \"p"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "lace\": 5, \"npcs\": [\"Youssef\"]}, {\"scene\": 240, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 40, \"place\": 5, \"npcs\": []}, {\"scene\": 141, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 41, \"place\": 5, \"npcs\": ["}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "lace\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 240, \"place\": 1, \"npcs\": [\"Salma\"]}, {\"scene\": 40, \"place\": 1, \"npcs\": []}, {\"scene\": 141, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 41, \"place\": 4, \"npcs\": ["}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"Salma\"]}, {\"scene\": 242, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 42, \"place\": 5, \"npcs\": [\"Farid\"]}, {\"scene\": 243, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 43, \"place\": 5, \"npcs\": []}, {\"scene\": "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"Salma\"]}, {\"scene\": 242, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 42, \"place\": 3, \"npcs\": [\"Farid\"]}, {\"scene\": 243, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 43, \"place\": 5, \"npcs\": []}, {\"scene\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "44, \"place\": 6, \"npcs\": []}, {\"scene\": 145, \"place\": 6, \"npcs\": [\"Monge\"]}, {\"scene\": 45, \"place\": 6, \"npcs\": [\"Monge\"]}, {\"scene\": 246, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 46, \"place\": 6, \"npcs"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "44, \"place\": 4, \"npcs\": []}, {\"scene\": 145, \"place\": 5, \"npcs\": [\"Monge\"]}, {\"scene\": 45, \"place\": 5, \"npcs\": [\"Monge\"]}, {\"scene\": 246, \"place\": 5, \"npcs\": [\"Salma\"]}, {\"scene\": 46, \"place\": 5, \"npcs"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": [\"Salma\"]}, {\"scene\": 247, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 47, \"place\": 6, \"npcs\": [\"Youssef\"]}, {\"scene\": 248, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 48, \"place\": 6, \"npcs\": [\"Salma\"]"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": [\"Salma\"]}, {\"scene\": 247, \"place\": 2, \"npcs\": [\"Salma\"]}, {\"scene\": 47, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 248, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 48, \"place\": 6, \"npcs\": [\"Salma\"]"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}, {\"scene\": 149, \"place\": 6, \"npcs\": []}, {\"scene\": 49, \"place\": 6, \"npcs\": []}, {\"scene\": 250, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 50, \"place\": 6, \"npcs\": [\"Farid\"]}, {\"scene\": 251, \"place\": 6"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}, {\"scene\": 149, \"place\": 6, \"npcs\": []}, {\"scene\": 49, \"place\": 6, \"npcs\": []}, {\"scene\": 250, \"place\": 7, \"npcs\": [\"Salma\"]}, {\"scene\": 50, \"place\": 7, \"npcs\": [\"Farid\"]}, {\"scene\": 251, \"place\": 6"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"npcs\": [\"Salma\"]}, {\"scene\": 51, \"place\": 6, \"npcs\": []}, {\"scene\": 52, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 153, \"place\": 6, \"npcs\": []}, {\"scene\": 53, \"place\": 6, \"npcs\": []}, {\"scene\": 254,"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"npcs\": [\"Salma\"]}, {\"scene\": 51, \"place\": 6, \"npcs\": []}, {\"scene\": 52, \"place\": 7, \"npcs\": [\"Salma\"]}, {\"scene\": 153, \"place\": 3, \"npcs\": []}, {\"scene\": 53, \"place\": 3, \"npcs\": []}, {\"scene\": 254,"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 54, \"place\": 6, \"npcs\": [\"Salma\", \"Monge\"]}, {\"scene\": 255, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 55, \"place\": 6, \"npcs\": [\"Amina\"]}, {\"scene\": 256, \"pla"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 54, \"place\": 6, \"npcs\": [\"Salma\", \"Monge\"]}, {\"scene\": 255, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 55, \"place\": 3, \"npcs\": [\"Amina\"]}, {\"scene\": 256, \"pla"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ce\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 56, \"place\": 6, \"npcs\": []}, {\"scene\": 157, \"place\": 6, \"npcs\": [\"Youssef\"]}, {\"scene\": 57, \"place\": 6, \"npcs\": [\"Youssef\"]}, {\"scene\": 258, \"place\": 6, \"npcs\": ["}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ce\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 56, \"place\": 0, \"npcs\": []}, {\"scene\": 157, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 57, \"place\": 2, \"npcs\": [\"Youssef\"]}, {\"scene\": 258, \"place\": 0, \"npcs\": ["}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"Salma\"]}, {\"scene\": 58, \"place\": 6, \"npcs\": [\"Napoleon Bonaparte\"]}, {\"scene\": 259, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 59, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 60, \"place\": 0, \"npcs\": [\"F"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"Salma\"]}, {\"scene\": 58, \"place\": 0, \"npcs\": [\"Napoleon Bonaparte\"]}, {\"scene\": 259, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 59, \"place\": 4, \"npcs\": [\"Salma\"]}, {\"scene\": 60, \"place\": 7, \"npcs\": [\"F"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "arid\"]}, {\"scene\": 161, \"place\": 0, \"npcs\": []}, {\"scene\": 61, \"place\": 0, \"npcs\": []}, {\"scene\": 262, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 62, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 63, \"plac"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "arid\"]}, {\"scene\": 161, \"place\": 3, \"npcs\": []}, {\"scene\": 61, \"place\": 3, \"npcs\": []}, {\"scene\": 262, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 62, \"place\": 6, \"npcs\": [\"Salma\"]}, {\"scene\": 63, \"plac"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e\": 0, \"npcs\": []}, {\"scene\": 64, \"place\": 3, \"npcs\": [\"Salma\"]}, {\"scene\": 65, \"place\": 3, \"npcs\": [\"Amina\"]}]}, \"title\": \"Bonaparte \\u00b7 Maps of the Nile\", \"world\": \"Egypt, Bonaparte's expedition,"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e\": 0, \"npcs\": []}, {\"scene\": 64, \"place\": 0, \"npcs\": [\"Salma\"]}, {\"scene\": 65, \"place\": 3, \"npcs\": [\"Amina\"]}]}, \"title\": \"Bonaparte \\u00b7 Maps of the Nile\", \"world\": \"Egypt, Bonaparte's expedition,"}}
 
 event: content_block_delta
 data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " 1798\", \"intro\": \"Egypt, July 1798. You are Camille Laurent, an interpreter and cartographer with the expedition. Alongside Salma, you search for stolen surveys that threaten access to water. This his"}}
@@ -608,298 +608,298 @@ event: content_block_delta
 data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "p case: the thief left through the harbour. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 2}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 1}}]}, {\"id\": 105, \"title\": \"The Merchant's B"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 2}}, {\"text\": \"Continue to the harbour\", \"outcome\": {\"type\": \"goto\", \"next\": 2}}]}, {\"id\": 105, \"title\": \"The Merchant's Balco"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "alcony \\u00b7 The Detour\", \"text\": \"Salma waits beside an open window. She has found the name of a ferryman who knows the canals better than the officers do. You take time to hear another witness and "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ny \\u00b7 The Detour\", \"text\": \"Salma waits beside an open window. She has found the name of a ferryman who knows the canals better than the officers do. You take time to hear another witness and reco"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 6}}, {\"text\""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "rd the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 6}}, {\"text\": \"R"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 5}}]}, {\"id\": 109, \"title\": \"The Patched Sail \\u00b7 The Detour\", \"text\": \"Youssef waits beneath a blue sail. He will take you to t"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "eturn along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 3}}]}, {\"id\": 109, \"title\": \"The Patched Sail \\u00b7 The Detour\", \"text\": \"Youssef waits beneath a blue sail. He will take you to the"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "he first lock if you help him prepare the boat. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " first lock if you help him prepare the boat. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow t"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 10}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 9}}]}, {\"id\": 113, \"title\": \"The Rope Ma"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "he path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 10}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 7}}]}, {\"id\": 113, \"title\": \"The Rope Ma"}}
 
 event: content_block_delta
 data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "rket \\u00b7 The Detour\", \"text\": \"Amina asks for news of the convoy. She saw a man carrying the stolen case as though it held a treasure. You take time to hear another witness and record the details. "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 14}}, {\"text\": \"Return to compar"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 14}}, {\"text\": \"Return along the"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 13}}]}, {\"id\": 117, \"title\": \"The Water Mill \\u00b7 The Detour\", \"text\": \"A motionless wheel holds debris from a flood. One part of its mechanism rese"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 11}}]}, {\"id\": 117, \"title\": \"The Water Mill \\u00b7 The Detour\", \"text\": \"A motionless wheel holds debris from a flood. One part of its mechanism re"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "mbles the sketch in the stolen notebook. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the pa"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "sembles the sketch in the stolen notebook. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "th to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 18}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 17}}]}, {\"id\": 121, \"title\": \"The Infirmary Ten"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 18}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 15}}]}, {\"id\": 121, \"title\": \"The Infirmary"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ts \\u00b7 The Detour\", \"text\": \"The doctor asks you to conserve drinking water. A wounded courier heard the name of a village where the maps are to change hands. You take time to hear another witness "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " Tents \\u00b7 The Detour\", \"text\": \"The doctor asks you to conserve drinking water. A wounded courier heard the name of a village where the maps are to change hands. You take time to hear another witn"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 22}}, {\""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ess and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 22}}"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 21}}]}, {\"id\": 125, \"title\": \"The Eastern Ferry \\u00b7 The Detour\", \"text\": \"Youssef waits for the ferry. Across the river, tw"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 19}}]}, {\"id\": 125, \"title\": \"The Eastern Ferry \\u00b7 The Detour\", \"text\": \"Youssef waits for the ferry. Across the riv"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "o routes lead to a caravanserai without entering the military camp. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "er, two routes lead to a caravanserai without entering the military camp. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"c"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 26}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 25}}]}, {\"id\": 129, "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "hoices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 26}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 23}}]}, {\"id"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"title\": \"The Baker's Oven \\u00b7 The Detour\", \"text\": \"The baker recognises the stamp on the survey. His neighbour engraves merchants' seals and is still working despite the heat. You take time to he"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 129, \"title\": \"The Baker's Oven \\u00b7 The Detour\", \"text\": \"The baker recognises the stamp on the survey. His neighbour engraves merchants' seals and is still working despite the heat. You take ti"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ar another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "me to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\", \"next\": 30}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 29}}]}, {\"id\": 133, \"title\": \"The Officers' Map Table \\u00b7 The Detour\", \"text\": \"Officers arrange cloth s"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": \"goto\", \"next\": 30}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 27}}]}, {\"id\": 133, \"title\": \"The Officers' Map Table \\u00b7 The Detour\", \"text\": \"Officers arran"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "quares on a table to explain their movements. A messenger tells you where Bonaparte will be after the council. You take time to hear another witness and record the details. You can return to compare t"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ge cloth squares on a table to explain their movements. A messenger tells you where Bonaparte will be after the council. You take time to hear another witness and record the details. You can return to"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "he evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 34}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 34}}, {\"text\": \"Return along the survey route\", \""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "type\": \"goto\", \"next\": 33}}]}, {\"id\": 137, \"title\": \"The Families' Refuge \\u00b7 The Detour\", \"text\": \"Amina waits beside a well with a broken rope. The carpenters can help restore the crossing used b"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "outcome\": {\"type\": \"goto\", \"next\": 31}}]}, {\"id\": 137, \"title\": \"The Families' Refuge \\u00b7 The Detour\", \"text\": \"Amina waits beside a well with a broken rope. The carpenters can help restore the cro"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "y the families. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the invest"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ssing used by the families. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continu"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "igation\", \"outcome\": {\"type\": \"goto\", \"next\": 38}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 37}}]}, {\"id\": 141, \"title\": \"The Cairo Gate \\u00b7 The Detour\", \"text\":"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 38}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 35}}]}, {\"id\": 141, \"title\": \"The Cairo Gate \\u00b7 The De"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"Salma speaks with a neighbourhood official. He will help if the inquiry is not used as an excuse to seize the residents' water. You take time to hear another witness and record the details. You can "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "tour\", \"text\": \"Salma speaks with a neighbourhood official. He will help if the inquiry is not used as an excuse to seize the residents' water. You take time to hear another witness and record the det"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 42}}, {\"text\": \"Return to compare the cl"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ails. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 42}}, {\"text\": \"Return alo"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ues\", \"outcome\": {\"type\": \"goto\", \"next\": 41}}]}, {\"id\": 145, \"title\": \"Monge's Loggia \\u00b7 The Detour\", \"text\": \"Gaspard Monge waits beside an incomplete survey. He confirms that the notebook combi"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ng the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 39}}]}, {\"id\": 145, \"title\": \"Monge's Loggia \\u00b7 The Detour\", \"text\": \"Gaspard Monge waits beside an incomplete survey. He confirms that th"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "nes useful measurements with deliberately false directions. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"te"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e notebook combines useful measurements with deliberately false directions. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "xt\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 46}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 45}}]}, {\"id\": 149, \"title\":"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 46}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 43}}]}, {\""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"The Temple Columns \\u00b7 The Detour\", \"text\": \"Wind whistles between the columns. Part of a map case protrudes from the sand beside a recently disturbed step. You take time to hear another witness "}}
-
-event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 50}}, {\""}}
-
-event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 49}}]}, {\"id\": 153, \"title\": \"The Cistern \\u00b7 The Detour\", \"text\": \"The complete plan lies on a low table. You can correct "}}
-
-event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "the false directions once you identify which measurements are trustworthy. You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \""}}
-
-event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 54}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 53}}]}, {\"id\""}}
-
-event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": 157, \"title\": \"The Last Nile Crossing \\u00b7 The Detour\", \"text\": \"Youssef packs the documents into a watertight chest. You cross back to camp carrying the villagers' testimony. You take time to hea"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "id\": 149, \"title\": \"The Temple Columns \\u00b7 The Detour\", \"text\": \"Wind whistles between the columns. Part of a map case protrudes from the sand beside a recently disturbed step. You take time to hea"}}
 
 event: content_block_delta
 data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "r another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"next\": 58}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 57}}]}, {\"id\": 161, \"title\": \"The Supply Road \\u00b7 The Detour\", \"text\": \"The first convoy follows the corr"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"next\": 50}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 47}}]}, {\"id\": 153, \"title\": \"The Cistern \\u00b7 The Detour\", \"text\": \"The complete plan lies on a low tab"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ected route. You accompany the porters as far as the branch leading to the village. You take time to hear another witness and record the details. You can return to compare the evidence whenever you ch"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "le. You can correct the false directions once you identify which measurements are trustworthy. You take time to hear another witness and record the details. You can return to compare the evidence when"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "oose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 62}}, {\"text\": \"Return to compare the clues\", \"outcome\": {\"type\": \"goto\", \"next\": 61}}"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 54}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\","}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "]}, {\"id\": 200, \"title\": \"The Scholars' Camp \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before c"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " \"next\": 51}}]}, {\"id\": 157, \"title\": \"The Last Nile Crossing \\u00b7 The Detour\", \"text\": \"Youssef packs the documents into a watertight chest. You cross back to camp carrying the villagers' testimony"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ontinuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 1}}]}, {\"id\": 203, \"title\": \"The Storekeeper's Ledger \\u00b7 Another Le"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ". You take time to hear another witness and record the details. You can return to compare the evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"out"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ad\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "come\": {\"type\": \"goto\", \"next\": 58}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"type\": \"goto\", \"next\": 55}}]}, {\"id\": 161, \"title\": \"The Supply Road \\u00b7 The Detour\", \"text\": \"The first"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 4}}]}, {\"id\": 207, \"title\": \"The Pilot's House \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " convoy follows the corrected route. You accompany the porters as far as the branch leading to the village. You take time to hear another witness and record the details. You can return to compare the "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 8}"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "evidence whenever you choose.\", \"choices\": [{\"text\": \"Follow the path to continue the investigation\", \"outcome\": {\"type\": \"goto\", \"next\": 62}}, {\"text\": \"Return along the survey route\", \"outcome\": {\"t"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}]}, {\"id\": 211, \"title\": \"The Canal Marker \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before co"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ype\": \"goto\", \"next\": 59}}]}, {\"id\": 200, \"title\": \"The Scholars' Camp \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You com"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ntinuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 12}}]}, {\"id\": 214, \"title\": \"The Bookbinder's Workshop \\u00b7 Another L"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "pare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 1}}]}, {\"id\": 203, \"title\": \"The Storekeeper'"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "s Ledger \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"cho"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 15}}]}, {\"id\": 215, \"title\": \"The First Nile Camp \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 4}}]}, {\"id\": 207, \"title\": \"The Pilot's House \\u00b7 Another Lead\", \"text\": \"Your approach has drawn atten"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "tion. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": 16}}]}, {\"id\": 216, \"title\": \"The Delta Reeds \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts befor"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"type\": \"goto\", \"next\": 8}}]}, {\"id\": 211, \"title\": \"The Canal Marker \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You comp"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 17}}]}, {\"id\": 218, \"title\": \"The Potters' Courtyard \\u00b7 Another "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "are the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 12}}]}, {\"id\": 214, \"title\": \"The Bookbinder's"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk t"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " Workshop \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"ch"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "o Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 19}}]}, {\"id\": 219, \"title\": \"The Palm Terrace \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes a"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "oices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 15}}]}, {\"id\": 215, \"title\": \"The First Nile Camp \\u00b7 Another Lead\", \"text\": \"Your approach has drawn a"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "nd gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ttention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "20}}]}, {\"id\": 222, \"title\": \"Desaix's Letter \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": {\"type\": \"goto\", \"next\": 16}}]}, {\"id\": 216, \"title\": \"The Delta Reeds \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 23}}]}, {\"id\": 223, \"title\": \"The Irrigated Garden \\u00b7 Another Lead"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 17}}]}, {\"id\": 218, \"title\": \"The Potters'"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Sa"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " Courtyard \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"c"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "lma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 24}}]}, {\"id\": 224, \"title\": \"The Landing Steps \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "hoices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 19}}]}, {\"id\": 219, \"title\": \"The Palm Terrace \\u00b7 Another Lead\", \"text\": \"Your approach has drawn att"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 25}"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\":"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}]}, {\"id\": 226, \"title\": \"The Caravanserai \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before co"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " {\"type\": \"goto\", \"next\": 20}}]}, {\"id\": 222, \"title\": \"Desaix's Letter \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You co"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ntinuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 27}}]}, {\"id\": 227, \"title\": \"The Carpet Room \\u00b7 Another Lead\", \"tex"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "mpare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 23}}]}, {\"id\": 223, \"title\": \"The Irrigated "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "t\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Garden \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choic"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 28}}]}, {\"id\": 230, \"title\": \"The Seal Maker \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "es\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 24}}]}, {\"id\": 224, \"title\": \"The Landing Steps \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attent"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 31}}]}, {\"id\""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ion. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": 231, \"title\": \"Night on the Terrace \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continui"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "type\": \"goto\", \"next\": 25}}]}, {\"id\": 226, \"title\": \"The Caravanserai \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You comp"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ng your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 32}}]}, {\"id\": 232, \"title\": \"The Road to Embabeh \\u00b7 Another Lead\", \"text\""}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "are the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 27}}]}, {\"id\": 227, \"title\": \"The Carpet Room "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and r"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "esume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 33}}]}, {\"id\": 234, \"title\": \"The General's Tent \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains ti"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 28}}]}, {\"id\": 230, \"title\": \"The Seal Maker \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "me to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 35}}]}, {\"i"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"go"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "d\": 235, \"title\": \"The Earthen Embankment \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before cont"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "to\", \"next\": 31}}]}, {\"id\": 231, \"title\": \"Night on the Terrace \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare th"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "inuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 36}}]}, {\"id\": 238, \"title\": \"The Broken Footbridge \\u00b7 Another Lead\", "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 32}}]}, {\"id\": 232, \"title\": \"The Road to Embabeh \\u"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"t"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 39}}]}, {\"id\": 239, \"title\": \"The Departing Feluccas \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes an"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ext\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 33}}]}, {\"id\": 234, \"title\": \"The General's Tent \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Sal"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "d gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 4"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "0}}]}, {\"id\": 240, \"title\": \"The Old Quay Columns \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts bef"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "goto\", \"next\": 35}}]}, {\"id\": 235, \"title\": \"The Earthen Embankment \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compar"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ore continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 41}}]}, {\"id\": 242, \"title\": \"The Fountain Courtyard \\u00b7 Anothe"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 36}}]}, {\"id\": 238, \"title\": \"The Broken Footbri"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "r Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "dge \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 43}}]}, {\"id\": 243, \"title\": \"The Copyist's Stairs \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma interv"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 39}}]}, {\"id\": 239, \"title\": \"The Departing Feluccas \\u00b7 Another Lead\", \"text\": \"Your approach has drawn atte"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "enes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"n"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ntion. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ext\": 44}}]}, {\"id\": 246, \"title\": \"The Instrument Garden \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the acco"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "{\"type\": \"goto\", \"next\": 40}}]}, {\"id\": 240, \"title\": \"The Old Quay Columns \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. Yo"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "unts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 47}}]}, {\"id\": 247, \"title\": \"The Boat to Giza \\u00b7 Anot"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "u compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 41}}]}, {\"id\": 242, \"title\": \"The Founta"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "her Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Ta"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "in Courtyard \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "lk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 48}}]}, {\"id\": 248, \"title\": \"At the Pyramids \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervene"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 43}}]}, {\"id\": 243, \"title\": \"The Copyist's Stairs \\u00b7 Another Lead\", \"text\": \"Your approach has dra"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "s and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "wn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"out"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\": 49}}]}, {\"id\": 250, \"title\": \"The Workers' Camp \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts be"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "come\": {\"type\": \"goto\", \"next\": 44}}]}, {\"id\": 246, \"title\": \"The Instrument Garden \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mis"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "fore continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 51}}]}, {\"id\": 251, \"title\": \"The Cool Gallery \\u00b7 Another Lea"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "sion. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 47}}]}, {\"id\": 247, \"title\": \"Th"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "d\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to S"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e Boat to Giza \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\""}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "alma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 52}}]}, {\"id\": 254, \"title\": \"The Shadow Survey \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 48}}]}, {\"id\": 248, \"title\": \"At the Pyramids \\u00b7 Another Lead\", \"text\": \"Your approach has drawn "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 55"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcom"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "}}]}, {\"id\": 255, \"title\": \"Return to the Village \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts bef"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "e\": {\"type\": \"goto\", \"next\": 49}}]}, {\"id\": 250, \"title\": \"The Workers' Camp \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. Y"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ore continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 56}}]}, {\"id\": 256, \"title\": \"Copies of the Plan \\u00b7 Another Le"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ou compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 51}}]}, {\"id\": 251, \"title\": \"The Cool "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ad\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Gallery \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choi"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 57}}]}, {\"id\": 258, \"title\": \"The Evening Council \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ces\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 52}}]}, {\"id\": 254, \"title\": \"The Shadow Survey \\u00b7 Another Lead\", \"text\": \"Your approach has drawn atten"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\":"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "tion. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " 59}}]}, {\"id\": 259, \"title\": \"The Written Agreement \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "\"type\": \"goto\", \"next\": 55}}]}, {\"id\": 255, \"title\": \"Return to the Village \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. Yo"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 60}}]}, {\"id\": 262, \"title\": \"Evening over Giza \\u00b7 Another "}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "u compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 56}}]}, {\"id\": 256, \"title\": \"Copies of "}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk t"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "the Plan \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"cho"}}
 
 event: content_block_delta
-data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "o Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 63}}]}]}"}}
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "ices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 57}}]}, {\"id\": 258, \"title\": \"The Evening Council \\u00b7 Another Lead\", \"text\": \"Your approach has drawn at"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "tention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\""}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": ": {\"type\": \"goto\", \"next\": 59}}]}, {\"id\": 259, \"title\": \"The Written Agreement \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission."}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " You compare the accounts before continuing your investigation.\", \"choices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 60}}]}, {\"id\": 262, \"title\": \"Evening"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": " over Giza \\u00b7 Another Lead\", \"text\": \"Your approach has drawn attention. Salma intervenes and gains time to explain the mission. You compare the accounts before continuing your investigation.\", \"c"}}
+
+event: content_block_delta
+data: {"type": "content_block_delta", "index": 1, "delta": {"type": "text_delta", "text": "hoices\": [{\"text\": \"Talk to Salma and resume the journey\", \"outcome\": {\"type\": \"goto\", \"next\": 63}}]}]}"}}
 
 event: content_block_stop
 data: {"type": "content_block_stop", "index": 1}

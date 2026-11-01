@@ -28,6 +28,10 @@ root = "Validate"
 name = "inspect-adventure"
 root = "InspectAdventure"
 
+[[lean_exe]]
+name = "balance-adventure"
+root = "BalanceAdventure"
+
 # Compares the exact Fight model with the simulator, for the add-mechanic skill. It takes
 # minutes, so it is outside the one-minute routine check. Run: lake exe agree
 [[lean_exe]]

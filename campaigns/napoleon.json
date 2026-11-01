@@ -233,14 +233,14 @@
       },
       {
         "scene": 203,
-        "place": 1,
+        "place": 4,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 3,
-        "place": 1,
+        "place": 4,
         "npcs": []
       },
       {
@@ -250,14 +250,14 @@
       },
       {
         "scene": 105,
-        "place": 1,
+        "place": 4,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 5,
-        "place": 1,
+        "place": 4,
         "npcs": [
           "Salma"
         ]
@@ -271,19 +271,19 @@
       },
       {
         "scene": 207,
-        "place": 1,
+        "place": 2,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 7,
-        "place": 1,
+        "place": 2,
         "npcs": []
       },
       {
         "scene": 8,
-        "place": 2,
+        "place": 7,
         "npcs": []
       },
       {
@@ -302,7 +302,7 @@
       },
       {
         "scene": 10,
-        "place": 2,
+        "place": 7,
         "npcs": []
       },
       {
@@ -321,33 +321,33 @@
       },
       {
         "scene": 12,
-        "place": 2,
+        "place": 4,
         "npcs": []
       },
       {
         "scene": 113,
-        "place": 2,
+        "place": 4,
         "npcs": [
           "Amina"
         ]
       },
       {
         "scene": 13,
-        "place": 2,
+        "place": 4,
         "npcs": [
           "Amina"
         ]
       },
       {
         "scene": 214,
-        "place": 2,
+        "place": 3,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 14,
-        "place": 2,
+        "place": 3,
         "npcs": []
       },
       {
@@ -378,12 +378,12 @@
       },
       {
         "scene": 117,
-        "place": 3,
+        "place": 2,
         "npcs": []
       },
       {
         "scene": 17,
-        "place": 3,
+        "place": 2,
         "npcs": []
       },
       {
@@ -402,43 +402,43 @@
       },
       {
         "scene": 219,
-        "place": 3,
+        "place": 5,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 19,
-        "place": 3,
+        "place": 5,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 20,
-        "place": 3,
+        "place": 2,
         "npcs": []
       },
       {
         "scene": 121,
-        "place": 3,
+        "place": 0,
         "npcs": []
       },
       {
         "scene": 21,
-        "place": 3,
+        "place": 0,
         "npcs": []
       },
       {
         "scene": 222,
-        "place": 3,
+        "place": 0,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 22,
-        "place": 3,
+        "place": 0,
         "npcs": [
           "Desaix"
         ]
@@ -457,26 +457,26 @@
       },
       {
         "scene": 224,
-        "place": 4,
+        "place": 2,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 24,
-        "place": 4,
+        "place": 2,
         "npcs": []
       },
       {
         "scene": 125,
-        "place": 4,
+        "place": 2,
         "npcs": [
           "Youssef"
         ]
       },
       {
         "scene": 25,
-        "place": 4,
+        "place": 2,
         "npcs": [
           "Youssef"
         ]
@@ -509,17 +509,17 @@
       },
       {
         "scene": 28,
-        "place": 4,
+        "place": 5,
         "npcs": []
       },
       {
         "scene": 129,
-        "place": 4,
+        "place": 3,
         "npcs": []
       },
       {
         "scene": 29,
-        "place": 4,
+        "place": 3,
         "npcs": []
       },
       {
@@ -538,149 +538,149 @@
       },
       {
         "scene": 231,
-        "place": 4,
+        "place": 5,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 31,
-        "place": 4,
+        "place": 5,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 232,
-        "place": 4,
+        "place": 7,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 32,
-        "place": 4,
+        "place": 7,
         "npcs": []
       },
       {
         "scene": 133,
-        "place": 4,
+        "place": 0,
         "npcs": []
       },
       {
         "scene": 33,
-        "place": 4,
+        "place": 0,
         "npcs": []
       },
       {
         "scene": 234,
-        "place": 4,
+        "place": 0,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 34,
-        "place": 4,
+        "place": 0,
         "npcs": [
           "Napoleon Bonaparte"
         ]
       },
       {
         "scene": 235,
-        "place": 4,
+        "place": 7,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 35,
-        "place": 4,
+        "place": 7,
         "npcs": []
       },
       {
         "scene": 36,
-        "place": 5,
+        "place": 4,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 137,
-        "place": 5,
+        "place": 3,
         "npcs": [
           "Amina"
         ]
       },
       {
         "scene": 37,
-        "place": 5,
+        "place": 3,
         "npcs": [
           "Amina"
         ]
       },
       {
         "scene": 238,
-        "place": 5,
+        "place": 2,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 38,
-        "place": 5,
+        "place": 2,
         "npcs": []
       },
       {
         "scene": 239,
-        "place": 5,
+        "place": 2,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 39,
-        "place": 5,
+        "place": 2,
         "npcs": [
           "Youssef"
         ]
       },
       {
         "scene": 240,
-        "place": 5,
+        "place": 1,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 40,
-        "place": 5,
+        "place": 1,
         "npcs": []
       },
       {
         "scene": 141,
-        "place": 5,
+        "place": 4,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 41,
-        "place": 5,
+        "place": 4,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 242,
-        "place": 5,
+        "place": 3,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 42,
-        "place": 5,
+        "place": 3,
         "npcs": [
           "Farid"
         ]
@@ -699,47 +699,47 @@
       },
       {
         "scene": 44,
-        "place": 6,
+        "place": 4,
         "npcs": []
       },
       {
         "scene": 145,
-        "place": 6,
+        "place": 5,
         "npcs": [
           "Monge"
         ]
       },
       {
         "scene": 45,
-        "place": 6,
+        "place": 5,
         "npcs": [
           "Monge"
         ]
       },
       {
         "scene": 246,
-        "place": 6,
+        "place": 5,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 46,
-        "place": 6,
+        "place": 5,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 247,
-        "place": 6,
+        "place": 2,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 47,
-        "place": 6,
+        "place": 2,
         "npcs": [
           "Youssef"
         ]
@@ -770,14 +770,14 @@
       },
       {
         "scene": 250,
-        "place": 6,
+        "place": 7,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 50,
-        "place": 6,
+        "place": 7,
         "npcs": [
           "Farid"
         ]
@@ -796,19 +796,19 @@
       },
       {
         "scene": 52,
-        "place": 6,
+        "place": 7,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 153,
-        "place": 6,
+        "place": 3,
         "npcs": []
       },
       {
         "scene": 53,
-        "place": 6,
+        "place": 3,
         "npcs": []
       },
       {
@@ -828,99 +828,99 @@
       },
       {
         "scene": 255,
-        "place": 6,
+        "place": 3,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 55,
-        "place": 6,
+        "place": 3,
         "npcs": [
           "Amina"
         ]
       },
       {
         "scene": 256,
-        "place": 6,
+        "place": 0,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 56,
-        "place": 6,
+        "place": 0,
         "npcs": []
       },
       {
         "scene": 157,
-        "place": 6,
+        "place": 2,
         "npcs": [
           "Youssef"
         ]
       },
       {
         "scene": 57,
-        "place": 6,
+        "place": 2,
         "npcs": [
           "Youssef"
         ]
       },
       {
         "scene": 258,
-        "place": 6,
+        "place": 0,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 58,
-        "place": 6,
+        "place": 0,
         "npcs": [
           "Napoleon Bonaparte"
         ]
       },
       {
         "scene": 259,
-        "place": 6,
+        "place": 4,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 59,
-        "place": 6,
+        "place": 4,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 60,
-        "place": 0,
+        "place": 7,
         "npcs": [
           "Farid"
         ]
       },
       {
         "scene": 161,
-        "place": 0,
+        "place": 3,
         "npcs": []
       },
       {
         "scene": 61,
-        "place": 0,
+        "place": 3,
         "npcs": []
       },
       {
         "scene": 262,
-        "place": 0,
+        "place": 6,
         "npcs": [
           "Salma"
         ]
       },
       {
         "scene": 62,
-        "place": 0,
+        "place": 6,
         "npcs": [
           "Salma"
         ]
@@ -932,7 +932,7 @@
       },
       {
         "scene": 64,
-        "place": 3,
+        "place": 0,
         "npcs": [
           "Salma"
         ]
@@ -2718,10 +2718,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Continue to the harbour",
           "outcome": {
             "type": "goto",
-            "next": 1
+            "next": 2
           }
         }
       ]
@@ -2739,10 +2739,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 5
+            "next": 3
           }
         }
       ]
@@ -2760,10 +2760,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 9
+            "next": 7
           }
         }
       ]
@@ -2781,10 +2781,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 13
+            "next": 11
           }
         }
       ]
@@ -2802,10 +2802,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 17
+            "next": 15
           }
         }
       ]
@@ -2823,10 +2823,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 21
+            "next": 19
           }
         }
       ]
@@ -2844,10 +2844,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 25
+            "next": 23
           }
         }
       ]
@@ -2865,10 +2865,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 29
+            "next": 27
           }
         }
       ]
@@ -2886,10 +2886,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 33
+            "next": 31
           }
         }
       ]
@@ -2907,10 +2907,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 37
+            "next": 35
           }
         }
       ]
@@ -2928,10 +2928,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 41
+            "next": 39
           }
         }
       ]
@@ -2949,10 +2949,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 45
+            "next": 43
           }
         }
       ]
@@ -2970,10 +2970,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 49
+            "next": 47
           }
         }
       ]
@@ -2991,10 +2991,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 53
+            "next": 51
           }
         }
       ]
@@ -3012,10 +3012,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 57
+            "next": 55
           }
         }
       ]
@@ -3033,10 +3033,10 @@
           }
         },
         {
-          "text": "Return to compare the clues",
+          "text": "Return along the survey route",
           "outcome": {
             "type": "goto",
-            "next": 61
+            "next": 59
           }
         }
       ]

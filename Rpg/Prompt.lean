@@ -91,7 +91,7 @@ def dangerText (difficulty : Probability.Difficulty) : String :=
     (List.range (liveHorizon + 1)).map (fun row => bandText row difficulty) ++ [
     s!"- Selected difficulty: {difficulty.key}. Target survival after ten scene choices: {(difficulty.survivalAtTen * 100).floor}%. This is survival, not death probability. Shape is two. Offer negotiation, scouting and safe detours alongside danger. A human is not required to follow the uniform test policy.",
     s!"- Most paths must be at least {liveHorizon + 2} Choices long. A turn that too few games reach fails.",
-    "- If the check fails, you get the numbers for each turn that failed. Make Fights harder or easier, or move them earlier or later. The rules cannot change."])
+    "- If the check fails, you get the numbers for each turn that failed. Make Fights harder or easier, or move them earlier or later. The engine rules and fairness policy stay fixed. The server first tunes enemy strength and combat skill on training games. If that fails, revise encounter frequency and graph branches using the training diagnostics."])
 
 /-- The DM's instructions for an Adventure. They are the same on every try and every Wish, and
 `requestBody` marks them for the prompt cache. -/
@@ -120,6 +120,7 @@ def dmSystemPromptFor (difficulty : Probability.Difficulty) : String :=
     "  - `roll`: a Success Roll against a skill or an attribute (ST, DX, IQ, HT) at `modifier`, then go to `onSuccess` or `onFailure`.",
     "  - `fight`: fight the Creatures in `foes`. On a win, go to `onWin`. If the Character dies, the game ends.",
     "- Every Scene that an outcome names must exist.",
+    "- The non-cyclic check forbids cycles of 1, 2 or 3 event edges, including all roll results and fight-win targets. A return route must contain at least 4 distinct events before returning to its start.",
     "- Every Scene must be reachable from the start Scene.",
     "- From every Scene, some path of Choices must lead to an Ending. Count every outcome target, whatever the dice do.",
     "",
@@ -153,7 +154,7 @@ def dmSystemPromptFor (difficulty : Probability.Difficulty) : String :=
     "- `paths`: at most 30 objects {fromPlace,toPlace}; valid different place ids, connected as an undirected network. These are visible trails; walking on them never triggers a story choice.",
     "- `props`: at most 80 objects {kind,x,z,scale,heading}. Kinds: pyramid, palm, tree, rock, house, tent, column, boat, river. Coordinates [-100,100], scale 50 to 200 percent, heading 0 to 359 degrees. Use the available reusable models to evoke the Wish; do not send code, model URLs or new commands.",
     "- Keep solid props clear of every place centre: distance >= 10 + model radius in metres. Radius is ceil(scale/100 * (12 for pyramid, 5 for house, 3 otherwise)). Rivers are shallow decorative water and exempt. Keep a 4-metre-wide clear corridor along every path. Spread props across the map, with visible landmarks and varied destinations.",
-    "- `scenes`: exactly one {scene,place,npcs} mapping for EVERY story scene including endings. Scene ids must exist, place ids must exist. `npcs` lists at most 4 English names (1 to 60 characters) of people visibly present in this scene; use [] when nobody is present. Those people are rendered as characters. Nearby story events should share a place; moving to another chapter can send the player to another location. Revisit earlier places when the story calls for it.",
+    "- `scenes`: exactly one {scene,place,npcs} mapping for EVERY story scene including endings. Scene ids must exist, place ids must exist. `npcs` lists at most 4 English names (1 to 60 characters) of people visibly present in this scene; use [] when nobody is present. Those people are rendered as characters. Use every named place. At least one third of story edges must lead to a different place. Distribute investigations, NPC meetings and fights across nearby destinations throughout each chapter; never put a whole chapter at one interaction point. Revisit earlier places when the story calls for it.",
     "- Only the story graph defines actions. The renderer places exactly the current scene's options as objects or NPCs at its mapped place. The environment never adds a choice, hazard, die roll, damage or outcome.",
     "",
     "## Pictures",

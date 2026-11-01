@@ -1,4 +1,4 @@
-import Rpg.Adventure
+import Rpg.EventGraph
 import Lean
 
 /-! A bounded scene plan for the renderer. It contains no game commands or outcomes.
@@ -119,6 +119,15 @@ def WorldEnvironment.errors (e : WorldEnvironment) (a : Adventure) : List String
         | some a, some b =>
           if p.blocksPath a b then errors := errors ++ ["environment: a solid prop blocks a path corridor"]
         | _, _ => pure ()
+  if a.scenes.length >= 16 then
+    for p in e.places do
+      if !e.scenes.any (·.place == p.id) then
+        errors := errors ++ [s!"environment: place {p.name} has no story events"]
+    let edges := a.eventEdges.eraseDups
+    let cross := edges.filter fun (u,v) =>
+      (e.scenes.find? (·.scene == u)).map (·.place) != (e.scenes.find? (·.scene == v)).map (·.place)
+    if cross.length * 3 < edges.length then
+      errors := errors ++ ["environment: at least one third of event edges must connect different places; distribute the story across the map"]
   for s in a.scenes do
     if s.choices.length > 4 then
       errors := errors ++ [s!"environment: Scene {s.id} has more than 4 spatial choices"]

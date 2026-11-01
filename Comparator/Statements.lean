@@ -1,4 +1,5 @@
 import Rpg.Play
+import Rpg.GraphValidity
 import Rpg.Adventures.Lighthouse.Confidence
 
 /-!
@@ -47,5 +48,17 @@ theorem lighthouse_default_rules :
 
 /-- The fairness test is sound for every candidate, under the binomial sampling model. -/
 theorem fair (a : Probability.StatisticalCandidate) : Probability.Fair a := sorry
+
+/-- The graph validity certificate includes legality, event structure and observed balance. -/
+theorem equilibrium (g : ValidatedGraph) :
+    GraphValid g.statistical.candidate g.statistical.seed g.statistical.counts :=
+  g.equilibrium
+
+/-- Every nonempty closed event walk of a checked graph has at least four edges. -/
+theorem «non-cyclic» (a : Adventure)
+    (checked : a.checkEventCycles = true)
+    (walk : EventWalk a s s n)
+    (positive : 0 < n) : 4 ≤ n :=
+  a.«non-cyclic» checked walk positive
 
 end Verified

@@ -2,7 +2,9 @@
 
 Local run: 1 November 2026, macOS, branch `RPG_3D`.
 
-## Checks completed
+## Previous world implementation (before automatic balancing)
+
+### Checks completed
 
 - Lean build: 76 jobs, successful, no unfinished proof warnings.
 - Eighteen JavaScript tests pass: offered-command identity, rejected/missing mappings, combat targets, report-driven health and dice, scene coverage, movement without graph changes, collisions, and path/interaction reachability in desert and forest plans.
@@ -45,3 +47,47 @@ In one local assembly/inspection run: file assembly including the world was 2.94
 No live Claude generation was tested because no API key was configured. Its real latency, retries, model output quality and ability to satisfy a given difficulty remain to be measured with a key. The existing longer 30/60-choice diagnostics are not admission guarantees.
 
 Comparator and `lake check` require their Linux sandbox and remain unexecuted successfully on this macOS environment. This report does not claim end-to-end formal verification of WebGL, collision physics, language or story quality.
+
+
+## Graph validity and automatic balancing — 1 November 2026
+
+The new theorem names are `equilibrium` and `non-cyclic`. Their complete statements are in
+`3d-formalization.md`, alongside the reference to the fairness theorem. They compile in Lean;
+axiom audits find only `propext`, `Quot.sound` and `Classical.choice`. The non-cyclic proof uses
+only `propext` and `Quot.sound`. Comparator entries include both names; Linux sandbox replay
+with `lake comparator` / `lake check` remains unavailable on this macOS host.
+
+The Napoleon source now has no cycles of lengths 1, 2 or 3. Longer optional investigation
+loops remain, and the minimum successful main route still requires 64 choices. All eight
+places host events, at least one third of event edges change place, and stable event offsets
+vary the interaction positions within each clear area. Map markers have readable numbers
+with a location legend on hover and in the accessible description.
+
+The tuner checks 15 strength/weapon-skill combinations on a fixed training seed (20261101),
+using 256 games per legal combination. It then screens the selected candidate with 1,000
+training games. A frozen candidate receives one held-out batch with seed 20261103 for this
+reproducible experiment. This held-out seed was not searched. Actual foe ST/knife levels
+changed from 14/15 to 16/17 for Medium and 18/17 for Hard; Easy retained 14/15. Hero, edges,
+story and environment remain unchanged by tuning.
+
+| Difficulty | Final admission, 15 choices / 1,000 games | Observed survival at 10 | Training + final test |
+| --- | --- | ---: | ---: |
+| Easy | Pass | 47.1% | 15.986 s |
+| Medium | Pass | 30.4% | 16.795 s |
+| Hard | Pass | 18.0% | 18.482 s |
+
+These are observed proportions, not the reference targets. In particular, the existing
+conditional-row tolerance permits Hard to pass at 18% observed survival although its reference
+curve targets 10%. The test and tolerance were not weakened. Counts and exact interval endpoints
+are in `reports/balanced-difficulties.json`. Reproducing the batch is not additional evidence.
+
+A production Wish request on a separate local server, using recorded SSE responses, rejected
+a disconnected environment, consumed a corrected response, balanced Hard and passed final
+admission in 20.287 s (3.015 s fixture delays; 17.267 s checks). No live Claude call was made.
+Failures in structural/training checks allow up to six authoring attempts; a failed final
+holdout stops the run and cannot silently trigger fresh seed trials.
+
+Verification: full Lean build, 20 JavaScript tests, positive/negative Lean graph examples,
+all three difficulty runs, the real Wish route, save/load, and a browser walk to Napoleon
+followed by the offered transition to Salma's scene. The static world and player position
+persisted across that transition. The user's existing game on port 8093 was kept running.

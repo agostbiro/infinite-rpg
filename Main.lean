@@ -1,4 +1,5 @@
 import Rpg.Prompt
+import Rpg.Balance
 import Rpg.Catalog
 import Std.Http
 
@@ -654,13 +655,13 @@ def randomSeed : IO Nat := do
   let bytes ← IO.getRandomBytes 8
   return bytes.foldl (fun acc b => acc * 256 + b.toNat) 0
 
-/-- Ask the DM for an Adventure for a Wish: up to 3 tries. After a failed try, the DM gets the
+/-- Ask the DM for an Adventure for a Wish: up to 6 structural repairs. After a failed try, the DM gets the
 errors and sends a fixed version. -/
 def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
     (wish name gender : String) (difficulty : Probability.Difficulty) : IO Unit := do
   let mut messages := [userTurn (wishMessage wish name gender)]
   let mut lastErrors : List String := []
-  for attempt in [1, 2, 3] do
+  for attempt in [1, 2, 3, 4, 5, 6] do
     let text := if attempt == 1 then "The Dungeon Master is writing..." else "The Dungeon Master is fixing them..."
     if !(← addStep ref job { text }) then return
     let apiStarted ← IO.monoMsNow
@@ -685,25 +686,38 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
         | .error e => pure ([s!"the JSON does not read: {e}"], none, content)
         | .ok d =>
           let d := { d with validationProfile := difficulty.profile }
-          -- A fresh random seed for each try, so the DM cannot tune its story to one batch of games.
-          -- In test mode (`RPG_FAKE_API`) the seed is fixed, so `make run-fake` gives the same result each time.
-          let fairnessSeed ← if cfg.fake.isSome then pure 1 else randomSeed
           let checkStarted ← IO.monoMsNow
-          let result := d.toGame fairnessSeed
+          if !(← addStep ref job { text := "Balancing encounters on a separate training batch..." }) then return
+          let tuned ← balanceDraft d fun _ => jobWanted ref job
+          let result := tuned
           let checkFinished ← IO.monoMsNow
           ref.modify fun s => if s.gen.job != job then s else
             { s with gen := { s.gen with validationMs := s.gen.validationMs + checkFinished - checkStarted } }
           match result with
-          | .ok g =>
-            if !(← addStep ref job { text := "The Adventure passed the checker and the fairness check." }) then return
-            adopt cfg children ref job d g wish fairnessSeed
-            return
+          | .ok balanced =>
+            -- Freeze the candidate before selecting its one holdout batch.
+            if !(← addStep ref job { text := "Checking graph validity and fairness on 1,000 fresh games..." }) then return
+            let fairnessSeed ← if cfg.fake.isSome then pure 20261103 else randomSeed
+            let heldoutStart ← IO.monoMsNow
+            let finalCheck := balanced.toGame fairnessSeed
+            let heldoutEnd ← IO.monoMsNow
+            ref.modify fun s => if s.gen.job != job then s else
+              { s with gen := { s.gen with validationMs := s.gen.validationMs + heldoutEnd - heldoutStart } }
+            match finalCheck with
+            | .ok g =>
+              if !(← addStep ref job { text := "The Adventure passed graph validity, event-cycle and fairness checks." }) then return
+              adopt cfg children ref job balanced g wish fairnessSeed
+              return
+            | .error errs =>
+              -- Never adapt to a failed holdout and repeatedly sample until it passes.
+              endJob ref job .failed { text := "The independent balance test failed. This Adventure was not admitted.", errors := errs }
+              return
           | .error errs => pure (errs, some d.hero, content)
     lastErrors := errors
     if !(← addStep ref job { text := errorsText errors.length, errors }) then return
     messages := messages ++ [assistantTurn content, userTurn (fixMessage errors hero?)]
   endJob ref job .failed
-    { text := "The Dungeon Master could not write a legal and fair Adventure in 3 tries.", errors := lastErrors }
+    { text := "The Dungeon Master could not write a legal and fair Adventure in 6 repairs.", errors := lastErrors }
 
 /-- Start the work on a Wish in the background. Returns `false`, and does nothing, if the DM is
 already writing. The check and the start are one atomic step. -/

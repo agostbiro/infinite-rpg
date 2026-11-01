@@ -9,7 +9,13 @@
     "Verified.step_rejects",
     "Verified.mem_inputs_iff",
     "Verified.lighthouse_default_rules",
-    "Verified.fair"
+    "Verified.fair",
+    "Verified.equilibrium",
+    "Verified.non-cyclic"
   ],
-  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
 }

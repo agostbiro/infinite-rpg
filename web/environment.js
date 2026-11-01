@@ -37,9 +37,18 @@ export function placeForScene(environment, sceneId) {
     || environment.places[Math.floor((sceneId || 0) / 4) % environment.places.length];
 }
 
+/** Stable event positions within the checked clear area, distinct from its centre. */
+export function eventAnchorForScene(environment, sceneId) {
+  const place = placeForScene(environment, sceneId);
+  const localScenes = environment.scenes.filter(s => s.place === place.id);
+  const slot = Math.max(0, localScenes.findIndex(s => s.scene === sceneId));
+  const angle = (slot % 8) * Math.PI / 4;
+  return {x: place.x + 2.8*Math.sin(angle), z: place.z + 2.8*Math.cos(angle)};
+}
+
 /** Distinct objects in a clear square at the active location. No destination inference. */
-export function worldLayout(portals, place, anchor = null) {
-  const center = anchor || place;
+export function worldLayout(portals, place, anchor = null, eventAnchor = null) {
+  const center = anchor || eventAnchor || place;
   return {
     bound: WORLD_BOUND, place, center,
     spawn: { x: place.x, z: place.z + 5 },

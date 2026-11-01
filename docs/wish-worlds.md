@@ -4,8 +4,8 @@ Every new Wish follows this pipeline:
 
 1. The player supplies a Wish and `easy`, `medium` or `hard`.
 2. Claude returns one JSON adventure: English story, legal character, graph, and `environment`.
-3. `Draft.ofJson` decodes it. The structural validator checks the world, the existing checker checks the character and graph, then 1,000 uniform-player simulations check 15 scene choices.
-4. On failure, the errors are sent back to Claude, up to three attempts. A failed adventure cannot be loaded.
+3. `Draft.ofJson` decodes it. The validator checks world layout, character legality, graph legality and the absence of event cycles of one, two or three edges.
+4. Local balancing tests 15 enemy strength/skill variants with 256 training games each, then checks the selected candidate on 1,000 training games. Structural or training errors go back to Claude for up to six repairs. Once frozen, a candidate receives one independent final batch of 1,000 games through 15 choices. A failed final batch stops admission; the server does not search final seeds for a passing result.
 5. The accepted JSON is saved with its fairness profile and simulation seed. Three.js builds the persistent world locally. A generated world needs no additional image or model API requests.
 
 The Napoleon example is authored data in `campaigns/napoleon.json`. The renderer does not contain its map, coordinates or scene-to-place mapping. Any Wish uses the same format and reusable models. NPC costumes may have cosmetic name-based hints; they cannot change commands.
@@ -24,6 +24,8 @@ The full API schema is `Rpg/Prompt.lean:adventureSchema`. Its `environment` fiel
 
 Place kinds: `camp`, `harbour`, `village`, `market`, `ruins`, `temple`, `forest`, `outpost`.
 Prop kinds: `pyramid`, `palm`, `tree`, `rock`, `house`, `tent`, `column`, `boat`, `river`.
+
+For campaigns with at least 16 scenes, every place must host events and at least one third of unique event edges must cross between places. Within a place, stable scene-specific offsets vary interaction positions without moving the landscape.
 
 Each scene has at most four choices in this spatial format. Solid props must avoid each location's 10 m interaction area and a 4 m wide corridor along every path. Runtime movement uses conservative collision discs. Rivers are shallow visual water; they introduce no drowning rule. Built-in scenery also avoids those corridors. The world is a 230 × 230 m walking area; its coordinates and scene placements remain stable for the adventure.
 
@@ -51,7 +53,7 @@ Lean evaluates the discrete curve `S(n) = q^(n²)` using rational parameters:
 
 Kernel-checked theorems establish valid parameters, strictly ordered ten-choice survival, and approximation error below one millionth. The selected profile is imposed by the server, supplied to Claude, used by statistical admission, and preserved on save/load and retry.
 
-These are reference curves. The admission test retains its 90% confidence intervals and 0.2 tolerance for the existing conditional-death rows. Passing does **not** prove that an actual adventure has exactly 50%, 30% or 10% survival at ten choices, or establish fairness for an unbounded campaign. Human choices can have different outcomes. The Napoleon example retains its previously admitted `exploration-10-v1` profile.
+These are reference curves. The admission test retains its 90% confidence intervals and 0.2 tolerance for the existing conditional-death rows. Passing does **not** prove that an actual adventure has exactly 50%, 30% or 10% survival at ten choices, or establish fairness for an unbounded campaign. Human choices can have different outcomes. The authored Napoleon source retains its `exploration-10-v1` profile; the balancing command produces independently checked versions for the three selected difficulty profiles.
 
 ## Run and inspect
 
@@ -60,10 +62,14 @@ Set `ANTHROPIC_API_KEY` in the server's environment, then run `make run`. Never 
 For a local file:
 
 ```sh
-lake build inspect-adventure
+lake build inspect-adventure balance-adventure
 .lake/build/bin/inspect-adventure campaigns/napoleon.json --horizon 14 --seed 20261103
+.lake/build/bin/balance-adventure campaigns/napoleon.json hard work/balanced-hard.json
 ```
 
 For deterministic testing without API charges, `make run-fake` replays local SSE fixtures through the same decoder, validator and admission test. The first fixture contains a disconnected world and is rejected. The corrected fixture is checked again with the selected difficulty. This is not a measurement of Claude's generation latency.
 
 API integration uses [Anthropic's structured JSON output format](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) and the configured [Claude Opus 5.5 model](https://platform.claude.com/docs/en/models/opus-5-5/overview). No live generation was attempted without a key.
+
+
+The theorem names are `equilibrium` and `non-cyclic`; see the [formalization](3d-formalization.md#10-theorem-equilibrium-validity-includes-balance). Generation is a bounded repair process, not an existence theorem for arbitrary or contradictory prompts. API failures and a failed independent batch still prevent play.

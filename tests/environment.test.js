@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {environmentFor,placeForScene,worldLayout,sceneryFor,propRadius,moveInWorld} from '../web/environment.js';
+import {environmentFor,placeForScene,eventAnchorForScene,worldLayout,sceneryFor,propRadius,moveInWorld} from '../web/environment.js';
 import {portalsForView, crossedPortal, themeFor} from '../web/spatial.js';
 const campaign=JSON.parse(fs.readFileSync(new URL('../campaigns/napoleon.json',import.meta.url)));
 const forest={theme:'forest',places:[{id:9,name:'Pine Camp',kind:'camp',x:-40,z:30},{id:3,name:'Hidden Ruins',kind:'ruins',x:40,z:-30}],paths:[{fromPlace:9,toPlace:3}],props:[{kind:'tree',x:-50,z:-40,scale:200,heading:0}],scenes:[{scene:42,place:3}]};
@@ -58,4 +58,45 @@ test('English campaign content and exact scene coverage are supplied as data',()
   const ids=campaign.environment.scenes.map(s=>s.scene);
   assert.equal(new Set(ids).size,campaign.scenes.length);
   assert.deepEqual([...ids].sort((a,b)=>a-b),campaign.scenes.map(s=>s.id).sort((a,b)=>a-b));
+});
+
+
+test('story events visit every place and do not cluster the campaign at one objective',()=>{
+  const e=campaign.environment;
+  const location=new Map(e.scenes.map(s=>[s.scene,s.place]));
+  assert.equal(new Set(location.values()).size,e.places.length);
+  const edges=campaign.scenes.flatMap(s=>s.choices.flatMap(c=>{
+    const o=c.outcome;
+    const targets=o.type==='goto'?[o.next]:o.type==='fight'?[o.onWin]:[o.onSuccess,o.onFailure];
+    return targets.map(t=>[s.id,t]);
+  }));
+  assert.ok(edges.filter(([u,v])=>location.get(u)!==location.get(v)).length*3>=edges.length);
+  const has=(u,v)=>edges.some(([a,b])=>a===u&&b===v);
+  for(const [u,v] of edges) {
+    assert.notEqual(u,v);
+    assert.ok(!has(v,u));
+    for(const [a,w] of edges) if(a===v) assert.ok(!has(w,u), `${u} → ${v} → ${w} → ${u}`);
+  }
+});
+
+test('event offsets vary within a place and every shifted interaction stays accessible',()=>{
+  const e=campaign.environment;
+  assert.notDeepEqual(eventAnchorForScene(e,0),eventAnchorForScene(e,1));
+  const obstacles=sceneryFor(e).filter(p=>p.kind!=='river').map(p=>({...p,radius:propRadius(p)}));
+  for(const scene of campaign.scenes) {
+    const inputs=scene.choices.map((_,choice)=>({choose:{choice}}));
+    const view={phase:'scene',inputs,scene:{...scene,choices:scene.choices.map((c,i)=>({...c,input:inputs[i]}))}};
+    const place=placeForScene(e,scene.id), anchor=eventAnchorForScene(e,scene.id);
+    const layout=worldLayout(portalsForView(view),place,null,anchor);
+    assert.deepEqual(layout.portals.map(p=>p.input),inputs);
+    for(const target of layout.portals) {
+      assert.ok(Math.hypot(target.x-place.x,target.z-place.z)<9.3);
+      let p={x:target.x,z:target.z+2.2},selected=null;
+      for(let i=0;i<12&&!selected;i++) {
+        const next=moveInWorld(p,0,-0.2,obstacles);
+        selected=crossedPortal(p,next,layout.portals); p=next;
+      }
+      assert.equal(selected?.key,target.key);
+    }
+  }
 });
