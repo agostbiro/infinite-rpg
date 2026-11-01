@@ -1,7 +1,8 @@
 # Exact binomial balance intervals
 
 `Rpg.Probability.StatisticalCandidate.balanced` is the main theorem, specialized as
-`Rpg.TestAdventure.balanced`. It is a theorem about the test, true for every candidate.
+`Rpg.Lafayette.balanced` (the built-in Adventure) and `Rpg.TestAdventure.balanced`. It is a theorem
+about the test, true for every candidate.
 What admits an Adventure is the run-time check `admitStatistically` (fixed seed) or
 `admitWithSeed` (a Wish, with a fresh seed).
 
@@ -18,8 +19,8 @@ What admits an Adventure is the run-time check `admitStatistically` (fixed seed)
 
 The constants are `validationGames` and `validationSeed` in
 `Rpg/Probability/StatisticalAdmission.lean`, and `confidenceDelta` in
-`Rpg/Probability/Confidence.lean`. The frozen seed is 20261103. The test Adventure and every Wish use
-horizon 5. There is no claim beyond the selected window. Only rows 3 and later have a band with a
+`Rpg/Probability/Confidence.lean`. The frozen seed is 20261103. The built-in Adventure, the test Adventure, and every Wish
+use horizon 5. There is no claim beyond the selected window. Only rows 3 and later have a band with a
 lower edge above 0, so a candidate needs horizon 3 or more before the check can reject an
 Adventure where the Character never dies (`TestStory.lean` shows this).
 
@@ -101,7 +102,28 @@ Continuing beyond the window is allowed. Zero qualifying observations cannot pas
 A failed batch is not retried until it passes; a changed protocol or tuning against
 validation data needs a fresh precommitted experiment.
 
-The rest of this section and the next one are history: they describe the check with
+## The built-in Adventure, Lafayette at Barren Hill
+
+`make validate` runs the balance check on the built-in Adventure, and the server runs it at
+start-up with the frozen seed. The server does not start if it fails. `make validate SEED=n` runs
+it with another seed. Each cell gives deaths / qualifying games and the interval enclosure. The
+foes and Lafayette's build were tuned in a few rounds against the frozen seed, so these rows show
+that the check passes at three seeds, not new independent evidence.
+
+| Row | Band | Seed 20261103 | Seed 1 | Seed 7 |
+|---|---:|---:|---:|---:|
+| First turn | 0.0% to 25.0% | 0/1200 (0.0% to 0.4%) | 0/1200 (0.0% to 0.4%) | 0/1200 (0.0% to 0.4%) |
+| Death at 2, active at 0 | 0.0% to 33.5% | 0/1200 (0.0% to 0.4%) | 0/1200 (0.0% to 0.4%) | 0/1200 (0.0% to 0.4%) |
+| Death at 3, active at 1 | 0.0% to 39.3% | 180/1200 (12.9% to 17.2%) | 166/1200 (11.7% to 16.0%) | 170/1200 (12.1% to 16.4%) |
+| Death at 4, active at 2 | 3.3% to 43.3% | 132/1200 (9.0% to 13.3%) | 131/1200 (9.0% to 12.9%) | 146/1200 (10.2% to 14.5%) |
+| Death at 5, active at 3 | 5.8% to 45.8% | 205/1020 (17.6% to 23.0%) | 218/1034 (18.4% to 23.8%) | 189/1030 (16.0% to 21.1%) |
+| Death at 6, active at 4 | 7.1% to 47.1% | 312/888 (31.6% to 38.7%) | 323/903 (32.4% to 39.1%) | 307/884 (31.2% to 38.3%) |
+
+All three batches are ACCEPTED, with no exemption.
+
+## History
+
+This section and the next one are history: they describe the check with
 `defaultPolicy` at 1,000 games, before the batch grew to 1,200.
 
 The policy changed in the merge with the browser game (ADR 0004): Mara has a broadsword

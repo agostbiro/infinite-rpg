@@ -2,22 +2,23 @@
 
 Work that is still open after the port of the 3D client. Do these in this order.
 
-## 1. Add a new built-in default Adventure
+## 1. Add a new built-in default Adventure (mostly done)
 
-The Lighthouse is removed (ADR 0007). Add a new built-in Adventure in its place.
+Done: the built-in Adventure is Lafayette at Barren Hill (`Rpg/Adventures/Lafayette/`). It passes
+the checker, the short-loop rule, and the balance check with `defaultPolicy`, with no exemption.
+It has a card on the Front Page, and the server holds it at start-up (`builtinGame` in
+`Main.lean`), after the checker and the balance check pass. The Comparator example theorems are
+now `barren_hill_legal`, `barren_hill_reaches_ending`, and `barren_hill_default_rules`, and
+`make validate` runs on it.
 
-- It must pass the checker, the short-loop rule (No Short Loops), and the balance check with the
-  one balance curve (`defaultPolicy`, ±20 points). It needs no exemption.
-- Give it a card on the Front Page (see `renderGrid` in `web/app.js`), and let the server start it.
-  It takes the place of `homeGame` in `Main.lean`.
-- Move these from the test Adventure (`Rpg/Adventures/TestAdventure/`) to it:
-  - the Comparator example theorems `test_adventure_legal`, `test_adventure_reaches_ending`, and
-    `test_adventure_default_rules` (rename them, in `Comparator/` and `comparator.json`)
-  - `make validate`, `make cheats`, `make agree`, and `lake exe change-check`
-  - the balance study (`BalanceStudy.lean`, `experiments/plan.json`). Run it again, and make new
-    results in `experiments/results/`. The results there now come from the Lighthouse.
-- Run the balance study again at 1,200 games (`validationGames`). `lake exe balance-study` now
-  refuses `experiments/plan.json`, because the plan asks for 1,000 games.
+Still open:
+
+- `make cheats`, `make agree`, and `lake exe change-check` still run on the test Adventure
+  (`Rpg/Adventures/TestAdventure/`). Move them if that is useful.
+- The balance study (`BalanceStudy.lean`, `experiments/plan.json`) still runs on the test
+  Adventure. Run it again at 1,200 games (`validationGames`), and make new results in
+  `experiments/results/`. The results there now come from the Lighthouse. `lake exe balance-study`
+  now refuses `experiments/plan.json`, because the plan asks for 1,000 games.
 
 ## 2. Add back the fake-mode Wish
 

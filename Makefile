@@ -81,10 +81,11 @@ test-browser: build
 cheats:
 	lake exe cheats
 
-# Run the balance check on the test Adventure (The Bandit Camp), and print each row with its
-# interval and range.
+# Run the balance check on the built-in Adventure (Lafayette at Barren Hill), and print each row
+# with its interval and range. It uses the fixed validation seed. To try another seed:
+# make validate SEED=7
 validate:
-	lake exe validate
+	lake exe validate $(if $(SEED),--seed $(SEED),)
 
 # Check that the main theorems in Comparator/Proofs.lean prove the statements in
 # Comparator/Statements.lean, pass the kernel, and use only the standard axioms (see comparator.json).

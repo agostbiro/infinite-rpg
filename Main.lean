@@ -1,5 +1,6 @@
 import Rpg.WorldChangePrompt
 import Rpg.Catalog
+import Rpg.Adventures.Lafayette
 import Std.Http
 
 /-!
@@ -8,7 +9,8 @@ import Std.Http
 This program serves the game to a browser with core `Std.Http`. By default it listens on
 `localhost` (127.0.0.1) only. `--host A.B.C.D` makes it listen on that IPv4 (Internet Protocol
 version 4) address instead, for example to play from the host of a VM (virtual machine).
-It keeps one game in memory. The page draws the view that the server sends,
+It keeps one game in memory: at start, the built-in Adventure, Lafayette at Barren Hill, which
+plays without an API key. The page draws the view that the server sends,
 and sends back the Player's inputs. All rules and dice stay in Lean (`Rpg.step`).
 
 The Player can also type a Wish. The server then asks the Claude API for an Adventure and a
@@ -26,6 +28,8 @@ Routes:
   view, and changes nothing.
 * `POST /api/new`: start the same Adventure again, in the `title` phase (before the first Scene), with a
   new seed. The page then shows the Front Page.
+* `POST /api/builtin`: start the built-in Adventure, Lafayette at Barren Hill, in the `title` phase,
+  with a new seed. It needs no API key.
 * `POST /api/wish`: ask the DM for an Adventure. The body is `{"wish", "name", "gender"}`.
 * `POST /api/change`: request an adventure rule change at the current checkpoint, with `{"wish"}`.
 * `POST /api/retry`: ask again with the last Wish after 3 failed tries, or with the last live change
@@ -63,12 +67,11 @@ structure Session where
 def Session.start (g : Game) (seed : Nat) : Session :=
   { fresh := g, game := g, dice := ⟨seed.toUInt64⟩, seed, reports := #[] }
 
-/-- The game that the server holds while no Adventure is loaded, so that the Front Page shows. It
-is the test Adventure. The Player cannot play it: `/api/input` refuses every input until a saved
-Adventure is loaded. A built-in default Adventure can take this place later (see
-`docs/follow-ups.md`). -/
-def homeGame : Game :=
-  Game.new TestAdventure.testAdventureDefinition
+/-- The built-in game: Lafayette at Barren Hill. The server holds it when it starts. The proofs
+are the shipped theorems. `main` runs the checker and the balance check on it before the server
+starts, and stops if either fails. -/
+def builtinGame : Game :=
+  Game.new Lafayette.barrenHillDefinition
 
 /-- Apply one input. Returns the new session, or the reason the input was refused.
 A refused input leaves the session as it was. -/
@@ -156,6 +159,15 @@ structure ServerState where
   /-- Validation attempts for live changes. Cancellation never refunds their error budget. -/
   changeChecks : Nat := 0
 
+/-- The built-in Adventure's World, Intro, Character background, and world map. They change only
+what the Player sees. -/
+def builtinSource : Source where
+  world := Lafayette.world
+  intro := Lafayette.intro
+  background := some Lafayette.background
+  environment := some Lafayette.worldMap
+  freshEnvironment := some Lafayette.worldMap
+
 /-- What an Adventure card on the front page shows. -/
 structure AdventureCard where
   title : String
@@ -167,6 +179,11 @@ structure AdventureCard where
   about : String := ""
   /-- Where the Adventure comes from, such as "From a Wish". -/
   source : String := ""
+
+/-- The card of the built-in Adventure. -/
+def builtinCard : AdventureCard :=
+  { title := Lafayette.barrenHill.title, world := builtinSource.world, hero := Lafayette.lafayette.name,
+    about := builtinSource.background.getD "", source := "Built in, no API key needed" }
 
 /-- A checked entry of the saved list: the folder, a stamp of its content (length and hash), what
 its card shows, and `none` if the Adventure passes the checker, or else the first error. -/
@@ -1079,6 +1096,7 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "background" (toJson s.source.background)
     |>.setObjVal! "world" (toJson s.source.world)
     |>.setObjVal! "intro" (toJson s.source.intro)
+    |>.setObjVal! "builtin" builtinCard.toJson
     |>.setObjVal! "environment" (toJson s.source.environment)
     |>.setObjVal! "canChange" (toJson (WorldChange.available g.game))
     |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map WorldChange.ruleJson))
@@ -1229,10 +1247,6 @@ def loadSaved (cfg : GameConfig) (id : String) :
   | .ok (d, g) =>
       return (some text, .ok (g, savedSource id d (savedWish text)))
 
-/-- The reason for a refused input while no Adventure is loaded. -/
-def noAdventureText : String :=
-  "Choose an Adventure on the Front Page first, or make a Wish."
-
 /-- Change the server state with `f`, but only if the DM is not writing. The check and the change
 are one atomic step, so a Wish that finishes in between is never overwritten. Returns `none`, and
 changes nothing, if the DM is writing. -/
@@ -1277,8 +1291,6 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
         replyJson .badRequest (← view (error := some s!"Bad input: {e}"))
       | .ok i =>
         let r ← whenIdle state fun s =>
-          -- The home game is not for play: no input is allowed until an Adventure is loaded.
-          if s.source.savedId.isNone then ((some noAdventureText, 0), s) else
           let (s', error, fresh) := s.session.apply i
           -- Once play goes on, the "ready" prompt for a new Adventure is no longer shown.
           let gen := if error.isNone && s.gen.state == .ready then
@@ -1293,6 +1305,13 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       let r ← whenIdle state fun s =>
         let source := { s.source with environment := s.source.freshEnvironment }
         ((), { s with session := Session.start s.session.fresh seed, gen := s.gen.afterLeave, source })
+      if r.isNone then return ← busy
+      replyJson .ok (← view)
+    | ["api", "builtin"] =>
+      let seed ← freshSeed
+      let r ← whenIdle state fun s =>
+        let gen := { s.gen.afterLeave with state := .idle, steps := #[] }
+        ((), { s with session := Session.start builtinGame seed, source := builtinSource, gen })
       if r.isNone then return ← busy
       replyJson .ok (← view)
     | ["api", "dismiss"] =>
@@ -1400,21 +1419,34 @@ def buildKey : IO (Option String) := do
     IO.eprintln s!"Cannot read the program file, so saved verdicts are off: {e}"
     return none
 
-/-- Check the Adventure, then serve the game until Ctrl-C. Options: `--seed N` for the first
-game, `--port N` (default 8080), `--host A.B.C.D` (default 127.0.0.1). The environment variable
+/-- Check the built-in Adventure with the checker and the balance check, then serve the game until
+Ctrl-C. Options: `--seed N` for the first game, `--port N` (default 8080), `--host A.B.C.D`
+(default 127.0.0.1). The environment variable
 `ANTHROPIC_API_KEY` turns on Wishes. `RPG_FAKE_API=<folder>` is a test hook: the server reads
 recorded API replies from the folder and never calls the API. -/
 def main (args : List String) : IO UInt32 := do
   -- The build key comes first, so it is the key of the code that runs the checks below.
   let build ← buildKey
-  -- Check the home game again, on the value the program holds. The theorem covers the value
-  -- Lean proved things about. A trick such as `implemented_by` can make the compiled checker or
-  -- value different, and this check catches that.
-  let errs := checkCharacter homeGame.rules homeGame.hero ++
-    check homeGame.rules homeGame.hero homeGame.adventure
+  -- Check the built-in Adventure again, on the value the program holds. The theorem covers the
+  -- value Lean proved things about. A trick such as `implemented_by` can make the compiled checker
+  -- or value different, and this check catches that. The short-loop rule and the world map are
+  -- checked too.
+  let errs := checkCharacter builtinGame.rules builtinGame.hero ++
+    check builtinGame.rules builtinGame.hero builtinGame.adventure ++
+    builtinGame.adventure.shortLoopErrors ++
+    Lafayette.worldMap.errors builtinGame.adventure
   if !errs.isEmpty then
-    IO.eprintln "The compiled checker rejects the test Adventure, so the game will not start:"
+    IO.eprintln "The compiled checker rejects the built-in Adventure, so the game will not start:"
     for e in errs do IO.eprintln s!"  ERROR: {e}"
+    return 1
+  -- The built-in Adventure must also pass the balance check, with the fixed validation seed.
+  let candidate := Lafayette.statisticalCandidate
+  let (counts, admitted) := Probability.admitStatistically candidate
+  if admitted.isNone then
+    IO.eprintln "The built-in Adventure failed the balance check, so the game will not start:"
+    for e in Probability.failedRows candidate.horizon counts Probability.Confidence.confidenceDelta
+        candidate.elapsed candidate.policy do
+      IO.eprintln s!"  ERROR: {e}"
     return 1
   let webRoot : System.FilePath := "web"
   if !(← (webRoot / "index.html").pathExists) then
@@ -1446,7 +1478,7 @@ def main (args : List String) : IO UInt32 := do
   -- Check the saved Adventures now, in the background, so the Front Page is ready sooner. A save
   -- with a saved verdict for its file and this build is not checked again.
   checkSavedInBackground cfg
-  let state ← IO.mkRef ({ session := Session.start homeGame seed } : ServerState)
+  let state ← IO.mkRef ({ session := Session.start builtinGame seed, source := builtinSource } : ServerState)
   let children ← IO.mkRef #[]
   let addr : Net.SocketAddress := .v4 ⟨ip, port.toUInt16⟩
   Async.block do
@@ -1455,7 +1487,7 @@ def main (args : List String) : IO UInt32 := do
     if let some dir := fake then
       IO.println s!"TEST MODE: Wishes read recorded replies from {dir}. The API is not called. A live change stops after {limitText cfg.changeLimitMs}."
     else if apiKey.isNone then
-      IO.println "The Dungeon Master needs ANTHROPIC_API_KEY, so Wishes and changes during play are off. The saved Adventures can still be played."
+      IO.println "The Dungeon Master needs ANTHROPIC_API_KEY, so Wishes and changes during play are off. The built-in Adventure and the saved Adventures can still be played."
     IO.println "Press Ctrl-C to stop."
     (← IO.getStdout).flush
     server.waitShutdown

@@ -1,4 +1,4 @@
-import Rpg.Adventures.TestAdventure.Confidence
+import Rpg.Adventures.Lafayette.Confidence
 
 open Rpg Rpg.Probability Rpg.Probability.Confidence
 
@@ -10,22 +10,30 @@ def percent (r : Rat) : String :=
 
 /-- Print the balance curve and the target of each row. -/
 def printPolicy (p : BalancePolicy) : IO Unit := do
-  let rows := (List.finRange (TestAdventure.balanceHorizon + 1)).map fun i =>
-    percent (confidenceBandsFor p TestAdventure.balanceHorizon i).target
+  let rows := (List.finRange (Lafayette.balanceHorizon + 1)).map fun i =>
+    percent (confidenceBandsFor p Lafayette.balanceHorizon i).target
   IO.println s!"Policy: q={p.retention}, shape={p.shape}, tolerance={p.tolerance}; alive after 10 turns={percent (p.survival 10)}; row targets={rows}"
 
-/-- Run the balance check on the test Adventure with the fixed validation seed, and print each row. -/
-def main : IO UInt32 := do
-  IO.println "TEST ADVENTURE (THE BANDIT CAMP): EXACT BINOMIAL BALANCE CHECK"
-  let policy := TestAdventure.statisticalCandidate.policy
+/-- Read `--seed N` from the command line, or else use the fixed validation seed. -/
+def seedArg : List String → Nat
+  | "--seed" :: v :: _ => v.toNat?.getD validationSeed
+  | _ :: rest => seedArg rest
+  | [] => validationSeed
+
+/-- Run the balance check on the built-in Adventure (Lafayette at Barren Hill), and print each row.
+It uses the fixed validation seed, or the seed after `--seed`. -/
+def main (args : List String) : IO UInt32 := do
+  let seed := seedArg args
+  IO.println "BUILT-IN ADVENTURE (LAFAYETTE AT BARREN HILL): EXACT BINOMIAL BALANCE CHECK"
+  let policy := Lafayette.statisticalCandidate.policy
   printPolicy policy
-  IO.println s!"Window: first-turn death and death at t+2 for t < {TestAdventure.balanceHorizon}"
+  IO.println s!"Window: first-turn death and death at t+2 for t < {Lafayette.balanceHorizon}"
   IO.println s!"Fixed game batch: {validationGames}; interval failure bound={confidenceDelta}"
-  IO.println s!"Validation seed={validationSeed}; round limit={validationRoundLimit}"
+  IO.println s!"Validation seed={seed}; round limit={validationRoundLimit}"
   IO.println "Coverage is proved under the accepted binomial sampling model, conditional on each row’s actual qualifying count."
   (← IO.getStdout).flush
   let start ← IO.monoMsNow
-  let (counts, accepted) := admitStatistically TestAdventure.statisticalCandidate
+  let (counts, accepted) := admitWithSeed Lafayette.statisticalCandidate seed
   IO.println s!"elapsed-ms={(← IO.monoMsNow)-start}; games={counts.games}; aborted={counts.aborted}"
   for row in [:counts.trials.size] do
     let n := counts.trials[row]!

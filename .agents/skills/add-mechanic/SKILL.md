@@ -89,8 +89,8 @@ repeating rule to avoid tracking state.
   Its default preserves existing behavior for other adventures. People own the
   rules: `make check-rules` rejects an adventure rules file that is not `{}`
   unless its path is in `RULES_ALLOW`. An authorized adventure-rule change also
-  authorizes that narrowly scoped allow-list update. If the test Adventure's rules
-  change, update `Verified.test_adventure_default_rules` in both
+  authorizes that narrowly scoped allow-list update. If the built-in Adventure's rules
+  change, update `Verified.barren_hill_default_rules` in both
   `Comparator/Statements.lean` and `Comparator/Proofs.lean` to the approved value.
   Preserve unrelated statements and report the specification change.
 - Add small deterministic tests under `Rpg/` showing the trigger, effect, and

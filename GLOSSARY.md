@@ -34,8 +34,12 @@ _Avoid_: prompt, request, query
 The page where the Player chooses an Adventure to play or makes a Wish.
 _Avoid_: title screen, home page, menu
 
+**Built-in Adventure**:
+The Adventure that ships with the game, Lafayette at Barren Hill. Its card is on the Front Page, it plays without an API key, and the server checks it with the checker and the balance check when it starts.
+_Avoid_: default story, demo
+
 **Test Adventure**:
-A small Adventure, The Bandit Camp, for the tests and the example theorems. The server never offers it for play.
+A small Adventure, The Bandit Camp, for the tests. The server never offers it for play.
 _Avoid_: sample, demo adventure
 
 **Legal Adventure**:

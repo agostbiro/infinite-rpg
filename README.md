@@ -24,9 +24,9 @@ make run
 This will run the game server. 
 Visit [localhost:8080](http://127.0.0.1:8080/) in your browser to play the game.
 
+The built-in Adventure, Lafayette at Barren Hill, plays without a key: click its card on the Front Page.
 The Anthropic API key is needed for adventure generation and for changes during play.
-Without it, the Front Page and the "Change the world" panel say that the Dungeon Master is not connected, and you can play the saved Adventures.
-There is no built-in adventure for now; a new one comes later (see the [follow-ups](docs/follow-ups.md)).
+Without it, the Front Page and the "Change the world" panel say that the Dungeon Master is not connected, and you can play the built-in Adventure and the saved Adventures.
 `make run-fake` runs the game with recorded replies from `tests/fake-api` instead, and never calls the API. It has no recorded Wish for now.
 
 ## Properties
@@ -91,7 +91,8 @@ The combat buttons show the rules that apply to each maneuver.
 The DM prompt lists these rules, and asks for tactics in the Scenes with real roll branches, such as a trap that splits a group.
 A change during play keeps every rule that is already there, these four too.
 
-The test adventure, The Bandit Camp, has such choices: a bluff at the gate, a cargo-net ambush that cuts off one bandit, a rescue that disarms the chief, a bluff about the guards, and three endings.
+The built-in Adventure, Lafayette at Barren Hill, has such choices. If Lafayette wins over the militia, they watch the road, and only one grenadier reaches him at the church, not two. If he scouts Matson's Ford, he meets one Loyalist scout on a hidden path, not an ambush by two jägers.
+The test adventure, The Bandit Camp, has them too: a bluff at the gate, a cargo-net ambush that cuts off one bandit, a rescue that disarms the chief, a bluff about the guards, and three endings.
 Each one is a real roll, with a way to fail.
 
 ## Limitations

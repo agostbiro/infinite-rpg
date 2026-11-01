@@ -1,5 +1,5 @@
 import Rpg.Play
-import Rpg.Adventures.TestAdventure.Confidence
+import Rpg.Adventures.Lafayette.Confidence
 import Rpg.WorldChange
 import Rpg.EventGraph
 import Rpg.Probability.FastBinomial
@@ -21,15 +21,15 @@ theorem check_sound {rules : RuleSet} {c : Being} {a : Adventure}
 theorem checkCharacter_sound {rules : RuleSet} {c : Being}
     (h : checkCharacter rules c = []) : LegalCharacter rules c := Rpg.checkCharacter_sound h
 
-/-- The test Adventure, The Bandit Camp, is legal for Mara under its rules. This shows that the
-premise of `check_sound` can be met. -/
-theorem test_adventure_legal : LegalAdventure TestAdventure.rules TestAdventure.mara TestAdventure.testAdventure :=
-  TestAdventure.test_adventure_legal
+/-- The built-in Adventure, Lafayette at Barren Hill, is legal for Lafayette under its rules. This
+shows that the premise of `check_sound` can be met. -/
+theorem barren_hill_legal : LegalAdventure Lafayette.rules Lafayette.lafayette Lafayette.barrenHill :=
+  Lafayette.barren_hill_legal
 
-/-- From every Scene of the test Adventure, an Ending can be reached. -/
-theorem test_adventure_reaches_ending :
-    ∀ s ∈ TestAdventure.testAdventure.scenes, ReachesEnding TestAdventure.testAdventure s.id :=
-  TestAdventure.test_adventure_reaches_ending
+/-- From every Scene of the built-in Adventure, an Ending can be reached. -/
+theorem barren_hill_reaches_ending :
+    ∀ s ∈ Lafayette.barrenHill.scenes, ReachesEnding Lafayette.barrenHill s.id :=
+  Lafayette.barren_hill_reaches_ending
 
 /-- An input that the game does not offer changes nothing and rolls no dice. -/
 theorem step_rejects (g : Game) (i : Input) (dice : Rng)
@@ -40,17 +40,17 @@ theorem step_rejects (g : Game) (i : Input) (dice : Rng)
 /-- The game offers exactly the inputs that the rules allow. -/
 theorem mem_inputs_iff {g : Game} {i : Input} : i ∈ g.inputs ↔ AllowedInput g i := Rpg.mem_inputs_iff
 
-/-- The test Adventure uses the default rules, in every place that play and the balance check read
-them. A DM cannot change the rules without breaking this statement. -/
-theorem test_adventure_default_rules :
-    TestAdventure.rules = {} ∧
-    TestAdventure.testAdventureDefinition.rules = {} ∧
-    TestAdventure.statisticalCandidate.rules = {} :=
+/-- The built-in Adventure uses the default rules, in every place that play and the balance check
+read them. A DM cannot change the rules without breaking this statement. -/
+theorem barren_hill_default_rules :
+    Lafayette.rules = {} ∧
+    Lafayette.barrenHillDefinition.rules = {} ∧
+    Lafayette.statisticalCandidate.rules = {} :=
   ⟨rfl, rfl, rfl⟩
 
-/-- The test Adventure and generated Adventures both inherit the shared tactical meta rules. -/
+/-- The built-in Adventure and generated Adventures both inherit the shared tactical meta rules. -/
 theorem shared_tactical_rules :
-    TestAdventure.rules.combatRules = defaultCombatRules ∧
+    Lafayette.rules.combatRules = defaultCombatRules ∧
     liveRules.combatRules = defaultCombatRules := ⟨rfl, rfl⟩
 
 /-- The balance test is sound for every candidate, under the binomial sampling model. -/
