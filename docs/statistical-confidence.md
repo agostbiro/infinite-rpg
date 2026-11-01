@@ -113,3 +113,36 @@ The mechanic skill runs its compiled screen and final admission with a shared
 one-minute deadline. Builds do not rerun this held-out experiment; the final
 command checks current source-bound counts, rather than comparing them with this
 historical table. The skill uses the shared fairness parameters and theorem.
+
+## Shared-tactics expansion and frozen validation
+
+The shared meta rules and expanded Lighthouse were designed using screening seed 1. The
+production policy remains q=19/20, shape=2, tolerance=1/5, confidence=95%, horizon=5, with
+1,000 games and the 200-round fight limit. One final validation of the frozen gameplay
+change on seed 20261103 passed with the following observations:
+
+| Row | Deaths / qualifying games | Exact rational interval enclosure |
+|---|---:|---:|
+| First turn | 0 / 1000 | [0, 1/256] |
+| Death at 2, active at 0 | 0 / 1000 | [0, 1/256] |
+| Death at 3, active at 1 | 69 / 1000 | [13/256, 23/256] |
+| Death at 4, active at 2 | 143 / 1000 | [31/256, 43/256] |
+| Death at 5, active at 3 | 312 / 910 | [79/256, 3/8] |
+| Death at 6, active at 4 | 149 / 642 | [51/256, 69/256] |
+
+The final runner completed in 16.41 seconds. A later audit after adding scope proofs passed
+for 854 project theorems. Linux-only kernel replay and Comparator remain pending.
+
+`StatisticalCandidate.fairAt` and `ValidationAccepted` now take an optional explicit policy;
+the default remains `defaultPolicy`, so production certificates still bind to that policy.
+The same theorem therefore supports the experimental comparisons without assuming new
+coverage bounds. The study reads validated parameters from `experiments/plan.json`; none
+of its results authorizes game installation or changes the shipped settings.
+
+The [study report](../experiments/results/report.html) compares seven legal game variants
+using 140,000 lifetime trajectories and 35,000 separate admission trajectories. It varies
+q, shape, tolerance, and confidence while retaining the same 1,000-game batch size. The
+conditional means describe deaths actually observed; a winning character is not assigned
+a fictitious death time. All runs completed within the recorded caps, with zero invalid
+or censored trajectories. These are exploratory observations under the accepted simulator
+assumptions, not an all-time guarantee or simultaneous confidence statement.

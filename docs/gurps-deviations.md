@@ -155,3 +155,22 @@ The shared Engine applies the same effects in play and fairness sampling. The fi
 rules, wounds, history, and unfinished Fight remain. A source-bound check from the updated adventure beginning must
 pass before any change applies. See [live rule changes](live-rule-changes.md) for the supported
 language, retry theorem, and limits.
+
+## Shared tactical defaults
+
+All authored and generated adventures now inherit `defaultCombatRules`: Committed Strike
+adds 1 damage to the Character's All-Out Attack; Guard Feint reduces enemy hit level by 1
+against All-Out Defense; Cornered Fury adds 2 to enemy hit level at half HP or less; and
+Punish the Opening adds 1 enemy damage against All-Out Attack. These extend the shared
+GURPS-derived rules, rather than being Lighthouse-only effects. The original maneuver costs,
+Dodge restrictions, dice, HP, damage types, and character budgets remain in force.
+
+The player decision is whether to commit to a finishing blow, guard against retaliation,
+or finish a wounded enemy before it rallies. The log names each effect when it fires, and
+the buttons preview relevant effects. Fun is a design judgment; the fairness theorem checks
+the conditional death intervals under the fixed random-player policy.
+
+Lighthouse's environmental tactics use the existing roll/fight graph language. A successful
+cargo-net roll leads to a one-wrecker fight; a successful keeper-rescue roll leads to a fight
+against knife-armed Hollis or a flare bluff. Failed attempts lead to ordinary confrontation.
+The shared GM prompt requests comparable real branches in newly generated adventures.

@@ -100,14 +100,22 @@ def reportJson (th : ThemeNames) : Report → Json
     json% { fightStarts: { hero: $(cardJson th hero), foes: $(foes.map (cardJson th)) } }
   | r => toJson r
 
-/-- The Fight part of the view. Each Maneuver lists the inputs it offers. -/
+/-- Preview conditional effects of a maneuver against at least one living opponent. -/
+def maneuverEffects (rules : RuleSet) (f : FightPhase) (m : Maneuver) : List String :=
+  let hero := { f.state.hero with maneuver := m }
+  (rules.combatRules.filter fun r => f.state.foes.zipIdx.any fun (foe, i) =>
+    foe.alive && (r.active rules none hero foe || r.active rules (some i) foe hero)).map
+      (fun r => s!"{r.name}: {r.description}")
+
+/-- The Fight part of the view. Each Maneuver lists its inputs and active tactical effects. -/
 def fightJson (rules : RuleSet) (th : ThemeNames) (offered : List Input) (f : FightPhase) : Json :=
   let maneuvers := maneuverMenu.map fun m =>
     let options := offered.filterMap fun i =>
       match i with
       | .maneuver m' t => if m' = m then some (json% { target: $(t), input: $(i) }) else none
       | _ => none
-    json% { label: $(m.label), help: $(m.help), attacks: $(m.attacks), options: $(options) }
+    json% { label: $(m.label), help: $(m.help), effects: $(maneuverEffects rules f m),
+      attacks: $(m.attacks), options: $(options) }
   json% {
     round: $(f.round),
     hero: $(fighterJson rules th none f.state.hero),

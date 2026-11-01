@@ -198,6 +198,11 @@ theorem Prepared.preserves_checkpoint (p : Prepared) :
 theorem Prepared.preserves_core (p : Prepared) :
     p.game.rules.core = p.before.rules.core := rfl
 
+/-- A live request cannot remove or edit any existing rule, including inherited meta rules. -/
+theorem Prepared.preserves_existing_rule (p : Prepared) (r : CombatRule)
+    (existing : r ∈ p.before.rules.combatRules) : r ∈ p.game.rules.combatRules := by
+  simp [Prepared.game, Prepared.definition, Proposal.ruleSet, existing]
+
 /-- Fairness starts the updated adventure at full initial HP and turn zero.
 The installed game separately retains the player's actual checkpoint. -/
 def Prepared.candidate (p : Prepared) : StatisticalCandidate :=

@@ -68,16 +68,23 @@ def sampleCounts (a : StatisticalCandidate) (seed games : Nat) : ValidationCount
 def validateCounts (a : StatisticalCandidate) : ValidationCounts :=
   sampleCounts a validationSeed validationGames
 
-/-- Row zero is first-turn death; subsequent rows are conditional two-turn deaths. -/
+/-- Policy parameters change the target bands, never the simulated game or combat. -/
+def confidenceBandsFor (policy : FairnessPolicy) (horizon : Nat) (i : Fin (horizon+1)) : Band :=
+  ⟨if i.val = 0 then 1 - policy.survival 1 else policy.deathAtTwo (i.val-1), policy.tolerance⟩
+
+/-- Row zero is first-turn death; subsequent rows use the production Weibull policy. -/
 def confidenceBands (horizon : Nat) (i : Fin (horizon+1)) : Band :=
-  ⟨if i.val = 0 then 1 - defaultPolicy.survival 1 else defaultPolicy.deathAtTwo (i.val-1),
-   defaultPolicy.tolerance⟩
+  confidenceBandsFor defaultPolicy horizon i
 
 /-- Later checkpoints use the same Weibull curve at the actual elapsed turn. -/
+def continuationBandsFor (policy : FairnessPolicy) (elapsed horizon : Nat) (i : Fin (horizon+1)) : Band :=
+  if elapsed = 0 then confidenceBandsFor policy horizon i else
+  ⟨if i.val = 0 then 1 - policy.survival (elapsed+1) / policy.survival elapsed
+   else policy.deathAtTwo (elapsed+i.val-1), policy.tolerance⟩
+
+/-- Production continuation bands use the shared policy constants. -/
 def continuationBands (elapsed horizon : Nat) (i : Fin (horizon+1)) : Band :=
-  if elapsed = 0 then confidenceBands horizon i else
-  ⟨if i.val = 0 then 1 - defaultPolicy.survival (elapsed+1) / defaultPolicy.survival elapsed
-   else defaultPolicy.deathAtTwo (elapsed+i.val-1), defaultPolicy.tolerance⟩
+  continuationBandsFor defaultPolicy elapsed horizon i
 
 /-- The policy bands for this candidate's finite continuation window. -/
 def StatisticalCandidate.bands (a : StatisticalCandidate) : Fin (a.horizon+1) → Band :=
@@ -89,14 +96,15 @@ def ValidationCounts.observation (c : ValidationCounts) (row : Nat) : Observatio
 
 /-- Every interval from the complete fixed batch must fit its Weibull tolerance band. -/
 def ValidationAccepted (horizon : Nat) (c : ValidationCounts)
-    (delta : Rat := confidenceDelta) (elapsed : Nat := 0) : Prop :=
+    (delta : Rat := confidenceDelta) (elapsed : Nat := 0)
+    (policy : FairnessPolicy := defaultPolicy) : Prop :=
   c.aborted = false ∧ c.games = validationGames ∧
   c.trials.size = horizon+1 ∧ c.deaths.size = horizon+1 ∧
   ∀ i : Fin (horizon+1), c.trials[i.val]! ≤ c.games ∧
-    acceptsCount (continuationBands elapsed horizon i) delta (c.observation i.val)
+    acceptsCount (continuationBandsFor policy elapsed horizon i) delta (c.observation i.val)
 
-instance (horizon : Nat) (c : ValidationCounts) (delta : Rat) (elapsed : Nat) :
-    Decidable (ValidationAccepted horizon c delta elapsed) := by
+instance (horizon : Nat) (c : ValidationCounts) (delta : Rat) (elapsed : Nat) (policy : FairnessPolicy) :
+    Decidable (ValidationAccepted horizon c delta elapsed policy) := by
   unfold ValidationAccepted
   infer_instance
 
@@ -115,7 +123,7 @@ def StatisticalCandidate.truth (a : StatisticalCandidate) (i : Fin (a.horizon+1)
 /-- Finite statistical fairness under the accepted sampling model.
 Each interval covers its true expectation with risk at most delta, and accepting all
 Weibull comparisons when any tested comparison is false also has risk at most delta. -/
-def FairAt (a : StatisticalCandidate) (delta : Rat) : Prop :=
+def FairAt (a : StatisticalCandidate) (delta : Rat) (policy : FairnessPolicy := defaultPolicy) : Prop :=
   ∀ (law : Distribution (Fin (a.horizon+1) → Observation)),
     law.Valid →
     BinomialSampling law a.truth →
@@ -123,7 +131,7 @@ def FairAt (a : StatisticalCandidate) (delta : Rat) : Prop :=
     -- Coverage holds separately for each tested conditional expectation.
     (∀ i, intervalMissProbability law a.truth delta i ≤ delta) ∧
     -- Accepting the entire finite window has false-acceptance risk at most delta.
-    familyFalseAcceptance law a.truth a.bands delta ≤ delta
+    familyFalseAcceptance law a.truth (continuationBandsFor policy a.elapsed a.horizon) delta ≤ delta
 
 /-- The public fairness property uses the shared confidence level. -/
 def Fair (a : StatisticalCandidate) : Prop := FairAt a confidenceDelta
@@ -132,7 +140,7 @@ def Fair (a : StatisticalCandidate) : Prop := FairAt a confidenceDelta
 Only the stated sampling-model hypotheses are required; there are no graph or tail premises. -/
 theorem StatisticalCandidate.fairAt (a : StatisticalCandidate) (delta : Rat)
     -- Error allowances are nonnegative.
-    (hd : 0 ≤ delta) : FairAt a delta := by
+    (hd : 0 ≤ delta) (policy : FairnessPolicy := defaultPolicy) : FairAt a delta policy := by
   intro law valid sampling probabilities
   constructor
   -- Each interval approximates its graph-derived death-indicator expectation.
@@ -140,7 +148,8 @@ theorem StatisticalCandidate.fairAt (a : StatisticalCandidate) (delta : Rat)
     exact rowConfidence law a.truth delta i sampling
       (probabilities i).1 (probabilities i).2 hd
   -- Every row must pass; a violated row bounds false acceptance of the entire decision.
-  · exact familyFalseAcceptance_bound law a.truth a.bands delta valid sampling probabilities hd
+  · exact familyFalseAcceptance_bound law a.truth (continuationBandsFor policy a.elapsed a.horizon)
+      delta valid sampling probabilities hd
 
 /-- Every candidate has the shared fairness guarantee under the stated sampling assumptions. -/
 theorem StatisticalCandidate.fair (a : StatisticalCandidate) : Fair a :=

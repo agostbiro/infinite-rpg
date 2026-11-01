@@ -45,6 +45,11 @@ theorem lighthouse_default_rules :
     Lighthouse.statisticalCandidate.rules = {} :=
   ⟨rfl, rfl, rfl⟩
 
+/-- Built-in and generated adventures both inherit the shared tactical meta rules. -/
+theorem shared_tactical_rules :
+    Lighthouse.rules.combatRules = defaultCombatRules ∧
+    liveRules.combatRules = defaultCombatRules := ⟨rfl, rfl⟩
+
 /-- The fairness test is sound for every candidate, under the binomial sampling model. -/
 theorem fair (a : Probability.StatisticalCandidate) : Probability.Fair a := a.fair
 
@@ -56,6 +61,10 @@ theorem live_change_core (p : WorldChange.Prepared) :
 theorem live_change_checkpoint (p : WorldChange.Prepared) :
     p.game.hp = p.before.hp ∧ p.game.trail = p.before.trail ∧
     p.game.sceneId? = p.before.sceneId? := p.preserves_checkpoint
+
+/-- A live patch preserves each existing meta rule and earlier adventure effect. -/
+theorem live_change_existing_rule (p : WorldChange.Prepared) (r : CombatRule)
+    (existing : r ∈ p.before.rules.combatRules) : r ∈ p.game.rules.combatRules := p.preserves_existing_rule r existing
 
 /-- Checking starts at the updated adventure's beginning; play retains its checkpoint. -/
 theorem live_change_from_start (p : WorldChange.Prepared) :

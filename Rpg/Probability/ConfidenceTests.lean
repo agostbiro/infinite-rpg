@@ -29,6 +29,16 @@ example : acceptsCount ⟨4/25, 1/5⟩ confidenceDelta ⟨20, 2⟩ := by decide 
 example : ¬ acceptsCount ⟨4/25, 1/5⟩ confidenceDelta ⟨10, 10⟩ := by decide +kernel
 example : ¬ acceptsCount ⟨4/25, 1/5⟩ confidenceDelta ⟨10, 11⟩ := by decide +kernel
 
+/-- Different target curves can accept or reject the same observed outcomes. -/
+example : acceptsCount (confidenceBandsFor ⟨19/20, 2, 1/5⟩ 5 ⟨0, by decide⟩)
+    confidenceDelta ⟨20, 0⟩ := by decide +kernel
+example : ¬ acceptsCount (confidenceBandsFor ⟨1/2, 2, 1/10⟩ 5 ⟨0, by decide⟩)
+    confidenceDelta ⟨20, 0⟩ := by decide +kernel
+
+/-- Higher confidence can reject the same sample because its entire interval must fit. -/
+example : acceptsCount ⟨1/20, 1/10⟩ (1/10) ⟨20, 0⟩ := by decide +kernel
+example : ¬ acceptsCount ⟨1/20, 1/10⟩ (1/100) ⟨20, 0⟩ := by decide +kernel
+
 /-- An incomplete batch cannot be substituted for the precommitted game count. -/
 example : ¬ ValidationAccepted 1 ⟨#[10, 10], #[0, 0], 10, false⟩ := by decide +kernel
 example : ¬ ValidationAccepted 1 ⟨#[1000, 1000], #[0, 0], 1000, true⟩ := by decide +kernel

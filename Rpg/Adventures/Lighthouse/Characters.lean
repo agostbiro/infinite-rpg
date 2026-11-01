@@ -51,4 +51,10 @@ def hollis : Being where
   weapon := .broadsword
   armor := .leather
 
+/-- The keeper can knock away Hollis's sword, leaving his less-practiced knife. -/
+def disarmedHollis : Being :=
+  { hollis with
+    name := "Hollis, Sword Lost", weapon := .largeKnife,
+    skills := [(.knife, 11), (.diplomacy, 9)] }
+
 end Rpg.Lighthouse

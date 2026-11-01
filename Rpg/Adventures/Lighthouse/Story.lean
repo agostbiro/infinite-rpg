@@ -23,7 +23,8 @@ def lighthouse : Adventure where
       text := "The tower door is iron, swollen with salt, and locked. Through the keyhole you hear men laughing and dice rattling."
       choices := [
         { text := "Pick the lock quietly (Lockpicking)", outcome := .roll (.skill .lockpicking) 0 3 4 },
-        { text := "Hammer on the door", outcome := .goto 4 } ] },
+        { text := "Hammer on the door", outcome := .goto 4 },
+        { text := "Bluff as the relief watch (Diplomacy -2)", outcome := .roll (.skill .diplomacy) (-2) 3 4 } ] },
     { id := 2, picture := some "gallery", title := "The Gallery"
       text := "You haul yourself onto the iron gallery that rings the top of the tower. A cracked window opens onto the lamp room."
       choices := [
@@ -32,7 +33,8 @@ def lighthouse : Adventure where
       text := "The lock gives with a soft click. Inside, two wreckers play dice by a lantern, their backs to the stair."
       choices := [
         { text := "Creep past them up the stair (Stealth -2)", outcome := .roll (.skill .stealth) (-2) 5 4 },
-        { text := "Attack while they are distracted", outcome := .goto 4 } ] },
+        { text := "Attack while they are distracted", outcome := .goto 4 },
+        { text := "Drop the cargo net to split them up (DX -2)", outcome := .roll (.attribute .dx) (-2) 9 4 } ] },
     { id := 4, picture := some "wreckers", title := "Wreckers!"
       text := "Two wreckers come at you with long knives, cursing."
       choices := [
@@ -41,7 +43,8 @@ def lighthouse : Adventure where
       text := "The great lamp is cold. The keeper sits bound to a chair. Over him stands Grey Hollis, sword drawn. \"Ships on the reef mean cargo on the beach,\" he says. \"Walk away.\""
       choices := [
         { text := "Talk him down (Diplomacy -3)", outcome := .roll (.skill .diplomacy) (-3) 7 6 },
-        { text := "Draw your sword", outcome := .goto 6 } ] },
+        { text := "Draw your sword", outcome := .goto 6 },
+        { text := "Cut the keeper's bonds with a thrown shard (DX -3)", outcome := .roll (.attribute .dx) (-3) 10 6 } ] },
     { id := 6, picture := some "steel-in-the-dark", title := "Steel in the Dark"
       text := "Hollis laughs and comes at you."
       choices := [
@@ -51,6 +54,18 @@ def lighthouse : Adventure where
       choices := [] },
     { id := 8, picture := some "keepers-debt", title := "Ending: The Keeper's Debt"
       text := "Hollis falls. You cut the keeper free, and his trembling hands relight the lamp. \"The light will burn every night while I live,\" he says. \"And you will never pay for a meal in this village again.\""
+      choices := [] },
+    { id := 9, picture := some "store-room", title := "Caught in the Net"
+      text := "The cargo net crashes down over one wrecker. His partner lunges through the swinging ropes. You have a brief chance to fight them one at a time; the stair is just beyond him."
+      choices := [
+        { text := "Defeat the free wrecker and take the stair", outcome := .fight [wrecker 2] 5 } ] },
+    { id := 10, picture := some "lamp-room", title := "The Keeper's Gambit"
+      text := "The keeper slips his bonds and swings the heavy lamp handle into Hollis's sword arm. Steel skitters across the floor. Hollis draws a knife, but the keeper has reached the signal flare."
+      choices := [
+        { text := "Duel Hollis before he recovers his sword", outcome := .fight [disarmedHollis] 11 },
+        { text := "Time the signal flare to bluff him into surrender (IQ -2)", outcome := .roll (.attribute .iq) (-2) 7 6 } ] },
+    { id := 11, picture := some "light-returns", title := "Ending: Two Keepers of the Flame"
+      text := "Together you pin Hollis beneath the lamp's iron frame and bind him with his own rope. The keeper lights the beacon while you fire the signal flare. Two lights answer from the sea: the rescue boat, and a ship that will now make it home."
       choices := [] } ]
 
 /-- **The Drowned Lighthouse is legal for Mara.** The Lean kernel runs the checker to prove it. -/

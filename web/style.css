@@ -660,6 +660,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
   *, *::before, *::after { animation-duration: 0.01s !important; transition-duration: 0.01s !important; }
 }
 
+.tactic-effect { display: block; margin-top: 6px; line-height: 1.4; opacity: 0.9; }
+
 /* ---------- Narrow windows ---------- */
 
 @media (max-width: 520px) {

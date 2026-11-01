@@ -102,6 +102,48 @@ The Character must be a legal build: attributes 7 to 14, exactly 100 points, ski
 
 `Rpg/Adventures/Lighthouse/NegativeExamples.lean` has eight cheating Adventures. For each, a proof shows the spec rejects it and the checker reports it. Cheat 8 is a maze that only leads back into itself, which breaks rule 7. `Rpg/Adventures/Lighthouse/Story.lean` shows that rule 7 holds for The Drowned Lighthouse, both from `lighthouse_legal` and by hand for one Scene.
 
+## Shared tactics and new choices
+
+Every new built-in or generated adventure inherits four meta rules from
+`defaultCombatRules` in `Rpg/Mechanic.lean`:
+
+- **Committed Strike:** All-Out Attack gains +1 damage per hit.
+- **Guard Feint:** enemies have −1 to hit a Character using All-Out Defense.
+- **Cornered Fury:** enemies at half HP or less gain +2 to hit.
+- **Punish the Opening:** enemies gain +1 damage against All-Out Attack.
+
+These use the same Engine in play, simulation, and the exact graph. Combat buttons preview
+the applicable effects. The GM's shared prompts include the rules and ask for environmental
+tactics with real graph consequences. A live patch preserves every existing rule, including
+these inherited defaults; it can add new adventure effects and equipment.
+
+Lighthouse also offers a relief-watch bluff, a cargo-net ambush that isolates one wrecker,
+a keeper rescue that disarms Hollis, a flare bluff, and a new ending. These are real roll
+branches and different encounters, with failure routes.
+
+## Fairness and lifetime study
+
+The [self-contained report](experiments/results/report.html) includes charts and CSV tables
+from 175,000 compiled simulations: seven variants of two adventures, nine policy settings,
+20,000 lifetime runs per variant, and five separate 1,000-game admission batches per variant.
+The [plan](experiments/plan.json) fixes all seeds and settings. The same outcomes are reused
+across policies, because changing a fairness target does not change the game engine.
+
+Run `python3 scripts/run_fairness_study.py`, then generate the report with:
+
+```sh
+uv run --no-project --with matplotlib==3.11.2 python scripts/report_fairness_study.py
+```
+
+The default check rejected the unchecked weapon, excessively harsh enemies, and combat-free
+variants in all five batches. With tolerance widened to ±0.30, every variant passed all five.
+The expanded Lighthouse had 67.60% deaths under the specified random player policy, with
+4.81 scene-choice turns on average among characters who died. Successful endings are not
+deaths; the report includes death rates and completion time separately. The default check
+also admitted Silver Acorn at 83.44% deaths: finite timing bands do not specify an overall
+win rate. The study is exploratory; it does not replace admission or prove simultaneous
+confidence across all comparisons. Production retains its original policy and confidence.
+
 ## The fairness check
 
 The check plays an Adventure 1,000 times with a seeded random generator (`Rpg/Probability/StatisticalAdmission.lean`). On each turn it picks a Choice at random. In a Fight, the Player picks Attack, All-Out Attack, or All-Out Defense, each with chance 1/3, and then a living target at random. One turn is one Choice, with its whole Fight.
