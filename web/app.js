@@ -821,7 +821,7 @@
   }
 
   /** The text of the status line while a load checks a saved Adventure again. */
-  const checkText = (title) => 'Checking ' + title + ' against the rules and the fairness check...';
+  const checkText = (title) => 'Checking ' + title + ' against the rules and the balance check...';
 
   /** The grid: the "New Adventure" tile, the saved Adventures (newest first), and the built-in one.
    * Each saved Adventure keeps its place when its check ends, so the cards do not move under the
@@ -840,7 +840,8 @@
     const focused = active && active.dataset && active.dataset.card ? active.dataset.card : null;
     for (const old of grid.querySelectorAll('.adv-card')) old.remove();
     for (const a of v.saved) {
-      const start = { key: a.id, text: checkText(a.title) };
+      // A save that passed starts at once (the server trusts its verdict); any other is checked.
+      const start = { key: a.id, text: a.ok ? 'Starting ' + a.title + '...' : checkText(a.title) };
       if (!a.ok && !a.checking) {
         grid.appendChild(adventureCard(a, a.id, {
           why: a.why || 'it does not read',

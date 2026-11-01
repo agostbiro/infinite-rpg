@@ -1,7 +1,7 @@
 import Rpg.Rules
 
 /-! Adventure-local equipment and combat effects are data. They cannot change dice,
-turn order, character budgets, or the fairness policy. The same effects run in play
+turn order, character budgets, or the balance policy. The same effects run in play
 and in the probability model. -/
 namespace Rpg
 

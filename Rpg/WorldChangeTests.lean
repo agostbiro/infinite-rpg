@@ -2,7 +2,7 @@ import Rpg.WorldChangePrompt
 import Rpg.Probability.ConfidenceTests
 
 /-! Regression checks for real adventure changes, their scope, and paused combat.
-Large fairness batches run through the compiled change-check executable. -/
+Large balance batches run through the compiled change-check executable. -/
 namespace Rpg.WorldChange.Tests
 open Probability Probability.Confidence
 
@@ -79,7 +79,7 @@ theorem safeRetries_valid : safeRetries.Valid := by
   exact ⟨zeroLaw_valid, ⟨zeroLaw_sampling⟩, probabilities,
     fun _ => ⟨zeroLaw_valid, ⟨zeroLaw_sampling⟩, probabilities, fun _ => True.intro⟩⟩
 
-example : safeRetries.falseAcceptance 0 ≤ confidenceDelta := safeRetries.fair 0 safeRetries_valid
+example : safeRetries.falseAcceptance 0 ≤ confidenceDelta := safeRetries.balanced 0 safeRetries_valid
 
 -- A grant changes real equipment; HP, identity, attributes, purchased skills, and history stay.
 #guard match proposal.prepare { shoreGame with hp := 7 } with
@@ -143,7 +143,7 @@ private def fixedRoll (n : Nat) : Id (List Nat) := pure (List.replicate n 1)
     p.game.hp == 2 && p.game.sceneId? == fightGame.sceneId? &&
     p.candidate.hero.weapon == .flamethrower
 
--- Fairness prompt bands also start at turn zero, independent of the pause point.
+-- The balance bands in the prompt also start at turn zero, independent of the pause point.
 #guard
   let later := { fightGame with hp := 2 }
   let ctx := (Lean.Json.parse (context later "Give me iron skin" (attemptRisk 0))).toOption.get!

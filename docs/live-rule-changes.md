@@ -11,7 +11,7 @@ bonus that activates when wounded or guarding.
 The panel is visible during play even when the DM is disconnected. With no API key, the
 server can use an existing Codex login or Claude Code login. The selected provider appears
 in the server startup message; generation errors remain visible and never bypass admission.
-CLI proposals pass the same legality and fairness checks as API proposals.
+CLI proposals pass the same legality and balance checks as API proposals.
 
 The game pauses while the DM works. The DM sends requested effects separately from
 counter-rules. Equipment and requested effects are fixed after the first legal proposal;
@@ -72,7 +72,7 @@ a limit. One change gets at most 6 proposals (`maxChangeCalls`, the support-revi
 `Main.lean`. With an API key, each proposal can use up to 3 tries when the server is busy
 (`callApi`), so one change can send up to 18 requests. The server checks the proposal and
 validation limits after each proposal. At one of them, the change fails with "The Dungeon Master
-stopped after N proposals and could not find a fair version. Your game is unchanged." A watch
+stopped after N proposals and could not find a balanced version. Your game is unchanged." A watch
 task (`watchChange`) enforces the time limit: at 3 minutes it ends the change and kills its
 `curl` or CLI processes, as Cancel does, even during a slow call. Each of these processes starts
 in its own process group, so the kill also ends any helper process that it started. The step then says "The change
@@ -83,7 +83,7 @@ leaves play unchanged.
 Changes are local to the in-memory playthrough and survive a browser reload. They do not
 overwrite saved adventures. Restarting starts the original adventure again.
 
-## Fairness from the beginning and retries
+## Balance from the beginning and retries
 
 The checker starts at the updated adventure's starting scene, full initial HP, and turn zero.
 All new equipment and effects apply throughout these simulated games, including fights
@@ -93,17 +93,17 @@ uses the original Weibull bands. Empty late rows and unresolved combat reject th
 **Deep Scenes get only the legality check.** The sampled games stop after 6 turns. A change
 can add or replace Scenes that are not visited yet. If such a Scene is more than 6 turns from
 the start, no sampled game reaches it, so its new encounters get only the legality check, not
-the fairness check. Combat rules and equipment apply to every Fight, so the early Fights do
+the balance check. Combat rules and equipment apply to every Fight, so the early Fights do
 test them. This gap is stated here, in the README, and in the panel. It is not fixed.
 
 This is a property of the revised adventure from its beginning. It is not a claim about the
 player's conditional risk at their current wounds or position. Installation still keeps the
 actual checkpoint: no replay, healing, reset, or repeated enemy turns occurs in the played game.
 
-`StatisticalCandidate.fairAt` generalizes `fair` to the actual error allowance.
-`WorldChange.Admission.fair` (`live_change_fair`) specializes it to the revised adventure. It
-holds for every proposal: it limits how often the test accepts an unfair change, and it does not
-say that a change is fair. `intervals_fit` is the fact about one admission: every admitted
+`StatisticalCandidate.balancedAt` generalizes `balanced` to the actual error allowance.
+`WorldChange.Admission.balanced` (`live_change_balanced`) specializes it to the revised adventure. It
+holds for every proposal: it limits how often the test accepts an unbalanced change, and it does not
+say that a change is balanced. `intervals_fit` is the fact about one admission: every admitted
 interval fits its band. `Prepared.candidate_from_start` proves that admission
 uses the whole adventure graph at turn zero. `Prepared.preserves_core` and
 `preserves_checkpoint` state the scope and state guarantees.
@@ -112,13 +112,13 @@ Repeated fresh 95% tests until one passes would lose the overall 95% guarantee. 
 validation attempt `n` spends `confidenceDelta / 2^(n+1)`. The server never refunds a spent
 allowance, including after cancellation or a later request. With the shared 5% allowance,
 the first validation uses 97.5% intervals, the next 98.75%, and so on. All use 1,000 games.
-`RetryTree.fair` proves false-acceptance risk is at most the remaining budget for any finite
+`RetryTree.balanced` proves false-acceptance risk is at most the remaining budget for any finite
 adaptive sequence, including subsequent requests after a successful change.
 
 The budget is per server run. `ServerState.changeChecks` counts the validations since the
 server started, for all games. A restart starts a new 5% budget. The 5% for live changes and the
 15% bound over the 3 tries of a Wish are separate. For an Adventure from a Wish that gets live
-changes in one server run, the chance that an unfair version was accepted at some point is at
+changes in one server run, the chance that an unbalanced version was accepted at some point is at
 most 15% + 5% = 20%.
 
 This assumes the binomial sampling model holds conditional on each history before drawing
@@ -184,7 +184,7 @@ These are open, for the branch author. ADR 0005 has more detail.
 - A counter-rule with the trigger `againstFlame`, together with a flamethrower gift, is on in
   every Fight. The checker rejects only the trigger "always". The tuning fixture does this.
 - `StatisticalCandidate.resume` and `elapsed` are not used, but they are part of the trusted
-  surface of `fair`.
+  surface of `balanced`.
 - Equipment is matched by owner name and weapon, so a foe with the Character's name and weapon
   gets the gift too.
 - `applyChange` does not check again that the game did not move; it relies on blocked input.

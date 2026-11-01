@@ -37,7 +37,7 @@ theorem step_rejects (g : Game) (i : Input) (dice : Rng)
 /-- The game offers exactly the inputs that the rules allow. -/
 theorem mem_inputs_iff {g : Game} {i : Input} : i ∈ g.inputs ↔ AllowedInput g i := Rpg.mem_inputs_iff
 
-/-- The Lighthouse uses the default rules, in every place that play and the fairness check read
+/-- The Lighthouse uses the default rules, in every place that play and the balance check read
 them. A DM cannot change the rules without breaking this statement. -/
 theorem lighthouse_default_rules :
     Lighthouse.rules = {} ∧
@@ -45,8 +45,8 @@ theorem lighthouse_default_rules :
     Lighthouse.statisticalCandidate.rules = {} :=
   ⟨rfl, rfl, rfl⟩
 
-/-- The fairness test is sound for every candidate, under the binomial sampling model. -/
-theorem fair (a : Probability.StatisticalCandidate) : Probability.Fair a := a.fair
+/-- The balance test is sound for every candidate, under the binomial sampling model. -/
+theorem balanced (a : Probability.StatisticalCandidate) : Probability.Balanced a := a.balanced
 
 /-- An in-play change cannot replace any of the core rules. -/
 theorem live_change_core (p : WorldChange.Prepared) :
@@ -63,15 +63,15 @@ theorem live_change_from_start (p : WorldChange.Prepared) :
     p.candidate.graph = p.definition.graph := p.candidate_from_start
 
 -- The fact about one admission is `WorldChange.Admission.intervals_fit`.
-/-- The fairness test at error allowance `delta` is sound for the changed Adventure, from its
-start. This holds for every proposal: it limits how often the test accepts an unfair change. It
-does not say that this change is fair. -/
-theorem live_change_fair {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
-    (a : WorldChange.Admission p seed delta) : Probability.FairAt p.candidate delta := a.fair
+/-- The balance test at error allowance `delta` is sound for the changed Adventure, from its
+start. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
+does not say that this change is balanced. -/
+theorem live_change_balanced {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
+    (a : WorldChange.Admission p seed delta) : Probability.BalancedAt p.candidate delta := a.balanced
 
 /-- Any finite adaptive series of live-change validations stays within the shared risk budget. -/
-theorem retry_fair {n : Nat} (tree : Probability.RetryTree n)
+theorem retry_balanced {n : Nat} (tree : Probability.RetryTree n)
     (valid : tree.Valid) : tree.falseAcceptance 0 ≤ Probability.Confidence.confidenceDelta :=
-  tree.fair 0 valid
+  tree.balanced 0 valid
 
 end Verified

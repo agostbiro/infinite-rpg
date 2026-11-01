@@ -1,12 +1,12 @@
 ---
 name: add-mechanic
-description: Add a game mechanic, described in plain words, to the RPG and keep every adventure admitted under the fairness theorem `StatisticalCandidate.fair`, adding a fun counter-mechanic when the first one breaks fairness. Use when the user describes a new rule, mechanic, or house rule for the game.
+description: Add a game mechanic, described in plain words, to the RPG and keep every adventure admitted under the balance theorem `StatisticalCandidate.balanced`, adding a fun counter-mechanic when the first one breaks balance. Use when the user describes a new rule, mechanic, or house rule for the game.
 ---
 
-# Add a mechanic and keep the game fair
+# Add a mechanic and keep the game balanced
 
 Implement the requested rule at its requested strength. Keep every registered
-adventure legal and admitted under `StatisticalCandidate.fair`. If balancing is
+adventure legal and admitted under `StatisticalCandidate.balanced`. If balancing is
 needed, propose and implement a fun counter-rule that preserves the original
 mechanic's appeal.
 
@@ -126,7 +126,7 @@ mechanics; use the actual game's constraints and direction of imbalance.
 
 Avoid canceling the new rule with an equal opposite modifier, tedious bookkeeping,
 or arbitrary nerfs presented as exciting mechanics. Give the counter-rule its own
-configuration and tests. Show the original rule working alongside it. Fairness
+configuration and tests. Show the original rule working alongside it. Balance
 checks establish the statistical constraint; a short play-through checks whether
 the moment is understandable and feels rewarding.
 

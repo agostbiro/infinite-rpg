@@ -107,7 +107,7 @@ def Proposal.errors (p : Proposal) (g : Game) : List String :=
   (if p.equipment.isNone && p.requestedRules.isEmpty && p.scenes.isEmpty then
     ["The proposal must implement the requested change, separately from the counter-rules."] else []) ++
   tooLong "the change summary" 800 p.summary ++ tooLong "the dramatic moment" 800 p.moment ++
-  (if p.rules.isEmpty then ["Add a fun counter-rule even if the requested change already passes fairness."] else []) ++
+  (if p.rules.isEmpty then ["Add a fun counter-rule even if the requested change already passes the balance check."] else []) ++
   (if g.rules.combatRules.length + p.requestedRules.length + p.rules.length > 24 then ["At most 24 adventure effects can be active."] else []) ++
   (if !(p.rules.any fun r => r.side == "foes" && (r.hitBonus > 0 || r.damageBonus > 0 || r.armorBonus > 0))
     then ["Give the opposition a new, visible conditional advantage; do not merely cancel the gift."] else []) ++
@@ -198,7 +198,7 @@ theorem Prepared.preserves_checkpoint (p : Prepared) :
 theorem Prepared.preserves_core (p : Prepared) :
     p.game.rules.core = p.before.rules.core := rfl
 
-/-- Fairness starts the updated adventure at full initial HP and turn zero.
+/-- The balance check starts the updated adventure at full initial HP and turn zero.
 The installed game separately retains the player's actual checkpoint. -/
 def Prepared.candidate (p : Prepared) : StatisticalCandidate :=
   { toAdventureDefinition := p.definition, horizon := liveHorizon, horizonPositive := by decide }
@@ -233,11 +233,11 @@ structure Admission (p : Prepared) (seed : Nat) (delta : Rat) where
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
 
 -- The fact about one admission is `WorldChange.Admission.intervals_fit`.
-/-- The fairness test at error allowance `delta` is sound for the changed Adventure, from its
-start. This holds for every proposal: it limits how often the test accepts an unfair change. It
-does not say that this change is fair. -/
-theorem Admission.fair {p : Prepared} {seed : Nat} {delta : Rat} (a : Admission p seed delta) :
-    FairAt p.candidate delta := p.candidate.fairAt delta (Rat.le_of_lt a.riskValid.1)
+/-- The balance test at error allowance `delta` is sound for the changed Adventure, from its
+start. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
+does not say that this change is balanced. -/
+theorem Admission.balanced {p : Prepared} {seed : Nat} {delta : Rat} (a : Admission p seed delta) :
+    BalancedAt p.candidate delta := p.candidate.balancedAt delta (Rat.le_of_lt a.riskValid.1)
 
 /-- Every interval that authorized the change fits the adventure's Weibull band from turn zero. -/
 theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}

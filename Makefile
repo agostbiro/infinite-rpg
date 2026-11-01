@@ -51,7 +51,7 @@ check: build
 # People own the rules files of each Adventure. A DM may not change them.
 # During play, the DM can propose a live change: equipment, combat effects, and new or replaced
 # Scenes that are not visited yet. The core rules stay the same. The server installs a change only
-# after the checker and the fairness check pass (docs/adr/0005-live-rule-changes.md).
+# after the checker and the balance check pass (docs/adr/0005-live-rule-changes.md).
 # Each Rules.lean under Rpg/Adventures may only say `def rules : RuleSet := {}` (the default rules),
 # unless a person puts its path on RULES_ALLOW. No other Adventure file may name `RuleSet` or
 # change a rules value with `{ ... with ... }`.
@@ -76,7 +76,7 @@ check-pictures:
 cheats:
 	lake exe cheats
 
-# Run the fairness check on the Lighthouse, and print each row with its interval and range.
+# Run the balance check on the Lighthouse, and print each row with its interval and range.
 validate:
 	lake exe validate
 

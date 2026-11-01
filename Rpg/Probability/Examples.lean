@@ -1,4 +1,4 @@
-import Rpg.Probability.Fairness
+import Rpg.Probability.Balance
 
 /-! Small positive and negative fixtures check the probability specification. -/
 namespace Rpg.Probability

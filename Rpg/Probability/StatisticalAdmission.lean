@@ -3,7 +3,7 @@ import Rpg.Probability.Simulation
 
 /-!
 Finite confidence intervals compare the adventure's conditional death expectations
-with the shared Weibull targets. The theorem `fair` proves interval coverage and
+with the shared Weibull targets. The theorem `balanced` proves interval coverage and
 bounds false acceptance under the explicitly assumed binomial sampling model.
 -/
 namespace Rpg.Probability
@@ -112,10 +112,10 @@ def StatisticalCandidate.truth (a : StatisticalCandidate) (i : Fin (a.horizon+1)
   if i.val = 0 then a.graph.deadBy 1
   else (a.graph.deathAtTwo (i.val-1)).getD 0
 
-/-- Finite statistical fairness under the accepted sampling model.
+/-- Finite statistical balance under the accepted sampling model.
 Each interval covers its true expectation with risk at most delta, and accepting all
 Weibull comparisons when any tested comparison is false also has risk at most delta. -/
-def FairAt (a : StatisticalCandidate) (delta : Rat) : Prop :=
+def BalancedAt (a : StatisticalCandidate) (delta : Rat) : Prop :=
   ∀ (law : Distribution (Fin (a.horizon+1) → Observation)),
     law.Valid →
     BinomialSampling law a.truth →
@@ -125,14 +125,14 @@ def FairAt (a : StatisticalCandidate) (delta : Rat) : Prop :=
     -- Accepting the entire finite window has false-acceptance risk at most delta.
     familyFalseAcceptance law a.truth a.bands delta ≤ delta
 
-/-- The public fairness property uses the shared confidence level. -/
-def Fair (a : StatisticalCandidate) : Prop := FairAt a confidenceDelta
+/-- The public balance property uses the shared confidence level. -/
+def Balanced (a : StatisticalCandidate) : Prop := BalancedAt a confidenceDelta
 
-/-- The main fairness theorem: finite confidence intervals and Weibull-band admission are sound.
+/-- The main balance theorem: finite confidence intervals and Weibull-band admission are sound.
 Only the stated sampling-model hypotheses are required; there are no graph or tail premises. -/
-theorem StatisticalCandidate.fairAt (a : StatisticalCandidate) (delta : Rat)
+theorem StatisticalCandidate.balancedAt (a : StatisticalCandidate) (delta : Rat)
     -- Error allowances are nonnegative.
-    (hd : 0 ≤ delta) : FairAt a delta := by
+    (hd : 0 ≤ delta) : BalancedAt a delta := by
   intro law valid sampling probabilities
   constructor
   -- Each interval approximates its graph-derived death-indicator expectation.
@@ -142,17 +142,17 @@ theorem StatisticalCandidate.fairAt (a : StatisticalCandidate) (delta : Rat)
   -- Every row must pass; a violated row bounds false acceptance of the entire decision.
   · exact familyFalseAcceptance_bound law a.truth a.bands delta valid sampling probabilities hd
 
-/-- Every candidate has the shared fairness guarantee under the stated sampling assumptions. -/
-theorem StatisticalCandidate.fair (a : StatisticalCandidate) : Fair a :=
-  a.fairAt confidenceDelta (Rat.le_of_lt confidenceLevel_valid.1)
+/-- Every candidate has the shared balance guarantee under the stated sampling assumptions. -/
+theorem StatisticalCandidate.balanced (a : StatisticalCandidate) : Balanced a :=
+  a.balancedAt confidenceDelta (Rat.le_of_lt confidenceLevel_valid.1)
 
 /-- An adventure that passed admission. It holds the counts, the seed they came from, and the
-proof that every row passed. `fair` says the test itself is sound; it holds for every candidate. -/
+proof that every row passed. `balanced` says the test itself is sound; it holds for every candidate. -/
 structure StatisticalAdventure where
   /-- The adventure that was checked. -/
   candidate : StatisticalCandidate
   /-- The test is sound for this candidate (true for every candidate). -/
-  fair : Fair candidate
+  balanced : Balanced candidate
   /-- The seed of the 1,000 games. -/
   seed : Nat
   /-- The counts from those games. -/
@@ -162,7 +162,7 @@ structure StatisticalAdventure where
   /-- A retry can strengthen confidence, but cannot weaken it. -/
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
   /-- The proof also covers the actual error allowance used by this admission. -/
-  confidence : FairAt candidate delta
+  confidence : BalancedAt candidate delta
   /-- The counts come from this candidate's own games with this seed. -/
   provenance : counts = sampleCounts candidate seed validationGames
   /-- Every row passed. -/
@@ -187,8 +187,8 @@ def admitWithRisk (candidate : StatisticalCandidate) (seed : Nat) (delta : Rat) 
   let counts := sampleCounts candidate seed validationGames
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
     if h : ValidationAccepted candidate.horizon counts delta candidate.elapsed then
-      (counts, some ⟨candidate, candidate.fair, seed, counts, delta, hd,
-        candidate.fairAt delta (Rat.le_of_lt hd.1), rfl, h⟩)
+      (counts, some ⟨candidate, candidate.balanced, seed, counts, delta, hd,
+        candidate.balancedAt delta (Rat.le_of_lt hd.1), rfl, h⟩)
     else (counts, none)
   else (counts, none)
 

@@ -13,7 +13,7 @@ It keeps one game in memory. The page draws the view that the server sends,
 and sends back the Player's inputs. All rules and dice stay in Lean (`Rpg.step`).
 
 The Player can also type a Wish. The server then asks the Claude API for an Adventure and a
-Character, in the background, and checks them with the proved checker and then the fairness check
+Character, in the background, and checks them with the proved checker and then the balance check
 (`Draft.toGame`).
 Only a Draft that passes can become a `Game`, because `Game.new` needs the proofs.
 Adventures that pass are saved under `adventures/<id>/`.
@@ -67,7 +67,7 @@ def Session.start (g : Game) (seed : Nat) : Session :=
   { fresh := g, game := g, dice := ⟨seed.toUInt64⟩, seed, reports := #[] }
 
 /-- The built-in game: The Drowned Lighthouse for Mara. The proofs are the shipped theorems.
-`main` runs the fairness check on it before the server starts, and stops if it fails. -/
+`main` runs the balance check on it before the server starts, and stops if it fails. -/
 def builtinGame : Game := Game.new Lighthouse.lighthouseDefinition
 
 /-- Apply one input. Returns the new session, or the reason the input was refused.
@@ -357,16 +357,25 @@ def readStamp (r : Except String String) : String :=
 #guard readStamp (.error "no file") == ""
 #guard readStamp (.ok "abc") == textStamp "abc" && readStamp (.ok "abc") != readStamp (.ok "abd")
 
-/-- The fairness seed saved with an Adventure, or `none` if it has none (it was saved before
-the fairness check). -/
-def savedSeed (text : String) : Option Nat :=
-  (Json.parse text >>= (·.getObjValAs? Nat "fairnessSeed")).toOption
+/-- The balance seed saved with an Adventure, or `none` if it has none (it was saved before
+the balance check). Saves from before the rename to "balance" keep the seed under the old key
+`fairnessSeed`, so this reads that key if `balanceSeed` is not there. -/
+def savedSeed (text : String) : Option Nat := do
+  let j ← (Json.parse text).toOption
+  (j.getObjValAs? Nat "balanceSeed").toOption <|> (j.getObjValAs? Nat "fairnessSeed").toOption
 
-/-- Check a saved Adventure again: the checker, then the fairness check with its saved seed. -/
+-- A new save keeps its seed under `balanceSeed`.
+#guard savedSeed "{\"balanceSeed\": 7}" == some 7
+-- An old save keeps its seed under `fairnessSeed`, and it still reads.
+#guard savedSeed "{\"fairnessSeed\": 7}" == some 7
+-- A save before the balance check has no seed.
+#guard savedSeed "{\"title\": \"Old\"}" == none
+
+/-- Check a saved Adventure again: the checker, then the balance check with its saved seed. -/
 def checkSavedText (text : String) : Except (List String) (Draft × Game) := do
   let d ← (Draft.parse text).mapError (fun e => [e])
   let some seed := savedSeed text
-    | throw ["it was saved before the fairness check, so it has no fairness seed"]
+    | throw ["it was saved before the balance check, so it has no balance seed"]
   let g ← d.toGame seed
   return (d, g)
 
@@ -385,8 +394,8 @@ def savedCard (id : String) (read : Except String String) : AdventureCard × Opt
          source := "From a Wish" }, none)
 
 /-- Check one saved Adventure for the list: its card, and `none` if it passes the checker and
-the fairness check, or else the first error. The Pictures are checked only on load.
-The fairness check plays 1,000 games, so this takes a second or two. -/
+the balance check, or else the first error. The Pictures are checked only on load.
+The balance check plays 1,000 games, so this takes a second or two. -/
 def checkSavedEntry (id : String) (read : Except String String) : AdventureCard × Option String :=
   match read, savedCard id read with
   | .ok text, (card, none) =>
@@ -398,17 +407,19 @@ def checkSavedEntry (id : String) (read : Except String String) : AdventureCard 
 
 /-! ## Saved verdicts
 
-A check of a saved Adventure runs the fairness check, so it takes a second or two. So the server
+A check of a saved Adventure runs the balance check, so it takes a second or two. So the server
 saves each result in `adventures/<id>/verdict.json`, and uses it again after a restart.
 A verdict counts only if its stamp is the stamp of `adventure.json` now, and its build key is the
 key of the running program. Every new build of the server makes all verdicts old, because the
-checker, the rules, the fairness check, the simulator, and the Draft reader are compiled into it.
+checker, the rules, the balance check, the simulator, and the Draft reader are compiled into it.
 
-A verdict is for display only: it says what the card on the Front Page shows. `/api/load` never
-reads it, and always runs the checker and the fairness check before play. So a wrong, broken, or
-edited verdict cannot make a save playable. At worst a card shows the wrong state until a load
-checks the save again and writes a new verdict. A card that shows "fails" has a "Check again"
-button for this: it sends the same load. -/
+A verdict says what the card on the Front Page shows, and it lets a load skip the slow balance
+check: if the verdict (or the cache) says that this build passed this exact text, `/api/load` runs
+only the checker again. Without such a verdict, the load runs both checks. So the verdict file is
+trusted for the balance check only, and a forged pass could get a legal Adventure played that
+did not pass the balance check. Anyone who can write that file can also replace the server
+program. A broken verdict, or one for another text or build, is not used. A card that shows
+"fails" has a "Check again" button: its load runs both checks, because no pass applies. -/
 
 /-- The saved result of a check of a saved Adventure. -/
 structure Verdict where
@@ -416,7 +427,7 @@ structure Verdict where
   stamp : String
   /-- The build key (`GameConfig.build`) of the program that checked it. -/
   build : String
-  /-- `none` if the save passed the checker and the fairness check, or else the first error. -/
+  /-- `none` if the save passed the checker and the balance check, or else the first error. -/
   why : Option String
   deriving BEq
 
@@ -497,7 +508,7 @@ def removeTempFiles : IO Unit := do
         try IO.FS.removeFile f.path catch _ => pure ()
 
 /-- Write the verdict of saved Adventure `id`, atomically (`writeAtomic`). An error is only logged:
-a verdict is for display only. -/
+the save is then checked again the next time. -/
 def writeVerdict (cfg : GameConfig) (id stamp : String) (why : Option String) : IO Unit := do
   let some build := cfg.build | return
   try writeAtomic cfg (verdictFile id) ({ stamp, build, why } : Verdict).toJson.pretty
@@ -598,9 +609,9 @@ load: in the cache and in its verdict. -/
 def markRefused (cfg : GameConfig) (id text why : String) : IO Unit :=
   recordChecked cfg id (textStamp text) (savedCard id (.ok text)).1 (some why)
 
-/-- The text of `adventure.json` for a Draft, its Wish, and its fairness seed. -/
+/-- The text of `adventure.json` for a Draft, its Wish, and its balance seed. -/
 def savedText (d : Draft) (wish : String) (seed : Nat) : String :=
-  ((d.toJson.setObjVal! "wish" (Json.str wish)).setObjVal! "fairnessSeed" (toJson seed)).pretty
+  ((d.toJson.setObjVal! "wish" (Json.str wish)).setObjVal! "balanceSeed" (toJson seed)).pretty
 
 /-- `true` if the saved text of the Draft in `text` reads back as the same Draft. `saveDraft`
 records `ok` for the saved text without a new check, so it needs this. -/
@@ -615,7 +626,7 @@ def savedTextRoundTrips (text : String) : Bool :=
 #guard savedTextRoundTrips fixtureLegal
 #guard savedTextRoundTrips fixtureOld
 
-/-- Save a Draft that passed the checker and the fairness check with seed `seed`. The verdict
+/-- Save a Draft that passed the checker and the balance check with seed `seed`. The verdict
 (`ok`) and the cache entry are written first, from the same text, and then `adventure.json` is
 written atomically. So the background check does not check this save again. This trusts that the
 saved text reads back as the same Draft (see `savedTextRoundTrips`). -/
@@ -976,9 +987,9 @@ def drawPictures (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerSt
 /-- Load a Draft that passed: save it, make it the session, and draw its Pictures. The page then
 asks the Player to play it now or later (state `ready`). -/
 def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
-    (d : Draft) (g : Game) (wish : String) (fairnessSeed : Nat) : IO Unit := do
+    (d : Draft) (g : Game) (wish : String) (balanceSeed : Nat) : IO Unit := do
   let id ← newSavedId d.adventure.title
-  saveDraft cfg id d wish fairnessSeed
+  saveDraft cfg id d wish balanceSeed
   let seed := (← IO.monoNanosNow) % 1000000
   let res ← ref.modifyGet fun s =>
     if s.gen.job != job || s.gen.state != .running then (none, s) else
@@ -996,11 +1007,11 @@ def adopt (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (j
     if cfg.picturesOn then
       let _ ← IO.asTask (drawPictures cfg children ref id run d d.adventure.scenes) .dedicated
 
-/-- The step text for the errors of the checker and the fairness check. -/
+/-- The step text for the errors of the checker and the balance check. -/
 def errorsText (n : Nat) : String :=
   if n = 1 then "The checks found 1 error:" else s!"The checks found {n} errors:"
 
-/-- A random seed for the fairness check of a Wish, from the operating system. -/
+/-- A random seed for the balance check of a Wish, from the operating system. -/
 def randomSeed : IO Nat := do
   let bytes ← IO.getRandomBytes 8
   return bytes.foldl (fun acc b => acc * 256 + b.toNat) 0
@@ -1033,18 +1044,18 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
         | .ok d =>
           -- A fresh random seed for each try, so the DM cannot tune its story to one batch of games.
           -- In test mode (`RPG_FAKE_API`) the seed is fixed, so `make run-fake` gives the same result each time.
-          let fairnessSeed ← if cfg.fake.isSome then pure 1 else randomSeed
-          match d.toGame fairnessSeed with
+          let balanceSeed ← if cfg.fake.isSome then pure 1 else randomSeed
+          match d.toGame balanceSeed with
           | .ok g =>
-            if !(← addStep ref job { text := "The Adventure passed the checker and the fairness check." }) then return
-            adopt cfg children ref job d g wish fairnessSeed
+            if !(← addStep ref job { text := "The Adventure passed the checker and the balance check." }) then return
+            adopt cfg children ref job d g wish balanceSeed
             return
           | .error errs => pure (errs, some d.hero, content)
     lastErrors := errors
     if !(← addStep ref job { text := errorsText errors.length, errors }) then return
     messages := messages ++ [assistantTurn content, userTurn (fixMessage errors hero?)]
   endJob ref job .failed
-    { text := "The Dungeon Master could not write a legal and fair Adventure in 3 tries.", errors := lastErrors }
+    { text := "The Dungeon Master could not write a legal and balanced Adventure in 3 tries.", errors := lastErrors }
 
 /-- Start the work on a Wish in the background. Returns `false`, and does nothing, if the DM is
 already writing. The check and the start are one atomic step. -/
@@ -1167,12 +1178,12 @@ def watchChange (children : Children) (ref : IO.Ref ServerState) (job limitMs : 
 /-- The last step of a live change that used all its calls, validations, or time. It says how many
 proposals the Dungeon Master made, and keeps the last errors. -/
 def changeOutOfBudget (calls : Nat) (errors : List String) : Step :=
-  { text := s!"The Dungeon Master stopped after {calls} proposals and could not find a fair version. " ++
+  { text := s!"The Dungeon Master stopped after {calls} proposals and could not find a balanced version. " ++
       "Your game is unchanged.",
     errors := errors.take 20 }
 
 #guard (changeOutOfBudget 6 ["a row failed"]).text ==
-  "The Dungeon Master stopped after 6 proposals and could not find a fair version. Your game is unchanged."
+  "The Dungeon Master stopped after 6 proposals and could not find a balanced version. Your game is unchanged."
 
 /-- Generate a fun patch, screen local counter variants, then validate a frozen proposal. Stop
 after `maxChangeCalls` calls, `maxChangeValidations` validations, or `maxChangeMs`. -/
@@ -1466,13 +1477,21 @@ def parseChange (body : String) : Except String String := do
 
 /-- Load a saved Adventure: read it, check it again, and check its Pictures again. Also returns
 the file text it read, if it read one, so the caller can record the result for that text.
-This never reads the saved verdict or the cache: a save is played only if this check passes. -/
-def loadSaved (id : String) : IO (Option String × Except String (Game × Source × Draft)) := do
+The checker always runs. The balance check runs too, unless the cache or a saved verdict says
+that this build already passed this exact text (same stamp and build key). -/
+def loadSaved (cfg : GameConfig) (id : String) :
+    IO (Option String × Except String (Game × Source × Draft)) := do
   if !safeSegment id then return (none, .error "There is no saved Adventure with that name.")
   let path := savedRoot / id / "adventure.json"
   if !(← path.pathExists) then return (none, .error "There is no saved Adventure with that name.")
   let text ← IO.FS.readFile path
-  match checkSavedText text with
+  -- A pass for this exact text from this build (in the cache, or in a verdict that applies) means
+  -- the balance check already passed, so only the checker runs again. Else both run.
+  let passed := (← knownEntry cfg id (.ok text)).any (·.why.isNone)
+  let checked := if passed then
+      (do let d ← (Draft.parse text).mapError (fun e => [e]); return (d, ← d.toGameAdmitted))
+    else checkSavedText text
+  match checked with
   | .error errs =>
     return (some text, .error s!"The saved Adventure failed the check: {"; ".intercalate errs}")
   | .ok (d, g) =>
@@ -1580,6 +1599,10 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       if !cfg.canWish || g.wish.isEmpty then
         return ← replyJson .badRequest (← view (error := some "There is no Wish to try again."))
       if g.mode == "change" then
+        -- Only a change that ended without an install can be tried again. After an install the
+        -- state is idle, and a stale "Try again" in another tab must not start the change twice.
+        if !(g.state == .failed || g.state == .refused) then
+          return ← replyJson .conflict (← view (error := some "There is no change to try again."))
         match ← startChange cfg children state g.wish with
         | .error why => return ← replyJson .conflict (← view (error := some why))
         | .ok () => return ← replyJson .ok (← view)
@@ -1587,7 +1610,7 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       replyJson .ok (← view)
     | ["api", "load"] =>
       let id := (Json.parse body >>= (·.getObjValAs? String "id")).toOption.getD ""
-      let (text?, result) ← loadSaved id
+      let (text?, result) ← loadSaved cfg id
       match result with
       | .error e =>
         -- The list shows this refusal too, until the file changes.
@@ -1685,10 +1708,10 @@ def main (args : List String) : IO UInt32 := do
     IO.eprintln "The Adventure failed the check, so the game will not start:"
     for e in errs do IO.eprintln s!"  ERROR: {e}"
     return 1
-  -- The built-in Adventure must also pass the fairness check, with the fixed validation seed.
+  -- The built-in Adventure must also pass the balance check, with the fixed validation seed.
   let (counts, admitted) := Probability.admitStatistically Lighthouse.statisticalCandidate
   if admitted.isNone then
-    IO.eprintln "The Adventure failed the fairness check, so the game will not start:"
+    IO.eprintln "The Adventure failed the balance check, so the game will not start:"
     for e in Probability.failedRows Lighthouse.statisticalCandidate.horizon counts do
       IO.eprintln s!"  ERROR: {e}"
     return 1

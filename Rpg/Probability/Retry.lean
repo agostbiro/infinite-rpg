@@ -40,7 +40,7 @@ def RetryTree.Valid : {n : Nat} → RetryTree n → Prop
 def RetryTree.falseAcceptance : {n : Nat} → RetryTree n → Nat → Rat
   | _, .stop, _ => 0
   | _, .attempt a law next, index => expectation law fun obs =>
-    if acceptsFamily a.bands (attemptRisk index) obs ∧ ¬ familyFair a.truth a.bands then 1
+    if acceptsFamily a.bands (attemptRisk index) obs ∧ ¬ familyBalanced a.truth a.bands then 1
     else (next obs).falseAcceptance (index+1)
 
 /-- Finite expectation distributes over addition. -/
@@ -57,20 +57,20 @@ private theorem expectation_add (law : Distribution α) (f g : α → Rat) :
 
 /-- Adaptive retries preserve the remaining confidence budget; no independence between rows
 or between chosen candidates is assumed. Fresh conditional-binomial batches are required. -/
-theorem RetryTree.fair {n : Nat} (tree : RetryTree n) (start : Nat)
-    -- Each conditional batch obeys the same explicit sampling model as the main fairness theorem.
+theorem RetryTree.balanced {n : Nat} (tree : RetryTree n) (start : Nat)
+    -- Each conditional batch obeys the same explicit sampling model as the main balance theorem.
     (valid : tree.Valid) : tree.falseAcceptance start ≤ remainingRisk start := by
   induction tree generalizing start with
   | stop => exact Rat.le_of_lt (remainingRisk_valid start).1
   | @attempt n a law next ih =>
     obtain ⟨lawValid, ⟨sampling⟩, probabilities, children⟩ := valid
     have tail0 := Rat.le_of_lt (remainingRisk_valid (start+1)).1
-    have first := (a.fairAt (attemptRisk start) tail0 law lawValid sampling probabilities).2
+    have first := (a.balancedAt (attemptRisk start) tail0 law lawValid sampling probabilities).2
     have bound := expectation_monotone law lawValid.1
-      (fun obs => if acceptsFamily a.bands (attemptRisk start) obs ∧ ¬ familyFair a.truth a.bands then 1
+      (fun obs => if acceptsFamily a.bands (attemptRisk start) obs ∧ ¬ familyBalanced a.truth a.bands then 1
         else (next obs).falseAcceptance (start+1))
       (fun obs => (if acceptsFamily a.bands (attemptRisk start) obs ∧
-        ¬ familyFair a.truth a.bands then 1 else 0) + remainingRisk (start+1)) (by
+        ¬ familyBalanced a.truth a.bands then 1 else 0) + remainingRisk (start+1)) (by
         intro obs
         have tail := ih obs (start+1) (children obs)
         split <;> simp_all <;> grind)

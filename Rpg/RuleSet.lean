@@ -4,7 +4,7 @@ import Rpg.Mechanic
 # The rules of one adventure
 
 Each adventure has one `RuleSet` value, in its own `Rules.lean`. The spec, the checker, the
-Engine, and the fairness check all get that same value. The default of each field is the
+Engine, and the balance check all get that same value. The default of each field is the
 GURPS Lite rule in `Rpg/Rules.lean`, so `{}` means "the rules of this game, unchanged".
 
 A `RuleSet` is part of what "legal" means. People own the `Rules.lean` files: `make check`

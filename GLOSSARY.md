@@ -42,12 +42,16 @@ _Avoid_: valid adventure, verified adventure
 The rules of one Adventure: core limits and functions, plus local equipment and combat effects. Live changes can modify the local data; core limits and functions remain fixed.
 _Avoid_: ruleset config, house rules
 
+**Balance**:
+The property that the balance check tests: the deaths on each turn of an Adventure fit a rising target curve. The check is a statistical test, so it can pass an unbalanced Adventure at most 5% of the time.
+_Avoid_: fairness
+
 **Admission**:
-The fairness check that an Adventure must pass after the checker, before play and before a World change is installed. It plays the Adventure 1,000 times from its start with a seed, and compares the deaths on each turn with a target curve.
+The balance check that an Adventure must pass after the checker, before play and before a World change is installed. It plays the Adventure 1,000 times from its start with a seed, and compares the deaths on each turn with a target curve.
 _Avoid_: certification, validation (except for the run with the fixed seed)
 
 **Horizon**:
-How many turns after the first one the fairness check looks at. With horizon 5, it looks at turns 1 to 6.
+How many turns after the first one the balance check looks at. With horizon 5, it looks at turns 1 to 6.
 _Avoid_: window size
 
 **World**:
@@ -90,7 +94,7 @@ _Avoid_: equipment, kit, loadout
 A change that the Player asks for during play, such as a new weapon, together with a Counter-rule. The two are installed together, only after the checker and the Admission of the changed Adventure from its start pass. It is not saved.
 
 **Counter-rule**:
-A named, visible response to a requested change that adds a tactical choice. The DM proposes one from the first attempt, even if the gift would already pass fairness.
+A named, visible response to a requested change that adds a tactical choice. The DM proposes one from the first attempt, even if the gift would already pass the balance check.
 
 **Flag**:
 A record that an event happened, such as "the guard is bribed". A Scene can set a Flag, and a Choice can require one.

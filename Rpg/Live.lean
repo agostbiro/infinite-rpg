@@ -14,7 +14,7 @@ Character and on the Adventure. A `Game` needs the proofs `LegalCharacter` and `
 (see `Game.new`), and `Draft.toGame` gets them only from `checkCharacter_sound` and `check_sound`.
 So a Draft that the checker rejects can never be played.
 
-Then `Draft.toGame` runs the fairness check (admission): 1,000 games from a seed, with
+Then `Draft.toGame` runs the balance check (admission): 1,000 games from a seed, with
 horizon 5. A Draft that fails a row is not played either. The server picks a fresh random seed for
 each try and saves it with the Adventure, so a saved Adventure gives the same result when it loads.
 A Wish uses the default rules (`liveRules`). The DM cannot change them.
@@ -306,7 +306,7 @@ def sizeErrors (d : Draft) : List String :=
 /-- The rules of every Wish: the default rules. -/
 def liveRules : RuleSet := {}
 
-/-- The number of turns that the fairness check covers for a Wish, after the first one. -/
+/-- The number of turns that the balance check covers for a Wish, after the first one. -/
 def liveHorizon : Nat := 5
 
 /-- All errors in a Draft: the size errors, or else the checker's errors for the Character and
@@ -326,15 +326,22 @@ private def Draft.checked (d : Draft) : Except (List String) AdventureDefinition
     else .error (check liveRules d.hero d.adventure)
   else .error (checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure)
 
-/-- A Draft that passed the checker, as a candidate for the fairness check. -/
+/-- A Draft that passed the checker, as a candidate for the balance check. -/
 def liveCandidate (defn : AdventureDefinition) : Probability.StatisticalCandidate where
   toAdventureDefinition := defn
   horizon := liveHorizon
   horizonPositive := by decide
 
-/-- **The only way in this code from a Draft to a Game.** It runs the checker, then the fairness check with
+/-- A Game from a Draft that this build of the server already admitted: it runs the size limits and
+the checker again, but not the balance check. Use it only when a saved verdict for this exact
+text and this build says that the Draft passed both checks (see `loadSaved` in `Main.lean`). -/
+def Draft.toGameAdmitted (d : Draft) : Except (List String) Game :=
+  d.checked.map Game.new
+
+/-- **The only way in this code from a Draft to a Game that runs the balance check.** It runs the
+checker, then the balance check with
 1,000 games from `seed`. If both pass, it returns the Game. Else it returns the errors. Each
-fairness error starts with "fairness:" and names the row that failed. -/
+balance error starts with "balance:" and names the row that failed. -/
 def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
   match d.checked with
   | .error errs => .error errs
@@ -342,7 +349,7 @@ def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
     match Probability.admitWithSeed (liveCandidate defn) seed with
     | (_, some a) => .ok (Game.new a.candidate.toAdventureDefinition)
     | (counts, none) =>
-      .error ((Probability.failedRows liveHorizon counts).map ("fairness: " ++ ·))
+      .error ((Probability.failedRows liveHorizon counts).map ("balance: " ++ ·))
 
 /-- How the points of a being add up, such as "ST 11: 10, DX 12: 40, ... Total: 100". The DM
 gets this with the errors, so it can fix a build. -/
@@ -457,12 +464,12 @@ def draftErrors (s : String) : List String :=
       "ST 10: 0, DX 11: 20, IQ 12: 40, HT 12: 20, Staff 13: 8, Swimming 12: 1, Naturalist 12: 4, Survival 12: 2, First Aid 13: 2, Climbing 11: 2, Fast-Talk 11: 1. Total: 100"
   | .error _ => false
 
--- The legal fixture passes the checker but fails the fairness check: it is too short and too safe.
+-- The legal fixture passes the checker but fails the balance check: it is too short and too safe.
 -- Every row from turn 4 on has no games in it, so those rows cannot pass.
 #guard match Draft.parse fixtureLegal with
   | .ok d => match d.toGame 1 with
     | .ok _ => false
-    | .error errs => errs.all (·.startsWith "fairness: ") && !errs.isEmpty
+    | .error errs => errs.all (·.startsWith "balance: ") && !errs.isEmpty
   | .error _ => false
 
 end Rpg

@@ -70,12 +70,12 @@ def zeroLaw_sampling : BinomialSampling zeroLaw TestStory.safeCandidate.truth wh
     rw [safe_truth_zero]
     simp [zeroLaw, expectation, pure, Pure.pure, zero_sampling]
 
-/-- Both conclusions of fair hold for a real adventure with all model premises supplied. -/
+/-- Both conclusions of `balanced` hold for a real adventure with all model premises supplied. -/
 example :
     (∀ i, intervalMissProbability zeroLaw TestStory.safeCandidate.truth confidenceDelta i ≤ confidenceDelta) ∧
     familyFalseAcceptance zeroLaw TestStory.safeCandidate.truth (confidenceBands 1)
       confidenceDelta ≤ confidenceDelta := by
-  apply TestStory.safeCandidate.fair zeroLaw zeroLaw_valid zeroLaw_sampling
+  apply TestStory.safeCandidate.balanced zeroLaw zeroLaw_valid zeroLaw_sampling
   intro i
   rw [safe_truth_zero]
   decide +kernel

@@ -50,7 +50,7 @@ def roll3d6 : Roll (List Nat) := rollDice 3
 
 /-- Roll 3d6 against a target number, with the dice from `roll`.
 `roll n` rolls `n` six-sided dice and gives the faces. The Engine uses only the sum of the faces
-to decide a result, so the fairness model can pass one-item lists that hold only the sum. -/
+to decide a result, so the balance model can pass one-item lists that hold only the sum. -/
 def rollAgainstWith [Monad m] (rules : RuleSet) (roll : Nat → m (List Nat)) (target : Int) :
     m DiceRoll := do
   let faces ← roll 3
@@ -276,7 +276,7 @@ def remainingRoundWith [Monad m] (attackFn : AttackFn m)
 
 /-- One round of a Fight in turn order `order`: the Creatures before the Character, then the
 Character, then the Creatures after it. On its turn, the Character uses `pick` to choose a
-maneuver and a target. Play, the simulator, and the fairness model all use this order. -/
+maneuver and a target. Play, the simulator, and the balance model all use this order. -/
 def roundWith [Monad m] (attackFn : AttackFn m) (pick : FightState → m (Maneuver × Nat))
     (order : List Actor) (s : FightState) : m (FightState × List Report) := do
   let (s, before) ← foeTurnsWith attackFn s (beforeCharacter order)

@@ -5,7 +5,7 @@ import Rpg.Probability.StatisticalAdmission
 # A safe test story
 
 A two-Scene story with no danger, for tests only. It is not in the catalog, so it is never
-offered for play. The tests use it to show that the hypotheses of `fair` can all be met on a
+offered for play. The tests use it to show that the hypotheses of `balanced` can all be met on a
 real candidate. It also shows where admission rejects a story where the Character can never die.
 -/
 

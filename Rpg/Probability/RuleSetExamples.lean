@@ -55,14 +55,14 @@ theorem runtime_failure_rule (seed : Rng) :
 #guard (combatDistribution failureRules strongHero 3 [harmlessFoe]).mass (· == .stalled) == 1
 
 /-- The finite diagnostic must catch the first-turn loophole, even at horizon zero. -/
-example : checkFairnessThrough defaultPolicy instantDeathGraph 0 =
+example : checkBalanceThrough defaultPolicy instantDeathGraph 0 =
     [.firstTurn 1 (1 - defaultPolicy.survival 1)] := by decide +kernel
 
 /-- A valid positive fixture has no finite diagnostic failures. -/
-example : checkFairnessThrough defaultPolicy safeGraph 4 = [] := by decide +kernel
+example : checkBalanceThrough defaultPolicy safeGraph 4 = [] := by decide +kernel
 
 /-- Diagnostics reject malformed policies rather than silently skipping all tests. -/
-example : (checkFairnessThrough { defaultPolicy with retention := 1 } safeGraph 0).head? =
+example : (checkBalanceThrough { defaultPolicy with retention := 1 } safeGraph 0).head? =
     some .invalidPolicy := by decide +kernel
 
 end Rpg.Probability

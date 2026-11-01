@@ -1,7 +1,7 @@
-# Exact binomial fairness intervals
+# Exact binomial balance intervals
 
-`Rpg.Probability.StatisticalCandidate.fair` is the main theorem, specialized as
-`Rpg.Lighthouse.fair`. It is a theorem about the test, true for every candidate.
+`Rpg.Probability.StatisticalCandidate.balanced` is the main theorem, specialized as
+`Rpg.Lighthouse.balanced`. It is a theorem about the test, true for every candidate.
 What admits an Adventure is the run-time check `admitStatistically` (fixed seed) or
 `admitWithSeed` (a Wish, with a fresh seed).
 
@@ -28,7 +28,7 @@ a union bound gives at most 3 × 5% = 15% false acceptance over the 3 tries.
 Lean proves the per-try bound; it does not prove this retry bound.
 
 In-game rule changes use a separate, rigorously proved retry protocol. Validation attempt
-`n` spends `confidenceDelta / 2^(n+1)`, starting with 97.5% intervals. `RetryTree.fair`
+`n` spends `confidenceDelta / 2^(n+1)`, starting with 97.5% intervals. `RetryTree.balanced`
 bounds false acceptance across any finite adaptive sequence by the overall 5% budget,
 assuming the sampling model at every history. Screening does not spend that budget;
 each frozen proposal uses a fresh validation batch of 1,000 games from the updated adventure beginning, including combat.
@@ -54,7 +54,7 @@ and `exactExpectation_correct` proves they equal the independent-Bernoulli model
 `confidenceInterval_encloses` proves that outward rounding cannot reduce coverage.
 For zero observations the interval is `[0,1]`, and admission fails.
 
-`fair` proves:
+`balanced` proves:
 
 1. Each reported interval covers its true conditional expectation with probability
    at least 95%, including when its qualifying count is random.
@@ -63,7 +63,7 @@ For zero observations the interval is `[0,1]`, and admission fails.
 
 These are per-interval coverage and a bound on false acceptance of the whole
 check, not simultaneous coverage of every interval or a posterior probability
-that an accepted adventure is fair. Rows may depend on one another.
+that an accepted adventure is balanced. Rows may depend on one another.
 
 ## Accepted sampling assumptions
 
@@ -80,7 +80,7 @@ axioms, with no `sorry`, new axioms, or `native_decide`.
 
 ## Admission and validation
 
-`StatisticalAdventure` carries `fair`, source-bound counts, and passing interval
+`StatisticalAdventure` carries `balanced`, source-bound counts, and passing interval
 checks. Its provenance requires `counts = sampleCounts candidate seed validationGames`, with the seed it records; observations
 from a different story, hero, ruleset, or horizon cannot be substituted.
 `intervals_fit` proves that admitted intervals lie inside the shared policy bands.
@@ -112,4 +112,4 @@ independent evidence.
 The mechanic skill runs its compiled screen and final admission with a shared
 one-minute deadline. Builds do not rerun this held-out experiment; the final
 command checks current source-bound counts, rather than comparing them with this
-historical table. The skill uses the shared fairness parameters and theorem.
+historical table. The skill uses the shared balance parameters and theorem.

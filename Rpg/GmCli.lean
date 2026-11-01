@@ -1,7 +1,7 @@
 import Rpg.Prompt
 
 /-! Local coding-assistant logins can supply GM data without a separate API key.
-Their structured answers still pass the ordinary legality and fairness gates. -/
+Their structured answers still pass the ordinary legality and balance gates. -/
 namespace Rpg.GmCli
 open Lean
 
