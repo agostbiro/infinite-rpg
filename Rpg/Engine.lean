@@ -1,4 +1,4 @@
-import Rpg.Adventure
+import Rpg.Report
 
 /-!
 # Engine
@@ -6,6 +6,7 @@ import Rpg.Adventure
 The Engine rolls all dice and works out every result.
 It is pure code: dice come from a seeded random number generator (`Rng`),
 so the same seed always gives the same game.
+Each step returns Reports (see `Rpg/Report.lean`) that say what happened, with every die face.
 
 A Fight runs in rounds. In each round, every living being acts once,
 in order of Basic Speed, then DX. The Character wins any tie that is left.
@@ -36,36 +37,33 @@ def d6 : Roll Nat := do
   set g
   return x.toNat % 6 + 1
 
-/-- Roll `n` six-sided dice and add them. -/
-def rollDice : Nat → Roll Nat
-  | 0 => return 0
+/-- Roll `n` six-sided dice. Returns each face. The total is the sum of the faces. -/
+def rollDice : Nat → Roll (List Nat)
+  | 0 => return []
   | n + 1 => do
     let a ← d6
-    let b ← rollDice n
-    return a + b
+    let rest ← rollDice n
+    return a :: rest
 
-/-- Roll 3d6. -/
-def roll3d6 : Roll Nat := rollDice 3
+/-- Roll 3d6. Returns the three faces. -/
+def roll3d6 : Roll (List Nat) := rollDice 3
 
-/-- The display name of a roll result. -/
-def RollResult.name : RollResult → String
-  | .criticalSuccess => "critical success"
-  | .success => "success"
-  | .failure => "failure"
-  | .criticalFailure => "critical failure"
+/-- Roll 3d6 against a target number. -/
+def rollAgainst (target : Int) : Roll DiceRoll := do
+  let faces ← roll3d6
+  return ⟨faces, faces.sum, target, successRoll target faces.sum⟩
 
-/-- Make a Success Roll at an effective skill. Returns the result and a line of text.
+/-- Make a Success Roll for `who` against `what`, at an effective skill. Returns the result and a Report.
 `none` means the being cannot use the skill at all. Then, and also when the effective skill
 is below 3, there is no roll and the result is a failure (p. 2, and deviation 7).
 A Legal Adventure never asks for such a roll (see `CanTryRoll` in the spec). -/
-def makeRoll (label : String) (skill? : Option Int) : Roll (RollResult × String) := do
+def makeRoll (who what : String) (skill? : Option Int) : Roll (RollResult × Report) := do
   let some skill := skill?
-    | return (.failure, s!"{label}: you cannot use this skill untrained. Failure.")
+    | return (.failure, .cannotTry who what none)
   if skill < 3 then
-    return (.failure, s!"{label}: effective skill {skill} is too low to try. Failure.")
-  let r ← roll3d6
-  let res := successRoll skill r
-  return (res, s!"{label} (needs {skill} or less): rolled {r}, {res.name}.")
+    return (.failure, .cannotTry who what (some skill))
+  let r ← rollAgainst skill
+  return (r.result, .successRoll who what r)
 
 /-- A being in a Fight, with its current HP and its last maneuver. -/
 structure Fighter where
@@ -86,35 +84,47 @@ def Fighter.dodge (f : Fighter) : Option Nat :=
   let base := if 3 * f.hp < f.being.maxHP then (d + 1) / 2 else d
   f.maneuver.dodgeBonus.map (base + ·)
 
-/-- One attack by `att` on `dfn`. The last maneuver of `att` gives the bonus to hit.
-Returns the injury done and lines of text. -/
-def attack (att : Fighter) (dfn : Fighter) : Roll (Nat × List String) := do
+/-- The damage dice for a hit. After an attack roll of 3, every die counts as 6 and no dice
+are rolled. Returns the faces and `true` if they are the maximum. -/
+def damageFaces (count : Nat) (attackTotal : Nat) : Roll (List Nat × Bool) := do
+  if attackTotal = 3 then return (List.replicate count 6, true)
+  let faces ← rollDice count
+  return (faces, false)
+
+/-- One attack by `att` (actor `attId`) on `dfn` (actor `dfnId`).
+The last maneuver of `att` gives the bonus to hit. Returns the injury done and the Reports. -/
+def attack (attId : Actor) (att : Fighter) (dfnId : Actor) (dfn : Fighter) :
+    Roll (Nat × List Report) := do
   let level := att.being.attackLevel + att.maneuver.hitBonus
   if level < 3 then
-    return (0, [s!"{att.being.name} cannot attack: effective skill {level} is too low to try."])
-  let r ← roll3d6
-  let res := successRoll level r
-  let line := s!"{att.being.name} attacks {dfn.being.name} with {att.being.weapon.name} (needs {level} or less): rolled {r}, {res.name}."
-  if !res.succeeded then
+    return (0, [.cannotAttack att.being.name level])
+  let r ← rollAgainst level
+  let line := Report.attack attId att.being.name dfnId dfn.being.name att.being.weapon.name r
+  if !r.result.succeeded then
     return (0, [line])
-  let mut lines := [line]
-  if res != .criticalSuccess then
+  let mut reports := [line]
+  if r.result != .criticalSuccess then
     match dfn.dodge with
     | none =>
-      lines := lines ++ [s!"  {dfn.being.name} cannot defend after an All-Out Attack."]
+      reports := reports ++ [.noDefense dfn.being.name]
     | some dodge =>
-      let dr ← roll3d6
+      let d ← rollAgainst dodge
       -- A defense roll has no critical results: it just succeeds or fails (p. 28).
-      let dodged := (successRoll dodge dr).succeeded
-      lines := lines ++ [s!"  {dfn.being.name} dodges (needs {dodge} or less): rolled {dr}, {if dodged then "success" else "failure"}."]
+      let dodged := d.result.succeeded
+      reports := reports ++ [.dodge dfn.being.name { d with result := if dodged then .success else .failure }]
       if dodged then
-        return (0, lines)
+        return (0, reports)
   let dice := att.being.weapon.damage att.being.st
-  let sum ← if r = 3 then pure (6 * dice.count) else rollDice dice.count
-  let basic := basicDamage dice att.being.weapon.damageType sum
-  let inj := injury att.being.weapon.damageType dfn.being.dr basic
-  lines := lines ++ [s!"  Hit! {basic} damage, DR {dfn.being.dr}, {inj} injury."]
-  return (inj, lines)
+  let kind := att.being.weapon.damageType
+  let (faces, maxed) ← damageFaces dice.count r.total
+  let basic := basicDamage dice kind faces.sum
+  let inj := injury kind dfn.being.dr basic
+  let hpLeft := dfn.hp - inj
+  reports := reports ++
+    [.damage dfnId dfn.being.name faces maxed dice.add kind.name basic dfn.being.dr inj hpLeft]
+  if dfn.alive && hpLeft ≤ 0 then
+    reports := reports ++ [.falls dfnId dfn.being.name]
+  return (inj, reports)
 
 /-- The state of a Fight: the Character and the Creatures. -/
 structure FightState where
@@ -124,9 +134,6 @@ structure FightState where
 /-- The Fight is over when the Character is dead or every Creature is dead. -/
 def FightState.over (s : FightState) : Bool :=
   !s.hero.alive || s.foes.all (!·.alive)
-
-/-- Who acts in a round: `none` is the Character, `some i` is Creature number `i`. -/
-abbrev Actor := Option Nat
 
 /-- `true` if `a` acts before `b`: higher Basic Speed first, then higher DX. -/
 def actsBefore (a b : Being × Bool) : Bool :=
@@ -144,31 +151,31 @@ def turnOrder (hero : Being) (foes : List Being) : List Actor :=
 def hurtFoe (foes : List Fighter) (i : Nat) (inj : Nat) : List Fighter :=
   foes.modify i fun f => { f with hp := f.hp - inj }
 
-/-- A line of text that says which maneuver a being chose. Attack needs no line. -/
-def announce (name : String) (m : Maneuver) : List String :=
-  if m = .attack then [] else [s!"{name} chooses {m.describe}."]
+/-- A Report that says which maneuver a being chose. Attack needs no Report. -/
+def announce (name : String) (m : Maneuver) : List Report :=
+  if m = .attack then [] else [.maneuver name m]
 
 /-- The Character's turn. The Character uses maneuver `choice`. If the maneuver includes
 an attack, the Character attacks Creature number `target`. A dead or missing target makes
 the turn do nothing. -/
 def heroTurn (s : FightState) (choice : Maneuver) (target : Nat) :
-    Roll (FightState × List String) := do
+    Roll (FightState × List Report) := do
   if s.over then return (s, [])
   let hero := { s.hero with maneuver := choice }
   let intro := announce hero.being.name choice
   if !choice.attacks then return ({ s with hero := hero }, intro)
   let some foe := s.foes[target]? | return (s, [])
   if !foe.alive then return (s, [])
-  let (inj, lines) ← attack hero foe
-  return ({ s with hero := hero, foes := hurtFoe s.foes target inj }, intro ++ lines)
+  let (inj, reports) ← attack none hero (some target) foe
+  return ({ s with hero := hero, foes := hurtFoe s.foes target inj }, intro ++ reports)
 
 /-- The turn of Creature number `i`. A Creature always chooses Attack and attacks the Character. -/
-def foeTurn (s : FightState) (i : Nat) : Roll (FightState × List String) := do
+def foeTurn (s : FightState) (i : Nat) : Roll (FightState × List Report) := do
   if s.over then return (s, [])
   let some foe := s.foes[i]? | return (s, [])
   if !foe.alive then return (s, [])
-  let (inj, lines) ← attack foe s.hero
-  return ({ s with hero := { s.hero with hp := s.hero.hp - inj } }, lines)
+  let (inj, reports) ← attack (some i) foe none s.hero
+  return ({ s with hero := { s.hero with hp := s.hero.hp - inj } }, reports)
 
 /-! ## Tests -/
 
@@ -190,34 +197,49 @@ private def testFight (m : Maneuver) : FightState :=
 -- Halved Dodge with no maneuver bonus: 9 halves to 5.
 #guard ({ being := testBeing, hp := 3 } : Fighter).dodge == some 5
 
+/-- `true` if the Report is a Dodge roll. -/
+private def isDodge : Report → Bool
+  | .dodge .. => true
+  | _ => false
+
 -- All-Out Defense: the Character does not attack, and the maneuver is stored.
 #guard
-  let (s, lines) := (heroTurn (testFight .attack) .allOutDefense 0).run' ⟨7⟩
+  let (s, reports) := (heroTurn (testFight .attack) .allOutDefense 0).run' ⟨7⟩
   s.foes.map (·.hp) == [12] && s.hero.maneuver == .allOutDefense &&
-    lines == ["Test chooses All-Out Defense: no attack, but +2 to Dodge until the next turn."]
+    reports == [.maneuver "Test" .allOutDefense]
 
 -- After an All-Out Attack, the Character never dodges, and for some seeds it is hit with no defense.
 #guard
   let logs := (List.range 50).map fun seed =>
     ((foeTurn (testFight .allOutAttack) 0).run' ⟨seed.toUInt64⟩).2
-  logs.all (·.all (!·.startsWith "  Test dodges")) &&
-    logs.any (·.contains "  Test cannot defend after an All-Out Attack.")
+  logs.all (·.all (!isDodge ·)) && logs.any (·.contains (.noDefense "Test"))
 
-/-- The Character makes an All-Out Attack, then an Attack, then the Creature attacks. Returns the Creature's lines. -/
-private def attackAfterAllOut : Roll (List String) := do
+/-- The Character makes an All-Out Attack, then an Attack, then the Creature attacks. Returns the Creature's Reports. -/
+private def attackAfterAllOut : Roll (List Report) := do
   let (s, _) ← heroTurn (testFight .attack) .allOutAttack 0
   let (s, _) ← foeTurn s 0
   let (s, _) ← heroTurn s .attack 0
-  let (_, lines) ← foeTurn s 0
-  return lines
+  let (_, reports) ← foeTurn s 0
+  return reports
 
 -- An Attack after an All-Out Attack gives the defense back: for some seeds the Character dodges.
 #guard (List.range 50).any fun seed =>
-  (attackAfterAllOut.run' ⟨seed.toUInt64⟩).any (·.startsWith "  Test dodges")
+  (attackAfterAllOut.run' ⟨seed.toUInt64⟩).any isDodge
+
+/-- The target number of the first attack roll in a list of Reports. -/
+private def firstAttackTarget : List Report → Option Int
+  | .attack _ _ _ _ _ r :: _ => some r.target
+  | _ :: rest => firstAttackTarget rest
+  | [] => none
 
 -- All-Out Attack adds 4 to the attack roll: Broadsword-12 needs 16 or less.
 #guard
-  let (_, lines) := (heroTurn (testFight .attack) .allOutAttack 0).run' ⟨1⟩
-  lines.any (·.startsWith "Test attacks Test with broadsword (needs 16 or less)")
+  let (_, reports) := (heroTurn (testFight .attack) .allOutAttack 0).run' ⟨1⟩
+  firstAttackTarget reports == some 16
+
+-- Each roll Report carries the faces it rolled, and its total is their sum.
+#guard (List.range 50).all fun seed =>
+  let r := (rollAgainst 10).run' ⟨seed.toUInt64⟩
+  r.faces.length == 3 && r.faces.all (fun f => 1 ≤ f && f ≤ 6) && r.total == r.faces.sum
 
 end Rpg

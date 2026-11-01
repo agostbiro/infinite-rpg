@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <!-- The Shore: rain on the shingle, a dark lighthouse on the rock, a causeway under the tide, a cliff path. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#1b2a40"/>
+    </linearGradient>
+    <pattern id="rain" width="40" height="60" patternUnits="userSpaceOnUse">
+      <line x1="30" y1="0" x2="18" y2="34" stroke="#3a4f6b" stroke-width="1.4"/>
+      <line x1="8" y1="26" x2="0" y2="50" stroke="#3a4f6b" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="lantern" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#f2b35b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="400" fill="url(#sky)"/>
+  <ellipse cx="260" cy="40" rx="320" ry="60" fill="#121c2e"/>
+  <ellipse cx="820" cy="30" rx="380" ry="70" fill="#0b1220"/>
+  <ellipse cx="1100" cy="90" rx="200" ry="40" fill="#121c2e"/>
+  <!-- the sea -->
+  <rect y="232" width="1200" height="168" fill="#10243a"/>
+  <polygon points="0,232 120,226 260,234 420,224 600,232 780,222 960,232 1200,224 1200,250 0,250" fill="#163049"/>
+  <polyline points="40,270 90,264 140,270" fill="none" stroke="#2c4a66" stroke-width="2"/>
+  <polyline points="380,296 440,288 500,296" fill="none" stroke="#2c4a66" stroke-width="2"/>
+  <polyline points="640,262 690,256 740,262" fill="none" stroke="#2c4a66" stroke-width="2"/>
+  <!-- the rock and the dark lighthouse -->
+  <polygon points="720,240 760,206 820,196 900,202 950,226 980,244" fill="#070b12"/>
+  <polygon points="836,204 876,204 868,92 844,92" fill="#2a3544"/>
+  <rect x="840" y="72" width="32" height="22" fill="#121821"/>
+  <rect x="846" y="77" width="20" height="13" fill="#1e2733"/>
+  <polygon points="836,72 876,72 856,54" fill="#1e2733"/>
+  <rect x="838" y="130" width="36" height="7" fill="#8c2f2f" opacity="0.7"/>
+  <rect x="840" y="170" width="34" height="7" fill="#8c2f2f" opacity="0.7"/>
+  <!-- the causeway, half under the tide -->
+  <polygon points="300,330 330,326 520,284 720,244 730,248 530,292 340,336" fill="#1e2733"/>
+  <rect x="440" y="296" width="60" height="5" fill="#163049"/>
+  <rect x="590" y="266" width="50" height="5" fill="#163049"/>
+  <!-- the cliff and the goat path -->
+  <polygon points="960,400 990,240 1040,170 1100,140 1200,120 1200,400" fill="#0a0f16"/>
+  <polyline points="1000,380 1060,340 1020,300 1090,262 1050,222 1120,186 1100,150" fill="none" stroke="#2a3544" stroke-width="3" stroke-dasharray="10 6"/>
+  <!-- the shingle beach -->
+  <polygon points="0,320 180,312 360,340 520,372 600,400 0,400" fill="#121821"/>
+  <circle cx="80" cy="350" r="4" fill="#1e2733"/>
+  <circle cx="150" cy="372" r="5" fill="#1e2733"/>
+  <circle cx="260" cy="360" r="3" fill="#1e2733"/>
+  <circle cx="340" cy="384" r="4" fill="#1e2733"/>
+  <!-- the keeper's daughter with a lantern -->
+  <circle cx="226" cy="300" r="46" fill="url(#lantern)"/>
+  <polygon points="200,350 214,292 230,292 238,350" fill="#070b12"/>
+  <circle cx="222" cy="282" r="11" fill="#070b12"/>
+  <rect x="232" y="296" width="8" height="10" fill="#ffd98a"/>
+  <rect width="1200" height="400" fill="url(#rain)" opacity="0.7"/>
+</svg>

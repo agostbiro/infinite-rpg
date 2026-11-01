@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verified RPG</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<div id="seed" class="seed" title="The dice seed. The same seed and the same clicks give the same game."></div>
+
+<main id="title-screen" class="title-screen" hidden>
+  <div class="title-card">
+    <p class="kicker">A GURPS Lite adventure, checked by Lean</p>
+    <h1 id="title-adventure"></h1>
+    <p class="title-blurb">The rules and the dice run in Lean. The Adventure passed the checker before you could play it, so the DM cannot cheat.</p>
+    <div id="title-character" class="title-character"></div>
+    <button id="begin" class="big-button" type="button">Begin</button>
+  </div>
+</main>
+
+<div id="table" class="table" hidden>
+  <header class="top">
+    <h1 id="adventure-title"></h1>
+  </header>
+
+  <section class="story" aria-live="polite">
+    <div id="scroll" class="scroll"></div>
+    <div id="mat" class="mat">
+      <div id="fight" class="fight" hidden>
+        <div id="round" class="round-label"></div>
+        <div id="cards" class="cards"></div>
+        <p id="fight-hint" class="fight-hint"></p>
+        <div id="maneuvers" class="maneuvers"></div>
+      </div>
+      <div id="choices" class="choices"></div>
+      <div id="over" class="over" hidden>
+        <p id="over-title" class="over-title"></p>
+        <p id="over-text" class="over-text"></p>
+        <button id="again" class="big-button" type="button">Play again</button>
+      </div>
+      <button id="skip" class="skip" type="button" hidden>Skip</button>
+    </div>
+  </section>
+
+  <aside id="character" class="panel character-panel"></aside>
+
+  <aside class="panel map-panel">
+    <h2>Map</h2>
+    <div class="map-wrap"><svg id="map" class="map" role="img" aria-label="Map of the Scenes you visited"></svg></div>
+  </aside>
+</div>
+
+<div id="toast" class="toast" role="alert" hidden></div>
+</body>
+</html>

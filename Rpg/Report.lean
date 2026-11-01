@@ -1,0 +1,111 @@
+import Rpg.Adventure
+import Lean.Data.Json
+
+/-!
+# Reports
+
+A Report is one thing the Engine did or found out during play, such as a roll or a hit.
+The Engine makes Reports, and the page draws them. A Report is data, not text,
+so the page can draw each die face and move each HP bar.
+Each Report that has dice carries every face the Engine rolled.
+-/
+
+namespace Rpg
+
+open Lean
+
+deriving instance ToJson, FromJson for Maneuver
+deriving instance ToJson for RollResult
+
+/-- Who acts in a Fight: `none` is the Character, `some i` is Creature number `i`. -/
+abbrev Actor := Option Nat
+
+/-- A roll of 3d6 against a target number. `total` is the sum of `faces`. -/
+structure DiceRoll where
+  faces : List Nat
+  total : Nat
+  target : Int
+  result : RollResult
+  deriving ToJson, BEq
+
+/-- A damage roll as text, such as "1d+2" or "2d-1". -/
+def Dice.show (d : Dice) : String :=
+  if d.add > 0 then s!"{d.count}d+{d.add}"
+  else if d.add < 0 then s!"{d.count}d{d.add}"
+  else s!"{d.count}d"
+
+/-- The name of a damage type, for display. -/
+def DamageType.name : DamageType → String
+  | .crushing => "crushing"
+  | .cutting => "cutting"
+  | .impaling => "impaling"
+
+/-- A Picture name is safe if it has only lowercase letters, digits, and dashes.
+The page builds the file name `pictures/<name>.svg` from it. -/
+def safePicture (name : String) : Bool :=
+  !name.isEmpty && name.all fun c => c.isLower || c.isDigit || c == '-'
+
+/-- What the page shows on a being's card at the start of a Fight. -/
+structure Card where
+  name : String
+  hp : Int
+  maxHP : Nat
+  weapon : String
+  /-- The damage roll and type, such as "1d+2 cutting". -/
+  damage : String
+  dr : Nat
+  deriving ToJson, BEq
+
+/-- The card of a being with `hp` HP. -/
+def Being.card (b : Being) (hp : Int) : Card :=
+  { name := b.name, hp, maxHP := b.maxHP, weapon := b.weapon.name,
+    damage := s!"{(b.weapon.damage b.st).show} {b.weapon.damageType.name}", dr := b.dr }
+
+/-- One thing the Engine did or found out during play. -/
+inductive Report where
+  /-- The Character comes to a Scene. `ending` is true if the Scene is an Ending.
+  `picture` is the name of the Scene's Picture, if it has a safe one. -/
+  | scene (id : SceneId) (title : String) (text : String) (ending : Bool) (picture : Option String)
+  /-- The Player picks the Choice with this text. -/
+  | picked (text : String)
+  /-- `who` makes a Success Roll against `what`, for example "DX -2". -/
+  | successRoll (who : String) (what : String) (roll : DiceRoll)
+  /-- `who` cannot try a roll against `what`. `level` is the effective skill, or `none`
+  if `who` cannot use the skill at all. The result is a failure. -/
+  | cannotTry (who : String) (what : String) (level : Option Int)
+  /-- A Fight starts between the Character and these Creatures, numbered from 0. -/
+  | fightStarts (hero : Card) (foes : List Card)
+  /-- A new round of the Fight starts. -/
+  | round (n : Nat)
+  /-- `who` chooses a Maneuver other than Attack. -/
+  | maneuver (who : String) (m : Maneuver)
+  /-- An attack roll by `attacker` on `defender`. -/
+  | attack (attacker : Actor) (attackerName : String) (defender : Actor) (defenderName : String)
+      (weapon : String) (roll : DiceRoll)
+  /-- `who` cannot attack, because its effective skill `level` is below 3. -/
+  | cannotAttack (who : String) (level : Int)
+  /-- `who` cannot defend, because its last Maneuver was an All-Out Attack. -/
+  | noDefense (who : String)
+  /-- `who` tries to Dodge. A Dodge roll only succeeds or fails. -/
+  | dodge (who : String) (roll : DiceRoll)
+  /-- A hit on `defender`. `faces` are the damage dice, `add` is added to their sum.
+  `maxed` is true after a roll of 3: every die counts as 6 and no dice are rolled.
+  `hp` is the HP the defender has left. -/
+  | damage (defender : Actor) (defenderName : String) (faces : List Nat) (maxed : Bool)
+      (add : Int) (kind : String) (basic : Nat) (dr : Nat) (injury : Nat) (hp : Int)
+  /-- `who` drops to 0 HP or less and is out of the Fight. -/
+  | falls (who : Actor) (name : String)
+  /-- Every Creature in the Fight is down. -/
+  | fightWon
+  /-- The Character died. The Adventure is over, but this is not an Ending. -/
+  | died (who : String)
+  /-- The Engine refused an input. Nothing changed. -/
+  | rejected (why : String)
+  deriving ToJson, BEq
+
+/-- `true` if the Report says the Engine refused an input. -/
+def Report.isRejected : Report → Bool
+  | .rejected _ => true
+  | _ => false
+
+end Rpg

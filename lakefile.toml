@@ -1,11 +1,18 @@
 name = "rpg"
 defaultTargets = ["Rpg", "rpg"]
 
-# Build every module under Rpg/, so a new Adventure file is checked even if Main does not import it.
+# Build every module under Rpg/, so a new Adventure file is checked even if the game does not import it.
 [[lean_lib]]
 name = "Rpg"
 globs = ["Rpg.+"]
 
+# The game server. It serves the page in web/ on localhost.
 [[lean_exe]]
 name = "rpg"
 root = "Main"
+
+# Prints the checker's errors for each cheating Adventure. It is not a default target, so `lake check`
+# does not load two `main` functions at once. `lake exe cheats` builds it when needed.
+[[lean_exe]]
+name = "cheats"
+root = "Cheats"

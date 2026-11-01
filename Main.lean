@@ -1,160 +1,237 @@
-import Rpg.Engine
-import Rpg.Adventures.Illegal
+import Rpg.View
+import Std.Http
 
 /-!
-# Terminal game
+# Game server
 
-This file reads the Player's input and prints text. All game rules are in the `Rpg` modules.
+This program serves the game to a browser with core `Std.Http`. By default it listens on
+`localhost` (127.0.0.1) only. `--host A.B.C.D` makes it listen on that IPv4 (Internet Protocol
+version 4) address instead, for example to play from the host of a VM (virtual machine).
+It keeps one game in memory. The page draws the view that the server sends,
+and sends back the Player's inputs. All rules and dice stay in Lean (`Rpg.step`).
+
+Routes:
+
+* `GET /api/view`: the current view.
+* `POST /api/input`: apply one input (JSON). A refused input gives status 400, an error, and the
+  view, and changes nothing.
+* `POST /api/new`: start a new game with a new seed.
+* `GET /<file>`: a file from `web/`. `/` is `web/index.html`.
+
+Every POST must have `Content-Type: application/json`, and its `Origin`, if any, must be this
+server. Else the reply is 403. This stops other websites in the Player's browser from driving
+the game. A body over 4 KB gets 413.
+
+This code has no proofs. The proofs are about `Rpg.step`, which this code calls.
 -/
 
+open Std Async Http Server
+open Lean (Json toJson fromJson?)
 open Rpg
 
-/-- Break text into lines of at most `width` characters. -/
-def wrap (width : Nat) (text : String) : List String :=
-  let words := text.splitOn " "
-  let (lines, cur) := words.foldl (init := ([], "")) fun (lines, cur) w =>
-    if cur.isEmpty then (lines, w)
-    else if cur.length + 1 + w.length ≤ width then (lines, cur ++ " " ++ w)
-    else (lines ++ [cur], w)
-  if cur.isEmpty then lines else lines ++ [cur]
+/-- The one game the server keeps, with its dice and every Report since it began. -/
+structure Session where
+  game : Game
+  dice : Rng
+  seed : Nat
+  reports : Array Report
 
-/-- Print text, wrapped to 76 characters. -/
-def say (text : String) : IO Unit := do
-  for l in wrap 76 text do IO.println l
+/-- A new game of The Drowned Lighthouse for Mara, on the title screen. -/
+def Session.new (seed : Nat) : Session :=
+  { game := Game.new mara lighthouse, dice := ⟨seed.toUInt64⟩, seed, reports := #[] }
 
-/-- Ask the Player for a number from 1 to `n`. Returns `none` at end of input. -/
-partial def askChoice (n : Nat) : IO (Option Nat) := do
-  IO.print "> "
-  (← IO.getStdout).flush
-  let line ← (← IO.getStdin).getLine
-  if line.isEmpty then return none
-  match (String.ofList (line.toList.filter Char.isDigit)).toNat? with
-  | some k => if 1 ≤ k ∧ k ≤ n then return some (k - 1) else askChoice n
-  | none => askChoice n
+/-- The view of a session. `fresh` is the number of new Reports at the end. -/
+def Session.view (s : Session) (fresh : Nat := 0) (error : Option String := none) : String :=
+  (viewJson s.game s.seed s.reports fresh error).compress
 
-/-- Run an Engine step that uses dice. -/
-def withDice (g : IO.Ref Rng) (x : Roll α) : IO α := do
-  let (a, s) := x.run (← g.get)
-  g.set s
-  return a
+/-- Apply one input. Returns the new session, or the reason the input was refused.
+A refused input leaves the session as it was. -/
+def Session.apply (s : Session) (i : Input) : Session × Option String × Nat :=
+  let ((g, reports), dice) := (step s.game i).run s.dice
+  match reports.find? (·.isRejected) with
+  | some (.rejected why) => (s, some why, 0)
+  | _ => ({ s with game := g, dice, reports := s.reports ++ reports.toArray }, none, reports.length)
 
-/-- One line that shows the HP of every being in a Fight. -/
-def status (s : FightState) : String :=
-  let show1 (f : Fighter) := s!"{f.being.name} {max f.hp 0}/{f.being.maxHP}"
-  " | ".intercalate (show1 s.hero :: s.foes.map show1)
+/-! ## Responses -/
 
-/-- The maneuvers the Player can choose in a Fight, in menu order. -/
-def maneuverMenu : List Maneuver := [.attack, .allOutAttack, .allOutDefense]
+/-- The Content Security Policy (CSP): scripts, styles, and images come only from this server.
+No inline script runs, and nothing loads from anywhere else. -/
+def csp : String :=
+  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; " ++
+  "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
-/-- Ask the Player for a maneuver. Returns `none` at end of input. -/
-def askManeuver : IO (Option Maneuver) := do
-  IO.println "Your turn. Choose a maneuver:"
-  for (m, i) in maneuverMenu.zipIdx do
-    IO.println s!"  {i + 1}. {m.describe}"
-  let some k ← askChoice maneuverMenu.length | return none
-  return some (maneuverMenu.getD k .attack)
+/-- A response with the safety headers on it. -/
+def reply (status : Status) (contentType : String) (body : ByteArray) :
+    ContextAsync (Response Body.Any) := do
+  let r : Response Body.Full ← Response.withStatus status
+    |>.header! "Content-Type" contentType
+    |>.header! "Content-Security-Policy" csp
+    |>.header! "X-Content-Type-Options" "nosniff"
+    |>.header! "Referrer-Policy" "no-referrer"
+    |>.header! "Cache-Control" "no-store"
+    |>.fromBytes body
+  return r
 
-/-- Ask the Player which living Creature to attack. Returns its number, or `none` at end of input.
-If only one Creature is alive, there is no question. -/
-def askTarget (s : FightState) : IO (Option Nat) := do
-  let living := s.foes.zipIdx.filter (·.1.alive)
-  if living.length = 1 then return living[0]?.map (·.2)
-  IO.println "Attack whom?"
-  for ((f, _), k) in living.zipIdx do
-    IO.println s!"  {k + 1}. {f.being.name}"
-  let some k ← askChoice living.length | return none
-  return living[k]?.map (·.2)
+/-- A JSON response. -/
+def replyJson (status : Status) (body : String) : ContextAsync (Response Body.Any) :=
+  reply status "application/json" body.toUTF8
 
-/-- Run a Fight. Returns the Character's HP after a win, or `none` if the Character dies or input ends.
-The Player chooses a maneuver on the Character's turn, after the Creatures that act first. -/
-partial def runFight (g : IO.Ref Rng) (hero : Fighter) (foes : List Being) : IO (Option Int) := do
-  let order := turnOrder hero.being foes
-  let rec loop (s : FightState) (round : Nat) : IO (Option Int) := do
-    if !s.hero.alive then
-      say s!"{s.hero.being.name} falls. The Adventure is over."
-      return none
-    if s.foes.all (!·.alive) then
-      say "You win the Fight."
-      return some s.hero.hp
-    IO.println s!"\n-- Round {round}: {status s}"
-    let mut st := s
-    for who in order do
-      if st.over then break
-      let (st', log) ← match who with
-        | some i => withDice g (foeTurn st i)
-        | none =>
-          let some m ← askManeuver | return none
-          let some t ← if m.attacks then askTarget st else pure (some 0) | return none
-          withDice g (heroTurn st m t)
-      for l in log do IO.println l
-      st := st'
-    loop st (round + 1)
-  loop { hero := hero, foes := foes.map fun b => { being := b, hp := b.maxHP } } 1
+/-- A plain text response. -/
+def replyText (status : Status) (body : String) : ContextAsync (Response Body.Any) :=
+  reply status "text/plain; charset=utf-8" body.toUTF8
 
-/-- Play an Adventure from a Scene, with the Character at the given HP. -/
-partial def play (g : IO.Ref Rng) (hero : Being) (a : Adventure) (hp : Int) (id : SceneId) : IO Unit := do
-  let some scene := a.scene? id
-    | say s!"(Scene {id} is missing. This cannot happen in a Legal Adventure.)"
-  IO.println s!"\n== {scene.title} ==   [{hero.name} HP {hp}/{hero.maxHP}]"
-  say scene.text
-  if scene.choices.isEmpty then
-    IO.println "\n*** THE END ***"
-    return
-  for (ch, i) in scene.choices.zipIdx do
-    IO.println s!"  {i + 1}. {ch.text}"
-  let some k ← askChoice scene.choices.length | return
-  let some ch := scene.choices[k]? | return
-  match ch.outcome with
-  | .goto n => play g hero a hp n
-  | .roll t m onS onF =>
-    let level := (hero.rollLevel t).map (· + m)
-    let label := if m = 0 then t.name else if m > 0 then s!"{t.name} +{m}" else s!"{t.name} {m}"
-    let (res, line) ← withDice g (makeRoll label level)
-    IO.println line
-    play g hero a hp (if res.succeeded then onS else onF)
-  | .fight foes onWin =>
-    match ← runFight g { being := hero, hp := hp } foes with
-    | some hp' => play g hero a hp' onWin
-    | none => return
+/-! ## Static files -/
 
-/-- Show the checker catching each cheating Adventure. -/
-def showCheats : IO Unit := do
-  say "\nA cheating DM wrote these Adventures. The checker rejects each one, and a proof in Rpg/Adventures/Illegal.lean shows the spec rejects it too."
-  for a in cheats do
-    IO.println s!"\n* {a.title}"
-    for e in check mara a do
-      say s!"  ERROR: {e}"
-  IO.println s!"\n* {lighthouse.title}"
-  let errs := check mara lighthouse
-  if errs.isEmpty then
-    say "  No errors. The theorem `lighthouse_legal` proves it is legal."
+/-- The content type for a file name, by its extension. `none` means the server does not serve it. -/
+def contentType (name : String) : Option String :=
+  match (name.splitOn ".").getLast? with
+  | some "html" => some "text/html; charset=utf-8"
+  | some "css" => some "text/css; charset=utf-8"
+  | some "js" => some "text/javascript; charset=utf-8"
+  | some "svg" => some "image/svg+xml"
+  | some "png" => some "image/png"
+  | some "ico" => some "image/x-icon"
+  | _ => none
 
-/-- Read `--seed N` from the command line. -/
-def seedArg : List String → Option Nat
-  | "--seed" :: n :: _ => n.toNat?
-  | _ :: rest => seedArg rest
-  | [] => none
+/-- A path segment is safe if it has only letters, digits, `-`, `_`, and `.`, and does not start
+with `.`. So `..`, hidden files, and encoded characters such as `%2e` are refused. -/
+def safeSegment (seg : String) : Bool :=
+  !seg.isEmpty && !seg.startsWith "." &&
+    seg.all fun c => c.isAlphanum || c == '-' || c == '_' || c == '.'
 
-def main (args : List String) : IO Unit := do
-  let seed ← match seedArg args with
+/-- Serve a file from the `web` folder, or 404 if the path is not safe or the file is missing. -/
+def serveStatic (webRoot : System.FilePath) (segments : List String) :
+    ContextAsync (Response Body.Any) := do
+  let segments := if segments.isEmpty || segments == [""] then ["index.html"] else segments
+  let some name := segments.getLast? | replyText .notFound "not found"
+  let some ctype := contentType name | replyText .notFound "not found"
+  if !segments.all safeSegment then
+    replyText .notFound "not found"
+  else
+    let path := segments.foldl (· / ·) webRoot
+    if !(← path.pathExists) || (← path.isDir) then
+      replyText .notFound "not found"
+    else
+      let bytes ← IO.FS.readBinFile path
+      reply .ok ctype bytes
+
+/-! ## Router -/
+
+/-- The largest request body the server reads, in bytes. -/
+def maxBody : UInt64 := 4096
+
+/-- A new seed for a new game. -/
+def freshSeed : IO Nat := do
+  return (← IO.monoNanosNow) % 1000000
+
+/-- The media type of a `Content-Type` value, in lowercase, such as "application/json". -/
+def mediaType (value : String) : String :=
+  ((value.splitOn ";").headD "").trimAscii.toString.toLower
+
+/-- A POST may change the game only if it says its body is JSON, and, if it names an `Origin`,
+that origin is this server's own page. Another website in the Player's browser can send a POST
+with a plain-text body and no preflight check, but not a JSON one; and the browser always names
+the `Origin` of such a request. -/
+def postAllowed (host : String) (port : Nat) (headers : Headers) : Bool :=
+  let isJson := match headers.getAll? Header.Name.contentType with
+    | some #[v] => mediaType (toString v) == "application/json"
+    | _ => false
+  let ours := [s!"http://{host}:{port}", s!"http://127.0.0.1:{port}", s!"http://localhost:{port}"]
+  let originOk := match headers.getAll? Header.Name.origin with
+    | none => true
+    | some vs => vs.all fun v => ours.contains (toString v)
+  isJson && originOk
+
+/-- Answer one request. -/
+def route (webRoot : System.FilePath) (host : String) (port : Nat) (state : IO.Ref Session)
+    (req : Request Body.Stream) : ContextAsync (Response Body.Any) := do
+  let segments := (req.line.uri.path.segments.map toString).toList
+  let method := req.line.method
+  if method == .post && !postAllowed host port req.line.headers then
+    return ← replyText .forbidden "forbidden: a POST must be JSON from this page"
+  match method, segments with
+  | .get, ["api", "view"] =>
+    replyJson .ok (← state.get).view
+  | .post, ["api", "input"] =>
+    -- `readAll` throws when the body is larger than `maxBody`.
+    let body? : Option String ←
+      try pure (some (← req.body.readAll (maximumSize := some maxBody)))
+      catch _ => pure none
+    let some body := body?
+      | replyText .payloadTooLarge "request body too large"
+    match Json.parse body >>= fromJson? (α := Input) with
+    | .error e =>
+      replyJson .badRequest ((← state.get).view (error := some s!"Bad input: {e}"))
+    | .ok i =>
+      let (s, error, fresh) ← state.modifyGet fun s =>
+        let (s', error, fresh) := s.apply i
+        ((s', error, fresh), s')
+      match error with
+      | some why => replyJson .badRequest (s.view (error := some why))
+      | none => replyJson .ok (s.view fresh)
+  | .post, ["api", "new"] =>
+    let seed ← freshSeed
+    let s := Session.new seed
+    state.set s
+    replyJson .ok s.view
+  | .get, "api" :: _ => replyText .notFound "not found"
+  | .get, _ => serveStatic webRoot segments
+  | _, _ => replyText .methodNotAllowed "method not allowed"
+
+/-! ## Start -/
+
+/-- Read `--name N` from the command line. -/
+def natArg (name : String) : List String → Option Nat
+  | n :: v :: rest => if n == name then v.toNat? else natArg name (v :: rest)
+  | _ => none
+
+/-- Read `--name VALUE` from the command line. -/
+def stringArg (name : String) : List String → Option String
+  | n :: v :: rest => if n == name then some v else stringArg name (v :: rest)
+  | _ => none
+
+/-- Read an IPv4 address such as "10.211.55.6". Each of the four parts must be from 0 to 255. -/
+def parseIPv4 (s : String) : Option Net.IPv4Addr :=
+  match (s.splitOn ".").map String.toNat? with
+  | [some a, some b, some c, some d] =>
+    if a < 256 ∧ b < 256 ∧ c < 256 ∧ d < 256 then
+      some (.ofParts a.toUInt8 b.toUInt8 c.toUInt8 d.toUInt8)
+    else none
+  | _ => none
+
+#guard (parseIPv4 "10.211.55.6").isSome
+#guard (parseIPv4 "10.211.55").isNone
+#guard (parseIPv4 "10.211.55.256").isNone
+
+/-- Check the Adventure, then serve the game until Ctrl-C. Options: `--seed N` for the first
+game, `--port N` (default 8080), `--host A.B.C.D` (default 127.0.0.1). -/
+def main (args : List String) : IO UInt32 := do
+  -- Check the Adventure again, on the value the program will play.
+  -- The theorem covers the value Lean proved things about. A trick such as `implemented_by`
+  -- can make the compiled value different, and this check catches that.
+  let errs := checkCharacter mara ++ check mara lighthouse
+  if !errs.isEmpty then
+    IO.eprintln "The Adventure failed the check, so the game will not start:"
+    for e in errs do IO.eprintln s!"  ERROR: {e}"
+    return 1
+  let webRoot : System.FilePath := "web"
+  if !(← (webRoot / "index.html").pathExists) then
+    IO.eprintln "Cannot find web/index.html. Run the server from the repository folder."
+    return 1
+  let seed ← match natArg "--seed" args with
     | some s => pure s
-    | none => IO.monoNanosNow
-  let g ← IO.mkRef (Rng.mk seed.toUInt64)
-  IO.println "VERIFIED RPG: a GURPS Lite adventure where the DM cannot cheat."
-  IO.println s!"(dice seed {seed}; replay with --seed {seed})"
-  IO.println "\n  1. Play The Drowned Lighthouse, as Mara the sellsword"
-  IO.println "  2. Watch the checker catch a cheating DM"
-  match ← askChoice 2 with
-  | some 0 =>
-    -- Check the Adventure again, on the value the program will play.
-    -- The theorem covers the value Lean proved things about. A trick such as `implemented_by`
-    -- can make the compiled value different, and this check catches that.
-    let errs := checkCharacter mara ++ check mara lighthouse
-    if !errs.isEmpty then
-      say "\nThe Adventure failed the check, so the game will not start:"
-      for e in errs do say s!"  ERROR: {e}"
-      return
-    say s!"\nMara: ST {mara.st}, DX {mara.dx}, IQ {mara.iq}, HT {mara.ht}, HP {mara.maxHP}, Dodge {mara.dodge}. Broadsword-14, leather armor (DR 2)."
-    play g mara lighthouse mara.maxHP lighthouse.start
-  | some _ => showCheats
-  | none => pure ()
+    | none => freshSeed
+  let port := (natArg "--port" args).getD 8080
+  let host := (stringArg "--host" args).getD "127.0.0.1"
+  let some ip := parseIPv4 host
+    | IO.eprintln s!"--host must be an IPv4 address such as 10.0.0.5, not {host}."
+      return 1
+  let state ← IO.mkRef (Session.new seed)
+  let addr : Net.SocketAddress := .v4 ⟨ip, port.toUInt16⟩
+  Async.block do
+    let server ← Server.serve addr (Handler.ofFn (route webRoot host port state))
+    IO.println s!"The Drowned Lighthouse is ready at http://{host}:{port}/ (first seed {seed})."
+    IO.println "Press Ctrl-C to stop."
+    (← IO.getStdout).flush
+    server.waitShutdown
+  return 0

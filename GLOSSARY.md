@@ -16,6 +16,10 @@ _Avoid_: user
 The part of the game that applies the rules during play. It rolls all dice and works out every result.
 _Avoid_: interpreter, runtime
 
+**Report**:
+One thing the Engine did or found out during play, shown to the Player, such as "rolled 11, success" or "Mara hits the Drowned Man for 6".
+_Avoid_: event, log line, message
+
 ## Adventures
 
 **Adventure**:
@@ -27,8 +31,12 @@ An Adventure that obeys every rule in the spec. Only a Legal Adventure can be pl
 _Avoid_: valid adventure, verified adventure
 
 **Scene**:
-One step of an Adventure: some text and a list of Choices.
+One step of an Adventure: some text and a list of Choices. A Scene can also name a Picture.
 _Avoid_: room, node, page
+
+**Picture**:
+The drawing shown with a Scene. The DM picks it. It changes only what the Player sees, never what the rules do.
+_Avoid_: art, image, illustration
 
 **Choice**:
 An option the Player can pick in a Scene. It leads to another Scene, either directly or through a Test.

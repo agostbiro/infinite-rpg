@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <!-- The Iron Door: a salt-swollen door in the tower wall, light through the keyhole. -->
+  <defs>
+    <pattern id="rain" width="40" height="60" patternUnits="userSpaceOnUse">
+      <line x1="30" y1="0" x2="18" y2="34" stroke="#3a4f6b" stroke-width="1.4"/>
+      <line x1="8" y1="26" x2="0" y2="50" stroke="#3a4f6b" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity="0.9"/>
+      <stop offset="0.4" stop-color="#f2b35b" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#f2b35b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="400" fill="#121c2e"/>
+  <!-- the curved stone wall of the tower -->
+  <rect x="180" width="840" height="400" fill="#1e2733"/>
+  <rect x="180" width="70" height="400" fill="#121821"/>
+  <rect x="950" width="70" height="400" fill="#121821"/>
+  <g fill="none" stroke="#121821" stroke-width="3">
+    <line x1="180" y1="60" x2="1020" y2="60"/>
+    <line x1="180" y1="130" x2="1020" y2="130"/>
+    <line x1="180" y1="200" x2="1020" y2="200"/>
+    <line x1="180" y1="270" x2="1020" y2="270"/>
+    <line x1="180" y1="340" x2="1020" y2="340"/>
+    <line x1="320" y1="0" x2="320" y2="60"/>
+    <line x1="880" y1="0" x2="880" y2="60"/>
+    <line x1="280" y1="60" x2="280" y2="130"/>
+    <line x1="920" y1="60" x2="920" y2="130"/>
+    <line x1="340" y1="130" x2="340" y2="200"/>
+    <line x1="860" y1="200" x2="860" y2="270"/>
+    <line x1="300" y1="270" x2="300" y2="340"/>
+    <line x1="900" y1="340" x2="900" y2="400"/>
+  </g>
+  <!-- the iron door -->
+  <path d="M470 400 L470 150 Q600 40 730 150 L730 400 Z" fill="#0a0f16"/>
+  <path d="M488 400 L488 158 Q600 66 712 158 L712 400 Z" fill="#121821"/>
+  <rect x="488" y="210" width="224" height="14" fill="#0a0f16"/>
+  <rect x="488" y="320" width="224" height="14" fill="#0a0f16"/>
+  <g fill="#2a3544">
+    <circle cx="505" cy="217" r="5"/><circle cx="545" cy="217" r="5"/><circle cx="585" cy="217" r="5"/>
+    <circle cx="615" cy="217" r="5"/><circle cx="655" cy="217" r="5"/><circle cx="695" cy="217" r="5"/>
+    <circle cx="505" cy="327" r="5"/><circle cx="545" cy="327" r="5"/><circle cx="585" cy="327" r="5"/>
+    <circle cx="615" cy="327" r="5"/><circle cx="655" cy="327" r="5"/><circle cx="695" cy="327" r="5"/>
+  </g>
+  <!-- rust streaks from the salt -->
+  <rect x="530" y="224" width="4" height="60" fill="#8c2f2f" opacity="0.35"/>
+  <rect x="660" y="224" width="3" height="80" fill="#8c2f2f" opacity="0.35"/>
+  <!-- the keyhole, with light and voices behind it -->
+  <circle cx="660" cy="270" r="70" fill="url(#glow)"/>
+  <circle cx="660" cy="262" r="7" fill="#ffd98a"/>
+  <polygon points="655,264 665,264 668,286 652,286" fill="#ffd98a"/>
+  <!-- the step and the puddles -->
+  <rect x="440" y="384" width="320" height="16" fill="#2a3544"/>
+  <ellipse cx="380" cy="394" rx="70" ry="5" fill="#2c4a66" opacity="0.7"/>
+  <ellipse cx="840" cy="392" rx="90" ry="5" fill="#2c4a66" opacity="0.7"/>
+  <rect width="1200" height="400" fill="url(#rain)" opacity="0.6"/>
+</svg>
