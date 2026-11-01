@@ -150,12 +150,29 @@ def turnOrder (rules : RuleSet) (hero : Being) (foes : List Being) : List Actor 
 def hurtFoe (foes : List Fighter) (i : Nat) (inj : Nat) : List Fighter :=
   foes.modify i fun f => { f with hp := f.hp - inj }
 
-/-- One turn of one actor. The Character attacks Creature number `target`. Each Creature attacks the Character. -/
+/-- A spray: the attacker attacks each living foe in list order, with separate rolls for each. -/
+def sprayWith [Monad m] (attackFn : Fighter → Fighter → m (Nat × List String))
+    (att : Fighter) : List Fighter → m (List Fighter × List String)
+  | [] => return ([], [])
+  | foe :: rest => do
+    let (hit, lines) ← if foe.alive then do
+        let (inj, lines) ← attackFn att foe
+        pure ({ foe with hp := foe.hp - inj }, lines)
+      else pure (foe, [])
+    let (others, more) ← sprayWith attackFn att rest
+    return (hit :: others, lines ++ more)
+
+/-- One turn of one actor. The Character attacks Creature number `target`, or every living
+Creature with a spray weapon. Each Creature attacks the Character. -/
 def takeTurnWith [Monad m] (attackFn : Fighter → Fighter → m (Nat × List String))
     (s : FightState) (target : Nat) (who : Actor) : m (FightState × List String) := do
   if s.over then return (s, [])
   match who with
   | none =>
+    if s.hero.being.weapon.spray then
+      let (foes, lines) ← sprayWith attackFn s.hero s.foes
+      let sweep := s!"{s.hero.being.name} sweeps the {s.hero.being.weapon.name} across every foe!"
+      return ({ s with foes := foes }, sweep :: lines)
     match s.foes[target]? with
     | some foe =>
       if !foe.alive then return (s, [])
@@ -169,6 +186,26 @@ def takeTurnWith [Monad m] (attackFn : Fighter → Fighter → m (Nat × List St
       let (inj, lines) ← attackFn foe s.hero
       return ({ s with hero := { s.hero with hp := s.hero.hp - inj } }, lines)
     | none => return (s, [])
+
+/-- A test attack that always does 3 injury and writes no text. -/
+private def threeInjury (_ _ : Fighter) : Id (Nat × List String) := pure (3, [])
+
+/-- A plain 10-point test being with the given weapon, at full HP. -/
+private def testFighter (name : String) (w : Weapon) (hp : Int := 10) : Fighter :=
+  ⟨{ name := name, st := 10, dx := 10, iq := 10, ht := 10, skills := [], weapon := w,
+     armor := .none }, hp⟩
+
+/-- The foe HP after the Character's turn against two foes, targeting foe 0. -/
+private def foeHPAfterHeroTurn (w : Weapon) (firstHP : Int) : List Int :=
+  let s : FightState := ⟨testFighter "Hero" w, [testFighter "A" .punch firstHP, testFighter "B" .punch]⟩
+  (Id.run (takeTurnWith threeInjury s 0 none)).1.foes.map (·.hp)
+
+-- A spray weapon hurts every living foe.
+#guard foeHPAfterHeroTurn .flamethrower 10 == [7, 7]
+-- A spray weapon skips a dead foe.
+#guard foeHPAfterHeroTurn .flamethrower 0 == [0, 7]
+-- Any other weapon hurts only the target, as before.
+#guard foeHPAfterHeroTurn .broadsword 10 == [7, 10]
 
 /-- Run the shared actor-turn rules with seeded attacks. -/
 def takeTurn (rules : RuleSet) (s : FightState) (target : Nat) (who : Actor) : Roll (FightState × List String) :=

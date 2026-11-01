@@ -9,19 +9,21 @@ Each Character is a legal 100-point build, proved by the checker.
 
 namespace Rpg.Lighthouse
 
-/-- Mara, a sellsword. 100 points: attributes 70, skills 30. -/
+/-- Mara, a sellsword with a flamethrower. 100 points: attributes 70, skills 30. -/
 def mara : Being where
   name := "Mara"
   st := 11
   dx := 12
   iq := 10
   ht := 12
-  skills := [(.broadsword, 14), (.stealth, 13), (.lockpicking, 12), (.diplomacy, 11),
+  skills := [(.liquidProjector, 15), (.stealth, 13), (.lockpicking, 12), (.diplomacy, 11),
              (.brawling, 12), (.knife, 12)]
-  weapon := .broadsword
+  weapon := .flamethrower
   armor := .leather
 
 #guard mara.points == 100
+-- Mara fires the flamethrower at Liquid Projector 15.
+#guard mara.attackLevel == 15
 
 /-- Mara is a legal Character. -/
 theorem mara_legal : LegalCharacter rules mara :=

@@ -19,7 +19,9 @@ structure FightCase where
 
 /-- The fights to check. Add one fight from each target story that has fights. -/
 def cases : List FightCase :=
-  [⟨"Lighthouse: Grey Hollis", Lighthouse.rules, Lighthouse.mara, [Lighthouse.hollis]⟩]
+  [⟨"Lighthouse: Grey Hollis", Lighthouse.rules, Lighthouse.mara, [Lighthouse.hollis]⟩,
+   ⟨"Lighthouse: two wreckers", Lighthouse.rules, Lighthouse.mara,
+     [Lighthouse.wrecker 1, Lighthouse.wrecker 2]⟩]
 
 /-- Simulated fights per case. -/
 def runs : Nat := 20000

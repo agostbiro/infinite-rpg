@@ -48,7 +48,8 @@ def cheatEasyLock : Adventure := oneChoice "Easy lock" (.roll (.skill .lockpicki
 example : ¬ LegalAdventure rules mara cheatEasyLock := fun h => absurd h.2.2.2.1 (by decide)
 example : check rules mara cheatEasyLock ≠ [] := by decide
 
-/-- A stone sentinel: DR 12 and too weak to hurt anyone. Neither side can win. -/
+/-- A stone sentinel: DR 20, above the flamethrower's best roll of 18, and too weak to hurt anyone.
+Neither side can win. -/
 def stoneSentinel : Being where
   name := "Stone Sentinel"
   st := 3
@@ -58,7 +59,7 @@ def stoneSentinel : Being where
   skills := []
   weapon := .punch
   armor := .none
-  naturalDR := 12
+  naturalDR := 20
 
 /-- Cheat 4: a Fight that can never end. -/
 def cheatEndless : Adventure := oneChoice "Endless fight" (.fight [stoneSentinel] 1)

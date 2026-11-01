@@ -10,6 +10,10 @@ adventure fair. If the mechanic breaks fairness, you add a second, fun
 **counter-mechanic** that pulls the numbers back inside the bounds. The user's
 mechanic stays in, at the strength the user asked for.
 
+You decide every open detail of the mechanic yourself: pick the **most fun**
+option, meaning the one the player feels most in play (bigger moments, more
+visible log lines), within the rules. List each choice in the report.
+
 Read `Rpg/RuleSet.lean`, `Rpg/Engine.lean`, `Rpg/Probability/Combat.lean`,
 `Rpg/Probability/StatisticalAdmission.lean`, and `docs/statistical-confidence.md`
 before step 1.
@@ -55,11 +59,14 @@ The fairness bar is fixed. You move the game to meet it:
 - The constants in `screen.lean` and `agree.lean` stay as they are. You only add
   fights to `cases` in `agree.lean`.
 - The catalog keeps every adventure it has. Stories, heroes, and creatures stay
-  as they are; only mechanics change.
+  as they are; only mechanics change. The exception is a mechanic that is itself
+  a change to them ("give the hero a flamethrower"): make only that change, and
+  keep the hero legal.
 - The numbers you fix in step 1 for the user's mechanic stay as they are.
 - Proofs use no `sorry`, `axiom`, `native_decide`, or `maxHeartbeats 0`.
 
-If a step seems to need any of these, stop and ask the user.
+If a step seems to need any of these, stop and ask the user. These are the only
+questions you ask.
 
 ## Steps
 
@@ -79,16 +86,19 @@ changes, and by how much. Then name the code it touches:
 mechanic that must remember something ("once per fight", a cooldown, a potion
 count) has nowhere to keep it. Rephrase it as a condition on current HP or on
 the dice: "once per fight, when you first fall below 1/3 HP" becomes "while you
-are below 1/3 HP". If the user's mechanic loses its point that way, ask the
-user. Real memory needs new fields in `FightState` and `Node` and a new
+are below 1/3 HP". Pick the most fun version that needs no memory. Real memory
+needs new fields in `FightState` and `Node` and a new
 termination measure in `solveCombat`, which are fixed ground.
 
 Target adventures: the ones the user names, else every adventure in
 `statisticalCandidates`.
 
+**Open choices.** The request often leaves details open: the numbers, which
+foes it hits, how the hero pays the points for it. Decide each one: pick the
+most fun option.
+
 Done when you can state the rule in one sentence with numbers, it needs no
-memory, and if two readings of the request would give different fairness
-results, the user has picked one.
+memory, and every open choice is decided.
 
 ### 2. Build it in the shared code
 
@@ -120,6 +130,9 @@ Traps:
   million games. A mechanic that ends games early can leave the late rows
   unfilled, and then the adventure fails.
 - The new field's default must keep old behaviour exactly.
+- Tests that use the hero can break, for example the cheat stories in
+  `NegativeExamples.lean`. Update the test data so the test keeps its point;
+  keep the test.
 
 Add tests next to the code:
 
@@ -215,6 +228,7 @@ clean.
 Tell the user, briefly:
 
 - The mechanic as built, in one sentence with numbers.
+- Each open choice you decided, and why it is the most fun.
 - The counter-mechanic, if any, and why it was needed.
 - Before and after screen numbers per target, for the rows that moved.
 - The agreement test results.

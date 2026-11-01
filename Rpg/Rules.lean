@@ -33,6 +33,8 @@ inductive Skill where
   | stealth
   | lockpicking
   | diplomacy
+  /-- Liquid Projector: the skill to aim a flamethrower (GURPS Basic Set; not in GURPS Lite). -/
+  | liquidProjector
   deriving Repr, DecidableEq
 
 /-- The attribute that a skill is based on. -/
@@ -43,6 +45,7 @@ def Skill.attribute : Skill → Attribute
   | .stealth => .dx
   | .lockpicking => .iq
   | .diplomacy => .iq
+  | .liquidProjector => .dx
 
 /-- How hard a skill is to learn. -/
 def Skill.difficulty : Skill → Difficulty
@@ -52,6 +55,7 @@ def Skill.difficulty : Skill → Difficulty
   | .stealth => .average
   | .lockpicking => .average
   | .diplomacy => .hard
+  | .liquidProjector => .easy
 
 /-- The penalty to the attribute when a being uses a skill it has not learned (p. 13-17).
 `none` means the being cannot use the skill untrained. -/
@@ -62,6 +66,7 @@ def Skill.defaultPenalty : Skill → Option Int
   | .stealth => some (-5)
   | .lockpicking => some (-5)
   | .diplomacy => some (-6)
+  | .liquidProjector => some (-4)
 
 /-- The name of a skill, for display. -/
 def Skill.name : Skill → String
@@ -71,12 +76,15 @@ def Skill.name : Skill → String
   | .stealth => "Stealth"
   | .lockpicking => "Lockpicking"
   | .diplomacy => "Diplomacy"
+  | .liquidProjector => "Liquid Projector"
 
 /-- The kinds of damage in this game (p. 19). -/
 inductive DamageType where
   | crushing
   | cutting
   | impaling
+  /-- Fire. Injury equals the damage that gets past DR, as for crushing. -/
+  | burning
   deriving Repr, DecidableEq
 
 /-- A weapon. Each weapon has one attack mode in this version. -/
@@ -87,6 +95,8 @@ inductive Weapon where
   | largeKnife
   /-- Bare-handed punch: thr-1 crushing, no ST minimum (p. 26). -/
   | punch
+  /-- Flamethrower: 3d burning, ST 10. It sprays every living foe (deviation 9). -/
+  | flamethrower
   deriving Repr, DecidableEq
 
 /-- Body armor (p. 18). -/
@@ -225,18 +235,21 @@ def Weapon.skill : Weapon → Skill
   | .broadsword => .broadsword
   | .largeKnife => .knife
   | .punch => .brawling
+  | .flamethrower => .liquidProjector
 
 /-- The lowest ST that can use a weapon without penalty (p. 20). -/
 def Weapon.minST : Weapon → Nat
   | .broadsword => 10
   | .largeKnife => 6
   | .punch => 0
+  | .flamethrower => 10
 
 /-- The damage type of a weapon's attack. -/
 def Weapon.damageType : Weapon → DamageType
   | .broadsword => .cutting
   | .largeKnife => .impaling
   | .punch => .crushing
+  | .flamethrower => .burning
 
 /-- The damage roll of a weapon in the hands of a being with a given ST. -/
 def Weapon.damage (w : Weapon) (st : Nat) : Dice :=
@@ -244,12 +257,19 @@ def Weapon.damage (w : Weapon) (st : Nat) : Dice :=
   | .broadsword => let d := swing st; ⟨d.count, d.add + 1⟩
   | .largeKnife => thrust st
   | .punch => let d := thrust st; ⟨d.count, d.add - 1⟩
+  | .flamethrower => ⟨3, 0⟩
 
 /-- The name of a weapon, for display. -/
 def Weapon.name : Weapon → String
   | .broadsword => "broadsword"
   | .largeKnife => "large knife"
   | .punch => "fists"
+  | .flamethrower => "flamethrower"
+
+/-- `true` if the weapon attacks every living foe on each turn, not one target. -/
+def Weapon.spray : Weapon → Bool
+  | .flamethrower => true
+  | _ => false
 
 /-- The lowest basic damage allowed: 0 for crushing, 1 for other types (p. 29). -/
 def DamageType.minDamage : DamageType → Nat
@@ -272,7 +292,13 @@ def injury (t : DamageType) (dr : Nat) (basic : Nat) : Nat :=
     | .crushing => pen
     | .cutting => pen * 3 / 2
     | .impaling => pen * 2
+    | .burning => pen
   max 1 wounded
+
+-- Burning injury is the damage that gets past DR, with no multiplier.
+example : injury .burning 2 10 = 8 := by decide
+-- The flamethrower does 3d whatever the user's ST.
+example : Weapon.flamethrower.damage 11 = ⟨3, 0⟩ := by decide
 
 /-- The level at which a being attacks with its weapon. A punch uses the higher of Brawling and DX (p. 26). -/
 def Being.attackLevel (b : Being) : Int :=
