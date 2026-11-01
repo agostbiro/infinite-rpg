@@ -41,13 +41,13 @@ def ValidationCounts.observe (c : ValidationCounts) (row : Nat) (death : Bool) :
 def observationsComplete (horizon : Nat) (trace : Simulation.Trace) : Bool :=
   trace.finish != .invalid && (trace.finish != .censored || horizon + 1 < trace.turn)
 
-/-- Run a fixed batch for first-turn death and conditional deaths at t+2, for t < horizon.
-An unresolved outcome inside that window aborts validation. -/
-def validateCounts (a : StatisticalCandidate) : ValidationCounts := Id.run do
+/-- Collect a fixed batch for first-turn death and conditional deaths at t+2.
+Exploration can use a separate seed; unresolved outcomes inside the window abort the batch. -/
+def sampleCounts (a : StatisticalCandidate) (seed games : Nat) : ValidationCounts := Id.run do
   let h := a.horizon
   let mut counts : ValidationCounts := ⟨Array.replicate (h+1) 0, Array.replicate (h+1) 0, 0, false⟩
-  let mut rng : Rng := ⟨validationSeed.toUInt64⟩
-  for _ in [:validationGames] do
+  let mut rng : Rng := ⟨seed.toUInt64⟩
+  for _ in [:games] do
     let (trace, next) := (Simulation.trajectory a.toAdventureDefinition validationRoundLimit (h+1)
       a.story.start (a.rules.maxHP a.hero) 0).run rng
     rng := next
@@ -59,6 +59,10 @@ def validateCounts (a : StatisticalCandidate) : ValidationCounts := Id.run do
       if t < trace.turn then
         counts := counts.observe (t+1) (trace.finish == .dead && trace.turn == t+2)
   return counts
+
+/-- Admission uses only the precommitted seed and fixed total game count. -/
+def validateCounts (a : StatisticalCandidate) : ValidationCounts :=
+  sampleCounts a validationSeed validationGames
 
 /-- Row zero is first-turn death; subsequent rows are conditional two-turn deaths. -/
 def confidenceBands (horizon : Nat) (i : Fin (horizon+1)) : Band :=

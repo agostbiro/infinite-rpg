@@ -1,10 +1,10 @@
 import Rpg.Adventures.Lighthouse.Story
-import Rpg.Probability.Estimate
+import Rpg.Probability.Simulation
 
 /-!
 Check that the model and the simulation agree on one fight.
 The model's death chance comes from `combatDistribution`; the simulation's from
-many runs of `Estimate.fight`. A gap of 1 point or more means the mechanic
+many runs of `Simulation.fight`. A gap of 1 point or more means the mechanic
 reaches one path but not the other.
 Run from the repo root: `lake env lean .agents/skills/add-mechanic/agree.lean`.
 -/
@@ -36,7 +36,7 @@ def simulatedDeath (c : FightCase) : Rat := Id.run do
   let mut deaths := 0
   for _ in [:runs] do
     let start : FightState := ⟨⟨c.hero, c.rules.maxHP c.hero⟩, c.foes.map fun f => ⟨f, c.rules.maxHP f⟩⟩
-    let (result, next) := (Estimate.fight c.rules (turnOrder c.rules c.hero c.foes) 200 start).run rng
+    let (result, next) := (Simulation.fight c.rules (turnOrder c.rules c.hero c.foes) 200 start).run rng
     rng := next
     if let some s := result then
       if !s.hero.alive then deaths := deaths + 1

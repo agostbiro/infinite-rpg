@@ -81,11 +81,11 @@ enclosures, using the unchanged policy `q=4/5`, shape `1`, tolerance `1/5`:
 |---|---:|---:|
 | First turn | 0 / 1000 | [0, 1/256] |
 | Death at 2, active at 0 | 0 / 1000 | [0, 1/256] |
-| Death at 3, active at 1 | 7 / 1000 | [0, 1/64] |
-| Death at 4, active at 2 | 113 / 1000 | [3/32, 17/128] |
-| Death at 5, active at 3 | 266 / 955 | [65/256, 39/128] |
-| Death at 6, active at 4 | 102 / 652 | [17/128, 47/256] |
-| Death at 7, active at 5 | 0 / 165 | [0, 5/256] |
+| Death at 3, active at 1 | 0 / 1000 | [0, 1/256] |
+| Death at 4, active at 2 | 40 / 1000 | [7/256, 7/128] |
+| Death at 5, active at 3 | 95 / 967 | [21/256, 15/128] |
+| Death at 6, active at 4 | 33 / 679 | [9/256, 17/256] |
+| Death at 7, active at 5 | 0 / 177 | [0, 5/256] |
 
 `make validate` reproduces the batch and prints the intervals. `make run` checks
 both adventures before play. Replaying a fixed seed is reproducibility, not new

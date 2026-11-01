@@ -22,7 +22,7 @@ before step 1.
 
 `Rpg.Probability.StatisticalCandidate.fair` proves `Fair a` once, for every
 candidate. It says the admission test is sound: each confidence interval misses
-the true death chance with probability at most 0.1%, and so does a false
+the true death chance with probability at most 10%, and so does a false
 "accept". The true death chances come from the **model** (`adventureGraph`).
 The proof assumes the **simulation** that admission runs draws games with the
 model's chances.
@@ -37,7 +37,7 @@ A mechanic can break three things:
 - **Admission.** At start-up, `admitStatistically` plays many games with the
   fixed `validationSeed` and checks each row: death on turn 1, and death on turn
   `t+2` given alive at turn `t`, for `t` below the adventure's `horizon`. A row
-  passes when its whole confidence interval (death frequency ±4 points) fits in
+  passes when its whole 90% exact binomial interval enclosure fits in
   the Weibull band. An adventure that fails is left out of the menu.
 
 So the goal is: every adventure in `statisticalCandidates` (`Rpg/Catalog.lean`)
@@ -48,11 +48,12 @@ admission.
 
 The fairness bar is fixed. You move the game to meet it:
 
-- `Rpg/Probability/Weibull.lean`, `Rpg/Probability/Confidence.lean`,
+- `Rpg/Probability/Weibull.lean`, `Rpg/Probability/Binomial.lean`,
+  `Rpg/Probability/Confidence.lean`,
   `Rpg/Probability/StatisticalAdmission.lean`, `Rpg/Probability/Graph.lean`,
   `Rpg/Probability/Combat.lean`, and `Rpg/Spec.lean` keep their meaning. This
-  includes the policy constants, the sample size, the error radius, the
-  validation seed, the game limit, and the round limit.
+  includes the policy constants, confidence level, interval precision,
+  validation seed, fixed game count, and round limit.
 - Each adventure's `fairnessHorizon` stays as it is (in
   `Rpg/Adventures/Harbor/Certification.lean` and
   `Rpg/Adventures/Lighthouse/Confidence.lean`).
@@ -102,14 +103,14 @@ memory, and every open choice is decided.
 
 ### 2. Build it in the shared code
 
-Play (`Main.lean`), simulation (`Estimate.trajectory`), and model
+Play (`Main.lean`), simulation (`Simulation.trajectory`), and model
 (`adventureGraph`) share only some functions. Put the mechanic only there:
 
 - **Fights**: `attackWith`, `takeTurnWith`, `turnOrder`, and the helpers they
   call (`Fighter.dodge`, `hurtFoe`, `FightState.over`), or a `RuleSet` field
   that these read. Play and simulation reach them through `fightRound`; the
   model reaches them through `roundDistribution` in `Combat.lean`. Code in
-  `fightRound`, `takeTurn`, `attack`, or `Estimate.fight` reaches play and
+  `fightRound`, `takeTurn`, `attack`, or `Simulation.fight` reaches play and
   simulation only.
 - **Scene rolls**: the `successRoll` field and `Being.rollLevel`. Play and
   simulation use `makeRoll`; the model uses `rollProbability`. Both read these.
@@ -126,9 +127,9 @@ Traps:
   fight does this. Mechanics may only lower HP or leave the state unchanged.
 - A fight that lasts more than `validationRoundLimit` (200) rounds inside the
   window aborts admission. Mechanics that add defense make fights longer.
-- Each row needs 160,000 games that are still alive at its turn, within two
-  million games. A mechanic that ends games early can leave the late rows
-  unfilled, and then the adventure fails.
+- Admission uses 1,000 total games and each row’s actual qualifying count.
+  A mechanic that ends games early can leave late intervals too wide to pass;
+  zero qualifying observations always fail.
 - The new field's default must keep old behaviour exactly.
 - Tests that use the hero can break, for example the cheat stories in
   `NegativeExamples.lean`. Update the test data so the test keeps its point;
@@ -156,10 +157,9 @@ lake env lean .agents/skills/add-mechanic/screen.lean
 ```
 
 It plays every adventure in `statisticalCandidates` the same way admission does,
-with its own seed, 20,000 observations per row, and the same games-per-row
-limit, in about 20 seconds. Each row shows the death frequency, the range
-admission accepts, and `ok`, `FAIL`, or `NOT FILLED`. `ABORTED` means a fight hit
-the round limit or a game was invalid.
+with its own seed and the same fixed 1,000-game batch. Each row shows its
+qualifying count, interval, policy band, and `ok`, `FAIL`, or `NO DATA`.
+`ABORTED` means a fight hit the round limit or a game was invalid.
 
 Run it with the mechanic off and with it on. Keep both outputs for the report.
 
@@ -182,7 +182,8 @@ step 1 and step 2 rules: no memory, shared code only. It is fun:
 
 Build it with step 2's rules, then screen again with step 3. Adjust its numbers,
 or try a different counter-mechanic, until every row is `ok` with at least 2
-points of margin. The screen has about ±1 point of noise; the margin covers it.
+points of margin from each nontrivial policy bound. The margin is an
+exploratory design buffer, not an additional confidence guarantee.
 
 Done when the screen passes for every target. If three different
 counter-mechanics fail, stop and report the numbers to the user.
@@ -199,8 +200,8 @@ make run < /dev/null
 ```
 
 `make check` builds and replays every proof in the kernel; it fails on `sorry`
-and on new axioms. `make run < /dev/null` runs admission for every adventure
-(about 10 seconds), prints `passed` or `not admitted` for each, then exits.
+and on new axioms. `make run < /dev/null` runs admission for every adventure,
+prints `passed` or `not admitted` for each, then exits.
 
 If an adventure is not admitted, stop and report to the user with the screen
 numbers. Changes tuned after a failed validation need a fresh held-out seed,
@@ -221,7 +222,7 @@ clean.
 - If Lighthouse's counts changed, update them from `make validate` in two
   places: the table in `docs/statistical-confidence.md`, and
   `recordedValidation` in `Rpg/Adventures/Lighthouse/ValidationExample.lean`.
-  The build does not catch stale counts there.
+  The build checks that the recorded counts match the current fixed batch.
 
 ## Report
 

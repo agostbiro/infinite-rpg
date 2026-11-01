@@ -7,8 +7,8 @@ open Probability Probability.Confidence
 
 /-- Recorded counts at seed 20261103, with no unresolved outcomes inside the window. -/
 def recordedValidation : ValidationCounts :=
-  ⟨#[1000, 1000, 1000, 1000, 955, 652, 165],
-   #[0, 0, 7, 113, 266, 102, 0], 1000, false⟩
+  ⟨#[1000, 1000, 1000, 1000, 967, 679, 177],
+   #[0, 0, 0, 40, 95, 33, 0], 1000, false⟩
 
 -- Runtime regression checks are distinct from the kernel-proved coverage theorem.
 #guard decide (ValidationAccepted statisticalCandidate.horizon recordedValidation)
