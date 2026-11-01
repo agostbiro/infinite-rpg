@@ -87,7 +87,7 @@ The test Adventure (The Bandit Camp) fails medium. It keeps the old curve with a
 
 During play, use **Change the world** to ask for a weapon, a combat effect, or another supported
 change to the Adventure. The DM (Dungeon Master) proposes the rule you asked for and a fun counter-rule together.
-The server checks the changed Adventure from its start, and keeps your current HP and position.
+The server checks the changed Adventure from your current position, remaining HP, and unfinished combat, at the original Weibull curve's elapsed age. Every confidence interval must fit its target within five percentage points.
 If a proposal fails, the DM revises it. One change gets at most 6 proposals, 3 balance checks,
 and 3 minutes. Each proposal can use up to 3 tries when the API server is busy. At the time limit,
 the server stops the DM at once, also during a slow call. Then the change fails, and your game is unchanged. "Cancel" stops it
@@ -97,7 +97,12 @@ in the story and in "Rules of this world". A change belongs to this playthrough 
 saved, and "Play again" and "← Adventures" use the original Adventure. See
 [live rule changes](docs/live-rule-changes.md).
 
-The sampled games of the balance check stop after 6 turns. A change can add or replace a Scene that is not visited yet. If that Scene is more than 6 turns from the start, its new encounters get only the legality check, not the balance check. This gap is open; [ADR 0005](docs/adr/0005-live-rule-changes.md) lists it with the other known gaps.
+The `expand_rules` specification adds proposed requirements for changing the 3D environment,
+Scene Choices, or both during play. See [World-change properties](docs/world-change-properties.md)
+for graph validity, balance admission, exact 3D interactions and atomic installation. These are
+extension requirements, not additional features already available in the current server.
+
+Live-change balance covers the next six events from the actual checkpoint. Scenes beyond that continuation window receive legality checks, without a statistical balance guarantee. The Lean statements are in [Comparator/Proofs.lean](Comparator/Proofs.lean).
 
 ## Shared tactics and new choices
 

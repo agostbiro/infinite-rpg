@@ -43,3 +43,13 @@ When the recorded Wish is back, these tests run again by themselves. Check that 
 - `tests/spatial.browser.spec.js` (`make test-browser`). It is skipped now. Change the Scene names in
   it to the names of the new Wish.
 - `make run-fake`: a Wish fails now with "no recorded reply".
+
+## 4. Expand changes during play
+
+Implement [the World-change properties](world-change-properties.md) on `expand_rules`.
+The Player may change the 3D environment, add or remove Scene Choices, or combine both with
+new general rules. The DM may add Scenes and adjust the Adventure to pass the existing balance
+admission. Extend the proposal language, checks and installation together. Verify exact offered
+inputs, physical access, revision-aware refresh and preservation of the current play checkpoint.
+The specification records the current statistical coverage limits and the checks still missing;
+it does not claim that writing these requirements implements or proves them.

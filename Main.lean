@@ -857,7 +857,7 @@ def tuneChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
     | .ok candidate =>
       let counts := Probability.sampleCounts candidate.candidate 1 Probability.difficultyGames
       if decide (Probability.ValidationAccepted candidate.candidate.horizon counts delta
-          candidate.candidate.elapsed candidate.candidate.policy) then
+          candidate.candidate.elapsed candidate.candidate.policy candidate.candidate.protocol) then
         return some candidate
   return none
 
@@ -1004,11 +1004,11 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
             else
               let index := (← ref.get).changeChecks
               let delta := Probability.attemptRisk index
-              if !(← addStep ref job { text := s!"Checking the updated adventure from the beginning, including combat, against {curveName prepared.candidate.policy}..." }) then return
+              if !(← addStep ref job { text := s!"Checking from your current position and health, including paused combat, against {curveName prepared.candidate.policy}..." }) then return
               let screen := Probability.sampleCounts prepared.candidate 1 Probability.difficultyGames
               if !(← jobWanted ref job) then return
               let picked ← if decide (Probability.ValidationAccepted prepared.candidate.horizon screen delta
-                  prepared.candidate.elapsed prepared.candidate.policy) then
+                  prepared.candidate.elapsed prepared.candidate.policy prepared.candidate.protocol) then
                   pure (some prepared)
                 else do
                   if !(← addStep ref job { text := "Balancing the counter-rule while keeping your requested mechanic..." }) then pure none
@@ -1016,7 +1016,7 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
               match picked with
               | none =>
                 pure (Probability.failedRows prepared.candidate.horizon screen delta prepared.candidate.elapsed
-                  prepared.candidate.policy, content)
+                  prepared.candidate.policy prepared.candidate.protocol, content)
               | some prepared =>
                 let signature := reprStr (prepared.proposal.equipment, prepared.proposal.requestedRules,
                   prepared.proposal.rules, prepared.proposal.scenes)
@@ -1035,7 +1035,7 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                   return
                 | none =>
                   let feedback := Probability.failedRows prepared.candidate.horizon counts delta
-                    prepared.candidate.elapsed prepared.candidate.policy ++
+                    prepared.candidate.elapsed prepared.candidate.policy prepared.candidate.protocol ++
                     ["The validated counter-rules were: " ++
                       (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress]
                   pure (feedback, content)

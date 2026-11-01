@@ -4,6 +4,9 @@ status: accepted
 
 # The DM can change the rules during play, after the checks pass
 
+Update on `expand_rules`: the start-of-adventure balance decision below is historical. Live changes now use the actual checkpoint and aged Weibull confidence bands; see `Rpg/WorldChange.lean` and `Rpg/Probability/Continuation.lean`.
+
+
 During play, the Player can ask for a change, such as "I want my character to have a flamethrower now". The DM (Dungeon Master) proposes the change and a counter-rule. The server installs the change only after the checker and the balance check pass. This merges the branch `codex/rpg-live-rule-changes` (commit 4f123d4). For play-time changes, it replaces the "People own the rules" decision of ADR 0004. The rules files and Wishes still follow ADR 0004.
 
 ## Decisions

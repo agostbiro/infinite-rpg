@@ -2,8 +2,7 @@ import Rpg.Prompt
 import Rpg.WorldChange
 
 /-! The live GM proposes bounded adventure data. It receives the exact checkpoint,
-existing rules, the requested gift, and the same start-of-adventure balance bands as the checker:
-the bands of the game's own policy (its difficulty level). -/
+existing rules, the requested gift, and the same aged Weibull bands as the checkpoint checker. -/
 namespace Rpg.WorldChange
 open Lean Probability Probability.Confidence
 
@@ -54,7 +53,7 @@ def systemPrompt : String := "\n".intercalate [
   "`scenes` replaces unvisited scene IDs or adds new IDs. Default to scenes=[] for equipment and combat-rule requests. Patch scenes only when the request needs them or a balance failure requires it; omit unchanged scenes. NEVER patch a protected scene. All original scenes remain; all scenes must be reachable and have a path to an ending. You can extend an unvisited ending to create a longer, interesting continuation. Use at most 40 total scenes; keep choices and encounters small (at most 4 foes per fight).",
   "If the world has an `environment` (its world map), keep the map: you cannot add or move places, paths, or props. Give each NEW scene ID exactly one entry in `scenePlaces` ({scene, place, npcs}) with a place id from the map, and at most 4 people in npcs. A replaced scene keeps its place. A scene can have at most 4 choices. Use scenePlaces=[] when you add no scene or the world has no map.",
   "The core engine rules, dice, character point budgets, time scale, balance tolerance, difficulty level, and Weibull parameters cannot change. No code, new actions, healing, ammo, invented triggers, or arbitrary new state. Set supported=true whenever the defining behavior can be implemented. Difficulty balancing a proposal is a reason to revise the world, not to call the mechanic unsupported. Never silently drop an essential part of the request or substitute a cosmetic name for a real effect. Only after considering faithful combinations, if an essential behavior still cannot be expressed, set supported=false, explain the specific missing capability and suggest the closest playable alternative in summary, with empty requestedRules/rules/scenes and null equipment. Suggest such a materially different alternative; do not apply it as though it fulfilled the request.",
-  s!"Design for the supplied balance bands from the beginning. The checker plays {difficultyGames} games including combat FROM THE ADVENTURE START, with full initial HP and ALL updated rules equipped from turn zero. It tests the first {liveHorizon+1} scene turns. The player resumes at their existing checkpoint after acceptance; do not simulate from that checkpoint or extend the adventure merely because the player is near its ending. Later zero-observation rows fail. Combat rounds do not count as scene turns.",
+  s!"Design for the supplied checkpoint balance bands. The checker plays {difficultyGames} games FROM THE CURRENT CHECKPOINT, with remaining HP, updated rules and the full unfinished Fight state. It tests the next {liveHorizon+1} events. The age t is the number of completed scene choices, not combat rounds. The original Weibull curve S is retained: survival for another u events is S(t+u)/S(t), never S(u). Row 0 tests first-event death; later rows test death ANYWHERE within the next two events conditional on survival to the row age. Every confidence interval must fit its target within 5 percentage points, including for legacy policies. Endings count as surviving, and empty or unresolved rows fail. Rebalance future encounters if needed; never heal the hero, reset t, or replay a fight opening.",
   "Screen failures identify exact rows to adjust. A screened proposal is then frozen and checked on fresh games with the supplied error allowance. Never ask to reroll the same proposal. Revise the world after a failure.",
   rulesText]
 
@@ -64,14 +63,20 @@ def context (g : Game) (wish : String) (risk : Rat) (map : Option WorldEnvironme
   let d : Draft := { adventure := g.adventure, hero := g.hero, background := "", environment := map }
   let ranges := (List.range (liveHorizon+1)).filterMap fun row =>
     if h : row < liveHorizon+1 then
-      let band := confidenceBandsFor g.policy liveHorizon ⟨row, h⟩
+      let band := bandsFor .window g.policy g.trail.length liveHorizon ⟨row, h⟩
       some (json% { row: $(row), lower: $(toString (max 0 (band.target-band.tolerance))),
         upper: $(toString (min 1 (band.target+band.tolerance))) })
     else none
+  let combat := match g.phase with
+    | .fight f => json% {
+        scene: $(f.scene), choice: $(f.choice), onWin: $(f.onWin), order: $(f.order),
+        state: $(fightJson g.rules g.adventure.themes g.inputs f) }
+    | _ => Json.null
   let snapshot := json% {
     request: $(wish), world: $(d.toJson),
-    checkpoint: { scene: $(g.sceneId?), hp: $(g.hp), phase: $(g.phase.name) },
-    balanceStart: "adventure beginning, full initial HP, updated rules",
+    checkpoint: { scene: $(g.sceneId?), hp: $(g.hp), phase: $(g.phase.name),
+      elapsed: $(g.trail.length), combat: $(combat) },
+    balanceStart: "current checkpoint, remaining HP and combat state, original Weibull age",
     protectedScenes: $(protectedScenes g),
     activeRules: $(g.rules.combatRules.map ruleJson),
     equipment: $(g.rules.equipment.map equipmentJson),

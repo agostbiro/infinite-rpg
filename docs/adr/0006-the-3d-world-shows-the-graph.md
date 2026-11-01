@@ -4,6 +4,11 @@ This ADR (architecture decision record) adds to ADR 0002. The page shows the Adv
 world, from code by antoine-vinciguerra (branch `RPG_3D`). The Player walks to a marked object or
 person to pick a Choice or a Maneuver. Lean still decides every outcome.
 
+The extension on `expand_rules` proposes editable maps and Scene Choices during play. Its
+[required properties](../world-change-properties.md) describe the additional checks and atomic
+installation needed before relaxing this ADR's fixed-map restriction. They are not implemented
+by this ADR alone.
+
 ## The decision
 
 - The page gets the inputs that the game offers from the Lean view. It makes one 3D object for each

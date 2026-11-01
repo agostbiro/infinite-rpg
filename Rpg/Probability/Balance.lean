@@ -64,6 +64,11 @@ def Graph.deathAtTwo (g : Graph) (t : Nat) : Option Rat :=
   let p := g.activeAt t
   if p = 0 then none else some ((g.deadBy (t + 2) - g.deadBy (t + 1)) / p)
 
+/-- Death within the next two events given survival, including successful endings among survivors. -/
+def Graph.deathWithinTwo (g : Graph) (t : Nat) : Option Rat :=
+  let p := 1 - g.deadBy t
+  if p = 0 then none else some ((g.deadBy (t + 2) - g.deadBy t) / p)
+
 /-- Absolute error is at most the policy tolerance, using exact rationals. -/
 def WithinTolerance (actual target tolerance : Rat) : Prop :=
   target - tolerance ≤ actual ∧ actual ≤ target + tolerance

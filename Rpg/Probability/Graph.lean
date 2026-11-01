@@ -86,6 +86,12 @@ inductive ResumePoint where
   | scene (id : SceneId) (hp : Int)
   | fight (phase : FightPhase)
 
+/-- Use the current HP and full paused Fight state. Live admission only accepts Scene or Fight phases. -/
+def _root_.Rpg.Game.balancePoint (g : Game) : ResumePoint :=
+  match g.phase with
+  | .fight f => .fight f
+  | _ => .scene (g.sceneId?.getD g.adventure.start) g.hp
+
 /-- Resolve the unfinished round, then the remaining full rounds with exact odds. -/
 def remainingCombat (rules : RuleSet) (f : FightPhase) : Distribution CombatResult :=
   let next := (Prod.fst <$> remainingRoundWith (attackDistribution rules) heroPolicy f.order f.state).collect

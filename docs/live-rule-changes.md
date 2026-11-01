@@ -3,6 +3,12 @@
 The DM (Dungeon Master) is the AI that writes Adventures. The Player sees the full name. This
 page and [ADR 0005](adr/0005-live-rule-changes.md) describe live changes.
 
+The proposed extension on `expand_rules` is specified in
+[Required properties of expanded World changes](world-change-properties.md). It permits changes
+to the 3D environment, Scene Choices, or both, subject to graph legality, balance admission and
+exact correspondence between offered inputs and reachable 3D interactions. That document lists
+requirements not yet implemented. The behavior described below is the current implementation.
+
 The Player can type a free-form request in **Change the world**, during a Scene or on the
 Character's turn in a Fight. A flamethrower is one example, not a special command. Other
 requests can grant a weapon profile or add supported combat effects, such as armor or a
@@ -91,30 +97,25 @@ leaves play unchanged.
 Changes are local to the in-memory playthrough and survive a browser reload. They do not
 overwrite saved adventures. Restarting starts the original adventure again.
 
-## Balance from the beginning and retries
+## Balance from the checkpoint and retries
 
-The checker starts at the updated adventure's starting scene, full initial HP, and turn zero.
-All new equipment and effects apply throughout these simulated games, including fights
-that the player already completed. The check covers the first six scene turns (`H=5`) and
-uses the original Weibull bands. Empty late rows and unresolved combat reject the change.
+The checker starts from the revised game's actual Scene and remaining HP, or its full unfinished
+Fight state. Completed Scene choices determine the original Weibull age `t`. The continuation
+reference is `S(t+u)/S(t)`, not a restarted `S(u)`. The first row checks death on the next event;
+subsequent rows check death anywhere within two events, conditional on survival to that row.
+Successful endings count as survival. All confidence intervals must fit the target within five
+percentage points, including for the legacy test policy. Empty rows and unresolved combat fail.
 
-**Deep Scenes get only the legality check.** The sampled games stop after 6 turns. A change
-can add or replace Scenes that are not visited yet. If such a Scene is more than 6 turns from
-the start, no sampled game reaches it, so its new encounters get only the legality check, not
-the balance check. Combat rules and equipment apply to every Fight, so the early Fights do
-test them. This gap is stated here, in the README, and in the panel. It is not fixed.
+The window covers the next six events (`liveHorizon = 5`), not all future Scenes or all strategies.
+The test Player follows the uniform policy. New Wish admission retains its existing point-event
+protocol; these changes concern live checkpoint admission.
 
-This is a property of the revised adventure from its beginning. It is not a claim about the
-player's conditional risk at their current wounds or position. Installation still keeps the
-actual checkpoint: no replay, healing, reset, or repeated enemy turns occurs in the played game.
-
-`StatisticalCandidate.balancedAt` generalizes `balanced` to the actual error allowance.
-`WorldChange.Admission.balanced` (`live_change_balanced`) specializes it to the revised adventure. It
-holds for every proposal: it limits how often the test accepts an unbalanced change, and it does not
-say that a change is balanced. `intervals_fit` is the fact about one admission: every admitted
-interval fits its band. `Prepared.candidate_from_start` proves that admission
-uses the whole adventure graph at turn zero. `Prepared.preserves_core` and
-`preserves_checkpoint` state the scope and state guarantees.
+`Prepared.candidate_from_checkpoint`, `candidate_scene_start` and `candidate_fight_start` bind
+simulations and the graph to that state. `remainingSurvival_eq_ratio` proves the shifted reference.
+`Admission.checkpoint_intervals` proves the interval containment required for acceptance.
+`Admission.difficulty_preserved_if_covered` gives the graph property when those intervals cover
+the true probabilities; `Prepared.checkpoint_falseAcceptance` bounds false acceptance under the
+existing binomial sampling assumptions. It does not certify that the seeded PRNG is IID.
 
 Repeated fresh 95% tests until one passes would lose the overall 95% guarantee. Instead,
 validation attempt `n` spends `confidenceDelta / 2^(n+1)`. The server never refunds a spent
@@ -197,4 +198,4 @@ These are open, for the branch author. ADR 0005 has more detail.
 - Equipment is matched by owner name and weapon, so a foe with the Character's name and weapon
   gets the gift too.
 - `applyChange` does not check again that the game did not move; it relies on blocked input.
-  `preserves_checkpoint` does not state foe HP, turn order, or the round number.
+  `candidate_fight_start` now states preservation of the full paused Fight, including foe HP, turn order and round number.

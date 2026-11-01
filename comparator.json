@@ -14,7 +14,15 @@
     "Verified.live_change_core",
     "Verified.live_change_checkpoint",
     "Verified.live_change_existing_rule",
-    "Verified.live_change_from_start",
+    "Verified.live_change_from_checkpoint",
+    "Verified.live_change_scene_start",
+    "Verified.live_change_fight_start",
+    "Verified.weibull_remaining_survival",
+    "Verified.live_change_checkpoint_target",
+    "Verified.live_change_checkpoint_truth",
+    "Verified.live_change_checkpoint_intervals",
+    "Verified.live_change_difficulty_if_covered",
+    "Verified.live_change_falseAcceptance",
     "Verified.live_change_balanced",
     "Verified.retry_balanced",
     "Verified.noShortLoops",
@@ -23,5 +31,9 @@
     "Verified.difficulty_order",
     "Verified.live_change_policy"
   ],
-  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
 }

@@ -70,14 +70,80 @@ theorem live_change_checkpoint (p : WorldChange.Prepared) :
 theorem live_change_existing_rule (p : WorldChange.Prepared) (r : CombatRule)
     (existing : r ∈ p.before.rules.combatRules) : r ∈ p.game.rules.combatRules := sorry
 
-/-- Checking starts at the updated adventure's beginning; play retains its checkpoint. -/
-theorem live_change_from_start (p : WorldChange.Prepared) :
-    p.candidate.resume = none ∧ p.candidate.elapsed = 0 ∧
-    p.candidate.graph = p.definition.graph := sorry
+/-- The simulated graph starts from the revised checkpoint, at the original elapsed event count. -/
+theorem live_change_from_checkpoint (p : WorldChange.Prepared) :
+    p.candidate.resume = some p.game.balancePoint ∧
+    p.candidate.elapsed = p.before.trail.length ∧
+    p.candidate.graph = Probability.continuationGraph p.definition p.game.balancePoint :=
+  p.candidate_from_checkpoint
+
+/-- The new start node keeps the current Scene and remaining HP. -/
+theorem live_change_scene_start (p : WorldChange.Prepared) (id : SceneId)
+    (scene : p.before.phase = .scene id) :
+    p.candidate.resume = some (.scene id p.before.hp) ∧
+    p.candidate.graph.start = Probability.arrive p.definition.story id p.before.hp :=
+  p.candidate_scene_start id scene
+
+/-- A paused Fight keeps HP, foes, maneuvers, round and order; only the granted build changes. -/
+theorem live_change_fight_start (p : WorldChange.Prepared) (f : FightPhase)
+    (fight : p.before.phase = .fight f) :
+    p.before.hp = f.state.hero.hp ∧
+    p.candidate.resume = some (.fight
+      { f with state := { f.state with hero := { f.state.hero with being := p.definition.hero } } }) :=
+  p.candidate_fight_start f fight
+
+/-- Residual survival is the original Weibull curve conditioned on reaching this age. -/
+theorem weibull_remaining_survival (policy : Probability.BalancePolicy)
+    (valid : policy.Valid) (elapsed turns : Nat) :
+    policy.remainingSurvival elapsed turns = policy.survival (elapsed + turns) / policy.survival elapsed :=
+  policy.remainingSurvival_eq_ratio valid elapsed turns
+
+/-- Targets refer to death anywhere in the next pair of events, at the original age. -/
+theorem live_change_checkpoint_target (p : WorldChange.Prepared) (offset : Nat) :
+    p.before.policy.checkpointTarget p.candidate.elapsed (offset+1) =
+      1 - p.before.policy.survival (p.before.trail.length + offset + 2) /
+        p.before.policy.survival (p.before.trail.length + offset) :=
+  p.checkpoint_pair_target offset
+
+/-- The actual tested probability is derived from this revised checkpoint graph. -/
+theorem live_change_checkpoint_truth (p : WorldChange.Prepared) (offset : Nat)
+    (within : offset + 1 < p.candidate.horizon + 1) :
+    p.candidate.truth ⟨offset + 1, within⟩ =
+      ((Probability.continuationGraph p.definition p.game.balancePoint).deathWithinTwo offset).getD 0 :=
+  p.checkpoint_pair_truth offset within
+
+/-- Every admitted confidence interval fits the aged target within five percentage points. -/
+theorem live_change_checkpoint_intervals {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
+    (a : WorldChange.Admission p seed delta) (i : Fin (p.candidate.horizon+1)) :
+    let obs := a.counts.observation i.val
+    let iv := Probability.Confidence.confidenceInterval delta obs.trials obs.deaths
+    let target := p.before.policy.checkpointTarget p.before.trail.length i.val
+    target - 1/20 ≤ iv.lower ∧ iv.upper ≤ target + 1/20 :=
+  a.checkpoint_intervals i
+
+/-- Covered accepted intervals imply the requested semantic property of the checkpoint graph. -/
+theorem live_change_difficulty_if_covered {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
+    (a : WorldChange.Admission p seed delta)
+    (covered : ∀ i : Fin (p.candidate.horizon + 1),
+      let obs := a.counts.observation i.val
+      (Probability.Confidence.confidenceInterval delta obs.trials obs.deaths).Contains (p.candidate.truth i)) :
+    p.CheckpointBalanced :=
+  a.difficulty_preserved_if_covered covered
+
+/-- The probability of falsely accepting the checkpoint graph is bounded under the sampling model. -/
+theorem live_change_falseAcceptance (p : WorldChange.Prepared) (delta : Rat)
+    (nonnegative : 0 ≤ delta)
+    (law : Probability.Distribution (Fin (p.candidate.horizon + 1) → Probability.Confidence.Observation))
+    (valid : law.Valid) (sampling : Probability.Confidence.BinomialSampling law p.candidate.truth)
+    (probabilities : ∀ i, 0 ≤ p.candidate.truth i ∧ p.candidate.truth i ≤ 1) :
+    Probability.Confidence.expectation law (fun observations =>
+      if Probability.Confidence.acceptsFamily p.candidate.bands delta observations ∧ ¬ p.CheckpointBalanced
+      then 1 else 0) ≤ delta :=
+  p.checkpoint_falseAcceptance delta nonnegative law valid sampling probabilities
 
 -- The fact about one admission is `WorldChange.Admission.intervals_fit`.
 /-- The balance test at error allowance `delta` is sound for the changed Adventure, from its
-start. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
+checkpoint. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
 does not say that this change is balanced. -/
 theorem live_change_balanced {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
     (a : WorldChange.Admission p seed delta) :

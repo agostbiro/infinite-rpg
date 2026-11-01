@@ -61,7 +61,7 @@ def banditFight : FightPhase where
     foes := [{ being := TestAdventure.bandit 1, hp := -1 }, { being := TestAdventure.bandit 2, hp := 4 }] }
 
 /-- A game in the Fight `banditFight`. -/
-def fightGame : Game := { titleGame with phase := .fight banditFight }
+def fightGame : Game := { titleGame with hp := banditFight.state.hero.hp, phase := .fight banditFight }
 
 /-- A game that reached an Ending. -/
 def endedGame : Game := { titleGame with phase := .ended 8 }

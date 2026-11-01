@@ -3,7 +3,7 @@ import Rpg.Probability.Retry
 
 /-! In-play changes are checked data, not generated executable code. An accepted
 patch keeps the checkpoint, HP, history, core rules, and balance policy. Admission samples the
-updated adventure from its beginning, against the game's own policy, before the server can
+updated adventure from that checkpoint, at the original curve's elapsed age, before the server can
 install it. A proposal has no policy field, so it cannot change the difficulty level. -/
 namespace Rpg.WorldChange
 open Lean Probability Probability.Confidence
@@ -167,11 +167,23 @@ Scene added. A replaced Scene keeps its place. -/
 def Proposal.map (p : Proposal) (e : WorldEnvironment) : WorldEnvironment :=
   { e with scenes := e.scenes ++ p.scenePlaces }
 
+/-- The visible HP and the paused combat HP must name the same checkpoint. -/
+def checkpointConsistent (g : Game) : Prop :=
+  match g.phase with
+  | .fight f => g.hp = f.state.hero.hp
+  | _ => True
+
+instance (g : Game) : Decidable (checkpointConsistent g) := by
+  unfold checkpointConsistent
+  split <;> infer_instance
+
 /-- A prepared change carries the legality proofs, but cannot yet be installed. -/
 structure Prepared where
   before : Game
   proposal : Proposal
   proposalValid : proposal.errors before = []
+  policyValid : before.policy.Valid
+  checkpointValid : checkpointConsistent before
   heroLegal : LegalCharacter (proposal.ruleSet before)
     { before.hero with weapon := proposal.equipment.map (·.weapon) |>.getD before.hero.weapon }
   storyLegal : LegalAdventure (proposal.ruleSet before)
@@ -212,11 +224,11 @@ theorem Prepared.preserves_existing_rule (p : Prepared) (r : CombatRule)
     (existing : r ∈ p.before.rules.combatRules) : r ∈ p.game.rules.combatRules := by
   simp [Prepared.game, Prepared.definition, Proposal.ruleSet, existing]
 
-/-- The balance check starts the updated adventure at full initial HP and turn zero, with the
-game's own policy. The installed game separately retains the player's actual checkpoint. -/
+/-- Sample the actual revised checkpoint at its completed-event count, without healing or rewinding. -/
 def Prepared.candidate (p : Prepared) : StatisticalCandidate :=
   { toAdventureDefinition := p.definition, horizon := liveHorizon, horizonPositive := by decide,
-    policy := p.before.policy }
+    resume := some p.game.balancePoint, elapsed := p.before.trail.length,
+    protocol := .window, policy := p.before.policy }
 
 /-- A change keeps the game's balance policy, and the check uses that same policy. So the
 difficulty level of an Adventure stays the same for its whole life. -/
@@ -226,11 +238,30 @@ theorem Prepared.keeps_policy (p : Prepared) :
     -- The balance check of the change uses that policy.
     p.candidate.policy = p.before.policy := ⟨rfl, rfl⟩
 
-/-- The admission graph is the entire updated adventure, regardless of the pause point. -/
-theorem Prepared.candidate_from_start (p : Prepared) :
-    p.candidate.resume = none ∧ p.candidate.elapsed = 0 ∧
-    p.candidate.graph = p.definition.graph := by
-  exact ⟨rfl, rfl, rfl⟩
+/-- Both the simulator and its probability graph start from the revised checkpoint at its real age. -/
+theorem Prepared.candidate_from_checkpoint (p : Prepared) :
+    p.candidate.resume = some p.game.balancePoint ∧
+    p.candidate.elapsed = p.before.trail.length ∧
+    p.candidate.graph = continuationGraph p.definition p.game.balancePoint :=
+  ⟨rfl, rfl, rfl⟩
+
+/-- A Scene checkpoint uses the current Scene and remaining HP as its new start node. -/
+theorem Prepared.candidate_scene_start (p : Prepared) (id : SceneId)
+    (scene : p.before.phase = .scene id) :
+    p.candidate.resume = some (.scene id p.before.hp) ∧
+    p.candidate.graph.start = arrive p.definition.story id p.before.hp := by
+  simp [candidate, game, Game.balancePoint, Game.sceneId?, scene,
+    StatisticalCandidate.graph, continuationGraph]
+
+/-- Paused combat retains wounds, foes, maneuvers, order and round, with only the granted build updated. -/
+theorem Prepared.candidate_fight_start (p : Prepared) (f : FightPhase)
+    (fight : p.before.phase = .fight f) :
+    p.before.hp = f.state.hero.hp ∧
+    p.candidate.resume = some (.fight
+      { f with state := { f.state with hero := { f.state.hero with being := p.definition.hero } } }) := by
+  have hp := p.checkpointValid
+  simp only [checkpointConsistent, fight] at hp
+  exact ⟨hp, by simp [candidate, game, Game.balancePoint, fight]⟩
 
 /-- Decode limits, legality and the short-loop check (`Adventure.noShortLoops`) are checked
 before any simulation. `map` is the world map of the
@@ -244,31 +275,34 @@ def Proposal.prepare (p : Proposal) (g : Game) (map : Option WorldEnvironment :=
   let story := p.story g
   let sizes := sizeErrors { adventure := story, hero, background := "", environment := map.map p.map }
   if he : errs = [] then
+  if hp : g.policy.Valid then
+  if hk : checkpointConsistent g then
   if sizes != [] then .error sizes else
   if hc : checkCharacter rules hero = [] then
     if ha : check rules hero story = [] then
-      if story.checkShortLoops then .ok ⟨g, p, he, checkCharacter_sound hc, check_sound ha⟩
+      if story.checkShortLoops then .ok ⟨g, p, he, hp, hk, checkCharacter_sound hc, check_sound ha⟩
       else .error story.shortLoopErrors
     else .error (check rules hero story ++ story.shortLoopErrors)
   else .error (checkCharacter rules hero)
+  else .error ["The checkpoint HP does not match the paused Fight."]
+  else .error ["The current balance policy is invalid."]
   else .error errs
 
 /-- Evidence is bound to this updated adventure, seed, and error allowance. -/
 structure Admission (p : Prepared) (seed : Nat) (delta : Rat) where
   counts : ValidationCounts
   provenance : counts = sampleCounts p.candidate seed difficultyGames
-  accepted : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy
+  accepted : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy p.candidate.protocol
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
 
 -- The fact about one admission is `WorldChange.Admission.intervals_fit`.
 /-- The balance test at error allowance `delta` is sound for the changed Adventure, from its
-start. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
+checkpoint. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
 does not say that this change is balanced. -/
 theorem Admission.balanced {p : Prepared} {seed : Nat} {delta : Rat} (a : Admission p seed delta) :
     BalancedAt p.candidate delta := p.candidate.balancedAt delta (Rat.le_of_lt a.riskValid.1)
 
-/-- Every interval that authorized the change fits the band of the game's own policy, from turn
-zero. -/
+/-- Every interval that authorized the change fits the aged curve at the actual checkpoint. -/
 theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
     (a : Admission p seed delta) (i : Fin (p.candidate.horizon+1)) :
     let obs := a.counts.observation i.val
@@ -277,12 +311,72 @@ theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
       iv.upper ≤ (p.candidate.bands i).target + (p.candidate.bands i).tolerance :=
   (a.accepted.2.2.2.2 i).2.2.2
 
+/-- Admission requires the complete interval to fit the original curve's conditional target within five points. -/
+theorem Admission.checkpoint_intervals {p : Prepared} {seed : Nat} {delta : Rat}
+    (a : Admission p seed delta) (i : Fin (p.candidate.horizon+1)) :
+    let obs := a.counts.observation i.val
+    let iv := confidenceInterval delta obs.trials obs.deaths
+    let target := p.before.policy.checkpointTarget p.before.trail.length i.val
+    target - 1/20 ≤ iv.lower ∧ iv.upper ≤ target + 1/20 := by
+  simpa only [StatisticalCandidate.bands, Prepared.candidate, bandsFor, difficultyTolerance]
+    using a.intervals_fit i
+
+/-- The checked pair probability uses the original Weibull parameters at the true elapsed time. -/
+theorem Prepared.checkpoint_pair_target (p : Prepared) (offset : Nat) :
+    p.before.policy.checkpointTarget p.candidate.elapsed (offset+1) =
+      1 - p.before.policy.survival (p.before.trail.length + offset + 2) /
+        p.before.policy.survival (p.before.trail.length + offset) :=
+  p.before.policy.checkpointTarget_pair p.policyValid p.before.trail.length offset
+
+/-- The true probabilities refer to the revised graph at the actual checkpoint, not the old start. -/
+theorem Prepared.checkpoint_pair_truth (p : Prepared) (offset : Nat)
+    (within : offset + 1 < p.candidate.horizon + 1) :
+    p.candidate.truth ⟨offset + 1, within⟩ =
+      ((continuationGraph p.definition p.game.balancePoint).deathWithinTwo offset).getD 0 := by
+  simp [StatisticalCandidate.truth, candidate, StatisticalCandidate.graph]
+
+/-- The requested semantic property, for every row in the finite continuation window. -/
+def Prepared.CheckpointBalanced (p : Prepared) : Prop :=
+  ∀ i : Fin (p.candidate.horizon + 1),
+    WithinTolerance (p.candidate.truth i)
+      (p.before.policy.checkpointTarget p.before.trail.length i.val) (1/20)
+
+instance (p : Prepared) : Decidable p.CheckpointBalanced := by
+  unfold Prepared.CheckpointBalanced
+  infer_instance
+
+/-- If the admitted intervals cover the true checkpoint probabilities, the changed graph
+meets the original aged difficulty curve within five points at every tested row. -/
+theorem Admission.difficulty_preserved_if_covered {p : Prepared} {seed : Nat} {delta : Rat}
+    (a : Admission p seed delta)
+    (covered : ∀ i : Fin (p.candidate.horizon + 1),
+      let obs := a.counts.observation i.val
+      (confidenceInterval delta obs.trials obs.deaths).Contains (p.candidate.truth i)) :
+    p.CheckpointBalanced := by
+  intro i
+  exact ⟨Rat.le_trans (a.checkpoint_intervals i).1 (covered i).1,
+    Rat.le_trans (covered i).2 (a.checkpoint_intervals i).2⟩
+
+/-- Under the existing binomial sampling hypotheses, accepting every checkpoint interval
+while the changed graph violates the five-point property has probability at most delta.
+This is a bound on false acceptance, not a claim that a finite sample gives certainty. -/
+theorem Prepared.checkpoint_falseAcceptance (p : Prepared) (delta : Rat)
+    (nonnegative : 0 ≤ delta)
+    (law : Distribution (Fin (p.candidate.horizon + 1) → Observation))
+    (valid : law.Valid) (sampling : BinomialSampling law p.candidate.truth)
+    (probabilities : ∀ i, 0 ≤ p.candidate.truth i ∧ p.candidate.truth i ≤ 1) :
+    expectation law (fun observations =>
+      if acceptsFamily p.candidate.bands delta observations ∧ ¬ p.CheckpointBalanced
+      then 1 else 0) ≤ delta := by
+  exact familyFalseAcceptance_bound law p.candidate.truth p.candidate.bands delta
+    valid sampling probabilities nonnegative
+
 /-- Validate one frozen proposal with a fresh, preassigned batch; every row must pass. -/
 def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option (Admission p seed delta) :=
   let counts := sampleCounts p.candidate seed difficultyGames
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
-    if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy then
+    if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy p.candidate.protocol then
       (counts, some ⟨counts, rfl, h, hd⟩)
     else (counts, none)
   else (counts, none)

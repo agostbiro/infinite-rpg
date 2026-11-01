@@ -181,25 +181,78 @@ private def fixedRoll (n : Nat) : Id (List Nat) := pure (List.replicate n 1)
 #guard !(fury.active {} none { being := TestAdventure.mara, hp := 1 }
   { being := TestAdventure.bandit 1, hp := 10 })
 
--- Admission starts from the adventure even when the player is wounded in a later fight.
-#guard match proposal.prepare { fightGame with hp := 2, trail := roadGame.trail ++ fightGame.trail } with
-  | .error _ => false
-  | .ok p => p.candidate.resume.isNone && p.candidate.elapsed == 0 &&
-    p.game.hp == 2 && p.game.sceneId? == fightGame.sceneId? &&
-    p.candidate.hero.weapon == .flamethrower
+/-- A wounded checkpoint reached after three completed choices. -/
+def woundedFight : Game :=
+  { fightGame with
+    hp := 2
+    phase := .fight { banditFight with state := { banditFight.state with
+      hero := { banditFight.state.hero with hp := 2 } } }
+    trail := [{ source := 0, choice := 0, target := 1, rolled := none },
+      { source := 1, choice := 0, target := 3, rolled := none }, { source := 3, choice := 0, target := 4, rolled := none }] }
 
--- The balance bands in the prompt also start at turn zero, independent of the pause point.
+-- Admission starts at the wounded fight, with its true age and revised equipment.
+#guard match proposal.prepare woundedFight with
+  | .error _ => false
+  | .ok p => p.candidate.elapsed == 3 && p.candidate.protocol == .window &&
+    p.game.hp == 2 && p.game.sceneId? == woundedFight.sceneId? &&
+    match p.candidate.resume with
+    | some (.fight f) => f.state.hero.hp == 2 && f.state.hero.being.weapon == .flamethrower &&
+      f.state.foes == banditFight.state.foes && f.round == banditFight.round && f.order == banditFight.order
+    | _ => false
+
+-- Contradictory visible/combat HP cannot authorize a change.
+#guard match proposal.prepare { fightGame with hp := 1 } with
+  | .error errors => errors.contains "The checkpoint HP does not match the paused Fight."
+  | .ok _ => false
+
+-- A scene checkpoint also starts with its remaining HP, never full initial HP.
+#guard match proposal.prepare { roadGame with hp := 2 } with
+  | .error _ => false
+  | .ok p => match p.candidate.resume with
+    | some (.scene id hp) => id == 0 && hp == 2
+    | _ => false
+
+-- The GM sees the same aged bands, actual HP, and unfinished fight as the checker.
 #guard
-  let later := { fightGame with hp := 2 }
-  let ctx := (Lean.Json.parse (context later "Give me iron skin" (attemptRisk 0))).toOption.get!
-  ctx.getObjValD "ranges" ==
-    ((Lean.Json.parse (context roadGame "Give me iron skin" (attemptRisk 0))).toOption.get!).getObjValD "ranges"
+  let ctx := (Lean.Json.parse (context woundedFight "Give me iron skin" (attemptRisk 0))).toOption.get!
+  let checkpoint := ctx.getObjValD "checkpoint"
+  ctx.getObjValD "ranges" !=
+    ((Lean.Json.parse (context roadGame "Give me iron skin" (attemptRisk 0))).toOption.get!).getObjValD "ranges" &&
+    checkpoint.getObjValD "elapsed" == Lean.toJson (3 : Nat) &&
+    checkpoint.getObjValD "hp" == Lean.toJson (2 : Int) &&
+    checkpoint.getObjValD "combat" != Lean.Json.null
+
+-- Even the legacy test policy gets the requested five-point window band.
+#guard match proposal.prepare roadGame with
+  | .error _ => false
+  | .ok p => (List.finRange (liveHorizon+1)).all fun i => (p.candidate.bands i).tolerance == 1/20
+
+/-- Small trace counts expose the exact conditioning event without relying on random seeds. -/
+def emptyCounts : ValidationCounts := ⟨#[0,0,0,0], #[0,0,0,0], 0, false⟩
+
+-- Death on the first event belongs to the first two-event window, but not later survivors.
+#guard
+  let c := emptyCounts.observeTrace 3 .window ⟨.dead, 1⟩
+  c.trials == #[1,1,0,0] && c.deaths == #[1,1,0,0]
+-- Death on event two belongs to both windows [1,2] and [2,3].
+#guard
+  let c := emptyCounts.observeTrace 3 .window ⟨.dead, 2⟩
+  c.trials == #[1,1,1,0] && c.deaths == #[0,1,1,0]
+-- Winning is survival, not censoring: later windows still have a known zero-death outcome.
+#guard
+  let c := emptyCounts.observeTrace 3 .window ⟨.ended, 1⟩
+  c.trials == #[1,1,1,1] && c.deaths == #[0,0,0,0]
+-- Legacy point admission remains separate.
+#guard
+  let c := emptyCounts.observeTrace 3 .point ⟨.dead, 1⟩
+  c.trials == #[1,1,0,0] && c.deaths == #[1,0,0,0]
+#guard !observationsComplete 5 ⟨.censored, 6⟩ && observationsComplete 5 ⟨.censored, 7⟩
 
 -- A missing late row and an aborted combat batch cannot be admitted.
 #guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,0,0], #[0,0,0,0,0,0],1200,false⟩ (attemptRisk 0) 3
-  DifficultyLevel.medium.policy)
+  DifficultyLevel.medium.policy .window)
 #guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,1200,1200], #[0,0,0,0,0,0],1200,true⟩ (attemptRisk 0) 0
-  DifficultyLevel.medium.policy)
+  DifficultyLevel.medium.policy .window)
 
 /-- The road checkpoint of an Adventure at the hard level. -/
 def hardRoad : Game := { roadGame with policy := DifficultyLevel.hard.policy }
@@ -210,7 +263,7 @@ def hardRoad : Game := { roadGame with policy := DifficultyLevel.hard.policy }
   | .ok p => p.candidate.policy == DifficultyLevel.hard.policy &&
     p.game.policy == DifficultyLevel.hard.policy &&
     (List.finRange (liveHorizon + 1)).all fun i =>
-      let band := confidenceBandsFor DifficultyLevel.hard.policy liveHorizon i
+      let band := bandsFor .window DifficultyLevel.hard.policy hardRoad.trail.length liveHorizon i
       (p.candidate.bands i).target == band.target && (p.candidate.bands i).tolerance == band.tolerance
 
 -- A proposal cannot pick another level: a `difficulty` field in its JSON is not read.
