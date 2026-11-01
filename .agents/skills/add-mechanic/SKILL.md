@@ -10,15 +10,18 @@ adventure legal and admitted under `StatisticalCandidate.fair`. If balancing is
 needed, propose and implement a fun counter-rule that preserves the original
 mechanic's appeal.
 
-Read `Rpg/RuleSet.lean`, `Rpg/Engine.lean`, `Rpg/Probability/SharedRules.lean`,
-`Rpg/Probability/StatisticalAdmission.lean`, and `docs/statistical-confidence.md`.
+Read `Rpg/RuleSet.lean`, `Rpg/Engine.lean`, `Rpg/Play.lean`,
+`Rpg/Probability/SharedRules.lean`, `Rpg/Probability/StatisticalAdmission.lean`,
+and `docs/statistical-confidence.md`. Read `Rpg/Live.lean` when the rule affects
+generated Wish adventures.
 
 ## Preserve the specification
 
 Keep the shared Weibull policy, confidence level, game count, combat round limit,
 validation seed, adventure horizons (and `liveHorizon` for Wishes in `Rpg/Live.lean`),
-the model's Player (`heroPolicy` in `Combat.lean`, the same as `pickManeuver` in
-`Simulation.lean`), catalog, and theorem statements fixed unless
+the model's Player (`heroPolicy` in `Rpg/Probability/Combat.lean`, paired with
+`Simulation.pickManeuver` in `Rpg/Probability/Simulation.lean`), catalog, and
+theorem statements fixed unless
 the user has authorized a change. Existing authorization is sufficient; do not
 ask again. A rule request may authorize changing its hero or story (for example,
 giving Mara a weapon); make only that content change and keep it legal.
@@ -42,10 +45,20 @@ run limits:
 | `intervalSteps` | `Confidence.lean` | Endpoint precision through `confidenceInterval` |
 | `defaultPolicy` | `Weibull.lean` | Targets and tolerance through `confidenceBands` |
 | Candidate `horizon` | Adventure certification | Conditional death rows to test |
+| `liveHorizon`, `liveRules` | `Rpg/Live.lean` | Horizon and rules for generated Wishes |
+| `heroPolicy`, `Simulation.pickManeuver` | `Combat.lean`, `Simulation.lean` | Matching model/simulator maneuver and target distributions |
 
 Screening uses the fixed `screenSeed` and `sampleCounts`. Final admission uses
 `validationSeed` and `admitStatistically`, including source-bound evidence. Late
-rows use their actual qualifying counts; zero observations fail.
+rows use their actual qualifying counts; zero observations fail. Each sampled
+trajectory runs encountered fights through `Simulation.fight` and `roundWith`,
+with the adventure's rules, current HP, and last maneuvers. The fixed Player chooses
+Attack, All-Out Attack, and All-Out Defense equally, then a living target when
+attacking; do not replace it with attack-only play to improve admission.
+
+Generated Wishes use `Draft.toGame`, `liveCandidate`, and `admitWithSeed` with
+`liveRules` and `liveHorizon`. The catalog screen does not test every possible
+Wish; preserve that admission path and test affected Wish fixtures separately.
 
 ## Build the rule in shared code
 
@@ -65,22 +78,26 @@ repeating rule to avoid tracking state.
   with the same HP from the same seed. Do not weaken them to permit a one-sided rule.
 - The exact combat solver (`solveCombat`) solves the states with the same total HP
   together, and assumes such a group has few states (it searches at most 16) and
-  that HP never goes up in a Fight.
+  that HP never goes up in a Fight. `Fighter.maneuver` is already modeled state.
+  The attack model uses `sumAsFaces`, a one-item list containing the dice total;
+  a mechanic depending on individual die faces needs corresponding model work.
 - Keep HP between fights. New persistent state, healing inside combat, new scene
   outcomes, or graph changes require corresponding model/specification work;
   they are not covered by the routine fast path. Use existing authorization or
   ask for the missing scope before making such changes.
 - Select a new configurable mechanic in the target adventures' `Rules.lean`.
   Its default preserves existing behavior for other adventures. People own the
-  rules: `make check-rules` fails on a `Rules.lean` that is not `{}`, and
-  `lighthouse_default_rules` in `Comparator/Statements.lean` states that the
-  Lighthouse uses `{}`. A rule request authorizes this change: add the path to
-  `RULES_ALLOW` in the Makefile, change that statement and its proof in
-  `Comparator/Proofs.lean` to the new value, and say so in the report.
+  rules: `make check-rules` rejects an adventure rules file that is not `{}`
+  unless its path is in `RULES_ALLOW`. An authorized adventure-rule change also
+  authorizes that narrowly scoped allow-list update. If Lighthouse's rules
+  change, update `Verified.lighthouse_default_rules` in both
+  `Comparator/Statements.lean` and `Comparator/Proofs.lean` to the approved value.
+  Preserve unrelated statements and report the specification change.
 - Add small deterministic tests under `Rpg/` showing the trigger, effect, and
   disabled behavior. Test the new rule itself, not just that admission passes.
   Retain negative fixtures and adapt their data when the new rule changes them.
-- Write a short play-log line when the mechanic fires.
+- Emit a player-visible `Report` through the shared attack or turn result when
+  the mechanic fires. Keep the effect in shared rules, not only in UI rendering.
 
 The routing contracts check shared implementation structure. They do not prove
 full stochastic model equivalence; the accepted sampling assumptions still apply.
@@ -127,11 +144,16 @@ python3 .agents/skills/add-mechanic/scripts/check.py
 
 The runner gives the entire verification one shared 60-second deadline. It builds
 all `Rpg` proofs and regression modules plus compiled game/helper targets, checks
-the axioms of every project theorem, and runs the compiled exploratory screen for
+the axioms of the `Rpg` theorems, and runs the compiled exploratory screen for
 every catalog adventure. A failed check or timeout returns a nonzero status;
 timeouts terminate child processes and report `INCOMPLETE`. Changed source inputs
 also invalidate the result. Do not run another Lake process in this checkout at
 the same time.
+
+The runner does not invoke the Makefile's additional guards or Comparator. Run
+`make check-rules check-pictures` as repository checks, and use the final Linux
+checks below before claiming all required verification is complete. The
+one-minute deadline covers the runner, not these separate repository checks.
 
 Record a baseline before the rule and compare it with the finished rule. Each
 verification has its own deadline. The budget concerns checking a completed
@@ -154,7 +176,19 @@ python3 .agents/skills/add-mechanic/scripts/check.py --final
 Within the same deadline this also runs compiled, source-bound admission for all
 adventures. On Linux it additionally requests `lake check`. On macOS it explicitly
 reports isolated replay as pending; do not claim Comparator/replay passed. Final
-proof replay requirements in `CLAUDE.md` still apply: run `make comparator` too.
+proof replay requirements in `CLAUDE.md` still apply. On Linux, also run:
+
+```sh
+make check comparator
+```
+
+`make check` includes the adventure-source, rules, and picture guards; the
+runner's `lake check` alone does not include those guards. `make comparator`
+checks `Comparator/Proofs.lean` against the trusted declarations in
+`Comparator/Statements.lean` using `comparator.json`. The statement file's
+intentional `sorry` placeholders are not proof implementations; do not copy them
+into proofs or remove the separate comparison. Report these checks as pending
+when the platform cannot run them.
 
 If held-out validation fails, report it. Do not tune against that result and rerun
 until success; changed mechanics then need an independently precommitted holdout.
