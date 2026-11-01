@@ -3,7 +3,7 @@
 
 This library supplies reusable GURPS Lite defaults: beings, skills, gear,
 point costs, damage tables, and success rolls. Each adventure has its own
-`RuleSet` (see `Rpg/RuleSet.lean`) in its `Rules.lean`. Play and the fairness check get that value as an argument.
+`RuleSet` (see `Rpg/RuleSet.lean`) in its `Rules.lean`. Play and the balance check get that value as an argument.
 Page numbers refer to GURPS Lite, Fourth Edition (2020).
 The file `docs/gurps-deviations.md` lists each place where these rules differ from GURPS Lite.
 -/

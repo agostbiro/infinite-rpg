@@ -27,10 +27,10 @@ A Legal Adventure obeys these rules:
 7. From every Scene, an Ending can be reached by following Choices.
    Each Scene that an Outcome can lead to counts, whatever the dice do.
 
-These rules do not say that the Adventure is fair or can be won.
+These rules do not say that the Adventure is balanced or can be won.
 For example, a Fight that the Character cannot win is legal.
 Rule 7 ignores the dice and the Fights. It does not say that the Character lives to reach an Ending.
-Fairness is a separate check that runs before play (see `Rpg/Probability/StatisticalAdmission.lean`).
+Balance is a separate check that runs before play (see `Rpg/Probability/StatisticalAdmission.lean`).
 
 The Character must be a legal build too: attributes from 7 to 14, exactly 100 points, no natural DR.
 
@@ -157,7 +157,7 @@ def LegalAdventure (rules : RuleSet) (c : Being) (a : Adventure) : Prop :=
   (∀ s ∈ a.scenes, ReachesEnding a s.id)
 
 /-- An Adventure with its rules and its Character, and the proofs that both are legal under
-those rules. Play and the fairness check both start from this one record. -/
+those rules. Play and the balance check both start from this one record. -/
 structure AdventureDefinition where
   /-- The rules of the Adventure. -/
   rules : RuleSet

@@ -1,4 +1,4 @@
-import Rpg.Probability.Fairness
+import Rpg.Probability.Balance
 
 /-! Bounded game trajectories use the same combat rules as play. Unresolved
 outcomes are retained so validation cannot discard unfavorable samples. -/

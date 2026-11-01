@@ -1,5 +1,5 @@
 import Rpg.Probability.Binomial
-import Rpg.Probability.Fairness
+import Rpg.Probability.Balance
 
 /-!
 Equal-tailed exact binomial intervals, represented by conservative rational endpoints.
@@ -276,11 +276,11 @@ structure BinomialSampling (law : Distribution (Fin m → Observation)) (truth :
       expectation (sizes i) (fun n => binomialExpectation (truth i) n (fun k => f ⟨n, k⟩))
 
 /-- Every true expectation is within its selected Weibull tolerance band. -/
-def familyFair (truth : Fin m → Rat) (bands : Fin m → Band) : Prop :=
+def familyBalanced (truth : Fin m → Rat) (bands : Fin m → Band) : Prop :=
   ∀ i, WithinTolerance (truth i) (bands i).target (bands i).tolerance
 
-instance (truth : Fin m → Rat) (bands : Fin m → Band) : Decidable (familyFair truth bands) := by
-  unfold familyFair
+instance (truth : Fin m → Rat) (bands : Fin m → Band) : Decidable (familyBalanced truth bands) := by
+  unfold familyBalanced
   infer_instance
 
 /-- All observed intervals must pass the shared comparison policy. -/
@@ -324,7 +324,7 @@ theorem rowConfidence (law : Distribution (Fin m → Observation)) (truth : Fin 
 def familyFalseAcceptance (law : Distribution (Fin m → Observation)) (truth : Fin m → Rat)
     (bands : Fin m → Band) (delta : Rat) : Rat :=
   expectation law fun counts =>
-    if acceptsFamily bands delta counts ∧ ¬ familyFair truth bands then 1 else 0
+    if acceptsFamily bands delta counts ∧ ¬ familyBalanced truth bands then 1 else 0
 
 /-- Requiring all rows to pass bounds the whole decision's false-acceptance risk by delta. -/
 theorem familyFalseAcceptance_bound
@@ -339,24 +339,24 @@ theorem familyFalseAcceptance_bound
     -- The permitted error is nonnegative.
     (hd : 0 ≤ delta) :
     familyFalseAcceptance law truth bands delta ≤ delta := by
-  by_cases fair : familyFair truth bands
+  by_cases balanced : familyBalanced truth bands
   -- If every true probability fits, false acceptance is impossible.
   · have bound : familyFalseAcceptance law truth bands delta ≤ expectation law (fun _ => 0) := by
       apply expectation_monotone law valid.1
       intro counts
-      simp only [fair, not_true_eq_false, and_false, ite_false]
+      simp only [balanced, not_true_eq_false, and_false, ite_false]
       exact Rat.le_refl
     rw [expectation_constant law valid] at bound
     exact Rat.le_trans bound hd
   -- Otherwise acceptance requires missing at least one fixed violating row.
-  · obtain ⟨i, unfair⟩ := Classical.not_forall.mp fair
+  · obtain ⟨i, unbalanced⟩ := Classical.not_forall.mp balanced
     have bound : familyFalseAcceptance law truth bands delta ≤ intervalMissProbability law truth delta i := by
       apply expectation_monotone law valid.1
       intro counts
       split
       -- Passing every row implies this violating row was falsely accepted.
       · next accepted =>
-        have missed := false_accept_misses (bands i) delta (truth i) (counts i) (accepted.1 i) unfair
+        have missed := false_accept_misses (bands i) delta (truth i) (counts i) (accepted.1 i) unbalanced
         simp only [missed, ite_false]
         exact Rat.le_refl
       -- Rejected observations contribute no false-acceptance risk.

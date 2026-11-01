@@ -1,10 +1,10 @@
-# Probability and fairness
+# Probability and balance
 
 Edit the defaults in `Rpg/Probability/Weibull.lean`:
 
 - `weibullRetention = 19/20` (q).
 - `weibullShape = 2` (positive integer shape; 2 means the danger rises over the turns).
-- `fairnessTolerance = 1/5` (twenty percentage points of absolute error).
+- `balanceTolerance = 1/5` (twenty percentage points of absolute error).
 
 These are design choices, not measured or standard RPG parameters. They were picked
 on the screening seed (1) so that the Lighthouse passes and an Adventure with no deaths
@@ -49,7 +49,7 @@ With the policy "always Attack" (`attackOnlyPolicy`), the solver gave exactly th
 old solver on the Lighthouse Fights. This was a one-off check in the merge, not a build test. Exact rational state enumeration is expensive: one Lighthouse
 Fight takes minutes in the interpreter. Do not assume large fights are cheap to analyze.
 
-## Meaning of `fair`
+## Meaning of `balanced`
 
 The shared theorem is finite statistical confidence. For a preselected positive
 horizon `H`, it covers first-turn death and, for `0 <= t < H`,
@@ -66,7 +66,7 @@ interval, enclosed by outward-rounded rational endpoints.
 Admission requires the whole interval inside `[w_t - tolerance, w_t + tolerance]`.
 The first-turn row uses target `1 - S(1)` to reject immediate-death loopholes.
 
-`StatisticalCandidate.fair` proves per-row interval coverage and a false-acceptance
+`StatisticalCandidate.balanced` proves per-row interval coverage and a false-acceptance
 bound for the entire finite decision under the explicitly accepted binomial
 sampling model. With the current constants, each risk is at most 10%.
 This does not assert simultaneous 90% coverage of all displayed intervals.
@@ -77,7 +77,7 @@ With shape 2, the targets rise from 5% on turn 1 to 27% on turn 6. The tolerance
 20 percentage points, so the first three rows only cap the risk, and from turn 4 on each
 row also has a lower edge above 0. An Adventure where the Character never dies fails. It does not guarantee victory, behavior under
 every player strategy, or closeness of the entire lifetime distribution to a
-Weibull law. `checkFairnessThrough` remains an exact finite diagnostic for small
+Weibull law. `checkBalanceThrough` remains an exact finite diagnostic for small
 graphs; admission uses the proved exact-binomial confidence protocol.
 
 ## Expectations
@@ -118,13 +118,13 @@ plus **both** `LegalCharacter rules hero` and `LegalAdventure rules hero story`.
 The graph is derived from those exact values, and `Game.new` takes the same record,
 so play uses the same rules.
 Changing rules or characters requires rechecking their dependent certificates.
-The shared Weibull fairness policy remains fixed across adventures.
+The shared Weibull balance policy remains fixed across adventures.
 
 Each adventure supplies a `StatisticalCandidate` with its definition, a positive
-finite horizon, and the specialized theorem `fair`. Register candidates in
+finite horizon, and the specialized theorem `balanced`. Register candidates in
 `Rpg/Catalog.lean`; the runtime `admitStatistically` gate collects source-bound
 counts and requires every interval to fit the shared Weibull band. Its resulting
-`StatisticalAdventure` carries both `fair` and the passing observation evidence.
+`StatisticalAdventure` carries both `balanced` and the passing observation evidence.
 The Lighthouse and every Wish go through the same `admitWithSeed`.
 
 See [statistical confidence](statistical-confidence.md) for the theorem, accepted
@@ -140,7 +140,7 @@ combat elimination algorithm are part of the trusted definitions. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
 but there is not yet a general theorem proving the elimination algorithm equals
 the infinite stochastic operational execution. The ideal sampling correspondence
-is an accepted assumption of `fair`, including the idealization of SplitMix64 and
+is an accepted assumption of `balanced`, including the idealization of SplitMix64 and
 modulo-based choices.
 
 All stated theorems use kernel proofs; none use `sorry`, additional axioms, or

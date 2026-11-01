@@ -36,7 +36,7 @@ theorem step_rejects (g : Game) (i : Input) (dice : Rng)
 /-- The game offers exactly the inputs that the rules allow. -/
 theorem mem_inputs_iff {g : Game} {i : Input} : i ∈ g.inputs ↔ AllowedInput g i := Rpg.mem_inputs_iff
 
-/-- The Lighthouse uses the default rules, in every place that play and the fairness check read
+/-- The Lighthouse uses the default rules, in every place that play and the balance check read
 them. A DM cannot change the rules without breaking this statement. -/
 theorem lighthouse_default_rules :
     Lighthouse.rules = {} ∧
@@ -44,7 +44,7 @@ theorem lighthouse_default_rules :
     Lighthouse.statisticalCandidate.rules = {} :=
   ⟨rfl, rfl, rfl⟩
 
-/-- The fairness test is sound for every candidate, under the binomial sampling model. -/
-theorem fair (a : Probability.StatisticalCandidate) : Probability.Fair a := a.fair
+/-- The balance test is sound for every candidate, under the binomial sampling model. -/
+theorem balanced (a : Probability.StatisticalCandidate) : Probability.Balanced a := a.balanced
 
 end Verified

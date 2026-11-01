@@ -72,7 +72,7 @@ check-pictures:
 cheats:
 	lake exe cheats
 
-# Run the fairness check on the Lighthouse, and print each row with its interval and range.
+# Run the balance check on the Lighthouse, and print each row with its interval and range.
 validate:
 	lake exe validate
 

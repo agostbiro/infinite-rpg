@@ -72,8 +72,8 @@ instance (actual target tolerance : Rat) : Decidable (WithinTolerance actual tar
   unfold WithinTolerance
   infer_instance
 
-/-- A concrete failure found by the finite fairness diagnostic. -/
-inductive FairnessViolation where
+/-- A concrete failure found by the finite balance diagnostic. -/
+inductive BalanceViolation where
   | invalidPolicy
   | notInitiallyActive
   | firstTurn (actual target : Rat)
@@ -82,7 +82,7 @@ inductive FairnessViolation where
 
 /-- An exact check for small graphs: the policy, the start state, and the death chance of each row.
 It is a test tool. Admission before play uses the 1,000-game check instead. -/
-def checkFairnessThrough (policy : FairnessPolicy) (g : Graph) (horizon : Nat) : List FairnessViolation :=
+def checkBalanceThrough (policy : BalancePolicy) (g : Graph) (horizon : Nat) : List BalanceViolation :=
   let policyErrors := if policy.Valid then [] else [.invalidPolicy]
   let initialErrors := if g.activeAt 0 = 1 then [] else [.notInitiallyActive]
   let firstTarget := 1 - policy.survival 1

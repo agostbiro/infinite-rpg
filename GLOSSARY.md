@@ -42,12 +42,16 @@ _Avoid_: valid adventure, verified adventure
 The rules of one Adventure: limits such as the point budget, and the rule functions such as the success roll. Each field defaults to the GURPS Lite rule. People own the RuleSet; every Adventure in this repo uses the defaults.
 _Avoid_: ruleset config, house rules
 
+**Balance**:
+The property that the balance check tests: the deaths on each turn of an Adventure fit a rising target curve. The check is a statistical test, so it can pass an unbalanced Adventure at most 10% of the time.
+_Avoid_: fairness
+
 **Admission**:
-The fairness check that an Adventure must pass after the checker and before play. It plays the Adventure 1,000 times from a seed, and compares the deaths on each turn with a target curve.
+The balance check that an Adventure must pass after the checker and before play. It plays the Adventure 1,000 times from a seed, and compares the deaths on each turn with a target curve.
 _Avoid_: certification, validation (except for the run with the fixed seed)
 
 **Horizon**:
-How many turns after the first one the fairness check looks at. With horizon 5, it looks at turns 1 to 6.
+How many turns after the first one the balance check looks at. With horizon 5, it looks at turns 1 to 6.
 _Avoid_: window size
 
 **World**:

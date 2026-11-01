@@ -9,7 +9,7 @@
     "Verified.step_rejects",
     "Verified.mem_inputs_iff",
     "Verified.lighthouse_default_rules",
-    "Verified.fair"
+    "Verified.balanced"
   ],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
 }

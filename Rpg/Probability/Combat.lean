@@ -4,7 +4,7 @@ import Rpg.Probability.Distribution
 /-!
 # Exact Fight odds
 
-The fairness model works out the exact chance of each Fight result. It uses the same Engine
+The balance model works out the exact chance of each Fight result. It uses the same Engine
 functions as play (`attackWith`, `heroTurnWith`, `foeTurnsWith`), in the same turn order
 (`beforeCharacter`, then the Character, then `afterCharacter`), with exact dice odds.
 

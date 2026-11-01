@@ -19,7 +19,7 @@ root = "Main"
 name = "cheats"
 root = "Cheats"
 
-# Runs the fairness check on the Lighthouse and prints each row.
+# Runs the balance check on the Lighthouse and prints each row.
 [[lean_exe]]
 name = "validate"
 root = "Validate"
@@ -31,7 +31,7 @@ name = "agree"
 srcDir = ".agents/skills/add-mechanic"
 root = "agree"
 
-# The fairness screen for the add-mechanic skill (screening seed, or `--validation`).
+# The balance screen for the add-mechanic skill (screening seed, or `--validation`).
 # Run: lake exe screen
 [[lean_exe]]
 name = "screen"

@@ -808,7 +808,7 @@
   }
 
   /** The text of the status line while a load checks a saved Adventure again. */
-  const checkText = (title) => 'Checking ' + title + ' against the rules and the fairness check...';
+  const checkText = (title) => 'Checking ' + title + ' against the rules and the balance check...';
 
   /** The grid: the "New Adventure" tile, the saved Adventures (newest first), and the built-in one.
    * Each saved Adventure keeps its place when its check ends, so the cards do not move under the

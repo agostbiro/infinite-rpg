@@ -2,7 +2,7 @@
 
 There are two ways the DM writes an Adventure.
 
-- **From a Wish, in the game.** The server sends the prompt in `Rpg/Prompt.lean` to the Claude API. It asks for a PG-13 Adventure of 8 to 15 Scenes and a 100-point Character as JSON. The rule tables in that prompt come from `Rpg/Rules.lean`, and the ranges of the fairness check come from `Rpg/Probability/Weibull.lean`. The prompt below is the source for its rules, so keep the two in step.
+- **From a Wish, in the game.** The server sends the prompt in `Rpg/Prompt.lean` to the Claude API. It asks for a PG-13 Adventure of 8 to 15 Scenes and a 100-point Character as JSON. The rule tables in that prompt come from `Rpg/Rules.lean`, and the ranges of the balance check come from `Rpg/Probability/Weibull.lean`. The prompt below is the source for its rules, so keep the two in step.
 - **As a Lean file, offline.** Paste the prompt below into an AI coding agent that works in this repo.
 
 ---
@@ -16,7 +16,7 @@ You are the DM. Write one new Adventure for the GURPS Lite game in this repo.
 - `Rpg/Rules.lean`: the skills, weapons, armor, and point costs you can use.
 - `Rpg/RuleSet.lean`: the rules value of an Adventure. You always use the default rules, `{}`.
 - `Rpg/Adventures/Lighthouse/`: an example Adventure, in its own folder.
-- `docs/statistical-confidence.md`: the fairness check that your Adventure must pass.
+- `docs/statistical-confidence.md`: the balance check that your Adventure must pass.
 - `web/pictures/`: the Pictures for the example Adventure.
 
 ## What to write
@@ -47,8 +47,8 @@ Make a new folder `Rpg/Adventures/<Name>/`, with namespace `Rpg.<Name>`, written
    ```
 
 4. `Definition.lean`: `def <name>Definition : AdventureDefinition := ⟨rules, <hero>, <hero>_legal, <name>, <name>_legal⟩`.
-5. `Confidence.lean`: `fairnessHorizon := 5`, a `StatisticalCandidate` with it, and
-   `theorem fair : Probability.Fair statisticalCandidate := statisticalCandidate.fair`.
+5. `Confidence.lean`: `balanceHorizon := 5`, a `StatisticalCandidate` with it, and
+   `theorem balanced : Probability.Balanced statisticalCandidate := statisticalCandidate.balanced`.
    Copy the Lighthouse file and change the names.
 6. `Rpg/Adventures/<Name>.lean`, which imports `Confidence.lean`.
 7. One Picture for each Scene: `web/pictures/<name>.svg`. See "How to draw a Picture" below.
@@ -87,7 +87,7 @@ The spec and the checker do not look at it. If a Picture file is missing, the pa
 2. Add `#eval check rules <hero> <name>` and run `lake env lean Rpg/Adventures/<Name>/Story.lean`.
 3. Read each error and fix the Adventure.
 4. Repeat until `check` gives `[]`. Then remove the `#eval`.
-5. Screen the fairness check: add
+5. Screen the balance check: add
    `#eval Probability.failedRows 5 (Probability.sampleCounts statisticalCandidate 1 1000)` to
    `Confidence.lean` and run `lake env lean` on it. It uses the screening seed, 1, and prints each row
    that fails. Fix the story until it prints `[]`. Then remove the `#eval`. Do not use the fixed
@@ -104,5 +104,5 @@ The spec and the checker do not look at it. If a Picture file is missing, the pa
 - Do not use attributes (`@[...]` or `attribute [...]`), `unsafe`, `extern`, `initialize`, macros, or new syntax. `make check` fails if you do.
 - Every roll must be one the Character can try: the Character must have the skill or a default for it, and the effective skill (level plus modifier) must be 3 or more.
 - From every Scene, some path of Choices must lead to an Ending (spec rule 7). The dice do not count: each Scene that an Outcome can lead to is a step.
-- The fairness check plays your Adventure 1,000 times with random Choices and random maneuvers. The danger must rise over the turns: the first turns can be safe, but from turn 4 on some Fights must be able to kill the Character, and not too often. Most paths must be at least 7 Choices long, or the later turns have too few games. `screen.lean` prints the range for each turn.
+- The balance check plays your Adventure 1,000 times with random Choices and random maneuvers. The danger must rise over the turns: the first turns can be safe, but from turn 4 on some Fights must be able to kill the Character, and not too often. Most paths must be at least 7 Choices long, or the later turns have too few games. `screen.lean` prints the range for each turn.
 - Make the Adventure fun. Give the Player real choices, with more than one way to an Ending.

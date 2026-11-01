@@ -3,7 +3,7 @@ import Rpg.Probability.Simulation
 
 /-!
 Finite confidence intervals compare the adventure's conditional death expectations
-with the shared Weibull targets. The theorem `fair` proves interval coverage and
+with the shared Weibull targets. The theorem `balanced` proves interval coverage and
 bounds false acceptance under the explicitly assumed binomial sampling model.
 -/
 namespace Rpg.Probability
@@ -90,10 +90,10 @@ def StatisticalCandidate.truth (a : StatisticalCandidate) (i : Fin (a.horizon+1)
   if i.val = 0 then a.toAdventureDefinition.graph.deadBy 1
   else (a.toAdventureDefinition.graph.deathAtTwo (i.val-1)).getD 0
 
-/-- Finite statistical fairness under the accepted sampling model.
+/-- Finite statistical balance under the accepted sampling model.
 Each interval covers its true expectation with risk at most delta, and accepting all
 Weibull comparisons when any tested comparison is false also has risk at most delta. -/
-def Fair (a : StatisticalCandidate) : Prop :=
+def Balanced (a : StatisticalCandidate) : Prop :=
   ∀ (law : Distribution (Fin (a.horizon+1) → Observation)),
     law.Valid →
     BinomialSampling law a.truth →
@@ -104,9 +104,9 @@ def Fair (a : StatisticalCandidate) : Prop :=
     familyFalseAcceptance law a.truth (confidenceBands a.horizon)
       confidenceDelta ≤ confidenceDelta
 
-/-- The main fairness theorem: finite confidence intervals and Weibull-band admission are sound.
+/-- The main balance theorem: finite confidence intervals and Weibull-band admission are sound.
 Only the stated sampling-model hypotheses are required; there are no graph or tail premises. -/
-theorem StatisticalCandidate.fair (a : StatisticalCandidate) : Fair a := by
+theorem StatisticalCandidate.balanced (a : StatisticalCandidate) : Balanced a := by
   intro law valid sampling probabilities
   constructor
   -- Each interval approximates its graph-derived death-indicator expectation.
@@ -118,12 +118,12 @@ theorem StatisticalCandidate.fair (a : StatisticalCandidate) : Fair a := by
       confidenceDelta valid sampling probabilities (Rat.le_of_lt confidenceLevel_valid.1)
 
 /-- An adventure that passed admission. It holds the counts, the seed they came from, and the
-proof that every row passed. `fair` says the test itself is sound; it holds for every candidate. -/
+proof that every row passed. `balanced` says the test itself is sound; it holds for every candidate. -/
 structure StatisticalAdventure where
   /-- The adventure that was checked. -/
   candidate : StatisticalCandidate
   /-- The test is sound for this candidate (true for every candidate). -/
-  fair : Fair candidate
+  balanced : Balanced candidate
   /-- The seed of the 1,000 games. -/
   seed : Nat
   /-- The counts from those games. -/
@@ -151,7 +151,7 @@ def admitWithSeed (candidate : StatisticalCandidate) (seed : Nat) :
     ValidationCounts × Option StatisticalAdventure :=
   let counts := sampleCounts candidate seed validationGames
   if h : ValidationAccepted candidate.horizon counts then
-    (counts, some ⟨candidate, candidate.fair, seed, counts, rfl, h⟩)
+    (counts, some ⟨candidate, candidate.balanced, seed, counts, rfl, h⟩)
   else (counts, none)
 
 /-- Admission with the fixed `validationSeed`, for the Adventures shipped in this repo. -/

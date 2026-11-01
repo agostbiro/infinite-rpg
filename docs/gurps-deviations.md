@@ -134,10 +134,10 @@ These entries describe the full v1 design. The current v0 version leaves out mor
 
 **Reason:** There is no map and no range in this game. One spray attack per foe is the simple form of an area attack.
 
-## 14. The fairness model's Player picks maneuvers at random
+## 14. The balance model's Player picks maneuvers at random
 
 **GURPS Lite:** The rules say nothing about how a Player picks a maneuver.
 
-**This game:** This is not a change to play. The Player in the browser picks each maneuver. The fairness check (`Rpg/Probability/`) needs a model of a Player, so its Player picks Attack, All-Out Attack, or All-Out Defense with chance 1/3 each, and then a living target at random. It also picks each Choice in a Scene at random.
+**This game:** This is not a change to play. The Player in the browser picks each maneuver. The balance check (`Rpg/Probability/`) needs a model of a Player, so its Player picks Attack, All-Out Attack, or All-Out Defense with chance 1/3 each, and then a living target at random. It also picks each Choice in a Scene at random.
 
-**Reason:** A fixed and simple model of the Player keeps the fairness check exact and easy to review. Real Players can do better or worse than it.
+**Reason:** A fixed and simple model of the Player keeps the balance check exact and easy to review. Real Players can do better or worse than it.
