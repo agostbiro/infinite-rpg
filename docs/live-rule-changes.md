@@ -8,10 +8,9 @@ Character's turn in a Fight. A flamethrower is one example, not a special comman
 requests can grant a weapon profile or add supported combat effects, such as armor or a
 bonus that activates when wounded or guarding.
 
-The panel is visible during play even when the DM is disconnected. With no API key, the
-server can use an existing Codex login or Claude Code login. The selected provider appears
-in the server startup message; generation errors remain visible and never bypass admission.
-CLI proposals pass the same legality and balance checks as API proposals.
+The panel is visible during play even when the DM is disconnected. The DM needs
+`ANTHROPIC_API_KEY`. Without it, the panel says that the DM is not connected. Generation
+errors remain visible and never bypass admission.
 
 The game pauses while the DM works. The DM sends requested effects separately from
 counter-rules. Equipment and requested effects are fixed after the first legal proposal;
@@ -74,8 +73,7 @@ a limit. One change gets at most 6 proposals (`maxChangeCalls`, the support-revi
 validation limits after each proposal. At one of them, the change fails with "The Dungeon Master
 stopped after N proposals and could not find a balanced version. Your game is unchanged." A watch
 task (`watchChange`) enforces the time limit: at 3 minutes it ends the change and kills its
-`curl` or CLI processes, as Cancel does, even during a slow call. Each of these processes starts
-in its own process group, so the kill also ends any helper process that it started. The step then says "The change
+`curl` processes, as Cancel does, even during a slow call. The step then says "The change
 reached its time limit of 3 minutes. Your game is unchanged." Acceptance is not guaranteed: some requested mechanics cannot meet the fixed policy.
 No failed check becomes a pass and no tolerance or sample count is relaxed. Cancel or failure
 leaves play unchanged.
@@ -134,10 +132,10 @@ refining as soon as their outcome is determined; `lowerMeets_correct` and
 `upperMeets_correct` prove equality with the original eight-step endpoint comparisons.
 The confidence level, batch sizes, precision, horizon, and rejection rules are unchanged.
 On the development Mac, the screening fixture took 14 ms for 1,000 games; exact admission
-comparisons fell from 2,960 ms to 625 ms. Two real Codex requests after the change took
+comparisons fell from 2,960 ms to 625 ms. Two real requests through the Codex CLI (since removed) after the change took
 17.1 seconds (weapon) and 19.1 seconds (armor in the Lamp Room), including both batches.
 The preceding real request took 156 seconds and needed a second DM proposal. These are
-individual measurements, not a latency guarantee across providers or requests.
+individual measurements, not a latency guarantee across requests.
 
 Thirty seconds is a target for ordinary changes, not a timeout that permits unchecked rules.
 Provider delays and additional revisions can take longer, up to the 3-minute limit. The watch

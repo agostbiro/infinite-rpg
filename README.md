@@ -23,9 +23,8 @@ make run
 This will run the game server. 
 Visit [localhost:8080](http://127.0.0.1:8080/) in your browser to play the game.
 
-The Anthropic API key, or a signed-in Codex or Claude Code CLI, is needed for adventure generation and for changes during play, but you can test without one using an example adventure.
-The game uses `ANTHROPIC_API_KEY` when it is set. Otherwise it uses an existing Codex login, then an existing Claude Code login, with no separate API key.
-Without any of them, the Front Page and the "Change the world" panel say that the Dungeon Master is not connected, and you can play The Drowned Lighthouse and the saved Adventures.
+The Anthropic API key is needed for adventure generation and for changes during play, but you can test without one using an example adventure.
+Without it, the Front Page and the "Change the world" panel say that the Dungeon Master is not connected, and you can play The Drowned Lighthouse and the saved Adventures.
 `make run-fake` runs the game with recorded replies from `tests/fake-api` instead, and never calls the API.
 
 ## Properties

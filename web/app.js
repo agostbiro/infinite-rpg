@@ -703,7 +703,7 @@
     $('new-open').disabled = !gen.available || S.starting !== null;
     $('new-sub').textContent = gen.available
       ? 'Tell an AI Dungeon Master what you want to play'
-      : 'Not available: the Dungeon Master is not connected. Sign in to Codex or Claude Code, or set ANTHROPIC_API_KEY, then run the game again.';
+      : 'Not available: the Dungeon Master is not connected. Set ANTHROPIC_API_KEY, then run the game again.';
     $('wish-panel').hidden = !open;
     $('wish-form').hidden = showSteps;
     $('progress').hidden = !showSteps;

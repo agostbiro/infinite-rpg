@@ -13,8 +13,8 @@ install:
 	$(MAKE) check
 
 # Build, start the game server on $(HOST), and open the page in the browser. Ctrl-C stops it.
-# Set ANTHROPIC_API_KEY, or sign in to Codex or Claude Code, to let the Player ask the DM for an
-# Adventure with a Wish, or for a rule change during play.
+# Set ANTHROPIC_API_KEY to let the Player ask the DM for an Adventure with a Wish, or for a rule
+# change during play.
 # Pass a seed to replay the first game with the same dice: make run SEED=7
 run: build
 	@URL=http://$(HOST):$(PORT)/; \

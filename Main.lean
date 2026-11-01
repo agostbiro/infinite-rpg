@@ -1,5 +1,4 @@
 import Rpg.WorldChangePrompt
-import Rpg.GmCli
 import Rpg.Catalog
 import Std.Http
 
@@ -199,10 +198,6 @@ structure GameConfig where
   port : Nat
   /-- The Claude API key, from `ANTHROPIC_API_KEY`. -/
   apiKey : Option String
-  /-- Use the installed, signed-in Claude CLI when there is no API key. -/
-  claudeCode : Bool := false
-  /-- A signed-in Codex CLI can also generate the same checked game data. -/
-  codex : Bool := false
   /-- Test hook: a folder of recorded API replies to use instead of calling the API
   (`RPG_FAKE_API`). -/
   fake : Option System.FilePath
@@ -227,25 +222,7 @@ structure GameConfig where
   picturesOn : Bool
 
 /-- `true` if the server can ask the DM for an Adventure. -/
-def GameConfig.canWish (c : GameConfig) : Bool := c.apiKey.isSome || c.codex || c.claudeCode || c.fake.isSome
-
-/-- Check the existing Codex login without extracting its credentials. -/
-def codexReady : IO Bool := do
-  try
-    let out ← IO.Process.output { cmd := "codex", args := #["login", "status"] }
-    return out.exitCode == 0
-  catch _ => return false
-
-/-- Detect an existing login without reading or copying its credentials. The CLI runs in an
-empty temporary folder, so it does not read this repository's settings. -/
-def claudeCodeReady : IO Bool := do
-  try
-    IO.FS.withTempDir fun dir => do
-      let out ← IO.Process.output
-        { cmd := "claude", args := #["--safe-mode", "auth", "status"], cwd := some dir }
-      return out.exitCode == 0 &&
-        (Json.parse out.stdout >>= (·.getObjValAs? Bool "loggedIn")).toOption.getD false
-  catch _ => return false
+def GameConfig.canWish (c : GameConfig) : Bool := c.apiKey.isSome || c.fake.isSome
 
 /-- The running `curl` processes. Each has an owner, such as "job-3" for a Wish or
 "pictures-2-the-shire" for the Pictures of a saved Adventure, so the server can stop them. -/
@@ -728,9 +705,7 @@ def curlOnce (children : Children) (owner : String) (wanted : IO Bool) (key : St
   h.putStr body
   h.flush
   try
-    -- A new process group, so `kill` also ends any helper process.
     let child ← IO.Process.spawn {
-      setsid := true,
       cmd := "curl",
       -- The reply streams, so it is rarely idle for long. Stop if it sends less than 1 byte a
       -- second for 10 minutes (a long, quiet think can be slow), and stop after 30 minutes in all.
@@ -738,16 +713,13 @@ def curlOnce (children : Children) (owner : String) (wanted : IO Bool) (key : St
         "https://api.anthropic.com/v1/messages",
         "-H", "@-", "--data-binary", s!"@{bodyPath}", "-w", "\n%{http_code}"],
       stdin := .piped, stdout := .piped, stderr := .piped }
-    -- Keep the kill of the spawned child: in Lean 4.35, `takeStdin` drops the `setsid` flag, so
-    -- `kill` on the child it returns ends only the one process, not its process group.
-    let killGroup := child.kill
     let (stdin, child) ← child.takeStdin
     stdin.putStr (apiHeaders key)
     stdin.flush
     let uid ← IO.monoNanosNow
-    children.modify (·.push (owner, uid, killGroup))
+    children.modify (·.push (owner, uid, child.kill))
     -- A Cancel between the check in `callApi` and the line above did not see this process.
-    if !(← wanted) then try killGroup catch _ => pure ()
+    if !(← wanted) then try child.kill catch _ => pure ()
     let out ← IO.asTask child.stdout.readToEnd .dedicated
     let err ← child.stderr.readToEnd
     let code ← child.wait
@@ -764,78 +736,6 @@ def curlOnce (children : Children) (owner : String) (wanted : IO Bool) (key : St
 /-- The reply when the work was stopped, for example by Cancel. -/
 def stoppedReply : Reply := .failed "stopped"
 
-/-- Generate data through the local login. Cancel kills this child just like an API request.
-The CLI runs in an empty temporary folder, as Codex does, so it never reads this repository. -/
-def callClaudeCode (children : Children) (owner : String) (wanted : IO Bool) (req : Json) : IO Reply := do
-  try
-    IO.FS.withTempDir fun dir => do
-      -- A new process group, so Cancel and the time limit also end any helper that the CLI
-      -- starts. Otherwise a helper that keeps the output pipes open blocks `readToEnd`.
-      let child ← IO.Process.spawn {
-        setsid := true,
-        cmd := "claude", args := GmCli.claudeArgs req, cwd := some dir,
-        stdin := .piped, stdout := .piped, stderr := .piped }
-      -- Keep the kill of the spawned child: in Lean 4.35, `takeStdin` drops the `setsid` flag, so
-      -- `kill` on the child it returns ends only the one process, not its process group.
-      let killGroup := child.kill
-      let (stdin, child) ← child.takeStdin
-      let uid ← IO.monoNanosNow
-      children.modify (·.push (owner, uid, killGroup))
-      try
-        if !(← wanted) then
-          killGroup
-          return stoppedReply
-        -- The scoped handle closes before waiting, so print mode receives EOF.
-        (do stdin.putStr (GmCli.prompt req); stdin.flush : IO Unit)
-        let out ← IO.asTask child.stdout.readToEnd .dedicated
-        let err ← child.stderr.readToEnd
-        let code ← child.wait
-        let body ← IO.ofExcept out.get
-        if !(← wanted) then return stoppedReply
-        if code != 0 && body.trimAscii.isEmpty then
-          return .failed s!"The local Claude command failed ({code}): {err.take 400}"
-        return GmCli.parseClaudeReply body
-      finally
-        children.modify (·.filter (·.2.1 != uid))
-  catch e => return .failed s!"The local Claude command could not run: {e}"
-
-/-- Generate a proposal with the existing Codex login, without access to the repository. -/
-def callCodex (children : Children) (owner : String) (wanted : IO Bool) (req : Json) : IO Reply := do
-  try
-    IO.FS.withTempDir fun dir => do
-      let schema := dir / "schema.json"
-      let result := dir / "proposal.json"
-      IO.FS.writeFile schema (req.getObjValD "output_config" |>.getObjValD "format" |>.getObjValD "schema").compress
-      -- A new process group, as for the Claude CLI.
-      let child ← IO.Process.spawn {
-        setsid := true,
-        cmd := "codex", args := GmCli.codexArgs schema result, cwd := some dir,
-        stdin := .piped, stdout := .piped, stderr := .piped }
-      -- Keep the kill of the spawned child: in Lean 4.35, `takeStdin` drops the `setsid` flag, so
-      -- `kill` on the child it returns ends only the one process, not its process group.
-      let killGroup := child.kill
-      let (stdin, child) ← child.takeStdin
-      let uid ← IO.monoNanosNow
-      children.modify (·.push (owner, uid, killGroup))
-      try
-        if !(← wanted) then
-          killGroup
-          return stoppedReply
-        stdin.putStr ("Act only as a game master producing JSON data. Do not use tools.\n" ++
-          GmCli.textContent (req.getObjValD "system") ++ "\n" ++ GmCli.prompt req)
-        stdin.flush
-        let out ← IO.asTask child.stdout.readToEnd .dedicated
-        let err ← child.stderr.readToEnd
-        let code ← child.wait
-        let _ ← IO.ofExcept out.get
-        if !(← wanted) then return stoppedReply
-        if code != 0 then return .failed s!"Codex could not generate the proposal ({code}): {err.takeEnd 1200}"
-        if !(← result.pathExists) then return .failed "Codex returned no game proposal."
-        return GmCli.parseCodexReply (← IO.FS.readFile result)
-      finally
-        children.modify (·.filter (·.2.1 != uid))
-  catch e => return .failed s!"The local Codex command could not run: {e}"
-
 /-- Send one request to the API, or read a recorded reply in test mode. `fixtures` names the
 recorded replies to try, such as "adventure-2". Busy or failing servers get two more tries.
 `wanted` says if the work is still wanted. It is checked before each try and after each try,
@@ -851,10 +751,7 @@ def callApi (cfg : GameConfig) (children : Children) (owner : String) (wanted : 
       let p := dir / s!"{f}.sse"
       if ← p.pathExists then return (parseStreamReply (← IO.FS.readFile p)).2
     return .failed s!"test mode: no recorded reply {fixtures.headD ""}.sse in {dir}"
-  let some key := cfg.apiKey |
-    if cfg.codex then return ← callCodex children owner wanted req
-    else if cfg.claudeCode then return ← callClaudeCode children owner wanted req
-    else return .failed "The Dungeon Master needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."
+  let some key := cfg.apiKey | return .failed "The Dungeon Master needs ANTHROPIC_API_KEY."
   let body := req.compress
   let mut last := Reply.failed "no reply"
   for wait in [0, 5000, 20000] do
@@ -1328,8 +1225,6 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
                          drawing: $(s.source.drawing.length), failed: $(failedPictures cfg s), off: $(!cfg.picturesOn) }
   let gen := json% {
     available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps), readyId: $(s.gen.readyId),
-    provider: $(if cfg.fake.isSome then "recorded" else if cfg.apiKey.isSome then "api"
-      else if cfg.codex then "codex" else if cfg.claudeCode then "claude-code" else "unavailable"),
     wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender), mode: $(s.gen.mode)
   }
   let saved ← if g.game.phase.name == "title" then savedList cfg else pure (Json.arr #[])
@@ -1579,7 +1474,7 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       replyJson .ok (← view)
     | ["api", "wish"] =>
       if !cfg.canWish then
-        return ← replyJson .badRequest (← view (error := some "The Dungeon Master needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."))
+        return ← replyJson .badRequest (← view (error := some "The Dungeon Master needs ANTHROPIC_API_KEY."))
       match parseWish body with
       | .error e => replyJson .badRequest (← view (error := some e))
       | .ok (wish, name, gender) =>
@@ -1587,7 +1482,7 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
         replyJson .ok (← view)
     | ["api", "change"] =>
       if !cfg.canWish then
-        return ← replyJson .badRequest (← view (error := some "The Dungeon Master needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY."))
+        return ← replyJson .badRequest (← view (error := some "The Dungeon Master needs ANTHROPIC_API_KEY."))
       match parseChange body with
       | .error e => replyJson .badRequest (← view (error := some e))
       | .ok wish =>
@@ -1735,8 +1630,6 @@ def main (args : List String) : IO UInt32 := do
       "Pictures are off: live Adventures show a plain backdrop, and the DM is not asked to draw.")
   let apiKey := (← IO.getEnv "ANTHROPIC_API_KEY").filter (!·.isEmpty)
   let fake := (← IO.getEnv "RPG_FAKE_API").filter (!·.isEmpty) |>.map System.FilePath.mk
-  let codex ← if apiKey.isNone && fake.isNone then codexReady else pure false
-  let claudeCode ← if apiKey.isNone && fake.isNone && !codex then claudeCodeReady else pure false
   -- Test hook only: a shorter time limit for a live change, so a test can reach it offline.
   let limitEnv := (← IO.getEnv "RPG_CHANGE_LIMIT_MS").filter (!·.isEmpty)
   let testLimit := if fake.isSome then limitEnv.bind parseLimitMs else none
@@ -1746,7 +1639,7 @@ def main (args : List String) : IO UInt32 := do
     else if testLimit.isNone then
       IO.eprintln s!"WARNING: RPG_CHANGE_LIMIT_MS must be a whole number of milliseconds, 1 or more, not {raw}. The limit stays 3 minutes."
   let cfg : GameConfig :=
-    { host, port, apiKey, codex, claudeCode, fake, savedCache := ← IO.mkRef [], checker := ← IO.mkRef .idle,
+    { host, port, apiKey, fake, savedCache := ← IO.mkRef [], checker := ← IO.mkRef .idle,
       build, tempCount := ← IO.mkRef 0, picturesOn, changeLimitMs := testLimit.getD maxChangeMs }
   -- Nothing writes yet, so the temporary files left in the save folders can go.
   removeTempFiles
@@ -1761,12 +1654,8 @@ def main (args : List String) : IO UInt32 := do
     IO.println s!"The game is ready at http://{host}:{port}/ (first seed {seed})."
     if let some dir := fake then
       IO.println s!"TEST MODE: Wishes read recorded replies from {dir}. The API is not called. A live change stops after {limitText cfg.changeLimitMs}."
-    else if codex then
-      IO.println "The Dungeon Master uses your signed-in Codex CLI. Wishes and in-game rule changes are available."
-    else if claudeCode then
-      IO.println "The Dungeon Master uses your signed-in Claude CLI. Wishes and in-game rule changes are available."
     else if apiKey.isNone then
-      IO.println "The Dungeon Master needs a signed-in Codex or Claude CLI, or ANTHROPIC_API_KEY. The built-in Adventure works."
+      IO.println "The Dungeon Master needs ANTHROPIC_API_KEY, so Wishes and changes during play are off. The built-in Adventure works."
     IO.println "Press Ctrl-C to stop."
     (← IO.getStdout).flush
     server.waitShutdown
