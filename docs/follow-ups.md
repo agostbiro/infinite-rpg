@@ -28,7 +28,7 @@ The test mode (`RPG_FAKE_API`) has no recorded Wish now, because the old one fai
 check.
 
 - Record Wish replies (`tests/fake-api/adventure-1.sse` and the next ones) that pass at easy,
-  medium, and hard. Each needs a world map. Write them with `tests/fake-api/make_fixtures.py`. Do
+  medium, and hard. Record a world map reply for each too (`tests/fake-api/map-1.sse`, `map-2.sse`): the server asks for the map after the Wish passes. Write them with `tests/fake-api/make_fixtures.py`. Do
   not edit the `.sse` files by hand. The server tries `adventure-<level>-<n>.sse` first, such as
   `adventure-hard-1.sse`, and then `adventure-<n>.sse`.
 - Record live-change replies (`change-1.sse` to `change-3.sse`) that pass at medium for the

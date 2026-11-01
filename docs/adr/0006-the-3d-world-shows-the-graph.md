@@ -21,8 +21,10 @@ person to pick a Choice or a Maneuver. Lean still decides every outcome.
 - The kind of object (a door, a boat, a ladder) comes from words in the Choice text. It changes
   only what the Player sees. Unknown text gives a path.
 - The landscape comes from the world map of the Adventure (`environment` in `adventure.json`,
-  `Rpg/Environment.lean`): up to 12 places, paths, props, and one place for each Scene. The DM writes
-  it with the Adventure. `WorldEnvironment.errors` checks it at run time with the size limits, before
+  `Rpg/Environment.lean`): up to 12 places, paths, props, and one place for each Scene. After the
+  Adventure of a Wish passes its checks, the DM draws the map in a separate request, because the
+  Adventure schema with the map in it is too large for the API. If no map passes, the Adventure is
+  kept without one. `WorldEnvironment.errors` checks it at run time with the size limits, before
   the checker. It has no proofs: it changes only what the Player sees. An Adventure with no map gets
   a default map of four places.
 - A change during play keeps the map. It must give each new Scene a place on it (`scenePlaces`).

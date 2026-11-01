@@ -9,7 +9,8 @@ the stop reason, and message_stop. The text is sent in small parts, as the API d
 refusal.sse is a refused reply. change-1.sse to change-3.sse are the replies for one live change:
 the DM first calls the request unsupported, then forgets the counter-rule, then sends a change that
 passes. There is no recorded Wish now: a Wish in test mode fails with "no recorded reply". The
-follow-up in docs/follow-ups.md adds one back (adventure-1.sse, adventure-2.sse, and so on).
+follow-up in docs/follow-ups.md adds one back (adventure-1.sse, adventure-2.sse, and so on), with
+the world map replies map-1.sse and map-2.sse. Without a map reply, the Adventure has no map.
 Usage: make_fixtures.py FOLDER [--tuning]
 """
 import json, copy, sys

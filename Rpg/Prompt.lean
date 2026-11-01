@@ -10,6 +10,8 @@ requests with `curl`.
 * `adventureRequest`: ask for an Adventure and a Character for a Wish. The reply must follow
   `adventureSchema`, a JSON schema, so it always reads as JSON.
 * `fixMessage`: the next turn after a failed try. It lists the checker's errors.
+* `mapRequest`: after an Adventure passes its checks, ask for its world map in a separate request.
+  The Adventure schema with the map in it is too large for the API.
 * `rebuildStream`: every request streams its reply as SSE (server-sent events). This joins the
   events into the message that a request without streaming would get.
 
@@ -100,14 +102,14 @@ def dangerText (level : Probability.DifficultyLevel) : String :=
 def mapText : String :=
   "\n".intercalate [
     "## The world map",
-    "- The Player explores the Adventure as a 3D world. `environment` is one map for the whole Adventure: a few named places, paths between them, and props. It changes only what the Player sees. It adds no Choice, no roll, and no danger.",
+    "- The Player explores the Adventure as a 3D world. Your reply is one map for the whole Adventure: a few named places, paths between them, and props. It changes only what the Player sees. It adds no Choice, no roll, and no danger.",
     s!"- `theme`: one of {", ".intercalate worldThemes}.",
     s!"- `places`: 2 to {maxWorldPlaces} places. Each has a different whole-number `id`, a `name` in 1 to 60 characters, a `kind` ({", ".intercalate worldPlaceKinds}), and whole-number `x` and `z` from -85 to 85 metres. Keep places at least 24 metres apart.",
     "- `paths`: at most 30 paths `{fromPlace, toPlace}` between two different places. The paths must connect every place. Walking on a path never picks a Choice.",
     s!"- `props`: at most 80 props `\{kind, x, z, scale, heading}`. `kind` is one of {", ".intercalate worldPropKinds}. `x` and `z` are from -100 to 100, `scale` is 50 to 200 (percent), and `heading` is 0 to 359 (degrees). Use them to show the world of the Wish.",
     "- A solid prop has a radius of 3 metres times its scale (12 for a pyramid, 5 for a house). Keep 10 metres plus that radius clear around each place, and the radius plus 2 metres clear along each path. A river is shallow water: it needs no clear space.",
     "- `scenes`: exactly one `{scene, place, npcs}` for each Scene, Endings too. `npcs` names at most 4 people that the Player sees in that Scene (each name 1 to 60 characters), or is [].",
-    "- A Scene can have at most 4 Choices, so the 3D world can show each one. Spread the Scenes over the places, and use every place."]
+    "- Spread the Scenes over the places, and use every place. At least one third of the Choices must lead to a Scene at another place."]
 
 /-- The DM's instructions for an Adventure at difficulty level `level`. They are the same on every
 try and every Wish at that level, and `requestBody` marks them for the prompt cache. -/
@@ -163,7 +165,8 @@ def dmSystemPrompt (level : Probability.DifficultyLevel) : String :=
     "- `themeNames` gives display names that fit the world to the Character's skills, weapon, and armor. For example, in a school for wizards, Broadsword could show as \"Wand Duelling\" and the broadsword as \"Holly Wand\".",
     "- The Player sees only the Theme Name. The rules stay the same.",
     "",
-    mapText,
+    "## The 3D world",
+    "- A Scene can have at most 4 Choices, so the 3D world can show each one. The world map comes later, in a separate request.",
     "",
     rulesText]
 
@@ -235,13 +238,16 @@ def outcomeSchema : Json :=
       ("foes", arrSchema (objSchema (beingFields ++ [("naturalDR", intSchema)]))), ("onWin", intSchema)])
   ] }
 
-/-- The schema of a world map: what `WorldEnvironment` reads. -/
+/-- The schema of a world map reply: what `WorldEnvironment` reads. The map has its own request,
+because the Adventure schema with the map in it is too large for the API. The `theme` and `kind`
+fields are plain strings: the prompt lists the allowed values, and `WorldEnvironment.errors` rejects
+any other value. -/
 def environmentSchema : Json := objSchema [
-  ("theme", enumSchema worldThemes),
+  ("theme", strSchema),
   ("places", arrSchema (objSchema [("id", intSchema), ("name", strSchema),
-    ("kind", enumSchema worldPlaceKinds), ("x", intSchema), ("z", intSchema)])),
+    ("kind", strSchema), ("x", intSchema), ("z", intSchema)])),
   ("paths", arrSchema (objSchema [("fromPlace", intSchema), ("toPlace", intSchema)])),
-  ("props", arrSchema (objSchema [("kind", enumSchema worldPropKinds), ("x", intSchema),
+  ("props", arrSchema (objSchema [("kind", strSchema), ("x", intSchema),
     ("z", intSchema), ("scale", intSchema), ("heading", intSchema)])),
   ("scenes", arrSchema (objSchema [("scene", intSchema), ("place", intSchema),
     ("npcs", arrSchema strSchema)]))]
@@ -252,7 +258,6 @@ def adventureSchema : Json :=
     ("title", strSchema),
     ("world", strSchema),
     ("intro", strSchema),
-    ("environment", environmentSchema),
     ("character", objSchema (beingFields ++ [("background", strSchema)])),
     ("themeNames", objSchema [
       ("skills", arrSchema (objSchema [("skill", enumSchema (Skill.all.map Skill.key)), ("name", strSchema)])),
@@ -295,6 +300,36 @@ def assistantTurn (content : Json) : Json := json% { role: "assistant", content:
 off on this model, and it counts against `max_tokens`, so the limit is 64,000. -/
 def adventureRequest (level : Probability.DifficultyLevel) (messages : List Json) : Json :=
   requestBody (dmSystemPrompt level) messages adventureSchema "medium" 64000
+
+/-- The DM's instructions for the world map of an Adventure that already passed its checks. -/
+def mapSystemPrompt : String :=
+  "\n".intercalate [
+    "You are the DM (Dungeon Master) of a single-player game. An Adventure is written and checked.",
+    "You draw its world map as JSON. A checker program reads the map and sends back any rule you break.",
+    "",
+    mapText]
+
+/-- The first user turn of a map request: the World, the title, and each Scene with the start of
+its text and the Scenes that its Choices lead to. -/
+def mapMessage (d : Draft) : String :=
+  let sceneLine (s : Scene) :=
+    let leads := (successors d.adventure s.id).eraseDups.map toString
+    let leadsText := if leads.isEmpty then "an Ending" else s!"leads to Scenes {", ".intercalate leads}"
+    s!"- Scene {s.id}: {s.title} ({leadsText}). {(s.text.take 160).toString}"
+  "\n".intercalate ([
+    s!"The World: {d.world}",
+    s!"The Adventure: {d.adventure.title}",
+    "The Scenes:"] ++ d.adventure.scenes.map sceneLine ++
+    ["Draw the world map as JSON."])
+
+/-- The user turn after a map that failed its check: the errors. -/
+def mapFixMessage (errors : List String) : String :=
+  "\n".intercalate (["The map check found these errors:"] ++ errors.map (s!"- {·}") ++
+    ["Send the whole map again, fixed."])
+
+/-- A request for the world map of an Adventure. -/
+def mapRequest (messages : List Json) : Json :=
+  requestBody mapSystemPrompt messages environmentSchema "low" 16000
 
 /-! ## Replies -/
 
@@ -578,7 +613,8 @@ def sseFixtureMessage : String :=
 #guard ((dmSystemPrompt .easy).splitOn "The Player picked the easy difficulty level.").length == 2
 -- The prompt names every theme and kind of prop that the map check accepts.
 #guard (worldThemes ++ worldPropKinds).all fun k => (mapText.splitOn k).length ≥ 2
-#guard ((dmSystemPrompt .medium).splitOn "## The world map").length == 2
+#guard ((dmSystemPrompt .medium).splitOn "## The world map").length == 1
+#guard ((mapSystemPrompt).splitOn "## The world map").length == 2
 -- The schema names every skill, and the prompt has a line for each one.
 #guard Skill.all.all fun s => ((dmSystemPrompt .medium).splitOn s!"- {s.key} (").length == 2
 

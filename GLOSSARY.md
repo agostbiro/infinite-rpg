@@ -79,7 +79,7 @@ The page shows the Adventure as a landscape. The Player walks to a marked object
 _Avoid_: level, room
 
 **World map**:
-The places, paths, and props of an Adventure, and the place of each Scene. The DM writes it with the Adventure. It changes only what the Player sees, never what the rules do.
+The places, paths, and props of an Adventure, and the place of each Scene. The DM draws it in a separate request after the Adventure passes its checks. It changes only what the Player sees, never what the rules do.
 _Avoid_: level, layout
 
 **Journal**:

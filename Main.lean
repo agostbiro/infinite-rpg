@@ -731,6 +731,37 @@ def randomSeed : IO Nat := do
   let bytes ← IO.getRandomBytes 8
   return bytes.foldl (fun acc b => acc * 256 + b.toNat) 0
 
+/-- Ask the DM for the world map of Draft `d`, which passed its checks: up to 2 tries. A map that
+still fails its check is left out, and the page draws its default map. Returns `none` if the job
+was stopped. -/
+def addMap (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
+    (d : Draft) : IO (Option Draft) := do
+  let mut messages := [userTurn (mapMessage d)]
+  for attempt in [1, 2] do
+    if !(← addStep ref job { text := "The Dungeon Master is drawing the world map..." }) then return none
+    let reply ← callApi cfg children (jobOwner job) (jobWanted ref job) (mapRequest messages)
+      [s!"map-{attempt}"]
+    if !(← jobWanted ref job) then return none
+    let .ok text content := reply
+      | let why := match reply with
+          | .failed why => why
+          | .refused => "the Dungeon Master would not draw it"
+          | _ => "the reply was cut off"
+        if !(← addStep ref job { text := "The world map request did not work.", errors := [why] }) then
+          return none
+        break
+    let parsed : Except String WorldEnvironment := Json.parse text >>= fromJson?
+    let errors := match parsed with
+      | .ok e => { d with environment := some e }.errors
+      | .error e => [s!"the JSON does not read: {e}"]
+    if errors.isEmpty then
+      if let .ok e := parsed then return some { d with environment := some e }
+    if !(← addStep ref job { text := errorsText errors.length, errors }) then return none
+    messages := messages ++ [assistantTurn content, userTurn (mapFixMessage errors)]
+  if !(← addStep ref job { text := "There is no world map, so the page draws a simple map." }) then
+    return none
+  return some d
+
 /-- Ask the DM for an Adventure for a Wish at difficulty level `level`: up to 3 tries. After a
 failed try, the DM gets the errors and sends a fixed version. -/
 def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
@@ -763,9 +794,16 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
           -- A fresh random seed for each try, so the DM cannot tune its story to one batch of games.
           -- In test mode (`RPG_FAKE_API`) the seed is fixed, so `make run-fake` gives the same result each time.
           let balanceSeed ← if cfg.fake.isSome then pure 1 else randomSeed
-          match d.toGame balanceSeed with
+          -- The 3D world shows at most 4 Choices in a Scene. Older saves may have more, so this is a
+          -- rule for new Wishes only, not part of the Draft checks.
+          let wide := d.adventure.scenes.filter (·.choices.length > 4)
+          let wideErrors := wide.map fun s =>
+            s!"Scene {s.id} ({s.title}) has {s.choices.length} Choices, but a Scene can have at most 4"
+          let checked := if wideErrors.isEmpty then d.toGame balanceSeed else .error wideErrors
+          match checked with
           | .ok g =>
             if !(← addStep ref job { text := s!"The Adventure passed the checker and the balance check at the {level.key} level." }) then return
+            let some d ← addMap cfg children ref job d | return
             adopt cfg ref job d g wish balanceSeed
             return
           | .error errs => pure (errs, some d.hero, content)
