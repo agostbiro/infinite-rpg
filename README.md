@@ -1,41 +1,54 @@
-# Verified RPG
+# Infinite RPG
 
-A single-player RPG (role-playing game) based on GURPS Lite, played in the browser. The Player types a Wish, such as "I love LOTR, give me an adventure set in the Shire", and an AI DM (Dungeon Master) writes an Adventure and a Character for it. Lean checks each one against the game rules before anyone can play it. The game cannot start an Adventure that has not passed the proved checker: the types do not allow it. Then a fairness check plays the Adventure 1,000 times and rejects it if the Character dies too often, or too rarely, on some turn.
+## Overview
+
+A role-playing game (RPG) with AI-generated adventures.
+
+The player types a wish, such as "I love LOTR, give me an adventure set in the Shire", and an AI dungeon master writes an adventure and a character for it. 
+Lean verifies a bunch of [properties](#Properties) of the generated adventures to make sure the game is fun and challenging.
+
+During gameplay, the player can ask the AI dungeon master for a change in the adventure, such as replacing their sword with a flamethrower.
+Lean ensures that the consistency and the difficulty of the game remains after the change, so the AI has to balance the flamethrower by adding a counter such as a water shield for the opponents.
+
+## Quick Start
+
+Prerequisites: Lean toolchain.
 
 ```
 make install
-make run              # play: opens http://127.0.0.1:8080/ in your browser
-ANTHROPIC_API_KEY=sk-... make run   # the same, with Wishes turned on
-make run-fake         # test hook: Wishes use recorded replies from tests/fake-api, no key needed
-make run SEED=7       # the first game uses dice seed 7, so you can replay it
-make run PORT=9000    # use another port
-make run HOST=10.211.55.6   # listen on this IPv4 (Internet Protocol version 4) address, for example to play from the host of a VM (virtual machine)
-make cheats           # watch the checker catch a cheating DM
-make validate         # run the fairness check on The Drowned Lighthouse and print each row
-make check            # build, then replay every proof through the Lean kernel
+export ANTHROPIC_API_KEY=sk-... 
+make run
 ```
 
-## How to play
+This will run the game server. 
+Visit [localhost:8080](http://127.0.0.1:8080/) in your browser to play the game.
 
-`make run` builds the game, starts the server, and opens the page. Ctrl-C stops the server.
+The Antrhopic API key is needed for adventure generation, but you can test without one using an example adventure.
 
-The Front Page, "Choose an Adventure", shows a card for each Adventure. A card shows the title, the World (where the Adventure takes place), the Character you play, and where the Adventure comes from. Click a card to start playing. The newest Adventures come first, then The Drowned Lighthouse, which is built in.
+## Properties
 
-To get a new Adventure, click "+ New Adventure" and type a Wish (at most 500 characters). You can also give the Character a name (at most 30 characters) and pick she, he, they, or "let the Dungeon Master choose". Then click "Ask the Dungeon Master". The tile shows each step: "The Dungeon Master is writing...", the errors of the checker and the fairness check for each try, "The Dungeon Master is fixing them...". The Dungeon Master gets 3 tries. When an Adventure passes, the tile says "Your Adventure is ready", with "Play it now" and "Later". After 3 failed tries, the tile shows the last errors, and you can click "Try again" or "OK". "Cancel" stops the Dungeon Master. While the Dungeon Master works, the cards are disabled and the server refuses every other input. A reload shows the same steps, because the state lives on the server.
+#### Consistency
 
-Wishes need an API key for the Claude API in `ANTHROPIC_API_KEY`. Without a key, `make run` still works: the "+ New Adventure" tile says that generation is unavailable, and you can play The Drowned Lighthouse and the saved Adventures.
+We formally specify an abstract game system in Lean based on the [Generic Universal Role Playing System (GURPS).](https://en.wikipedia.org/wiki/GURPS)
+We know that GURPS is fun and allows for a lot of variety in adventures.
 
-Each Adventure that passes is saved under `adventures/<id>/`, with its Character, World, Intro, Theme Names, and Pictures. A saved Adventure is checked again, with the fairness check and its saved seed: for the list, in the background when its file changes or the game is built again, and always when you load it. Its Pictures are checked again on load. A save that fails a check now shows as a grey card with the reason, and you cannot play it. "Check again" on that card checks it once more.
+Lean verifies each AI-generated adventure against the [spec.](./Rpg/Spec.lean)
+This ensures that the gameplay is consistent between adventures without restricting the creativity of the AI dungeon master.
 
-Each check of a saved Adventure takes a second or two. So the server saves the result for the list in `adventures/<id>/verdict.json`, with a stamp of `adventure.json` and a build key (the size and a hash of the server program file). After a restart it uses a verdict only if both still match, so a save is checked again only when its file changes, or after any new build of the server: every new build makes all verdicts old, because the checker, the rules, the fairness check, the simulator, and the Draft reader are compiled into it. If the server runs in the `lean` interpreter, verdicts are off. An Adventure from a Wish gets its verdict when it is saved, because the checks just ran on it. A verdict is for display only: a load never reads it, and always runs the checker and the fairness check before play. So a broken or edited `verdict.json` cannot make a save playable; at worst a card shows the wrong state until a load checks it and writes a new verdict. A grey card has a "Check again" button for this: it loads the save, so the save is checked again, played if it passes, and its verdict is written again either way.
+#### No Dead Ends
 
-The page shows what it waits for. The server does the checks for the list one at a time. Until the check of a card ends, the card says "Checking it against the rules...", and you cannot click it. A line above the cards counts the checks that are done. When you click a saved Adventure, the server checks it again before you play: that card and the line say so, and the other cards and buttons are disabled until the reply comes. If the server cannot be reached, the page says so.
+The adventures are graphs of scenes.
+Lean [verifies](./Rpg/Check.lean#L257) that adventures have no dead ends: from every scene, some path of choices leads to an ending.
 
-The story opens with the Intro: a few lines that name the World and say who your Character is. Read the Scene and click a Choice. Some Choices make a Success Roll: the dice tumble, then show the faces the Engine rolled.
-In a Fight, the Creatures act, then you click a Maneuver. If you attack and more than one Creature is alive, their cards light up: click the one to attack. "Skip" shows the rest of a turn at once.
-The Character panel shows the background, attributes, skills, Gear, and HP. The map shows the Scenes you visited and a "?" for each way you have not taken.
-"← Adventures" at the top goes back to the Front Page. If the game is not over, the page asks first, because you lose your progress.
-The game ends at an Ending, or when the Character dies, which is not an Ending. "Play again" starts the same Adventure with a new seed. The seed is in the corner.
+#### Balance
+
+A consistent adventure with no dead ends can still be too easy or too hard.
+Therefore, we run a [statistical test](./Rpg/Probability/StatisticalAdmission.lean#L150) after verification to check that the death rate on each turn fits a rising curve, so the adventure is balanced.
+
+Lean [proves](./Rpg/Probability/StatisticalAdmission.lean#L109) that the test is sound: it accepts an unbalanced adventure at most 10% of the time.
+
+#### Adjustable Difficulty
+
 
 ## How the game runs
 
@@ -63,6 +76,7 @@ The game ends at an Ending, or when the Character dies, which is not an Ending. 
 
 ## How it works
 
+- Each saved Adventure is checked again, with the checker and the fairness check. The server does this in the background, one save at a time, and the Front Page shows a card as "Checking it against the rules..." until its check ends. The result is saved in `adventures/<id>/verdict.json`, with a stamp of `adventure.json` and a build key (the size and a hash of the server program). After a restart the server uses a verdict only if both still match, so a save is checked again only when its file changes or after a new build. A load trusts a verdict that passed for this exact file and this build: it runs only the checker again (milliseconds) and skips the fairness check. Without such a verdict, a load runs both checks. So someone who forges `verdict.json` could get a legal Adventure played that did not pass the fairness check; anyone who can write that file can also replace the server program. A grey card that failed has a "Check again" button, which loads the save and runs both checks.
 - The DM writes an Adventure as JSON for a Wish, as above. A coding agent can also write an Adventure as a Lean file, before play, with a theorem that it is legal. See `docs/dm-prompt.md`.
 - `Rpg/Spec.lean` says what a legal Adventure is, in plain Lean.
 - `Rpg/Check.lean` has a checker that lists errors in plain words, and the theorem `check_sound`: if the checker finds no errors, the Adventure is legal by the spec.
