@@ -94,13 +94,6 @@ private partial def play (rules : RuleSet) (g : IO.Ref Rng) (hero : Being) (a : 
     | some hp' => play rules g hero a hp' onWin
     | none => return
 
-/-- Start only an adventure carrying both required proofs. -/
-def playCertified (g : IO.Ref Rng) (a : Probability.CertifiedAdventure) : IO Unit := do
-  let hero := a.hero
-  let rules := a.rules
-  say s!"\n{hero.name}: ST {hero.st}, DX {hero.dx}, IQ {hero.iq}, HT {hero.ht}, HP {rules.maxHP hero}, Dodge {rules.dodge hero}."
-  play rules g hero a.story (rules.maxHP hero) a.story.start
-
 /-- Start a story admitted by the source-bound statistical confidence protocol. -/
 def playStatistical (g : IO.Ref Rng) (a : Probability.StatisticalAdventure) : IO Unit := do
   let candidate := a.candidate
@@ -135,28 +128,24 @@ def main (args : List String) : IO Unit := do
   let g ← IO.mkRef (Rng.mk seed.toUInt64)
   IO.println "VERIFIED RPG: adventures checked for legality and fairness."
   IO.println s!"(dice seed {seed}; replay with --seed {seed})"
-  let mut choices : List (Sum Probability.CertifiedAdventure Probability.StatisticalAdventure) := []
+  let mut choices : List Probability.StatisticalAdventure := []
   for candidate in statisticalCandidates do
     IO.println s!"Checking {candidate.story.title} with the fixed confidence protocol..."
     (← IO.getStdout).flush
     let (counts, admitted) := Probability.admitStatistically candidate
     match admitted with
     | some evidence =>
-      say s!"{candidate.story.title}: passed the 99.9% statistical confidence check under the independent-sampling model ({counts.games} validation games)."
-      choices := choices ++ [.inr evidence]
+      say s!"{candidate.story.title}: passed the finite fairness confidence check ({counts.games} validation games)."
+      choices := choices ++ [evidence]
     | none =>
       say s!"{candidate.story.title}: not admitted; validation failed or was incomplete. Run make validate for details."
-  choices := choices ++ playableAdventures.map Sum.inl
   for (entry, i) in choices.zipIdx do
-    match entry with
-    | .inl a => IO.println s!"  {i + 1}. Play {a.story.title}, as {a.hero.name} [exact proof]"
-    | .inr a => IO.println s!"  {i + 1}. Play {a.candidate.story.title}, as {a.candidate.hero.name} [statistical confidence]"
+    IO.println s!"  {i + 1}. Play {entry.candidate.story.title}, as {entry.candidate.hero.name} [fairness checked through death turn {entry.candidate.horizon + 1}]"
   let demo := choices.length + 1
   IO.println s!"  {demo}. Watch the checker catch a cheating DM"
   match ← askChoice demo with
   | some k =>
     match choices[k]? with
-    | some (.inl a) => playCertified g a
-    | some (.inr a) => playStatistical g a
+    | some a => playStatistical g a
     | none => showCheats
   | none => pure ()

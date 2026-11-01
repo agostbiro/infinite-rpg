@@ -78,11 +78,4 @@ def Graph.activeAt (g : Graph) (n : Nat) : Rat :=
     | .scene _ _ | .stalled => true
     | _ => false
 
-/-- Basic probability and absorption obligations for a graph certificate. -/
-def Graph.Valid (g : Graph) : Prop :=
-  (∀ node, (g.step node).Valid) ∧
-  g.step .dead = pure .dead ∧
-  g.step .ended = pure .ended ∧
-  g.step .stalled = pure .stalled
-
 end Rpg.Probability

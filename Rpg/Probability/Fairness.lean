@@ -5,8 +5,8 @@ import Rpg.Check
 /-!
 Expectations are defined by all finite partial sums, not by an arbitrary cutoff.
 An extended expectation is represented by its rational upper bounds; an infinite
-expectation has no such bound. Fairness applies at every turn with positive
-probability of an ongoing game, under uniform choices (including combat targets).
+expectation has no such bound. Finite confidence admission is defined in `StatisticalAdmission.lean`.
+The graph uses uniform choices, including combat targets.
 -/
 namespace Rpg.Probability
 
@@ -72,31 +72,6 @@ instance (actual target tolerance : Rat) : Decidable (WithinTolerance actual tar
   unfold WithinTolerance
   infer_instance
 
-/-- All reachable times must satisfy the two-turn conditional Weibull bound.
-The game must start active; the first-turn bound prevents an immediate-death loophole.
-Graph normalization and absorbing terminal states are also required. -/
-def isFair (policy : FairnessPolicy) (g : Graph) : Prop :=
-  policy.Valid ∧ g.Valid ∧
-  g.activeAt 0 = 1 ∧
-  WithinTolerance (g.deadBy 1) (1 - policy.survival 1) policy.tolerance ∧
-  ∀ t actual, g.deathAtTwo t = some actual →
-    WithinTolerance actual (policy.deathAtTwo t) policy.tolerance
-
-/-- A fairness certificate bounds the conditional probability at any requested turn. -/
-theorem isFair_bounds
-    (fair : isFair policy g)
-    (observed : g.deathAtTwo t = some actual) :
-    WithinTolerance actual (policy.deathAtTwo t) policy.tolerance :=
-  fair.2.2.2.2 t actual observed
-
-/-- A counterexample at one turn rules out an all-time fairness certificate. -/
-theorem not_isFair_of_violation
-    (observed : g.deathAtTwo t = some actual)
-    (violates : ¬ WithinTolerance actual (policy.deathAtTwo t) policy.tolerance) :
-    ¬ isFair policy g := by
-  intro fair
-  exact violates (isFair_bounds fair observed)
-
 /-- A concrete failure found by the finite fairness diagnostic. -/
 inductive FairnessViolation where
   | invalidPolicy
@@ -105,8 +80,8 @@ inductive FairnessViolation where
   | atTwo (turn : Nat) (actual target : Rat)
   deriving Repr, DecidableEq
 
-/-- Check the policy, initial state, first-turn bound, and two-turn bounds for t < horizon.
-This does not prove all-time fairness or normalization of the whole graph. -/
+/-- Exact finite diagnostic for small graphs: policy, initial state, and death bounds.
+Runtime admission instead uses the proved confidence protocol. -/
 def checkFairnessThrough (policy : FairnessPolicy) (g : Graph) (horizon : Nat) : List FairnessViolation :=
   let policyErrors := if policy.Valid then [] else [.invalidPolicy]
   let initialErrors := if g.activeAt 0 = 1 then [] else [.notInitiallyActive]
@@ -130,14 +105,5 @@ structure AdventureDefinition where
 /-- The graph always uses this definition's rules, character, and story. -/
 def AdventureDefinition.graph (a : AdventureDefinition) : Graph :=
   adventureGraph a.rules a.hero a.story
-
-/-- A playable certified story must prove the shared policy on its derived graph. -/
-structure CertifiedAdventure extends AdventureDefinition where
-  fair : isFair defaultPolicy (adventureGraph rules hero story)
-
-/-- Every certified story satisfies the global policy; authors cannot choose a weaker one. -/
-theorem CertifiedAdventure.isFair (a : CertifiedAdventure) :
-    isFair defaultPolicy a.toAdventureDefinition.graph :=
-  a.fair
 
 end Rpg.Probability

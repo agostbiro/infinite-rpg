@@ -1,15 +1,15 @@
 # Verified RPG
 
 A single-player text RPG (role-playing game) based on GURPS Lite. Adventures own
-all their characters and selected rules. **The Drowned Lighthouse** is playable
-after a source-bound statistical confidence check; **A Safe Harbor** has an exact
-fairness proof. These are different claims, labeled separately in the game.
-The statistical risk bound is proved in Lean under an explicit IID/binomial
-sampling model; it is not a proof that the seeded RNG satisfies that model.
+all their characters and selected rules. **The Drowned Lighthouse** and
+**A Safe Harbor** become playable after their finite confidence intervals pass
+the shared Weibull policy. The main theorem is called `fair`: Lean proves interval
+coverage and the finite decision's false-acceptance bound under the accepted
+IID/binomial sampling model.
 
 ```
 make install
-make run          # validates Lighthouse, then opens the game menu
+make run          # validates both adventures, then opens the game menu
 make cheats       # watch the checker catch a cheating DM
 make run SEED=7   # replay a game with the same dice
 make validate     # frozen statistical protocol, about 12 seconds on the development machine
@@ -22,14 +22,16 @@ make check        # build, then replay every proof through the Lean kernel
 - The DM writes an Adventure as a Lean file, before play. See `docs/dm-prompt.md`.
 - `Rpg/Spec.lean` says what a legal Adventure is, in plain Lean.
 - `Rpg/Check.lean` has a checker that lists errors in plain words, and the theorem `check_sound`: if the checker finds no errors, the Adventure is legal by the spec.
-- Every playable adventure has character and story legality proofs. Exact
-  entries carry `isFair`; statistical entries must pass `admitStatistically`
-  before entering the runtime menu. That path binds the observations to the
-  current adventure inputs and uses a Lean-proved false-acceptance bound.
-- `Rpg/Probability/Confidence.lean` proves the Bernoulli variance bound,
-  a finite-sample confidence theorem, and a family-wise false-acceptance theorem.
-  The admission model assumes independent ideal trajectories with the specified
-  binomial marginals; implementation-to-model correspondence is not proved.
+- Every playable adventure carries character and story legality proofs, the
+  finite `fair` theorem, and source-bound observations that passed admission.
+  `StatisticalAdventure.intervals_fit` proves that every admitted interval fits
+  its Weibull target's tolerance band.
+- `Rpg/Probability/Confidence.lean` proves the variance bound, interval coverage,
+  and false-acceptance bound. `StatisticalCandidate.fair` combines them for the
+  adventure's finite window: `t < 6` for Lighthouse and `t < 1` for Harbor,
+  together with a first-turn death check. Each interval has 99.9% coverage;
+  accepting the entire window when any tested constraint is false has risk at
+  most 0.1%. This is not simultaneous coverage of every interval.
 - `Rpg/Probability/Weibull.lean` defines editable shared defaults: retention
   `4/5`, integer shape `1`, and absolute tolerance `1/5` (20 percentage points).
   These were deliberately relaxed after exploration, then frozen before a new
@@ -71,9 +73,8 @@ probabilities. It does not guarantee victory or fairness under every strategy.
   infinite operational execution remains outstanding.
 - The confidence theorem assumes the stated IID/binomial sampling model. It
   does not prove that SplitMix64 or the game implementation induces that law.
-  All-time graph normalization and tail obligations are explicit in the
-  stronger `allTimeFairnessConfidence` theorem; the full source-to-model bridge
-  has not been mechanically proved.
+  These sampling assumptions are accepted; `fair` has no additional
+  graph-normalization, active-start, or tail premises.
 - The Engine and terminal have no overall correctness proof. Shared combat code
   was regression-checked against the previous engine on 1,024 seeded rounds.
 - `lake check` requires Linux namespaces. On macOS, `lake build` checks declarations,

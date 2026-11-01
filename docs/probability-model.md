@@ -41,37 +41,34 @@ non-self transitions as stalled; existing combat only removes HP. Exact rational
 state enumeration is expensive: the exploratory Lighthouse two-foe calculation
 was stopped before completion. Do not assume large fights are cheap to analyze.
 
-## Meaning of the fairness proof
+## Meaning of `fair`
 
-`isFair policy graph` requires normalized transition probabilities, absorbing
-terminal states, an initially active game, and a first-turn death probability
-within tolerance of `1 - q`. The first-turn check closes the loophole where a
-certain death on turn one would evade a turn-two test.
-
-For **every** `t` with positive active probability, it also requires:
+The shared theorem is finite statistical confidence. For a preselected positive
+horizon `H`, it covers first-turn death and, for `0 <= t < H`,
 
 ```
-abs(P(death exactly at t+2 | game active at t)
-    - (S(t+1) - S(t+2)) / S(t)) <= tolerance
+p_t = E[1{death at t+2} | game active at t]
+w_t = (S(t+1) - S(t+2)) / S(t),  S(t) = q^(t^shape).
 ```
 
-Here `S(t) = q^(t^shape)`. This is a conditional probability (the expectation of a
-death indicator), not an expected time. It means death **at** turn `t+2`, not
-any death within the next two turns. Completed successful games are excluded
-from the conditioning event. Times with zero active probability are skipped;
-no division by zero is treated as a certificate.
+The expectation is of a death indicator, not a death time. Completed successful
+games are excluded from the conditioning event. Each observed frequency has an
+exact rational interval of radius `confidenceEpsilon`, clipped to `[0,1]`.
+Admission requires the whole interval inside `[w_t - tolerance, w_t + tolerance]`.
+The first-turn row uses target `1 - S(1)` to reject immediate-death loopholes.
 
-This is a pointwise absolute-error criterion on the stated probabilities. It is
-not a guarantee about every player strategy, overall win rate, or a distance
-between the entire lifetime distribution and a Weibull law.
+`StatisticalCandidate.fair` proves per-row interval coverage and a false-acceptance
+bound for the entire finite decision under the explicitly accepted binomial
+sampling model. With the current constants, each risk is at most 0.1%.
+This does not assert simultaneous 99.9% coverage of all displayed intervals.
+There is no requirement or claim about times beyond the selected horizon.
+Lighthouse uses `H=6`; Harbor uses `H=1`.
 
-`checkFairnessThrough` checks policy validity, the initial active state, the
-first-turn guard, and the two-turn bounds at finitely many times. It returns
-structured failures, including the actual and target probabilities. It does not
-check normalization over the entire graph. Passing that
-finite diagnostic is not an all-time proof. Changing any default constant
-invalidates certificates that no longer prove the shared policy. The kernel
-must recheck them; authors cannot override policy parameters per story.
+The chosen tolerance is 20 percentage points, so the current geometric policy
+mainly imposes upper risk caps. It does not guarantee victory, behavior under
+every player strategy, or closeness of the entire lifetime distribution to a
+Weibull law. `checkFairnessThrough` remains an exact finite diagnostic for small
+graphs; admission uses the cheaper proved confidence protocol.
 
 ## Expectations
 
@@ -110,26 +107,22 @@ d6/attack/dodge turn structure; this is not an arbitrary combat-language interpr
 `Probability.AdventureDefinition` bundles the rules, character, and raw story,
 plus **both** `LegalCharacter rules hero` and `LegalAdventure rules hero story`.
 The earlier version accidentally omitted the character proof. The graph is derived
-from those exact values, and `playCertified` passes the same rules to the engine.
+from those exact values, and `playStatistical` passes the same rules to the engine.
 Changing rules or characters requires rechecking their dependent certificates.
 The shared Weibull fairness policy remains fixed across adventures.
 
-An exact `Probability.CertifiedAdventure` additionally requires a proof of
-`isFair defaultPolicy (adventureGraph rules hero story)`. Harbor uses that path.
-Lighthouse uses a separate `StatisticalCandidate` and runtime
-`admitStatistically` gate. It must pass a fresh source-bound run of the fixed
-confidence protocol before appearing in the menu. The menu labels the two
-kinds of evidence separately.
+Each adventure supplies a `StatisticalCandidate` with its definition, a positive
+finite horizon, and the specialized theorem `fair`. Register candidates in
+`Rpg/Catalog.lean`; the runtime `admitStatistically` gate collects source-bound
+counts and requires every interval to fit the shared Weibull band. Its resulting
+`StatisticalAdventure` carries both `fair` and the passing observation evidence.
+There is one admission path for Harbor and Lighthouse.
 
-See [statistical confidence](statistical-confidence.md) for the precise Lean
-probability theorem, model assumptions, frozen parameters, held-out results,
-and the remaining graph-to-model proof boundary. The original all-time
-`isFair` predicate has not been replaced with a simulated Boolean.
-
-The probability examples include exact fairness rejection tests, source-specific
-rule tests, and exact lifetime proofs. The confidence tests exercise numerical
-budget validity, clipping, boundary rejection, a concrete valid sampling law,
-incomplete sampling, and abort handling.
+See [statistical confidence](statistical-confidence.md) for the theorem, accepted
+sampling assumptions, fixed protocol, and Lighthouse's recorded results. The
+admission interface has no graph-validity or tail premises. The probability and
+lifetime fixtures remain, along with interval, boundary, censoring, and sampling
+model tests.
 
 ## Trusted surface and validation
 
@@ -137,8 +130,8 @@ The probability specification, graph builder, distribution operations, and
 combat elimination algorithm are part of the trusted definitions. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
 but there is not yet a general theorem proving the elimination algorithm equals
-the infinite stochastic operational execution. Likewise, there is no theorem
-relating ideal IID dice to SplitMix64. Do not claim either result from `isFair`.
+the infinite stochastic operational execution. The ideal sampling correspondence is an accepted assumption of `fair`, including
+the idealization of SplitMix64 and modulo-based choices.
 
 All stated theorems use kernel proofs; none use `sorry`, additional axioms, or
 `native_decide`. Compiled `#guard` checks are regression tests, not theorems.

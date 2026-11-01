@@ -4,8 +4,8 @@ import Init.Grind.Ordered.Rat
 
 /-!
 Exact finite-sample probability calculations over rational Bernoulli laws.
-Theorems here concern a specified independent-sampling model, not the law of
-SplitMix64 and not the truth of `isFair` for one observed seed.
+Theorems here concern independent samples of the graph's death probabilities.
+The sampling model is an explicit assumption.
 -/
 namespace Rpg.Probability.Confidence
 
@@ -152,6 +152,56 @@ theorem confidence
       (((n : Rat)*epsilon)*((n : Rat)*epsilon)) * delta := by grind
   exact Rat.le_of_mul_le_mul_left bound thresholdPos
 
+/-- A rational confidence interval for a Bernoulli expectation. -/
+structure Interval where
+  lower : Rat
+  upper : Rat
+  deriving Repr, DecidableEq
+
+/-- The frequency interval, clipped to the probability range [0,1]. -/
+def confidenceInterval (epsilon : Rat) (n k : Nat) : Interval :=
+  ⟨max 0 ((k : Rat) / (n : Rat) - epsilon),
+   min 1 ((k : Rat) / (n : Rat) + epsilon)⟩
+
+/-- The true expectation lies between the interval's endpoints. -/
+def Interval.Contains (interval : Interval) (p : Rat) : Prop :=
+  interval.lower ≤ p ∧ p ≤ interval.upper
+
+instance (interval : Interval) (p : Rat) : Decidable (interval.Contains p) := by
+  unfold Interval.Contains
+  infer_instance
+
+/-- Clipping does not change coverage of a true probability. -/
+theorem interval_contains_iff (p epsilon : Rat) (n k : Nat)
+    (hp : 0 ≤ p) (hp1 : p ≤ 1) (hn : 0 < n) :
+    (confidenceInterval epsilon n k).Contains p ↔
+      ¬ ((n : Rat)*epsilon < (k : Rat)-(n : Rat)*p ∨
+         (k : Rat)-(n : Rat)*p < -(n : Rat)*epsilon) := by
+  have npos : (0 : Rat) < (n : Rat) := Rat.natCast_pos.mpr hn
+  have cancel : ((k : Rat) / (n : Rat)) * (n : Rat) = (k : Rat) := by
+    grind
+  have nonnegative := Rat.le_of_lt npos
+  have lower : (k : Rat) / (n : Rat) - epsilon ≤ p ↔
+      (k : Rat) - (n : Rat)*p ≤ (n : Rat)*epsilon := by
+    constructor
+    · intro h
+      have scaled := Rat.mul_le_mul_of_nonneg_right h nonnegative
+      grind
+    · intro h
+      apply Rat.le_of_mul_le_mul_right (c := (n : Rat)) _ npos
+      grind
+  have upper : p ≤ (k : Rat) / (n : Rat) + epsilon ↔
+      -(n : Rat)*epsilon ≤ (k : Rat) - (n : Rat)*p := by
+    constructor
+    · intro h
+      have scaled := Rat.mul_le_mul_of_nonneg_right h nonnegative
+      grind
+    · intro h
+      apply Rat.le_of_mul_le_mul_right (c := (n : Rat)) _ npos
+      grind
+  simp only [confidenceInterval, Interval.Contains, Rat.max_def, Rat.min_def]
+  grind
+
 /-- Acceptance requires the entire error interval to fit, with clipping to [0,1]. -/
 def acceptsCount (target tolerance epsilon : Rat) (n k : Nat) : Prop :=
   (target - tolerance ≤ 0 ∨ (n : Rat)*(target - tolerance + epsilon) ≤ (k : Rat)) ∧
@@ -161,6 +211,33 @@ instance (target tolerance epsilon : Rat) (n k : Nat) :
     Decidable (acceptsCount target tolerance epsilon n k) := by
   unfold acceptsCount
   infer_instance
+
+/-- The admission inequalities put both interval endpoints inside the Weibull band. -/
+theorem accepted_interval (target tolerance epsilon : Rat) (n k : Nat)
+    (hn : 0 < n)
+    (accepted : acceptsCount target tolerance epsilon n k) :
+    target - tolerance ≤ (confidenceInterval epsilon n k).lower ∧
+    (confidenceInterval epsilon n k).upper ≤ target + tolerance := by
+  have npos : (0 : Rat) < (n : Rat) := Rat.natCast_pos.mpr hn
+  have cancel : ((k : Rat) / (n : Rat)) * (n : Rat) = (k : Rat) := by
+    grind
+  constructor
+  · rcases accepted.1 with clipped | scaled
+    · simp only [confidenceInterval, Rat.max_def]
+      grind
+    · have lower : target - tolerance ≤ (k : Rat) / (n : Rat) - epsilon := by
+        apply Rat.le_of_mul_le_mul_right (c := (n : Rat)) _ npos
+        grind
+      simp only [confidenceInterval, Rat.max_def]
+      grind
+  · rcases accepted.2 with clipped | scaled
+    · simp only [confidenceInterval, Rat.min_def]
+      grind
+    · have upper : (k : Rat) / (n : Rat) + epsilon ≤ target + tolerance := by
+        apply Rat.le_of_mul_le_mul_right (c := (n : Rat)) _ npos
+        grind
+      simp only [confidenceInterval, Rat.min_def]
+      grind
 
 /-- Probability of accepting a constraint whose true probability is outside its band. -/
 def falseAcceptance (p target tolerance epsilon : Rat) (n : Nat) : Rat :=
@@ -186,9 +263,8 @@ theorem false_accept_implies_error (p target tolerance epsilon : Rat) (n k : Nat
       Rat.mul_lt_mul_of_pos_left high npos
     grind
 
-/-- Rigorous statistical fairness theorem: the risk of false acceptance is at most delta.
-This is a probability of error under independent sampling, not `isFair` inferred from one sample. -/
-theorem fairnessConfidence (p target tolerance epsilon delta : Rat) (n : Nat)
+/-- A single constraint's false-acceptance risk is at most delta under independent sampling. -/
+theorem falseAcceptance_bound (p target tolerance epsilon delta : Rat) (n : Nat)
     (hp : 0 ≤ p) (hp1 : p ≤ 1) (hn : 0 < n) (he : 0 < epsilon)
     (budget : (n : Rat)/4 ≤ delta * (((n : Rat)*epsilon)*((n : Rat)*epsilon))) :
     falseAcceptance p target tolerance epsilon n ≤ delta := by
@@ -260,10 +336,35 @@ Rows may be correlated with one another. This is NOT an assumed confidence bound
 def BinomialMarginals (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat) (n : Nat) : Prop :=
   ∀ i f, expectation law (fun counts => f (counts i)) = binomialExpectation (truth i) n f
 
+/-- Probability that one displayed confidence interval misses its true conditional expectation. -/
+def intervalMissProbability (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat)
+    (epsilon : Rat) (n : Nat) (i : Fin m) : Rat :=
+  expectation law fun counts =>
+    if (confidenceInterval epsilon n (counts i)).Contains (truth i) then 0 else 1
+
+/-- Each interval covers its true expectation with failure probability at most delta. -/
+theorem intervalConfidence
+    (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat)
+    (epsilon delta : Rat) (n : Nat) (i : Fin m)
+    (sampling : BinomialMarginals law truth n)
+    (hp : 0 ≤ truth i) (hp1 : truth i ≤ 1) (hn : 0 < n) (he : 0 < epsilon)
+    (budget : (n : Rat)/4 ≤ delta * (((n : Rat)*epsilon)*((n : Rat)*epsilon))) :
+    intervalMissProbability law truth epsilon n i ≤ delta := by
+  unfold intervalMissProbability
+  rw [sampling i (fun k => if (confidenceInterval epsilon n k).Contains (truth i) then 0 else 1)]
+  have indicator : (fun k => if (confidenceInterval epsilon n k).Contains (truth i) then
+      (0 : Rat) else 1) = (fun (k : Nat) =>
+        if (n : Rat)*epsilon < (k : Rat)-(n : Rat)*truth i ∨
+           (k : Rat)-(n : Rat)*truth i < -(n : Rat)*epsilon then (1 : Rat) else 0) := by
+    funext k
+    simp only [interval_contains_iff _ _ _ _ hp hp1 hn, ite_not]
+  rw [indicator]
+  exact confidence (truth i) epsilon delta n hp hp1 hn he budget
+
 /-- Rigorous family-wise fairness-confidence theorem.
 If all rows must pass, any unfair row bounds the probability of false certification;
 no independence between rows or post-hoc choice of a favorable row is assumed. -/
-theorem familyFairnessConfidence
+theorem familyFalseAcceptance_bound
     (law : Distribution (Fin m → Nat)) (truth : Fin m → Rat) (bands : Fin m → Band)
     (epsilon delta : Rat) (n : Nat)
     (valid : law.Valid) (sampling : BinomialMarginals law truth n)
@@ -303,7 +404,7 @@ theorem familyFairnessConfidence
     rw [sampling i (fun k =>
       if acceptsCount (bands i).target (bands i).tolerance epsilon n k ∧
         ¬ WithinTolerance (truth i) (bands i).target (bands i).tolerance then 1 else 0)] at h
-    exact Rat.le_trans h (fairnessConfidence (truth i) (bands i).target (bands i).tolerance
+    exact Rat.le_trans h (falseAcceptance_bound (truth i) (bands i).target (bands i).tolerance
       epsilon delta n (probabilities i).1 (probabilities i).2 hn he budget)
 
 /-- The fixed confidence level used for new audits: false acceptance at most 0.1%. -/

@@ -10,10 +10,10 @@ namespace Rpg.Probability.Estimate
 def testConfig : Config := { samples := 20, horizon := 4, roundLimit := 2, seed := 7 }
 
 -- A safe ending occurs on its actual scene-choice turn.
-#guard ((trajectory Harbor.harborCertified.toAdventureDefinition 2 6
+#guard ((trajectory Harbor.harborDefinition 2 6
   Harbor.harbor.start (Harbor.rules.maxHP Harbor.iona) 0).run ⟨7⟩).1 == ⟨.ended, 1⟩
 -- Fuel exhaustion is recorded as unknown, not as an ending or death.
-#guard ((trajectory Harbor.harborCertified.toAdventureDefinition 2 0
+#guard ((trajectory Harbor.harborDefinition 2 0
   Harbor.harbor.start (Harbor.rules.maxHP Harbor.iona) 0).run ⟨7⟩).1 == ⟨.censored, 1⟩
 -- A completed fight is recognized even when no further round budget remains.
 #guard ((fight fixtureRules [] 0 ⟨⟨strongHero, 3⟩, []⟩).run ⟨7⟩).1.isSome
@@ -22,7 +22,7 @@ def testConfig : Config := { samples := 20, horizon := 4, roundLimit := 2, seed 
   ⟨⟨strongHero, 3⟩, [⟨harmlessFoe, 1⟩]⟩).run ⟨7⟩).1.isNone
 
 /-- Fixture counts must retain every run. -/
-def safeCounts : Counts := sample testConfig Harbor.harborCertified.toAdventureDefinition
+def safeCounts : Counts := sample testConfig Harbor.harborDefinition
 #guard total safeCounts.endings == 20
 #guard total safeCounts.deaths == 0
 #guard total safeCounts.censored == 0

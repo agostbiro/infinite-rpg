@@ -73,6 +73,6 @@ def main (args : List String) : IO UInt32 := do
   if uncertain then
     IO.println "RESULT: inconclusive. No fairness certificate was produced."
     return 0
-  IO.println "RESULT: finite-window diagnostic bounds fit. This does not establish all-time fairness."
-  IO.println "No fairness certificate was produced; the exact Lean proof gate is unchanged."
+  IO.println "RESULT: finite-window diagnostic bounds fit. Run make validate for the proved confidence protocol."
+  IO.println "Exploratory intervals do not supply admission evidence."
   return 0

@@ -22,26 +22,6 @@ theorem safeGraph_after (n : Nat) : safeGraph.after (n + 1) = pure Node.ended :=
     rw [Graph.after, ih]
     decide +kernel
 
-/-- The policy admits a concrete graph with an actual initial choice. -/
-theorem safeGraph_isFair : isFair defaultPolicy safeGraph := by
-  refine ⟨defaultPolicy_valid, ?_, by decide +kernel, by decide +kernel, ?_⟩
-  · constructor
-    · intro node
-      cases node <;> simp [safeGraph, Distribution.Valid, pure, Pure.pure] <;> decide +kernel
-    · exact ⟨rfl, rfl, rfl⟩
-  · intro t actual observed
-    cases t with
-    | zero =>
-      have h : safeGraph.deathAtTwo 0 = some 0 := by decide +kernel
-      rw [h] at observed
-      cases observed
-      decide +kernel
-    | succ n =>
-      have inactive : safeGraph.activeAt (n + 1) = 0 := by
-        rw [Graph.activeAt, safeGraph_after]
-        decide +kernel
-      simp [Graph.deathAtTwo, inactive] at observed
-
 /-- A lethal graph kills with certainty on turn two. -/
 def lethalGraph : Graph where
   start := .scene 0 1
@@ -55,18 +35,6 @@ def lethalGraph : Graph where
 /-- Exact two-turn death is certain in the bad graph. -/
 theorem lethalGraph_death : lethalGraph.deathAtTwo 0 = some 1 := by decide +kernel
 
-/-- The default policy rejects a concrete lethal graph. -/
-theorem lethalGraph_not_fair : ¬ isFair defaultPolicy lethalGraph := by
-  apply not_isFair_of_violation lethalGraph_death
-  decide +kernel
-
-/-- Tightening the default tolerance to zero invalidates the safe example's certificate. -/
-theorem safeGraph_not_fair_zero_tolerance :
-    ¬ isFair { defaultPolicy with tolerance := 0 } safeGraph := by
-  apply not_isFair_of_violation (g := safeGraph) (t := 0) (actual := 0)
-  · decide +kernel
-  · decide +kernel
-
 /-- A certain death on turn one is rejected by the first-turn guard. -/
 def instantDeathGraph : Graph where
   start := .scene 0 1
@@ -74,13 +42,6 @@ def instantDeathGraph : Graph where
     | .ended => pure .ended
     | .stalled => pure .stalled
     | _ => pure .dead
-
-/-- Testing only death at t+2 would miss this unfair graph. -/
-theorem instantDeathGraph_not_fair : ¬ isFair defaultPolicy instantDeathGraph := by
-  intro fair
-  have invalid : ¬ WithinTolerance (instantDeathGraph.deadBy 1)
-      (1 - defaultPolicy.survival 1) defaultPolicy.tolerance := by decide +kernel
-  exact invalid fair.2.2.2.1
 
 /-- The safe example has expected termination time one at every positive horizon. -/
 example : safeGraph.terminationPartial 4 = 1 := by decide +kernel

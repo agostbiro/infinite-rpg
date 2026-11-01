@@ -1,67 +1,82 @@
-# Statistical fairness confidence
+# Finite fairness confidence
 
-## What is proved
+## The main theorem: `fair`
 
-`Rpg/Probability/Confidence.lean` defines the exact rational binomial expectation
-recursively from independent Bernoulli trials. Lean proves its first and second
-moments, the variance `n*p*(1-p)`, the bound `p*(1-p) <= 1/4`, and a Chebyshev
-confidence inequality. It does not import an assumed confidence bound.
+`Rpg/Probability/StatisticalAdmission.lean` defines `Fair candidate` and proves
+`StatisticalCandidate.fair`. Adventures specialize it as `Rpg.Lighthouse.fair`
+and `Rpg.Harbor.fair`. This is the shared finite statistical guarantee used for
+admission.
 
-The theorem `fairnessConfidence` proves that the probability of accepting a
-constraint outside its true allowed band is at most `delta`, provided
+An adventure selects a positive `horizon = H` before validation. Row zero checks
+first-turn death. Rows `t+1`, for `0 <= t < H`, estimate
+
+```
+p_t = E[1{death at t+2} | game active at t]
+    = P(death exactly at t+2 | game active at t).
+```
+
+Their Weibull targets are `(S(t+1) - S(t+2)) / S(t)`, where
+`S(t) = q^(t^shape)`. The first-turn target is `1 - S(1)`.
+Lighthouse uses `H = 6`, so its conditional rows cover deaths at turns 2 through
+7. Harbor uses `H = 1`. No claim is made about later times.
+
+For `k` deaths among `n` qualifying observations, the exact rational interval is
+
+```
+[max(0, k/n - epsilon), min(1, k/n + epsilon)].
+```
+
+The theorem `fair` proves two conclusions under the sampling model:
+
+1. For each row, the probability that its interval misses the true conditional
+   expectation is at most `delta`.
+2. The probability of accepting every row when any true expectation lies outside
+   its Weibull tolerance band is at most `delta`.
+
+The first statement is per-row coverage, not simultaneous coverage of all
+intervals. The second is a guarantee for the whole finite admission decision:
+if any fixed row violates its band, approving all rows requires falsely approving
+that row. Independence between rows is unnecessary.
+
+Admission requires the **whole interval** to fit inside the target's tolerance
+band. `StatisticalAdventure.intervals_fit` proves that the executable rational
+checks enforce this containment. The `fair` theorem is a guarantee for the
+validation procedure; a candidate also needs passing source-bound observations
+to become playable.
+
+## Statistical proof and accepted model
+
+`Rpg/Probability/Confidence.lean` defines exact binomial expectations from
+independent Bernoulli trials. It proves their moments, the variance bound
+`p*(1-p) <= 1/4`, and the confidence bound used above. No statistical inequality
+is assumed. The required arithmetic budget is
 
 ```
 n / 4 <= delta * (n * epsilon)^2.
 ```
 
-Acceptance checks that the full frequency interval, clipped to `[0,1]`, is inside
-the allowed band. Overlap alone is insufficient. All comparisons used for
-admission are exact rational arithmetic; Float values are display-only.
+The editable protocol constants are:
 
-`familyFairnessConfidence` proves the joint guarantee when **every** constraint
-must pass. If the actual family is unfair, at least one fixed constraint is
-unfair, and approving the family entails falsely approving that constraint.
-Thus the same error bound applies to the family without requiring independence
-between rows. This is an intersection-union test, not a simultaneous-coverage
-claim about every displayed interval.
-
-The concrete theorem is `Rpg.Lighthouse.lighthouse_fairnessConfidence`. Its true
-probabilities are derived from Lighthouse's own rules, hero, and story graph.
-The fixed protocol constants are:
-
-- `confidenceSamples = 160000` qualifying observations **per row**.
+- `confidenceSamples = 160000` qualifying observations per row.
 - `confidenceEpsilon = 1/25` (four percentage points).
-- `confidenceDelta = 1/1000` (false acceptance at most 0.1% in the model).
+- `confidenceDelta = 1/1000` (0.1% failure probability).
 
-`confidenceBudget` proves that these constants meet the inequality. The proof
-uses only the standard Lean axioms, not `sorry`, new axioms, or `native_decide`.
+`confidenceBudget` proves the budget using exact arithmetic. The confidence and
+fairness proofs use only standard Lean axioms, with no `sorry`, new axioms, or
+`native_decide`.
 
-## Model assumptions and scope
+The accepted sampling model consists of a valid joint observation law, true
+probabilities in `[0,1]`, and binomial row marginals with those graph-derived
+probabilities. It models independent ideal trajectories and the first fixed
+number of qualifying observations; rows can share trajectories. Correspondence
+between the seeded executable sampler and that ideal model is assumed, including
+the idealization of PRNG and modulo-based choices. SplitMix64 is not proved IID.
+There are no additional graph-normalization, active-start, or tail hypotheses
+in `fair`.
 
-The probability theorem assumes a valid joint observation law whose row
-marginals are binomial with the specified true probabilities. This encodes
-independent trajectories, fixed parameters, and the first fixed number of
-qualifying observations. It is a sampling-model hypothesis, not an assumed
-confidence result. Rows may be correlated because they share game trajectories.
-
-The implementation uses seeded SplitMix64. There is **no proof that this PRNG is
-IID**, nor a complete proof that the executable sampler induces the graph's
-probability law. The confidence theorem is rigorous within its explicit model;
-this is not an unconditional, end-to-end software/randomness theorem.
-
-The theorem bounds the procedure's false-acceptance probability. It does **not**
-mean that a particular adventure has a Bayesian posterior probability of 99.9%
-of being fair after seeing the sample, and does not turn a statistical pass into
-an exact `isFair` proof.
-
-Lighthouse's source-based `ranks_decrease` and `route_bound` proofs bound scene
-routes by six choices; `zero_death_tail` proves that zero later death probability
-fits the tuned policy. The additional theorem `allTimeFairnessConfidence` states
-the stronger original all-time guarantee with explicit graph-normalization,
-initial-state, and tail obligations. The complete mechanized bridge from the
-route/compiler facts to those graph-CDF obligations remains outstanding.
-Statistical admission therefore carries the checked observations and the
-model-conditional risk theorem, rather than an exact `CertifiedAdventure`.
+The error bound concerns repeated experiments under that model. It is not a
+Bayesian probability that this particular adventure is fair after observing its
+counts.
 
 ## Frozen experiment
 
@@ -97,31 +112,33 @@ per row:
 All rational acceptance checks passed. The player rules and combat mechanics
 were not changed to obtain this result.
 
-## Runtime safeguards
+## Admission and finite observation window
 
-`make validate` reproduces the fixed experiment. `make run` reruns that same
-protocol on the current source before admitting Lighthouse to the menu.
-`StatisticalAdventure.provenance` binds its counts to `validateCounts candidate`;
-counts from another ruleset or story cannot be substituted as evidence.
-The gameplay `--seed` option does not change the validation seed.
+Both adventures use the same `admitStatistically` gate. A playable
+`StatisticalAdventure` carries the `fair` theorem, source-bound counts, and a
+proof that every numerical check passed. Its `provenance` equality requires
+`counts = validateCounts candidate`; a different story, ruleset, hero, or window
+cannot supply the evidence.
 
-For each conditional row, only the first 160,000 trajectories active at that
-turn contribute. Sampling does not stop based on observed death rates. Any
-combat timeout or invalid trajectory aborts validation. Failure to fill every
-row within two million trajectories also prevents admission. Aborting is not
-conditioning the theorem on success: aborted executions issue no certificate.
-They can only reduce the event of false approval under the reference model.
+`make validate` prints Lighthouse's rational intervals and Weibull targets.
+`make run` checks both adventures before showing them in the menu. Gameplay
+`--seed` does not change the validation seed.
 
-Replaying the same seed is reproducibility, not additional independent evidence.
-After tuning rules, story, or policy against validation results, use a fresh
-precommitted held-out validation experiment. Do not search for favorable seeds
-or repeatedly tune on this holdout while retaining the original confidence claim.
+Only the first 160,000 qualifying trajectories contribute to each row. Sampling
+does not stop based on death rates. The largest tested death turn is `H+1`, so
+trajectories are observed only through that turn. An unresolved combat outcome
+inside that window aborts validation; continued play beyond the window is allowed.
+Invalid trajectories or failure to fill every row within two million games also
+prevent admission. A conditioning event that never occurs cannot fill its row
+and therefore cannot pass. No termination or decreasing-rank proof is required.
+
+Replaying the same seed is reproducibility, not new independent evidence. The
+finite refactor preserves Lighthouse's window, policy, sample size, and recorded
+counts. After tuning those inputs using validation results, choose a fresh
+precommitted held-out experiment; do not search for favorable seeds.
 
 ## Exploratory diagnostics
 
-`make audit` is separate from validation. It uses a much smaller fixed-size
-sample and nominal simultaneous Hoeffding intervals, includes unresolved
-probability from censored games, and reports capped lifetime estimates.
-[The standard concentration bound](https://ai.stanford.edu/~gwthomas/notes/concentration.html)
-is used only for diagnostics, not as the Lean proof of fairness. None of those
-Float intervals can construct a statistical or exact admission certificate.
+`make audit` remains separate from admission. It reports floating-point estimates
+and capped lifetime intervals using an exploratory concentration calculation.
+Those intervals do not supply the `fair` theorem or admission evidence.

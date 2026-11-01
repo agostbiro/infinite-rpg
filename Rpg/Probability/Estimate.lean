@@ -6,7 +6,7 @@ These use the adventure's actual engine rules. Censored runs remain unknown;
 zero observed events are never treated as proof of impossibility.
 Nominal simultaneous Hoeffding intervals assume independent random trajectories.
 The RNG, that sampling assumption, and the concentration bound are not proved here.
-Nothing in this module constructs `CertifiedAdventure` or proves `isFair`.
+The diagnostic intervals do not supply the finite `fair` theorem or admission evidence.
 -/
 namespace Rpg.Probability.Estimate
 
