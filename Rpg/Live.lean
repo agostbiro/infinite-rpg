@@ -332,7 +332,14 @@ def liveCandidate (defn : AdventureDefinition) : Probability.StatisticalCandidat
   horizon := liveHorizon
   horizonPositive := by decide
 
-/-- **The only way in this code from a Draft to a Game.** It runs the checker, then the fairness check with
+/-- A Game from a Draft that this build of the server already admitted: it runs the size limits and
+the checker again, but not the fairness check. Use it only when a saved verdict for this exact
+text and this build says that the Draft passed both checks (see `loadSaved` in `Main.lean`). -/
+def Draft.toGameAdmitted (d : Draft) : Except (List String) Game :=
+  d.checked.map Game.new
+
+/-- **The only way in this code from a Draft to a Game that runs the fairness check.** It runs the
+checker, then the fairness check with
 1,000 games from `seed`. If both pass, it returns the Game. Else it returns the errors. Each
 fairness error starts with "fairness:" and names the row that failed. -/
 def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=

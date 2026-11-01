@@ -358,11 +358,13 @@ A verdict counts only if its stamp is the stamp of `adventure.json` now, and its
 key of the running program. Every new build of the server makes all verdicts old, because the
 checker, the rules, the fairness check, the simulator, and the Draft reader are compiled into it.
 
-A verdict is for display only: it says what the card on the Front Page shows. `/api/load` never
-reads it, and always runs the checker and the fairness check before play. So a wrong, broken, or
-edited verdict cannot make a save playable. At worst a card shows the wrong state until a load
-checks the save again and writes a new verdict. A card that shows "fails" has a "Check again"
-button for this: it sends the same load. -/
+A verdict says what the card on the Front Page shows, and it lets a load skip the slow fairness
+check: if the verdict (or the cache) says that this build passed this exact text, `/api/load` runs
+only the checker again. Without such a verdict, the load runs both checks. So the verdict file is
+trusted for the fairness check only, and a forged pass could get a legal Adventure played that
+did not pass the fairness check. Anyone who can write that file can also replace the server
+program. A broken verdict, or one for another text or build, is not used. A card that shows
+"fails" has a "Check again" button: its load runs both checks, because no pass applies. -/
 
 /-- The saved result of a check of a saved Adventure. -/
 structure Verdict where
@@ -451,7 +453,7 @@ def removeTempFiles : IO Unit := do
         try IO.FS.removeFile f.path catch _ => pure ()
 
 /-- Write the verdict of saved Adventure `id`, atomically (`writeAtomic`). An error is only logged:
-a verdict is for display only. -/
+the save is then checked again the next time. -/
 def writeVerdict (cfg : GameConfig) (id stamp : String) (why : Option String) : IO Unit := do
   let some build := cfg.build | return
   try writeAtomic cfg (verdictFile id) ({ stamp, build, why } : Verdict).toJson.pretty
@@ -1093,13 +1095,21 @@ def parseWish (body : String) : Except String (String × String × String) := do
 
 /-- Load a saved Adventure: read it, check it again, and check its Pictures again. Also returns
 the file text it read, if it read one, so the caller can record the result for that text.
-This never reads the saved verdict or the cache: a save is played only if this check passes. -/
-def loadSaved (id : String) : IO (Option String × Except String (Game × Source × Draft)) := do
+The checker always runs. The fairness check runs too, unless the cache or a saved verdict says
+that this build already passed this exact text (same stamp and build key). -/
+def loadSaved (cfg : GameConfig) (id : String) :
+    IO (Option String × Except String (Game × Source × Draft)) := do
   if !safeSegment id then return (none, .error "There is no saved Adventure with that name.")
   let path := savedRoot / id / "adventure.json"
   if !(← path.pathExists) then return (none, .error "There is no saved Adventure with that name.")
   let text ← IO.FS.readFile path
-  match checkSavedText text with
+  -- A pass for this exact text from this build (in the cache, or in a verdict that applies) means
+  -- the fairness check already passed, so only the checker runs again. Else both run.
+  let passed := (← knownEntry cfg id (.ok text)).any (·.why.isNone)
+  let checked := if passed then
+      (do let d ← (Draft.parse text).mapError (fun e => [e]); return (d, ← d.toGameAdmitted))
+    else checkSavedText text
+  match checked with
   | .error errs =>
     return (some text, .error s!"The saved Adventure failed the check: {"; ".intercalate errs}")
   | .ok (d, g) =>
@@ -1200,7 +1210,7 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
       replyJson .ok (← view)
     | ["api", "load"] =>
       let id := (Json.parse body >>= (·.getObjValAs? String "id")).toOption.getD ""
-      let (text?, result) ← loadSaved id
+      let (text?, result) ← loadSaved cfg id
       match result with
       | .error e =>
         -- The list shows this refusal too, until the file changes.

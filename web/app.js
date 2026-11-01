@@ -827,7 +827,8 @@
     const focused = active && active.dataset && active.dataset.card ? active.dataset.card : null;
     for (const old of grid.querySelectorAll('.adv-card')) old.remove();
     for (const a of v.saved) {
-      const start = { key: a.id, text: checkText(a.title) };
+      // A save that passed starts at once (the server trusts its verdict); any other is checked.
+      const start = { key: a.id, text: a.ok ? 'Starting ' + a.title + '...' : checkText(a.title) };
       if (!a.ok && !a.checking) {
         grid.appendChild(adventureCard(a, a.id, {
           why: a.why || 'it does not read',

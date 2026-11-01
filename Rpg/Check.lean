@@ -158,11 +158,12 @@ theorem leads_of_mem_successors {a : Adventure} {s t : SceneId}
   exact ⟨sc, hsc, hid, ch, hch, ht⟩
 
 /-- Search from the Scenes in `seen`, for at most `fuel` steps.
-Returns `seen` plus every Scene found. -/
+Returns `seen` plus every Scene found. Each step adds each new Scene once (`eraseDups`). Without
+that, a Scene that two Scenes lead to is added twice, and the list grows very fast. -/
 def explore (a : Adventure) : Nat → List SceneId → List SceneId
   | 0, seen => seen
   | fuel + 1, seen =>
-    let found := (seen.flatMap (successors a)).filter (· ∉ seen)
+    let found := ((seen.flatMap (successors a)).filter (· ∉ seen)).eraseDups
     if found = [] then seen else explore a fuel (seen ++ found)
 
 /-- If every Scene in `seen` can be reached, so can every Scene that `explore` returns. -/
@@ -185,13 +186,27 @@ theorem explore_reachable {a : Adventure} :
       intro x hx
       rcases List.mem_append.mp hx with hx | hx
       · exact h x hx
-      · simp only [List.mem_filter, List.mem_flatMap] at hx
+      · rw [List.mem_eraseDups] at hx
+        simp only [List.mem_filter, List.mem_flatMap] at hx
         obtain ⟨⟨s, hs, hsucc⟩, _⟩ := hx
         exact Reachable.next (h s hs) (leads_of_mem_successors hsucc)
 
 /-- The Scenes that the checker finds can be reached from the start. -/
 def reachableScenes (a : Adventure) : List SceneId :=
   explore a (a.scenes.length + 1) [a.start]
+
+/-- A test Adventure with many paths: Scene `i` leads to Scenes `i + 1` and `i + 2`, for 20 Scenes.
+Each Scene can be reached in many ways. -/
+private def manyPaths : Adventure where
+  title := "Many paths"
+  start := 0
+  scenes := (List.range 20).map fun i =>
+    { id := i, title := "", text := "",
+      choices := if i + 2 < 20 then [{ text := "a", outcome := .goto (i + 1) },
+                                     { text := "b", outcome := .goto (i + 2) }] else [] }
+
+-- The search lists each Scene once, so its size stays at the number of Scenes.
+#guard (reachableScenes manyPaths).length == 20
 
 /-- Every Scene in `reachableScenes a` can be reached from the start. -/
 theorem reachable_of_mem {a : Adventure} {x : SceneId}
@@ -262,6 +277,9 @@ theorem reachesEnding_of_mem {a : Adventure} {x : SceneId}
 
 /-- All errors in an Adventure, for the Character `c`. Each error names its Scene. -/
 def check (rules : RuleSet) (c : Being) (a : Adventure) : List String :=
+  -- Each search runs once, not once for each Scene.
+  let reach := reachableScenes a
+  let ends := endingScenes a
   need (SceneExists a a.start) s!"the start Scene {a.start} does not exist" ++
   need (a.scenes.map (·.id)).Nodup "two Scenes share a number" ++
   need (∃ s ∈ a.scenes, s.choices = []) "no Scene is an Ending" ++
@@ -269,9 +287,9 @@ def check (rules : RuleSet) (c : Being) (a : Adventure) : List String :=
     s.choices.flatMap (fun ch =>
       (checkOutcome rules c a ch.outcome).map (fun e => s!"Scene {s.id} ({s.title}), choice \"{ch.text}\": {e}"))) ++
   a.scenes.flatMap (fun s =>
-    need (s.id ∈ reachableScenes a) s!"Scene {s.id} ({s.title}) cannot be reached from the start") ++
+    need (s.id ∈ reach) s!"Scene {s.id} ({s.title}) cannot be reached from the start") ++
   a.scenes.flatMap (fun s =>
-    need (s.id ∈ endingScenes a)
+    need (s.id ∈ ends)
       s!"Scene {s.id} ({s.title}) has no way to an Ending: no path of Choices from it leads to a Scene with no Choices")
 
 /-- **The checker is sound.** If `check` finds no errors, the Adventure is legal by the spec. -/
