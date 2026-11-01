@@ -107,3 +107,15 @@ example : intervalMissProbability variableLaw (fun _ => 1/2) confidenceDelta 0 �
   rowConfidence _ _ _ _ variable_sampling (by decide +kernel) (by decide +kernel) (by decide +kernel)
 
 end Rpg.Probability.Confidence
+
+namespace Rpg.Probability
+
+/-- A full batch with games in every row but no deaths at all: an Adventure that is too easy. -/
+def noDeathCounts : ValidationCounts :=
+  ⟨#[1000, 1000, 1000, 1000, 946, 666], #[0, 0, 0, 0, 0, 0], 1000, false⟩
+
+-- With horizon 5 (the Lighthouse and every Wish), the check rejects these counts:
+-- rows 3 to 5 have a lower edge above 0.
+#guard !decide (ValidationAccepted 5 noDeathCounts)
+
+end Rpg.Probability

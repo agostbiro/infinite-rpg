@@ -24,11 +24,19 @@ root = "Cheats"
 name = "validate"
 root = "Validate"
 
-# Compares the exact Fight model with the simulator, for the add-mechanic skill.
+# Compares the exact Fight model with the simulator, for the add-mechanic skill. It takes
+# minutes, so it is outside the one-minute routine check. Run: lake exe agree
 [[lean_exe]]
 name = "agree"
 srcDir = ".agents/skills/add-mechanic"
 root = "agree"
+
+# The fairness screen for the add-mechanic skill (screening seed, or `--validation`).
+# Run: lake exe screen
+[[lean_exe]]
+name = "screen"
+srcDir = ".agents/skills/add-mechanic"
+root = "screen"
 
 # The main theorems for `lake comparator` (see comparator.json). Not a default target:
 # `Comparator.Statements` has `sorry` on purpose, as the list of statements.

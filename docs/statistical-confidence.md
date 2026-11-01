@@ -100,3 +100,8 @@ rational interval enclosures:
 `make validate` reproduces the batch and prints the intervals. `make run` checks
 the Lighthouse before play and stops if it fails. Replaying a fixed seed is reproducibility, not new
 independent evidence.
+
+The mechanic skill runs its compiled screen and final admission with a shared
+one-minute deadline. Builds do not rerun this held-out experiment; the final
+command checks current source-bound counts, rather than comparing them with this
+historical table. The fairness parameters and the theorem are unchanged.
