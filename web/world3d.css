@@ -28,6 +28,11 @@
 .world-toolbar { position: absolute; top: 25px; right: 24px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; justify-content: flex-end; max-width: 34%; }
 .world-toolbar .small-button { background: #101d29b8; border-color: #d5dfd02b; font-size: 11px; padding: 8px 11px; backdrop-filter: blur(10px); }
 .world-hp { font-size: 11px; width: 100%; text-align: right; margin-bottom: 7px; color: #e4eddd; text-shadow: 0 1px 6px #000; }
+/* The gear chip: the weapon in hand and its damage. "New" shows after a change gives it. */
+.world-status { width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 7px; min-width: 0; }
+.world-status .world-hp { width: auto; margin: 0; white-space: nowrap; }
+.world-gear { font-size: 11px; padding: 4px 9px; border-radius: 999px; color: #f3ead2; background: #101d29b8; border: 1px solid #d5dfd02b; backdrop-filter: blur(10px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.world-gear.new { border-color: #ffd98a; color: #fff3d0; box-shadow: 0 0 14px #ffd98a55; }
 .world-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .portal-label {
   position: absolute; transform: translate(-50%, -100%); width: 175px; text-align: center;
@@ -51,6 +56,15 @@
 .world-event .result.crit { color: #ffd36b; }
 .world-event .result.bad { color: #f08a7e; }
 .world-event:has(.die.tumble) .result { animation: world-verdict .35s ease-out .4s both; }
+/* The card of a live change in the tray. */
+.world-event.changeApplied p { margin: 0 0 3px; }
+.world-event .change-title { font: 600 22px/1.25 var(--serif); color: #ffd98a; }
+.world-event .change-detail { font: 14px/1.45 var(--sans); color: #e9e1cc; }
+.world-event .change-answer-h { margin-top: 10px !important; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #dfc58c; }
+.world-event .change-answers { margin: 2px 0 0; padding-left: 18px; font: 14px/1.45 var(--sans); }
+.world-events[data-report="changeApplied"] { border-color: #ffd98aaa; box-shadow: 0 0 30px #ffd98a33; }
+.world-event.changeApplied { animation: world-change-in .45s ease-out both; }
+@keyframes world-change-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes world-verdict { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
 .world-combat-actions { position: absolute; left: 50%; transform: translateX(-50%); bottom: 22px; display: flex; justify-content: center; gap: 7px; max-width: 94%; z-index: 2; flex-wrap: wrap; }
 .world-combat-actions button { border: 1px solid #ecc88580; background: #302b20ed; color: #fff0cb; border-radius: 8px; padding: 12px 15px; font: 12px var(--sans); cursor: pointer; }
@@ -119,6 +133,13 @@ body:not(.spatial-mode) .world-over { position: static; transform: none; width: 
   #world-description { font-size: 13px; max-height: 65px; max-width: 100%; }
   .world-toolbar { top: 13px; left: 16px; right: 16px; max-width: none; flex-wrap: nowrap; }
   .world-hp { width: auto; flex: 1; text-align: left; margin: 0; font-size: 10px; }
+  /* On a narrow screen the chip shows only while the weapon is new. */
+  .world-status { width: auto; flex: 1; justify-content: flex-start; margin: 0; }
+  .world-gear { font-size: 10px; }
+  .world-gear:not(.new) { display: none; }
+  /* A new gear chip shows on its own line under the buttons, and the Scene title moves down for it. */
+  .world-gear.new { position: absolute; top: calc(100% + 6px); right: 0; max-width: 100%; }
+  .world:has(.world-gear.new) .world-heading { top: 95px; }
   .portal-label { width: 130px; padding: 7px 8px; font-size: 10px; }
   .world-controls { left: 17px; bottom: 14px; max-width: 60%; }
   .world-controls span { display: none; }
@@ -133,7 +154,7 @@ body:not(.spatial-mode) .world-over { position: static; transform: none; width: 
   .world-combat-actions button { padding: 9px; font-size: 11px; flex: 1; }
   .world[data-phase="fight"] .world-touch { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .world-hit, .world-hit::after, .world-event .die.tumble, .world-event .result { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .world-hit, .world-hit::after, .world-event .die.tumble, .world-event .result, .world-event.changeApplied { animation: none !important; } }
 @media (pointer: coarse), (max-width: 760px) {
   .world-touch { position: absolute; bottom: 22px; right: 18px; display: grid; grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(2, 42px); gap: 4px; }
   .world-touch button { border: 1px solid #ece3c150; border-radius: 9px; background: #102030af; color: #eee7cb; touch-action: none; font-size: 20px; }

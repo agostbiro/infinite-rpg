@@ -94,6 +94,29 @@ leaves play unchanged.
 Changes are local to the in-memory playthrough and survive a browser reload. They do not
 overwrite saved adventures. Restarting starts the original adventure again.
 
+## What the Player sees
+
+Installation adds one `changeApplied` Report (`Rpg/Report.lean`). The server makes it from the
+admitted proposal with `Prepared.note` (`Rpg/WorldChange.lean`): the Player's wish, the summary
+and moment, the Character's card and attack level before and after, the requested rules, the
+counter-rules as tuned, and the number of changed Scenes. `Prepared.note_rules` proves that the
+rules in the note are the rules that the change adds. The view (`changeNoteJson` in
+`Rpg/View.lean`) sends the new weapon with its kind (the weapon's JSON name, such as
+`broadsword`), its damage and attack, and the weapon it replaces, by Theme Name. Each entry in
+`worldRules` has an `origin`: `requested`, `counter`, or `adventure` (`ruleOrigin`).
+
+The page plays the new Report as it plays the Reports of an input (`addsChange` in
+`web/change.js`). The 3D tray shows a "World changed" card: "You received: Laser Sabre", its
+numbers, what it replaces, and "The world answers" with each counter-rule in plain words. A
+rule-only change shows "New rule: ..."; a change of Scenes only shows "The road ahead changed",
+with no Scene names. The tray is a live region, so a screen reader reads the change once. A gear
+chip next to the HP and the Gear row of the Character panel say "New" until the next input. The
+weapon shows in the Player's hand in the 3D view (`web/gear.js` picks a shape from the kind and a
+style from words in the name, such as "laser" or "frost"). With reduced motion, nothing animates.
+The change panel says "Your change is in play" and tags each rule as "Your change" or "The
+world's answer". `tests/live_change_applied.py` checks the Report end to end with a recorded
+Laser Sabre change on the built-in Adventure.
+
 ## Balance from the beginning and retries
 
 The checker starts at the updated adventure's starting scene, full initial HP, and turn zero.

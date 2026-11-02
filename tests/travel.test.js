@@ -106,7 +106,7 @@ function rendererHarness(t) {
     pending:false, paused:false, active:true, reducedMotion:{matches:false},
     buildWorld() { this.obstacles = []; },
     buildRoom(view) { builds.push(structuredClone(view)); },
-    combatActions() {}, resize() {}, savePosition() {}, pause() {},
+    combatActions() {}, showGear() {}, resize() {}, savePosition() {}, pause() {},
     onChoose: async input => { sent.push(input); },
   });
   const view = {

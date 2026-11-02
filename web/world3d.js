@@ -4,6 +4,8 @@ import { environmentFor, placeForScene, eventAnchorForScene, worldLayout, scener
 import { arrivalForLayout, planTransition, transitionAt, DEFAULT_PITCH } from './travel.js';
 import { storyTimeline } from './story.js';
 import { hasResultToRead } from './playback.js';
+import { heldWeapon } from './gear.js';
+import { gearChip } from './change.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
@@ -43,6 +45,7 @@ export class SpatialGame {
     this.scene.add(this.lantern);
     this.group = new THREE.Group();
     this.scene.add(this.group);
+    this.installHand();
     this.position = { x: 0, z: 2 };
     this.yaw = 0;
     this.pitch = -0.04;
@@ -175,6 +178,135 @@ export class SpatialGame {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.handCamera.aspect = width / height;
+    this.handCamera.updateProjectionMatrix();
+  }
+
+  /** The weapon in the Player's hand. It is drawn in its own small scene, after the world, on top
+   * of it: so it never cuts into a wall or a person, the lantern does not glare on it, and a click
+   * on the world never hits it. Its camera looks the same way as the Player at all times. */
+  installHand() {
+    this.handScene = new THREE.Scene();
+    this.handCamera = new THREE.PerspectiveCamera(60, 1, 0.01, 10);
+    this.handScene.add(new THREE.HemisphereLight(0xe9f2ff, 0x5b5040, 2.2));
+    const key = new THREE.DirectionalLight(0xffe7c4, 2.6);
+    key.position.set(-1, 2, 1.5);
+    this.handScene.add(key);
+    this.hand = new THREE.Group();
+    this.handScene.add(this.hand);
+    this.heldKey = '';
+    this.handReveal = null;
+  }
+
+  /** The meshes of a held weapon, from `heldWeapon` in gear.js. The weapon's long side is local y,
+   * with the grip at 0. A shape of null gives an empty group: a punch has no weapon to show. */
+  buildHeld(spec) {
+    const group = new THREE.Group();
+    if (!spec.shape) return group;
+    const add = (geometry, material, x, y, z) => {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, y, z);
+      group.add(mesh);
+      return mesh;
+    };
+    const dark = new THREE.MeshStandardMaterial({ color: 0x2c2b2a, roughness: 0.55, metalness: 0.6 });
+    const leather = new THREE.MeshStandardMaterial({ color: 0x5a3a24, roughness: 0.9 });
+    const wood = new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.85 });
+    // A glowing part has a bright core, which ignores light, and a soft halo around it.
+    const core = new THREE.MeshBasicMaterial({ color: new THREE.Color(spec.color).lerp(new THREE.Color(0xffffff), 0.2),
+      toneMapped: false });
+    const halo = new THREE.MeshBasicMaterial({ color: spec.color, transparent: true, opacity: 0.3,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    const steel = new THREE.MeshStandardMaterial({ color: spec.color, roughness: spec.finish === 'ice' ? 0.15 : 0.32,
+      metalness: spec.finish === 'ice' ? 0.1 : 0.75, emissive: spec.finish === 'ice' ? 0x24506a : 0x000000,
+      transparent: spec.finish === 'ice', opacity: spec.finish === 'ice' ? 0.88 : 1 });
+    const glowing = spec.glow;
+    /** A blade of `length` from height `base`: a glowing rod, or a flat blade with a point. */
+    const blade = (base, length, width) => {
+      if (glowing) {
+        add(new THREE.CylinderGeometry(width * 0.3, width * 0.34, length, 12), core, 0, base + length / 2, 0);
+        add(new THREE.CylinderGeometry(width * 0.62, width * 0.66, length * 1.03, 12), halo, 0, base + length / 2, 0);
+        return;
+      }
+      add(new THREE.BoxGeometry(width, length, width * 0.22), steel, 0, base + length / 2, 0);
+      const tip = add(new THREE.ConeGeometry(width * 0.7, width * 2.2, 4), steel, 0, base + length + width * 1.1, 0);
+      tip.rotation.y = Math.PI / 4;
+      tip.scale.z = 0.3;
+    };
+    if (spec.shape === 'sword' || spec.shape === 'knife') {
+      const long = spec.shape === 'sword';
+      const grip = long ? 0.2 : 0.12;
+      add(new THREE.CylinderGeometry(0.017, 0.019, grip, 10), glowing ? dark : leather, 0, 0, 0);
+      add(new THREE.SphereGeometry(0.026, 10, 8), dark, 0, -grip / 2 - 0.012, 0);
+      if (glowing) add(new THREE.CylinderGeometry(0.026, 0.022, 0.035, 12), dark, 0, grip / 2 + 0.012, 0);
+      else add(new THREE.BoxGeometry(long ? 0.17 : 0.09, 0.024, 0.04), dark, 0, grip / 2 + 0.012, 0);
+      blade(grip / 2 + 0.024, long ? 0.78 : 0.26, long ? 0.045 : 0.034);
+    } else if (spec.shape === 'staff' || spec.shape === 'spear') {
+      add(new THREE.CylinderGeometry(0.021, 0.024, 1.7, 10), spec.finish === 'wood' || glowing ? wood : steel, 0, 0.25, 0);
+      if (spec.shape === 'spear') blade(1.1, 0.16, 0.05);
+      else if (glowing) {
+        add(new THREE.SphereGeometry(0.035, 14, 10), core, 0, 1.12, 0);
+        add(new THREE.SphereGeometry(0.07, 14, 10), halo, 0, 1.12, 0);
+      }
+    } else if (spec.shape === 'sprayer') {
+      // A tube that points ahead, with a grip under it and a small flame at the nozzle.
+      add(new THREE.CylinderGeometry(0.028, 0.034, 0.55, 12), dark, 0, 0.2, 0);
+      add(new THREE.BoxGeometry(0.035, 0.05, 0.12), leather, 0, 0.02, -0.07);
+      add(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 14), steel, 0.07, 0.08, 0.02);
+      if (glowing) {
+        add(new THREE.SphereGeometry(0.022, 10, 8), core, 0, 0.5, 0);
+        add(new THREE.SphereGeometry(0.045, 10, 8), halo, 0, 0.5, 0);
+      }
+    }
+    return group;
+  }
+
+  /** Show the weapon of `character` in the hand. A new weapon rises into view, unless the Player
+   * asked for reduced motion. */
+  setHeld(character) {
+    const spec = heldWeapon(character.weaponKind, character.weapon || '');
+    const key = JSON.stringify(spec);
+    if (key === this.heldKey) return;
+    const first = this.heldKey === '';
+    this.heldKey = key;
+    for (const old of [...this.hand.children]) {
+      old.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
+      this.hand.remove(old);
+    }
+    const weapon = this.buildHeld(spec);
+    // Leaning forward and in toward the middle of the view. A sprayer points ahead.
+    if (spec.shape === 'sprayer') weapon.rotation.set(-Math.PI / 2 + 0.12, 0.1, 0);
+    else weapon.rotation.set(-1.05, 0, 0.3);
+    this.hand.add(weapon);
+    this.root.dataset.held = spec.shape ? spec.shape + ':' + spec.finish : 'none';
+    this.handReveal = first || this.reducedMotion?.matches ? null : { started: this.elapsed };
+  }
+
+  /** Place the hand for this frame: a small bob while walking, a rise for a new weapon, and a
+   * swing when the Character attacks. */
+  handFrame(moving, reduced) {
+    const bob = moving && !reduced ? Math.sin(this.elapsed * 11) : 0;
+    let rise = 0;
+    if (this.handReveal) {
+      const t = Math.min(1, (this.elapsed - this.handReveal.started) / 0.8);
+      rise = (1 - t) * (1 - t) * 0.45;
+      if (t >= 1) this.handReveal = null;
+    }
+    let swing = 0;
+    const age = this.effect ? this.elapsed - this.effect.started : 10;
+    if (!reduced && this.effect?.kind === 'attack' && this.effect.data.attacker === null && age < 0.45) {
+      swing = Math.sin(Math.PI * age / 0.45);
+    }
+    // The grip sits low and to the right of the view, at the same place on the screen for every
+    // window shape. A narrow (portrait) view shows a smaller weapon.
+    const depth = 0.9;
+    const halfHeight = depth * Math.tan(THREE.MathUtils.degToRad(this.handCamera.fov / 2));
+    const aspect = this.handCamera.aspect || 1;
+    const x = 0.6 * halfHeight * Math.min(aspect, 1.6);
+    const y = -0.88 * halfHeight;
+    this.hand.scale.setScalar(clamp(0.45 + 0.35 * aspect, 0.6, 1));
+    this.hand.position.set(x + bob * 0.006 - swing * 0.12, y + Math.abs(bob) * 0.012 - rise, -depth - swing * 0.1);
+    this.hand.rotation.set(-swing * 0.9, swing * 0.3, swing * 0.5);
   }
 
   material(color, options = {}) {
@@ -673,12 +805,28 @@ export class SpatialGame {
     $('world-mode').textContent = view.phase === 'fight' ? 'Combat · round ' + view.fight.round
       : view.phase === 'dead' ? 'The Adventure is over' : view.phase === 'ended' ? 'The End' : 'Explore · ' + portals.length + (portals.length === 1 ? ' Choice' : ' Choices');
     $('world-hp').textContent = view.character.name + ' · ' + Math.max(0, view.character.hp) + ' / ' + view.character.maxHP + ' HP';
+    this.showGear(view);
     $('world-loading').hidden = ready;
     this.root.dataset.phase = view.phase;
     this.root.dataset.sceneId = String(view.scene?.id ?? '');
     this.root.dataset.ready = String(ready && !this.pending);
     const ended = ['ended', 'dead'].includes(view.phase) || view.inputs.length === 0;
     document.body.classList.toggle('game-ended', ended);
+  }
+
+  /** The gear chip next to the HP, with a "New" tag while the last Report is a change that gave the
+   * weapon, and the weapon in the hand. */
+  showGear(view) {
+    const chip = gearChip(view.character, view.reports);
+    const box = $('world-gear');
+    box.hidden = false;
+    box.classList.toggle('new', chip.isNew);
+    const tag = document.createElement('span');
+    tag.className = 'new-tag';
+    tag.textContent = 'New';
+    box.replaceChildren(chip.text, ...(chip.isNew ? [' ', tag] : []));
+    this.setHeld(view.character);
+    this.hand.visible = view.phase !== 'dead';
   }
 
   /** Show `text` under the Scene title. With `unfold`, new text appears word by word, like a story
@@ -1004,6 +1152,14 @@ export class SpatialGame {
     }
     this.wasMoving=moving;
     this.renderer.render(this.scene, this.camera);
+    // The hand is drawn last, on top of the world, with the world's depth cleared.
+    this.handFrame(moving, reduced);
+    if (this.hand.visible && this.hand.children.length) {
+      this.renderer.autoClear = false;
+      this.renderer.clearDepth();
+      this.renderer.render(this.handScene, this.handCamera);
+      this.renderer.autoClear = true;
+    }
     if (this.environmentFrameStarted !== undefined) {
       this.root.dataset.environmentFirstFrameMs=(performance.now()-this.environmentFrameStarted).toFixed(2);
       this.environmentFrameStarted=undefined;

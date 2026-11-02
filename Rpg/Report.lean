@@ -22,6 +22,7 @@ deriving instance ToJson for Attribute
 deriving instance ToJson for Skill
 deriving instance ToJson for RollTarget
 deriving instance ToJson for Weapon
+deriving instance ToJson for CombatRule
 
 /-- Who acts in a Fight: `none` is the Character, `some i` is Creature number `i`. -/
 abbrev Actor := Option Nat
@@ -66,6 +67,33 @@ def Being.card (rules : RuleSet) (b : Being) (hp : Int) : Card :=
     equipmentName := (rules.equipmentFor b).map (·.name),
     damage := s!"{(rules.weaponDice b).show} {b.weapon.damageType.name}", dr := rules.dr b }
 
+/-- What the Player sees when the server puts a live change in play. The server makes it from the
+admitted proposal, so it shows the gift and the rules that are now in force. -/
+structure ChangeNote where
+  /-- The Player's own words for the change. -/
+  wish : String
+  /-- The Dungeon Master's summary of the change. -/
+  summary : String
+  /-- The Dungeon Master's dramatic moment for the change. -/
+  moment : String
+  /-- The Character's card before the change. -/
+  before : Card
+  /-- The Character's card after the change. -/
+  after : Card
+  /-- The Character's attack level before the change. -/
+  attackBefore : Int
+  /-- The Character's attack level after the change. -/
+  attackAfter : Int
+  /-- `true` if the change gives the Character new equipment. -/
+  equipment : Bool
+  /-- The effects that the Player asked for. -/
+  requested : List CombatRule
+  /-- The counter-rules: the world's answer to the change. -/
+  counter : List CombatRule
+  /-- The number of Scenes that the change adds or replaces. -/
+  scenes : Nat
+  deriving ToJson, BEq
+
 /-- One thing the Engine did or found out during play. -/
 inductive Report where
   /-- The Character comes to a Scene. `ending` is true if the Scene is an Ending. -/
@@ -103,8 +131,10 @@ inductive Report where
   | fightWon
   /-- The Character died. The Adventure is over, but this is not an Ending. -/
   | died (who : String)
-  /-- An adventure rule fires, or an admitted world change is announced. -/
+  /-- An adventure rule fires in a Fight. -/
   | worldRule (name : String) (text : String)
+  /-- The server put a live change in play. -/
+  | changeApplied (note : ChangeNote)
   /-- The Engine refused an input. Nothing changed. -/
   | rejected (why : String)
   deriving ToJson, BEq
@@ -113,5 +143,16 @@ inductive Report where
 def Report.isRejected : Report → Bool
   | .rejected _ => true
   | _ => false
+
+/-- Where an active combat rule comes from. "requested" means that a live change added it because
+the Player asked for it. "counter" means that a live change added it as the world's answer.
+"adventure" means that the Adventure had it from the start. -/
+def ruleOrigin (reports : Array Report) (r : CombatRule) : String :=
+  let notes := reports.filterMap fun
+    | .changeApplied n => some n
+    | _ => none
+  if notes.any (·.requested.contains r) then "requested"
+  else if notes.any (·.counter.contains r) then "counter"
+  else "adventure"
 
 end Rpg

@@ -62,6 +62,7 @@ def characterJson (rules : RuleSet) (th : ThemeNames) (b : Being) (hp : Int) : J
     hp: $(hp), maxHP: $(rules.maxHP b), dodge: $(rules.dodge b), speed: $(speedText rules b),
     skills: $(b.skills.map fun (s, l) => json% { name: $(th.skill s), level: $(l) }),
     weapon: $(weaponText rules th b),
+    weaponKind: $(b.weapon),
     damage: $(damageText rules b),
     attack: $(rules.weaponLevel b),
     armor: $(th.armorName b.armor), dr: $(rules.dr b)
@@ -76,11 +77,34 @@ def fighterJson (rules : RuleSet) (th : ThemeNames) (who : Actor) (f : Fighter) 
     attack: $(rules.weaponLevel f.being), dodge: $(f.dodge rules), dr: $(rules.dr f.being)
   }
 
+/-- The name of a card's weapon that the Player sees: the equipment name, else the Theme Name. -/
+def Card.weaponName (th : ThemeNames) (c : Card) : String :=
+  c.equipmentName.getD (th.weapon c.weapon)
+
 /-- A card at the start of a Fight, with the weapon's Theme Name. -/
 def cardJson (th : ThemeNames) (c : Card) : Json :=
   json% {
-    name: $(c.name), hp: $(c.hp), maxHP: $(c.maxHP), weapon: $(c.equipmentName.getD (th.weapon c.weapon)),
+    name: $(c.name), hp: $(c.hp), maxHP: $(c.maxHP), weapon: $(c.weaponName th),
     damage: $(c.damage), dr: $(c.dr)
+  }
+
+/-- The new equipment of a live change, or `null` if the change gives none. `kind` is the weapon
+type, such as "broadsword", so the page can draw it. `was` is the weapon it replaces. -/
+def changeGearJson (th : ThemeNames) (n : ChangeNote) : Json :=
+  if n.equipment then
+    json% {
+      name: $(n.after.weaponName th), damage: $(n.after.damage), attack: $(n.attackAfter),
+      kind: $(n.after.weapon),
+      was: { name: $(n.before.weaponName th), damage: $(n.before.damage), attack: $(n.attackBefore) }
+    }
+  else Json.null
+
+/-- A live change as the page gets it, with Theme Names. -/
+def changeNoteJson (th : ThemeNames) (n : ChangeNote) : Json :=
+  json% {
+    wish: $(n.wish), summary: $(n.summary), moment: $(n.moment),
+    equipment: $(changeGearJson th n),
+    requested: $(n.requested), counter: $(n.counter), scenes: $(n.scenes)
   }
 
 /-- A Report as the page gets it. A roll names its skill and an attack names its weapon by the
@@ -98,6 +122,7 @@ def reportJson (th : ThemeNames) : Report → Json
       roll: $(roll) } }
   | .fightStarts hero foes =>
     json% { fightStarts: { hero: $(cardJson th hero), foes: $(foes.map (cardJson th)) } }
+  | .changeApplied n => json% { changeApplied: $(changeNoteJson th n) }
   | r => toJson r
 
 /-- Preview conditional effects of a maneuver against at least one living opponent. -/
@@ -182,5 +207,45 @@ private def testThemes : ThemeNames :=
 #guard
   let r := Report.successRoll "Mara" (.skill .broadsword) 0 ⟨[1, 2, 3], 6, 14, .success⟩
   (reportJson testThemes r).getObjValD "successRoll" |>.getObjValD "what" == Json.str "Wand Duelling"
+
+-- The view names a weapon by its JSON key, such as "largeKnife", so the page can draw its shape.
+#guard toJson Weapon.largeKnife == Json.str "largeKnife"
+#guard toJson Weapon.quarterstaff == Json.str "quarterstaff"
+
+/-- A test card for Mara: before a change, with a plain broadsword. -/
+private def plainCard : Card :=
+  { name := "Mara", hp := 9, maxHP := 11, weapon := .broadsword, damage := "1d+1 cutting", dr := 0 }
+
+/-- A test change note: a Laser Sabre, one requested rule, and one counter-rule. -/
+private def sabreNote : ChangeNote :=
+  { wish := "Give me a laser sabre", summary := "A sabre of light.", moment := "Foes rally.",
+    before := plainCard,
+    after := { plainCard with equipmentName := some "Laser Sabre", damage := "2d cutting" },
+    attackBefore := 13, attackAfter := 14, equipment := true,
+    requested := [], counter := [corneredFury], scenes := 0 }
+
+-- The note shows the new weapon by name, its kind and numbers, and the weapon it replaces by its
+-- Theme Name.
+#guard
+  let gear := (reportJson testThemes (.changeApplied sabreNote)).getObjValD "changeApplied"
+    |>.getObjValD "equipment"
+  gear.getObjValD "name" == Json.str "Laser Sabre" && gear.getObjValD "kind" == Json.str "broadsword" &&
+    gear.getObjValD "damage" == Json.str "2d cutting" && gear.getObjValD "attack" == toJson (14 : Int) &&
+    (gear.getObjValD "was").getObjValD "name" == Json.str "Sting" &&
+    (gear.getObjValD "was").getObjValD "attack" == toJson (13 : Int)
+
+-- A change with no equipment sends `null`. The rules come with their numbers.
+#guard
+  let note := (reportJson {} (.changeApplied { sabreNote with equipment := false })).getObjValD "changeApplied"
+  note.getObjValD "equipment" == Json.null && note.getObjValD "wish" == Json.str "Give me a laser sabre" &&
+    note.getObjValD "counter" == Json.arr #[toJson corneredFury] &&
+    note.getObjValD "requested" == Json.arr #[] && note.getObjValD "scenes" == toJson (0 : Nat)
+
+-- A rule is tagged by the change that added it. A rule of the Adventure has no change.
+#guard
+  let gift : CombatRule := { committedStrike with name := "Laser Focus" }
+  let reports := #[Report.picked "Go", .changeApplied { sabreNote with requested := [gift] }]
+  ruleOrigin reports gift == "requested" && ruleOrigin reports corneredFury == "counter" &&
+    ruleOrigin reports guardFeint == "adventure" && ruleOrigin #[] corneredFury == "adventure"
 
 end Rpg

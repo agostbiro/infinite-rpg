@@ -836,12 +836,13 @@ def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState
       endJob ref job .failed { text := "Something went wrong.", errors := [toString e] }
   return true
 
-/-- Install only a source-bound admitted adventure. The original session dice and log stay. -/
+/-- Install only a source-bound admitted adventure. The original session dice and log stay. A
+`changeApplied` Report tells the Player what the change put in play. -/
 def applyChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
     (seed : Nat) (delta : Rat) (_accepted : WorldChange.Admission p seed delta) : IO Unit := do
   ref.modify fun s =>
     if s.gen.job != job || s.gen.state != .running then s else
-    let report := Report.worldRule "The world answers" (p.proposal.summary ++ " " ++ p.proposal.moment)
+    let report := Report.changeApplied (p.note s.gen.wish)
     { s with
       session := { s.session with game := p.game, reports := s.session.reports.push report }
       source := { s.source with environment := s.source.environment.map p.proposal.map }
@@ -1138,7 +1139,9 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "builtin" builtinCard.toJson
     |>.setObjVal! "environment" (toJson s.source.environment)
     |>.setObjVal! "canChange" (toJson (WorldChange.available g.game))
-    |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map WorldChange.ruleJson))
+    -- Each rule says where it comes from: the Adventure, or the request or answer of a change.
+    |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map fun r =>
+      (WorldChange.ruleJson r).setObjVal! "origin" (toJson (ruleOrigin g.reports r))))
   return v.compress
 
 /-! ## Responses -/

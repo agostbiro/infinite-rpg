@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../web/vendor/three.module.js';
 import { SpatialGame } from '../web/world3d.js';
+import { heldWeapon } from '../web/gear.js';
 
 // Build the real ground of a world, without a WebGL renderer.
 function terrainFor(environment) {
@@ -41,4 +42,24 @@ test('river water stays below every trail and place pad that it passes under, at
     }
     assert.ok(crossings > 0);
   }
+});
+
+// The weapon in the hand is built from the shape that gear.js picks, out of simple meshes.
+test('a held Laser Sabre has a glowing blade, and a plain broadsword has none', () => {
+  const game = Object.create(SpatialGame.prototype);
+  const glows = group => {
+    const found = [];
+    group.traverse(o => { if (o.isMesh && o.material.isMeshBasicMaterial) found.push(o); });
+    return found;
+  };
+  const sabre = game.buildHeld(heldWeapon('broadsword', 'Laser Sabre'));
+  const plain = game.buildHeld(heldWeapon('broadsword', 'Broadsword'));
+  assert.ok(glows(sabre).length >= 2);
+  assert.equal(glows(plain).length, 0);
+  assert.ok(plain.children.length >= 4);
+  // The blade points up from the grip, and the sword is under 1.2 m long.
+  const size = new THREE.Box3().setFromObject(sabre).getSize(new THREE.Vector3());
+  assert.ok(size.y > 0.7 && size.y < 1.2, String(size.y));
+  // Fists show no weapon.
+  assert.equal(game.buildHeld(heldWeapon('punch', 'fists')).children.length, 0);
 });

@@ -135,6 +135,43 @@ example : safeRetries.falseAcceptance 0 ≤ confidenceDelta := safeRetries.balan
     p.game.rules.weaponLevel p.game.hero == 12 &&
     (p.game.rules.weaponDice p.game.hero).count == 3
 
+-- The note of a grant shows the old and the new weapon at the HP of now, and the admitted rules.
+#guard match proposal.prepare { roadGame with hp := 7 } with
+  | .error _ => false
+  | .ok p =>
+    let n := p.note "Give me a flamethrower"
+    n.wish == "Give me a flamethrower" && n.summary == proposal.summary && n.equipment &&
+      n.before.weapon == roadGame.hero.weapon && n.before.equipmentName == none &&
+      n.after.weapon == .flamethrower && n.after.equipmentName == some "Stormglass Flamethrower" &&
+      n.after.damage == "3d burning" && n.before.hp == 7 && n.after.hp == 7 &&
+      n.attackBefore == roadGame.rules.weaponLevel roadGame.hero && n.attackAfter == 12 &&
+      n.requested == [] && n.counter == [fury, shelter] && n.scenes == 0
+
+-- The note's JSON names the new weapon, its kind, and the weapon it replaces.
+#guard match proposal.prepare roadGame with
+  | .error _ => false
+  | .ok p =>
+    let th := p.game.adventure.themes
+    let gear := (reportJson th (.changeApplied (p.note "flame"))).getObjValD "changeApplied"
+      |>.getObjValD "equipment"
+    gear.getObjValD "name" == Lean.Json.str "Stormglass Flamethrower" &&
+      gear.getObjValD "kind" == Lean.Json.str "flamethrower" &&
+      (gear.getObjValD "was").getObjValD "name" == Lean.Json.str (th.weapon roadGame.hero.weapon)
+
+-- A rule-only change gives no equipment, keeps the weapon, and lists the requested rule.
+#guard match ironSkin.prepare roadGame with
+  | .error _ => false
+  | .ok p =>
+    let n := p.note "Give me iron skin"
+    !n.equipment && n.before == n.after && n.requested.map (·.name) == ["Iron Skin"] &&
+      ruleOrigin #[.changeApplied n] (n.requested.headD fury) == "requested" &&
+      ruleOrigin #[.changeApplied n] fury == "counter"
+
+-- The page reads a rule from the note with the same fields as `ruleJson`.
+#guard Lean.toJson fury == ruleJson fury && Lean.toJson shelter == ruleJson shelter
+-- The weapon kind in the view is the JSON name of the weapon (`Weapon.key`).
+#guard Weapon.all.all fun w => Lean.toJson w == Lean.Json.str w.key
+
 -- An active Fight retains both sides' wounds, last maneuvers, round, and order.
 #guard match proposal.prepare fightGame with
   | .error _ => false
