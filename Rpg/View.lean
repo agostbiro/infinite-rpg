@@ -48,12 +48,12 @@ def withWeaponText (th : ThemeNames) (w : Weapon) : String :=
   | none => if w = .punch then "with bare fists" else s!"with a {w.name}"
 
 /-- The damage of a being's weapon as text, such as "1d+2 cutting". -/
-def damageText (rules : RuleSet) (b : Being) : String :=
-  s!"{(rules.weaponDice b).show} {b.weapon.damageType.name}"
+def damageText (rules : RuleSet) (isHero : Bool) (b : Being) : String :=
+  s!"{(rules.weaponDice isHero b).show} {b.weapon.damageType.name}"
 
 /-- Local equipment names apply to their owner, without renaming other beings' weapons. -/
-def weaponText (rules : RuleSet) (th : ThemeNames) (b : Being) : String :=
-  ((rules.equipmentFor b).map (·.name)).getD (th.weapon b.weapon)
+def weaponText (rules : RuleSet) (th : ThemeNames) (isHero : Bool) (b : Being) : String :=
+  ((rules.equipmentFor isHero b).map (·.name)).getD (th.weapon b.weapon)
 
 /-- The Character panel: attributes, skills, Gear, and HP. Names are Theme Names. -/
 def characterJson (rules : RuleSet) (th : ThemeNames) (b : Being) (hp : Int) : Json :=
@@ -61,9 +61,9 @@ def characterJson (rules : RuleSet) (th : ThemeNames) (b : Being) (hp : Int) : J
     name: $(b.name), st: $(b.st), dx: $(b.dx), iq: $(b.iq), ht: $(b.ht),
     hp: $(hp), maxHP: $(rules.maxHP b), dodge: $(rules.dodge b), speed: $(speedText rules b),
     skills: $(b.skills.map fun (s, l) => json% { name: $(th.skill s), level: $(l) }),
-    weapon: $(weaponText rules th b),
-    damage: $(damageText rules b),
-    attack: $(rules.weaponLevel b),
+    weapon: $(weaponText rules th true b),
+    damage: $(damageText rules true b),
+    attack: $(rules.weaponLevel true b),
     armor: $(th.armorName b.armor), dr: $(rules.dr b)
   }
 
@@ -71,9 +71,9 @@ def characterJson (rules : RuleSet) (th : ThemeNames) (b : Being) (hp : Int) : J
 def fighterJson (rules : RuleSet) (th : ThemeNames) (who : Actor) (f : Fighter) : Json :=
   json% {
     actor: $(who), name: $(f.being.name), hp: $(f.hp), maxHP: $(rules.maxHP f.being),
-    alive: $(f.alive), maneuver: $(f.maneuver.label), weapon: $(weaponText rules th f.being),
-    damage: $(damageText rules f.being),
-    attack: $(rules.weaponLevel f.being), dodge: $(f.dodge rules), dr: $(rules.dr f.being)
+    alive: $(f.alive), maneuver: $(f.maneuver.label), weapon: $(weaponText rules th who.isNone f.being),
+    damage: $(damageText rules who.isNone f.being),
+    attack: $(rules.weaponLevel who.isNone f.being), dodge: $(f.dodge rules), dr: $(rules.dr f.being)
   }
 
 /-- A card at the start of a Fight, with the weapon's Theme Name. -/

@@ -61,10 +61,10 @@ structure Card where
   deriving ToJson, BEq
 
 /-- The card of a being with `hp` HP, under `rules`. -/
-def Being.card (rules : RuleSet) (b : Being) (hp : Int) : Card :=
+def Being.card (rules : RuleSet) (b : Being) (isHero : Bool) (hp : Int) : Card :=
   { name := b.name, hp, maxHP := rules.maxHP b, weapon := b.weapon,
-    equipmentName := (rules.equipmentFor b).map (·.name),
-    damage := s!"{(rules.weaponDice b).show} {b.weapon.damageType.name}", dr := rules.dr b }
+    equipmentName := (rules.equipmentFor isHero b).map (·.name),
+    damage := s!"{(rules.weaponDice isHero b).show} {b.weapon.damageType.name}", dr := rules.dr b }
 
 /-- One thing the Engine did or found out during play. -/
 inductive Report where

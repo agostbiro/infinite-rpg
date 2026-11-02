@@ -21,7 +21,23 @@
     "Verified.exactExpectation_eq_fast",
     "Verified.live_change_policy",
     "Verified.default_policy",
-    "Verified.draft_game_policy"
+    "Verified.draft_game_policy",
+    "Verified.combat_almostSurely",
+    "Verified.combat_highProbability",
+    "Verified.combat_outcome_error",
+    "Verified.admitted_combats",
+    "Verified.runtime_initialized",
+    "Verified.runtime_preserved",
+    "Verified.runtime_progress",
+    "Verified.hp_nonincreasing",
+    "Verified.generated_graph_valid",
+    "Verified.live_change_runtime",
+    "Verified.admitted_noShortLoops",
+    "Verified.combat_full_dice"
   ],
-  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
 }

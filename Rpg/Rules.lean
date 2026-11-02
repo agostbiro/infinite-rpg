@@ -438,6 +438,11 @@ inductive Maneuver where
   | allOutDefense
   deriving Repr, DecidableEq
 
+/-- All maneuvers, shared by play, simulation, and the ideal player policy. -/
+def maneuverMenu : List Maneuver := [.attack, .allOutAttack, .allOutDefense]
+
+theorem Maneuver.mem_menu (m : Maneuver) : m ∈ maneuverMenu := by cases m <;> decide
+
 /-- `true` if the maneuver includes an attack. -/
 def Maneuver.attacks : Maneuver → Bool
   | .allOutDefense => false

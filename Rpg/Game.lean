@@ -123,8 +123,4 @@ def Phase.name : Phase → String
   | .ended _ => "ended"
   | .dead _ => "dead"
 
-/-- The numbers of the Creatures in a Fight that are alive. -/
-def FightState.livingFoes (s : FightState) : List Nat :=
-  (List.range s.foes.length).filter fun i => (s.foes[i]?.map (·.alive)).getD false
-
 end Rpg

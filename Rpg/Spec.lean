@@ -4,7 +4,7 @@ import Rpg.Adventure
 # Spec: what makes an Adventure legal
 
 This file is the spec. Read it to know what "legal" means.
-The checker in `Rpg/Check.lean` is proved to agree with it.
+The checker in `Rpg/Check.lean` is proved sound against this specification.
 
 Each Adventure has its own rules, a `RuleSet` (see `Rpg/RuleSet.lean`). Every definition here
 takes that value as `rules`. The numbers below are the defaults (`{}`), which every Adventure
@@ -19,7 +19,8 @@ A Legal Adventure obeys these rules:
    With the default rules, both results can then happen, so both Scenes that the roll leads to can be reached in play.
 3. Every Scene that a Choice leads to exists, and so does the start Scene. No two Scenes share a number.
 4. At least one Scene is an Ending (it has no Choices).
-5. Every Fight can end: for each Creature, the Character can hurt it, or it can hurt the Character.
+5. Every Fight passes a conservative damage-possibility screen: for each Creature,
+   the Character can hurt it, or it can hurt the Character.
    "Can hurt" means: the attack level is 3 or more, and some dice results give a hit
    that gets past Dodge and DR and does injury.
    A Fight must also have at least one Creature.
@@ -27,12 +28,16 @@ A Legal Adventure obeys these rules:
 7. From every Scene, an Ending can be reached by following Choices.
    Each Scene that an Outcome can lead to counts, whatever the dice do.
 
-These rules do not say that the Adventure is balanced or can be won.
+These static rules do not prove combat termination, balance, or that the Adventure can be won.
+Admission additionally requires `CertifiedAdventureCombat`: every encounter at every entry HP
+has checked probability-one termination and outcome equations under independent fair dice
+and the uniform combat policy. It is defined in `Probability/AdventureCertificate.lean`.
 For example, a Fight that the Character cannot win is legal.
 Rule 7 ignores the dice and the Fights. It does not say that the Character lives to reach an Ending.
 Balance is a separate check that runs before play (see `Rpg/Probability/StatisticalAdmission.lean`).
 
-The Character must be a legal build too: attributes from 7 to 14, exactly 100 points, no natural DR.
+The Character must be a legal build too: attributes from 7 to 14, exactly 100 points, no natural DR,
+and strictly positive maximum HP, so that a new game starts alive.
 
 Rules 1, 2, and 4 to 7, and the point caps, are design rules of this game, not GURPS rules.
 They put limits on Creatures and rolls. They do not stop a strong Creature:
@@ -71,14 +76,19 @@ def LegalCharacter (rules : RuleSet) (c : Being) : Prop :=
   -- Its ST is high enough for its weapon.
   rules.minST c.weapon ≤ c.st ∧
   -- Its natural DR is at most the limit (default 0, so no natural DR).
-  c.naturalDR ≤ rules.characterNaturalDRLimit
+  c.naturalDR ≤ rules.characterNaturalDRLimit ∧
+  -- A new game must start with a living Character, including with custom HP rules.
+  0 < rules.maxHP c
 
-/-- A Fight between the Character and a Creature can end: one of them can hurt the other. -/
-def FightCanEnd (rules : RuleSet) (c foe : Being) : Prop :=
-  rules.canHurt c foe ∨ rules.canHurt foe c
+theorem LegalCharacter.hp_pos {rules : RuleSet} {c : Being} (h : LegalCharacter rules c) :
+    0 < rules.maxHP c := h.2.2.2.2.2
 
-instance (rules : RuleSet) (c foe : Being) : Decidable (FightCanEnd rules c foe) := by
-  unfold FightCanEnd; infer_instance
+/-- A cheap conservative damage screen, not a combat termination theorem. -/
+def DamagePossible (rules : RuleSet) (c foe : Being) : Prop :=
+  rules.canHurt true c foe ∨ rules.canHurt false foe c
+
+instance (rules : RuleSet) (c foe : Being) : Decidable (DamagePossible rules c foe) := by
+  unfold DamagePossible; infer_instance
 
 /-- The Character `c` can try a Success Roll against `t` at modifier `m`:
 `c` can use the skill, and the effective skill is at least the minimum (default 3, p. 2).
@@ -138,23 +148,34 @@ def LegalOutcome (rules : RuleSet) (c : Being) (a : Adventure) (o : Outcome) : P
   (match o with
     | .fight fs _ => fs ≠ []
     | _ => True) ∧
-  -- Every Creature is a legal build, and the Fight against it can end.
-  (∀ f ∈ o.foes, LegalCreature rules f ∧ FightCanEnd rules c f)
+  -- Every Creature is a legal build and passes the damage screen.
+  (∀ f ∈ o.foes, LegalCreature rules f ∧ DamagePossible rules c f)
 
 /-- An Adventure is legal for the Character `c`, under `rules`. -/
-def LegalAdventure (rules : RuleSet) (c : Being) (a : Adventure) : Prop :=
+structure LegalAdventure (rules : RuleSet) (c : Being) (a : Adventure) : Prop where
   -- The start Scene exists.
-  SceneExists a a.start ∧
+  start_exists : SceneExists a a.start
   -- No two Scenes share a number.
-  (a.scenes.map (·.id)).Nodup ∧
-  -- At least one Scene is an Ending.
-  (∃ s ∈ a.scenes, s.choices = []) ∧
+  ids_unique : (a.scenes.map (·.id)).Nodup
   -- Every Choice in every Scene is legal.
-  (∀ s ∈ a.scenes, ∀ ch ∈ s.choices, LegalOutcome rules c a ch.outcome) ∧
+  outcomes : ∀ s ∈ a.scenes, ∀ ch ∈ s.choices, LegalOutcome rules c a ch.outcome
   -- Every Scene can be reached from the start Scene.
-  (∀ s ∈ a.scenes, Reachable a s.id) ∧
+  reachable : ∀ s ∈ a.scenes, Reachable a s.id
   -- From every Scene, an Ending can be reached.
-  (∀ s ∈ a.scenes, ReachesEnding a s.id)
+  reachesEnding : ∀ s ∈ a.scenes, ReachesEnding a s.id
+
+/-- An ending witness follows from any route to an ending. -/
+theorem ReachesEnding.hasEnding {a : Adventure} {id : SceneId} (h : ReachesEnding a id) :
+    ∃ s ∈ a.scenes, s.choices = [] := by
+  induction h with
+  | ending h => obtain ⟨s, hs, _, he⟩ := h; exact ⟨s, hs, he⟩
+  | next _ _ ih => exact ih
+
+/-- Ending existence is derived; the checker retains its useful dedicated diagnostic. -/
+theorem LegalAdventure.hasEnding {rules : RuleSet} {c : Being} {a : Adventure}
+    (h : LegalAdventure rules c a) : ∃ s ∈ a.scenes, s.choices = [] := by
+  obtain ⟨s, hs, _⟩ := List.mem_map.mp h.start_exists
+  exact (h.reachesEnding s hs).hasEnding
 
 /-- An Adventure with its rules and its Character, and the proofs that both are legal under
 those rules. Play and the balance check both start from this one record. -/

@@ -101,7 +101,7 @@ theorem barren_hill_legal : LegalAdventure rules lafayette barrenHill :=
 /-- Rule 7 holds for the built-in Adventure: from every Scene, an Ending can be reached. -/
 theorem barren_hill_reaches_ending :
     ∀ s ∈ barrenHill.scenes, ReachesEnding barrenHill s.id :=
-  barren_hill_legal.2.2.2.2.2
+  barren_hill_legal.reachesEnding
 
 /-- Rule 7 by hand, for one Scene: from Across the Schuylkill (Scene 10), the Fight with the
 dragoon leads to the Ending The Rear Guard Holds (Scene 11). -/

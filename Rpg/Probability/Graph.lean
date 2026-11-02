@@ -1,10 +1,10 @@
-import Rpg.Probability.Combat
+import Rpg.Probability.CombatCertificate
 import Rpg.Game
 
 /-!
 An adventure and a character determine one graph. One turn is one scene choice,
 including its entire fight. Scene states retain HP; terminal success, death,
-and nonterminating combat are distinct. The dice model is independent fair d6,
+and combat-certification failure are distinct. The dice model is independent fair d6,
 not a claim that the finite seeded PRNG is an IID source.
 -/
 namespace Rpg.Probability
@@ -44,7 +44,8 @@ def outcomeEdges (rules : RuleSet) (hero : Being) (a : Adventure) (hp : Int) : O
     let p := rollProbability rules hero target modifier
     ⟨[(arrive a onSuccess hp, p), (arrive a onFailure hp, 1 - p)]⟩
   | .fight foes onWin =>
-    (combatDistribution rules hero hp foes).bind fun result => pure (match result with
+    (checkedCombat rules (turnOrder rules hero foes)
+      {hero := {being := hero, hp}, foes := foes.map fun f => {being := f, hp := rules.maxHP f}}).bind fun result => pure (match result with
       | .won remaining => arrive a onWin remaining
       | .died => .dead
       | .stalled => .stalled)
@@ -75,7 +76,7 @@ def Graph.deadBy (g : Graph) (n : Nat) : Rat :=
 def Graph.endedBy (g : Graph) (n : Nat) : Rat :=
   (g.after n).mass fun node => decide (node = .ended)
 
-/-- Probability of remaining in play; a stalled fight never terminates. -/
+/-- Probability of remaining active in this graph; unverified combat stays stalled. -/
 def Graph.activeAt (g : Graph) (n : Nat) : Rat :=
   (g.after n).mass fun node => match node with
     | .scene _ _ | .stalled | .resuming => true
@@ -89,7 +90,7 @@ inductive ResumePoint where
 /-- Resolve the unfinished round, then the remaining full rounds with exact odds. -/
 def remainingCombat (rules : RuleSet) (f : FightPhase) : Distribution CombatResult :=
   let next := (Prod.fst <$> remainingRoundWith (attackDistribution rules) heroPolicy f.order f.state).collect
-  (next.bind fun s => (solveCombat rules heroPolicy f.order s).run' []).collect
+  (next.bind fun s => checkedCombat rules f.order s).collect
 
 /-- The continuation graph starts at the saved HP and position, including a paused Fight. -/
 def continuationGraph (a : AdventureDefinition) (point : ResumePoint) : Graph :=

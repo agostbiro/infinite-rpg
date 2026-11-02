@@ -349,15 +349,19 @@ def liveCandidate (defn : AdventureDefinition) : Probability.StatisticalCandidat
   policy := Probability.defaultPolicy
 
 /-- A Game from a Draft that this build of the server already admitted: it runs the size limits and
-the checker again, but not the balance check. Use it only when a saved verdict for this exact
+the checker and combat certificates again, but not the balance check. Use it only when a saved verdict for this exact
 text and this build says that the Draft passed both checks (see `loadSaved` in `Main.lean`).
 The Game gets the default curve. -/
 def Draft.toGameAdmitted (d : Draft) : Except (List String) Game :=
-  d.checked.map (Game.new · Probability.defaultPolicy)
+  d.checked.bind fun defn =>
+    match Probability.certifyAdventureCombat defn with
+    | some _ => .ok (Game.new defn Probability.defaultPolicy)
+    | none => .error ["combat: termination or outcome equations could not be verified"]
 
 /-- **The only way in this code from a Draft to a Game that runs the balance check.** It runs the
 checker, then the balance check with `validationGames` games from `seed`, against the default
-curve. If both pass, it returns the Game, with that policy. Else it returns the errors.
+curve, then independently verifies combat termination and outcome certificates.
+If all checks pass, it returns the Game with that policy. Else it returns the errors.
 Each balance error starts with "balance:" and names the row that failed. -/
 def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
   match d.checked with
@@ -415,14 +419,14 @@ theorem Draft.toGameAdmitted_policy {d : Draft} {g : Game}
     g.policy = Probability.defaultPolicy := by
   unfold Draft.toGameAdmitted at h
   cases hc : d.checked with
-  | error e =>
-    rw [hc] at h
-    simp [Except.map] at h
+  | error e => simp [hc, Except.bind] at h
   | ok defn =>
-    rw [hc] at h
-    simp only [Except.map, Except.ok.injEq] at h
-    rw [← h]
-    rfl
+    simp only [hc, Except.bind] at h
+    split at h
+    · simp only [Except.ok.injEq] at h
+      rw [← h]
+      rfl
+    · simp at h
 
 /-- How the points of a being add up, such as "ST 11: 10, DX 12: 40, ... Total: 100". The DM
 gets this with the errors, so it can fix a build. -/
@@ -578,9 +582,13 @@ def fixtureWithDifficulty : String :=
 #guard match Draft.parse fixtureWithDifficulty with
   | .ok d => (d.toJson.getObjVal? "difficulty").toOption.isNone
   | .error _ => false
--- A Game from an admitted Draft has the default curve.
+-- Exercise the fast load on a small, fight-free admitted definition. The theorem above
+-- covers the policy of every successful fast load; combat fixtures live in AdmissionTests.
 #guard match Draft.parse fixtureWithDifficulty with
-  | .ok d => (d.toGameAdmitted.toOption.map (·.policy)) == some Probability.defaultPolicy
+  | .ok d =>
+    let story := { d.adventure with scenes := [
+      { id := 0, title := "End", text := "", choices := [] }] }
+    (({ d with adventure := story } : Draft).toGameAdmitted.toOption.map Game.policy) == some Probability.defaultPolicy
   | .error _ => false
 
 -- The balance check uses the default curve. On turn 6 the allowed range is 7.1% to 47.1%.

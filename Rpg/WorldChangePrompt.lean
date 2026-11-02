@@ -9,7 +9,7 @@ open Lean Probability Probability.Confidence
 
 /-- The JSON representation of an active combat rule. -/
 def ruleJson (r : CombatRule) : Json := json% {
-  name: $(r.name), description: $(r.description), side: $(r.side), trigger: $(r.trigger),
+  name: $(r.name), description: $(r.description), side: $(r.side.key), trigger: $(r.trigger.key),
   hitBonus: $(r.hitBonus), damageBonus: $(r.damageBonus), armorBonus: $(r.armorBonus) }
 
 /-- The JSON representation of an equipment profile, without a caller-controlled owner. -/
@@ -18,7 +18,7 @@ def equipmentJson (e : EquipmentRule) : Json := json% {
 
 /-- Both requested effects and counter-rules use the same verified rule language. -/
 def combatRuleSchema : Json := objSchema [
-  ("name", strSchema), ("description", strSchema), ("side", enumSchema ["hero", "foes"]),
+  ("name", strSchema), ("description", strSchema), ("side", enumSchema (CombatSide.all.map CombatSide.key)),
   ("trigger", enumSchema combatTriggers), ("hitBonus", intSchema),
   ("damageBonus", intSchema), ("armorBonus", intSchema)]
 

@@ -1,20 +1,21 @@
 import Rpg.Live
-import Rpg.Adventures.TestAdventure
+import Rpg.Probability.TestStory
 
 /-!
 # Examples for the Draft theorems
 
 The Comparator theorem `draft_game_policy` has premises of the form `d.toGameAdmitted = .ok g`.
-This file shows a Draft that meets that premise: the test Adventure with its Character.
+This file shows a small Draft that meets that premise. Stochastic fight admission is exercised
+separately in `AdmissionTests`, so this kernel example does not solve a large fight.
 -/
 
 namespace Rpg
 
-/-- The test Adventure and Mara as a Draft, as a Wish reply could give them. -/
+/-- The safe test story and Mara as a Draft, as a Wish reply could give them. -/
 def testDraft : Draft :=
-  { adventure := TestAdventure.testAdventure, hero := TestAdventure.mara, background := "" }
+  { adventure := Probability.TestStory.safeStory, hero := TestAdventure.mara, background := "" }
 
-/-- The test Draft passes the size limits, the checker, and the short-loop check. -/
+/-- The test Draft passes the size limits, legality, short-loop, and combat certificate checks. -/
 theorem testDraft_admitted_ok : testDraft.toGameAdmitted.isOk = true := by
   decide +kernel
 

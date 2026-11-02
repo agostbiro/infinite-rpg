@@ -19,7 +19,7 @@ def cheatGiantJagers : Adventure := withScene
   { id := 9, title := "Ambush at Matson's Ford", text := "",
     choices := [{ text := "Fight the jägers", outcome := .fight [{ jager 1 with st := 40 }] 10 }] }
 
-example : ¬ LegalAdventure rules lafayette cheatGiantJagers := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules lafayette cheatGiantJagers := fun h => absurd h.outcomes (by decide)
 example : check rules lafayette cheatGiantJagers ≠ [] := by decide
 
 /-- Cheat 2: the road to the ford leads to a Scene that does not exist. -/
@@ -27,7 +27,7 @@ def cheatLostRoad : Adventure := withScene
   { id := 7, title := "The Road to Matson's Ford", text := "",
     choices := [{ text := "March the men straight down to the ford", outcome := .goto 99 }] }
 
-example : ¬ LegalAdventure rules lafayette cheatLostRoad := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules lafayette cheatLostRoad := fun h => absurd h.outcomes (by decide)
 example : check rules lafayette cheatLostRoad ≠ [] := by decide
 
 /-- Cheat 3: the militia captain is won over at Diplomacy +15, far beyond the limit of +10. -/
@@ -35,7 +35,7 @@ def cheatEasyCaptain : Adventure := withScene
   { id := 1, title := "The Militia Camp", text := "",
     choices := [{ text := "Ask him", outcome := .roll (.skill .diplomacy) 15 2 3 }] }
 
-example : ¬ LegalAdventure rules lafayette cheatEasyCaptain := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules lafayette cheatEasyCaptain := fun h => absurd h.outcomes (by decide)
 example : check rules lafayette cheatEasyCaptain ≠ [] := by decide
 
 /-- Cheat 4: a roll that Lafayette can never make. His Stealth is 11, so at -10 the effective
@@ -44,7 +44,7 @@ def cheatHopelessStealth : Adventure := withScene
   { id := 8, title := "The Cattle Path", text := "",
     choices := [{ text := "Creep up behind him", outcome := .roll (.skill .stealth) (-10) 10 9 }] }
 
-example : ¬ LegalAdventure rules lafayette cheatHopelessStealth := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules lafayette cheatHopelessStealth := fun h => absurd h.outcomes (by decide)
 example : check rules lafayette cheatHopelessStealth ≠ [] := by decide
 
 /-- Cheat 5: the ambush at the ford leads back to the road, so the road and the ford make a loop

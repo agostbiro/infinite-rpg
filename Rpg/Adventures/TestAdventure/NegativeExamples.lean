@@ -33,19 +33,19 @@ def giantGoblin : Being where
 /-- An Adventure with an ST 40 goblin. -/
 def cheatGiant : Adventure := oneChoice "Giant goblin" (.fight [giantGoblin] 1)
 
-example : ¬ LegalAdventure rules mara cheatGiant := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules mara cheatGiant := fun h => absurd h.outcomes (by decide)
 example : check rules mara cheatGiant ≠ [] := by decide
 
 /-- Cheat 2: a Choice that leads to a Scene that does not exist. -/
 def cheatBrokenLink : Adventure := oneChoice "Broken link" (.goto 99)
 
-example : ¬ LegalAdventure rules mara cheatBrokenLink := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules mara cheatBrokenLink := fun h => absurd h.outcomes (by decide)
 example : check rules mara cheatBrokenLink ≠ [] := by decide
 
 /-- Cheat 3: a lock at +15, far beyond the limit of +10. -/
 def cheatEasyLock : Adventure := oneChoice "Easy lock" (.roll (.skill .lockpicking) 15 1 1)
 
-example : ¬ LegalAdventure rules mara cheatEasyLock := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules mara cheatEasyLock := fun h => absurd h.outcomes (by decide)
 example : check rules mara cheatEasyLock ≠ [] := by decide
 
 /-- A stone sentinel: DR 12 and too weak to hurt anyone. Neither side can win. -/
@@ -63,7 +63,7 @@ def stoneSentinel : Being where
 /-- Cheat 4: a Fight that can never end. -/
 def cheatEndless : Adventure := oneChoice "Endless fight" (.fight [stoneSentinel] 1)
 
-example : ¬ LegalAdventure rules mara cheatEndless := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules mara cheatEndless := fun h => absurd h.outcomes (by decide)
 example : check rules mara cheatEndless ≠ [] := by decide
 
 /-- Cheat 5: no Ending, so the Adventure goes on forever. -/
@@ -72,7 +72,7 @@ def cheatNoEnding : Adventure where
   start := 0
   scenes := [{ id := 0, title := "Loop", text := "", choices := [{ text := "Again", outcome := .goto 0 }] }]
 
-example : ¬ LegalAdventure rules mara cheatNoEnding := fun h => absurd h.2.2.1 (by decide)
+example : ¬ LegalAdventure rules mara cheatNoEnding := fun h => absurd h.hasEnding (by decide)
 example : check rules mara cheatNoEnding ≠ [] := by decide
 
 /-- Cheat 6: an Ending exists, but no Choice leads to it. The Player loops forever. -/
@@ -103,7 +103,7 @@ theorem hiddenEnding_only_start {x : SceneId}
 example : ¬ LegalAdventure rules mara cheatHiddenEnding := by
   intro h
   have h1 := hiddenEnding_only_start
-    (h.2.2.2.2.1 { id := 1, title := "Hidden End", text := "", choices := [] } (by simp [cheatHiddenEnding]))
+    (h.reachable { id := 1, title := "Hidden End", text := "", choices := [] } (by simp [cheatHiddenEnding]))
   simp at h1
 example : check rules mara cheatHiddenEnding ≠ [] := by decide
 
@@ -113,7 +113,7 @@ back to the start, and the Player loops forever. -/
 def cheatUnrollable : Adventure :=
   oneChoice "Roll that can't be made" (.roll (.skill .diplomacy) (-10) 1 0)
 
-example : ¬ LegalAdventure rules mara cheatUnrollable := fun h => absurd h.2.2.2.1 (by decide)
+example : ¬ LegalAdventure rules mara cheatUnrollable := fun h => absurd h.outcomes (by decide)
 example : check rules mara cheatUnrollable ≠ [] := by decide
 
 /-- Cheat 8: a trap with no way out. Every Scene can be reached and an Ending exists,
@@ -162,7 +162,7 @@ theorem trap_no_way_out {x : SceneId}
 example : ¬ LegalAdventure rules mara cheatTrap := by
   intro h
   have h2 := trap_no_way_out
-    (h.2.2.2.2.2 { id := 2, title := "Maze", text := "", choices := [{ text := "Walk on", outcome := .goto 2 }] }
+    (h.reachesEnding { id := 2, title := "Maze", text := "", choices := [{ text := "Walk on", outcome := .goto 2 }] }
       (by simp [cheatTrap]))
   exact h2 rfl
 example : check rules mara cheatTrap ≠ [] := by decide

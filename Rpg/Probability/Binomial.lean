@@ -44,28 +44,6 @@ theorem scale (p c : Rat) (n : Nat) (f : Nat → Rat) :
     simp only [binomialExpectation, ih]
     grind
 
-/-- Nonnegative Bernoulli weights preserve pointwise inequalities. -/
-theorem monotone (p : Rat)
-    -- The success probability is nonnegative.
-    (hp : 0 ≤ p)
-    -- The failure probability is nonnegative.
-    (hp1 : p ≤ 1) (n : Nat) (f g : Nat → Rat)
-    -- The count functions are ordered everywhere.
-    (h : ∀ k, f k ≤ g k) :
-    binomialExpectation p n f ≤ binomialExpectation p n g := by
-  induction n generalizing f g with
-  -- Only the zero count is possible.
-  | zero => exact h 0
-  -- Both weighted comparisons preserve the order.
-  | succ n ih =>
-    have left := ih f g h
-    have right := ih (fun k => f (k+1)) (fun k => g (k+1)) (fun k => h (k+1))
-    simp only [binomialExpectation]
-    have nonnegative : 0 ≤ 1-p := by grind
-    have hleft := Rat.mul_le_mul_of_nonneg_left left nonnegative
-    have hright := Rat.mul_le_mul_of_nonneg_left right hp
-    grind
-
 /-- Comparisons need only hold on possible success counts. -/
 theorem support_monotone (p : Rat)
     -- The success probability is nonnegative.
@@ -88,6 +66,12 @@ theorem support_monotone (p : Rat)
     have hl := Rat.mul_le_mul_of_nonneg_left left nonnegative
     have hr := Rat.mul_le_mul_of_nonneg_left right hp
     grind
+
+/-- Pointwise monotonicity is a special case of comparison on the finite support. -/
+theorem monotone (p : Rat) (hp : 0 ≤ p) (hp1 : p ≤ 1) (n : Nat)
+    (f g : Nat → Rat) (h : ∀ k, f k ≤ g k) :
+    binomialExpectation p n f ≤ binomialExpectation p n g :=
+  support_monotone p hp hp1 n f g (fun k _ => h k)
 
 /-- Increasing Bernoulli probability increases expectations of increasing count functions. -/
 theorem probability_monotone (p q : Rat)
@@ -239,16 +223,8 @@ theorem lowerTail_antitone (p q : Rat)
     -- The larger probability is at most one.
     (hq1 : q ≤ 1)
     (n k : Nat) : lowerTail q n k ≤ lowerTail p n k := by
-  have upper := probability_monotone p q hp hpq hq1 n
-    (fun j => if j ≤ k then (0 : Rat) else 1) (by
-      intro j
-      split <;> split <;> first | omega | decide +kernel)
-  have complement : (fun j => if j ≤ k then (0 : Rat) else 1) =
-      (fun j => 1 + (-1)*(if j ≤ k then (1 : Rat) else 0)) := by
-    funext j
-    split <;> decide +kernel
-  rw [complement, add, add, constant, constant, scale, scale] at upper
-  rw [lowerTail_eq, lowerTail_eq]
+  have h := upperTail_monotone p q hp hpq hq1 n (k + 1)
+  simp only [upperTail] at h
   grind
 
 /-- A nonempty set of counts bounded by n has a largest count. -/

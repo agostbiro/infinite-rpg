@@ -62,15 +62,17 @@ Lean [proves](./Rpg/Probability/StatisticalAdmission.lean#L154) that the test is
 
 ## Limitations
 
+- Combat certification can delay startup and loading saved adventures: it solves and checks every encounter at every possible starting HP, even when a saved balance verdict is reused. Full admission of Lafayette exceeded a 120-second smoke-test limit; its completion time has not been established.
+- Cancel and the live-change time limit prevent a late change from being installed, but they do not stop a combat-certificate computation already running inside Lean. Such workers can keep using CPU and memory after cancellation, and another request can start additional work. The three-minute limit is not a computation or resource limit.
 - No Dead Ends ignores dice, so the character can still die before reaching an ending.
-- The spec only says that each fight can end, not that the character can win it.
+- Combat admission proves probability-one termination under fair independent dice and the uniform combat policy, with a finite horizon for every positive failure allowance. It does not guarantee victory or termination under every player strategy.
 - Each proof is about one character, so the same adventure can fail for another character.
 - The balance test plays with a model player who picks choices and maneuvers at random, not like a real player.
 - The 5% bound assumes that the seeded random generator acts like fair dice, and this is not proved.
-- A wish gets up to 3 tries, and each try runs the full 5% test, so one wish request accepts an unbalanced adventure at most 15% of the time. Each retry adds to this. Changes during play share one 5% budget, and Lean [proves](./Rpg/Probability/Retry.lean#L59) this bound.
+- A wish gets at most five attempts, including Retry, and each try runs the full 5% test. Under the sampling assumptions, a union bound gives at most 25% false acceptance per wish. Starting a new wish starts a new limit. Changes during play share one 5% budget, and Lean [proves](./Rpg/Probability/Retry.lean#L59) this bound.
 - A saved adventure skips the balance test on load if its cached verdict file says it passed, so an edited verdict file can skip the test.
 - Live adventures trust that the compiled checker gives the same answer as the checker in the proofs.
 - The rules were typed in by hand from GURPS Lite, and a person must check them against the book.
-- Nothing proves that the game engine follows the rules during a fight.
+- Combat certificates check normalized outcome equations against the shared fight engine. Human review is still needed to compare that engine with the intended GURPS rules.
 - The server, the view, and the AI prompt code have no proofs.
 - The game covers only part of GURPS Lite: there are no items, no parry, no spells, and creatures always attack.

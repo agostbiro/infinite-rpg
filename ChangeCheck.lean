@@ -1,3 +1,4 @@
+import Rpg.PlayTests
 import Rpg.WorldChangeTests
 
 open Rpg Rpg.WorldChange Rpg.Probability Rpg.Probability.Confidence
@@ -7,7 +8,7 @@ The change is checked against the policy of the game it changes. -/
 def main (args : List String) : IO UInt32 := do
   if args.contains "--tuning" then
     let heavy := { Tests.proposal with rules := [
-      { Tests.fury with trigger := "againstFlame", hitBonus := 4, damageBonus := 6, armorBonus := 2 }, Tests.shelter] }
+      { Tests.fury with trigger := .againstFlame, hitBonus := 4, damageBonus := 6, armorBonus := 2 }, Tests.shelter] }
     let mut results : List Bool := []
     for quarters in [4, 2, 1, 3, 5, 6, 8, 12, 16] do
       match (heavy.tune quarters).prepare roadGame with

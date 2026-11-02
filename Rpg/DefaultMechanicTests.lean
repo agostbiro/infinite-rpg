@@ -1,3 +1,4 @@
+import Rpg.PlayTests
 import Rpg.WorldChangeTests
 
 /-! The shared defaults affect actual attacks and are inherited by generated adventures. -/

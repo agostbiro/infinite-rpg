@@ -66,6 +66,6 @@ theorem resumed_simulation (rules : RuleSet) (f : FightPhase) (limit : Nat) :
 theorem resumed_model (rules : RuleSet) (f : FightPhase) :
     remainingCombat rules f =
       (((Prod.fst <$> remainingRoundWith (attackDistribution rules) heroPolicy f.order f.state).collect).bind
-        fun s => (solveCombat rules heroPolicy f.order s).run' []).collect := rfl
+        fun s => checkedCombat rules f.order s).collect := rfl
 
 end Rpg.Probability.SharedRules

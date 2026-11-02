@@ -77,16 +77,19 @@ receives the failed rows and revises the proposal.
 
 The DM continues until acceptance, cancellation, an unsupported request, an API failure, or
 a limit. One change gets at most 6 proposals (`maxChangeCalls`, the support-review pass included),
-3 fresh validation batches (`maxChangeValidations`), and 3 minutes (`maxChangeMs`), in
-`Main.lean`. With an API key, each proposal can use up to 3 tries when the server is busy
+3 fresh validation batches (`maxChangeValidations`), and a 3-minute installation deadline
+(`maxChangeMs`) in `Main.lean`. This deadline does not bound certificate computation. With an API key, each proposal can use up to 3 tries when the server is busy
 (`callApi`), so one change can send up to 18 requests. The server checks the proposal and
 validation limits after each proposal. At one of them, the change fails with "The Dungeon Master
 stopped after N proposals and could not find a balanced version. Your game is unchanged." A watch
-task (`watchChange`) enforces the time limit: at 3 minutes it ends the change and kills its
-`curl` processes, as Cancel does, even during a slow call. The step then says "The change
+task (`watchChange`) enforces the installation deadline: at 3 minutes it marks the change failed
+and kills its `curl` processes, as Cancel does, even during a slow provider call. The step then says "The change
 reached its time limit of 3 minutes. Your game is unchanged." Acceptance is not guaranteed: some requested mechanics cannot meet the fixed policy.
 No failed check becomes a pass and no tolerance or sample count is relaxed. Cancel or failure
-leaves play unchanged.
+leaves play unchanged. The job check prevents a late result from being installed. However,
+certificate production runs as pure Lean computation in a dedicated task: cancellation and
+the watch do not interrupt it. That task can continue consuming CPU and memory after the
+change has failed or been canceled. Starting another request can overlap another producer.
 
 Changes are local to the in-memory playthrough and survive a browser reload. They do not
 overwrite saved adventures. Restarting starts the original adventure again.
@@ -98,10 +101,10 @@ All new equipment and effects apply throughout these simulated games, including 
 that the player already completed. The check covers the first six scene turns (`H=5`) and
 uses the original Weibull bands. Empty late rows and unresolved combat reject the change.
 
-**Deep Scenes get only the legality check.** The sampled games stop after 6 turns. A change
+**Deep Scenes are not covered by the sampled balance check.** The sampled games stop after 6 turns. A change
 can add or replace Scenes that are not visited yet. If such a Scene is more than 6 turns from
-the start, no sampled game reaches it, so its new encounters get only the legality check, not
-the balance check. Combat rules and equipment apply to every Fight, so the early Fights do
+the start, no sampled game reaches it, so its new encounters get legality and combat-termination certification, but not
+the sampled balance check. Combat rules and equipment apply to every Fight, so the early Fights do
 test them. This gap is stated here, in the README, and in the panel. It is not fixed.
 
 This is a property of the revised adventure from its beginning. It is not a claim about the
@@ -115,6 +118,17 @@ say that a change is balanced. `intervals_fit` is the fact about one admission: 
 interval fits its band. `Prepared.candidate_from_start` proves that admission
 uses the whole adventure graph at turn zero. `Prepared.preserves_core` and
 `preserves_checkpoint` state the scope and state guarantees.
+`Prepared.preserves_fight_checkpoint` additionally fixes the whole paused fight record,
+including enemy wounds, turn order, round, and maneuvers; only the hero's equipped being changes.
+Admission also carries `WellFormed`, the current HP upper bound, `NoShortLoops`, a certificate
+for every encounter's combat, and a certificate for the actual paused fight continuation.
+These combat certificates establish almost-sure termination under the model's random policy;
+they do not turn the six-turn sampled balance check into a balance guarantee for later scenes.
+
+Combat sides and triggers are enums decoded at the JSON boundary. Unknown values are rejected
+before constructing a rule. Equipment lookup receives the actual hero/enemy actor explicitly:
+an enemy cannot inherit the hero's equipment by sharing its name and weapon. The same lookup
+is used by play, the probability model, reports, and the view.
 
 Repeated fresh 95% tests until one passes would lose the overall 95% guarantee. Instead,
 validation attempt `n` spends `confidenceDelta / 2^(n+1)`. The server never refunds a spent
@@ -125,14 +139,14 @@ adaptive sequence, including subsequent requests after a successful change.
 
 The budget is per server run. `ServerState.changeChecks` counts the validations since the
 server started, for all games. A restart starts a new 5% budget. The 5% for live changes and the
-15% bound over the 3 tries of a Wish are separate. For an Adventure from a Wish that gets live
+25% bound over the five attempts of a Wish (including Retry) are separate. For an Adventure from a Wish that gets live
 changes in one server run, the chance that an unbalanced version was accepted at some point is at
-most 15% + 5% = 20%.
+most 25% + 5% = 30%.
 
 This assumes the binomial sampling model holds conditional on each history before drawing
 the fresh batch. The PRNG's correspondence to ideal sampling remains an accepted assumption.
 It is not an all-time gameplay theorem or simultaneous coverage of all intervals. The original
-title-screen Wish flow still has its separate three-attempt policy.
+title-screen Wish flow has a separate five-attempt budget, including Retry.
 
 ## Turnaround
 
@@ -146,11 +160,19 @@ comparisons fell from 2,960 ms to 625 ms. With 1,200 games on the Linux VM, the 
 took about 12 ms to sample and 600 ms to compare (`lake exe change-check --timing`). Two real requests through the Codex CLI (since removed) after the change took
 17.1 seconds (weapon) and 19.1 seconds (armor in the Lamp Room), including both batches.
 The preceding real request took 156 seconds and needed a second DM proposal. These are
-individual measurements, not a latency guarantee across requests.
+individual measurements from before mandatory whole-adventure combat certification, not
+a latency guarantee for the current admission path.
 
-Thirty seconds is a target for ordinary changes, not a timeout that permits unchecked rules.
-Provider delays and additional revisions can take longer, up to the 3-minute limit. The watch
-task stops a slow call at the limit. Cancellation preserves the game.
+Current whole-adventure certification is a known performance limitation. In the review run,
+Lafayette admission had not completed after 120 seconds. Startup performs that admission before
+opening the HTTP listener. Saved loads regenerate combat certificates even when a saved verdict
+allows the sampled balance check to be skipped; background checking can duplicate that work.
+
+Thirty seconds is an earlier target, not a demonstrated bound for the current checker.
+The 3-minute watch prevents late installation and stops provider processes, but it does not
+stop pure certificate computation. Cancellation preserves the game, not a CPU or memory budget.
+The producer needs bounded or cancellable execution and reusable, independently checked
+witnesses; these limits must not be implemented by accepting an unchecked result.
 
 ## Verification
 
@@ -189,12 +211,10 @@ proof file. Isolated proof replay and Comparator require Linux.
 
 These are open, for the branch author. ADR 0005 has more detail.
 
-- Deep Scenes get only the legality check (above).
+- Deep Scenes are outside the sampled balance window (above).
 - A counter-rule with the trigger `againstFlame`, together with a flamethrower gift, is on in
   every Fight. The checker rejects only the trigger "always". The tuning fixture does this.
-- `StatisticalCandidate.resume` and `elapsed` are not used, but they are part of the trusted
-  surface of `balanced`.
-- Equipment is matched by owner name and weapon, so a foe with the Character's name and weapon
-  gets the gift too.
+- The statistical model retains `resume` and `elapsed`; admission now accepts only
+  `resume = none` and `elapsed = 0`. Conditional balance at a paused checkpoint remains outside its claim.
 - `applyChange` does not check again that the game did not move; it relies on blocked input.
-  `preserves_checkpoint` does not state foe HP, turn order, or the round number.
+  The admitted replacement itself has a checked runtime invariant and preserves the paused fight.

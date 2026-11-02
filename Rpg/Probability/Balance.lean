@@ -1,4 +1,4 @@
-import Rpg.Probability.Graph
+import Rpg.Probability.GraphProofs
 import Rpg.Probability.Weibull
 import Rpg.Check
 
@@ -63,6 +63,35 @@ Successful endings are excluded from the conditioning event. -/
 def Graph.deathAtTwo (g : Graph) (t : Nat) : Option Rat :=
   let p := g.activeAt t
   if p = 0 then none else some ((g.deadBy (t + 2) - g.deadBy (t + 1)) / p)
+
+/-- Conditional death rates are probabilities for normalized graphs with absorbing terminals. -/
+theorem Graph.deathAtTwo_bounds (g : Graph) (valid : g.Valid) (absorbing : g.Absorbing)
+    (t : Nat) (p : Rat) (hp : g.deathAtTwo t = some p) : 0 ≤ p ∧ p ≤ 1 := by
+  have active := g.activeAt_bounds valid t
+  have deadStep := g.deadBy_mono valid absorbing t
+  have deadLater := g.deadBy_mono valid absorbing (t+1)
+  have endedStep := g.endedBy_mono valid absorbing t
+  have endedLater := g.endedBy_mono valid absorbing (t+1)
+  have part0 := g.probability_partition valid t
+  have part2 := g.probability_partition valid (t+2)
+  have active2 := (g.activeAt_bounds valid (t+2)).1
+  unfold Graph.deathAtTwo at hp
+  dsimp only at hp
+  split at hp
+  · contradiction
+  · next hn =>
+    have positive : 0 < g.activeAt t := by grind
+    have eq : (g.deadBy (t+2)-g.deadBy (t+1))/g.activeAt t = p := Option.some.inj hp
+    have mul : p * g.activeAt t = g.deadBy (t+2)-g.deadBy (t+1) := by
+      rw [←eq]
+      exact Rat.div_mul_cancel hn
+    constructor
+    · apply Rat.le_of_mul_le_mul_right (c := g.activeAt t) ?_ positive
+      simp only [Rat.zero_mul, mul]
+      grind
+    · apply Rat.le_of_mul_le_mul_right (c := g.activeAt t) ?_ positive
+      simp only [Rat.one_mul, mul]
+      grind
 
 /-- Absolute error is at most the policy tolerance, using exact rationals. -/
 def WithinTolerance (actual target tolerance : Rat) : Prop :=

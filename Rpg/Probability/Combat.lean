@@ -4,7 +4,8 @@ import Rpg.Probability.Distribution
 /-!
 # Exact Fight odds
 
-The balance model works out the exact chance of each Fight result. It uses the same Engine
+This producer proposes rational Fight result probabilities. `CombatCertificate.lean`
+independently verifies them before the graph or admission trusts them. It uses the same Engine
 functions as play (`attackWith`, `heroTurnWith`, `foeTurnsWith`), in the same turn order
 (`beforeCharacter`, then the Character, then `afterCharacter`), with exact dice odds.
 
@@ -42,18 +43,18 @@ def attackDistribution (rules : RuleSet) : AttackFn Distribution :=
 
 /-- The numbers of the Creatures that are alive. -/
 def livingTargets (s : FightState) : List Nat :=
-  (s.foes.zipIdx.filter fun (f, _) => f.alive).map Prod.snd
+  s.livingFoes
 
 /-- The model's Player: each maneuver with chance 1/3, then a living target with equal chances
 if the maneuver attacks. A maneuver with no attack has no target, so it uses 0. -/
 def heroPolicy (s : FightState) : Distribution (Maneuver × Nat) :=
-  (uniform [Maneuver.attack, .allOutAttack, .allOutDefense]).bind fun m =>
+  (uniform maneuverMenu).bind fun m =>
     if m.attacks then (uniform (livingTargets s)).bind fun t => pure (m, t)
     else pure (m, 0)
 
 /-- A Player that always Attacks a living target, with equal chances. The old model (before
 maneuvers) used this Player. With it, the new solver gave exactly the old solver's odds on the
-Fights of the earlier built-in Adventure. That was a one-off check in the merge (ADR 0004), not a build test, because
+Lighthouse Fights. That was a one-off check in the merge (ADR 0004), not a build test, because
 those Fights take minutes to solve. -/
 def attackOnlyPolicy (s : FightState) : Distribution (Maneuver × Nat) :=
   (uniform (livingTargets s)).bind fun t => pure (.attack, t)
@@ -79,16 +80,11 @@ def roundDistribution (rules : RuleSet) (policy : FightState → Distribution (M
 def livingHP (s : FightState) : Nat :=
   s.hero.hp.toNat + (s.foes.map fun f => f.hp.toNat).sum
 
-/-- The group of `s`: the states that rounds reach from `s` with no HP loss. The search stops
-after `fuel` states. A group in a legal Fight has at most 3 states, so `fuel` 16 is enough. -/
-def sameHPGroup (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
-    (order : List Actor) : Nat → List FightState → List FightState → List FightState
-  | 0, _, found => found
-  | _, [], found => found
-  | fuel + 1, u :: todo, found =>
-    let next := ((roundDistribution rules policy order u).entries.filterMap fun (v, p) =>
-      if p ≠ 0 ∧ livingHP v = livingHP u ∧ v ∉ found then some v else none).eraseDups
-    sameHPGroup rules policy order fuel (todo ++ next) (found ++ next)
+/-- The only three states possible without HP loss. Keep the queried state first.
+No search fuel is needed; the certificate checker verifies closure of the full result. -/
+def maneuverStates (s : FightState) : List FightState :=
+  s :: ((maneuverMenu.filter (· != s.hero.maneuver)).map fun m =>
+    {s with hero := {s.hero with maneuver := m}})
 
 /-- Results with weights. The weights need not add up to 1. -/
 abbrev Weighted := List (CombatResult × Rat)
@@ -148,30 +144,44 @@ def solveGroup (n : Nat) (stay : Nat → Nat → Rat) (leave : Nat → Rat) (exi
     | some k => (Distribution.mk (x[k]!)).collect
     | none => pure .stalled
 
-/-- The Fight results that are already known, for states solved before. -/
-abbrev CombatCache := List (FightState × Distribution CombatResult)
+/-- Candidate results and a candidate bound on expected remaining rounds.
+These are solver output; `CombatCertificate` independently checks their equations. -/
+structure CombatAnswer where
+  outcomes : Distribution CombatResult
+  rounds : Rat
 
-/-- The exact chance of each Fight result from state `s`, at the start of a round.
-It solves the group of `s` together, and calls itself on the states with less total HP. -/
-def solveCombat (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
-    (order : List Actor) (s : FightState) : StateM CombatCache (Distribution CombatResult) := do
-  if !s.hero.alive then return pure .died
-  if s.foes.all (!·.alive) then return pure (.won s.hero.hp)
+abbrev CombatCache := List (FightState × CombatAnswer)
+
+/-- Reuse the elimination algorithm for a single scalar coordinate. The marker is
+only a coordinate label; these weights are not a probability distribution. -/
+def solveScalar (m : Array (Array Rat)) (b : Array Rat) : Array Rat :=
+  (solveLinear m (b.map fun x => [(CombatResult.died, x)])).map fun row => (row.map Prod.snd).sum
+
+/-- Generate candidate answers by HP recursion and three-state elimination.
+Correctness of this producer is not trusted by the certificate checker. -/
+def solveCombatAnswer (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
+    (order : List Actor) (s : FightState) : StateM CombatCache CombatAnswer := do
+  if !s.hero.alive then return ⟨pure .died, 0⟩
+  if s.foes.all (!·.alive) then return ⟨pure (.won s.hero.hp), 0⟩
   if let some entry := (← get).find? (fun e => decide (e.1 = s)) then
     return entry.2
-  let group := sameHPGroup rules policy order 16 [s] [s]
+  let group := maneuverStates s
   let rounds := group.map (roundDistribution rules policy order)
   let mut exits : Array Weighted := #[]
+  let mut costs : Array Rat := #[]
   for d in rounds do
     let mut acc : Weighted := []
+    let mut cost : Rat := 1
     for (w, p) in d.entries do
       if p ≠ 0 ∧ w ∉ group then
-        -- Every state outside the group has less total HP. The `else` case cannot happen
-        -- in a legal Fight; it counts as a Fight that never ends, never as a win.
-        let r ← if _h : livingHP w < livingHP s then solveCombat rules policy order w
-          else pure (pure .stalled)
-        acc := acc ++ r.entries.map fun (o, q) => (o, p * q)
+        -- A malformed transition can produce a candidate, but cannot pass the
+        -- independently checked closure and expected-duration inequalities.
+        let r ← if _h : livingHP w < livingHP s then solveCombatAnswer rules policy order w
+          else pure ⟨pure .stalled, 0⟩
+        acc := acc ++ r.outcomes.entries.map fun (o, q) => (o, p * q)
+        cost := cost + p * r.rounds
     exits := exits.push acc
+    costs := costs.push cost
   let n := group.length
   let stay (i j : Nat) : Rat :=
     match rounds[i]?, group[j]? with
@@ -182,20 +192,30 @@ def solveCombat (rules : RuleSet) (policy : FightState → Distribution (Maneuve
     | some d => d.mass fun u => decide (u ∉ group)
     | none => 0
   let answers := solveGroup n stay leave (exits[·]!)
-  for (u, a) in group.zip answers do
+  let matrix := (Array.range n).map fun i => (Array.range n).map fun j =>
+    (if i = j then 1 else 0) - stay i j
+  let budgets := solveScalar matrix costs
+  let solutions := answers.zip budgets.toList |>.map fun (outcomes, rounds) => ({outcomes, rounds} : CombatAnswer)
+  for (u, a) in group.zip solutions do
     modify ((u, a) :: ·)
-  return answers.headD (pure .stalled)
+  return solutions.headD ⟨pure .stalled, 0⟩
 termination_by livingHP s
 
-/-- The exact Fight result odds for a Character with `hp` HP against `foes`, under `rules`,
-when the Player follows `policy`. -/
+/-- Compatibility entry point for the candidate solver. Use certification when a
+probabilistic guarantee is required. -/
+def solveCombat (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
+    (order : List Actor) (s : FightState) : StateM CombatCache (Distribution CombatResult) := do
+  return (← solveCombatAnswer rules policy order s).outcomes
+
+/-- Unverified candidate odds for a Character at `hp` against `foes`.
+Use `checkedCombat` or a `CertifiedFight` for probability guarantees. -/
 def combatDistributionWith (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
     (hero : Being) (hp : Int) (foes : List Being) : Distribution CombatResult :=
   let start : FightState :=
     { hero := { being := hero, hp }, foes := foes.map fun f => { being := f, hp := rules.maxHP f } }
   (solveCombat rules policy (turnOrder rules hero foes) start).run' []
 
-/-- The exact Fight result odds for the model's Player (`heroPolicy`). -/
+/-- Unverified candidate odds for `heroPolicy`; kept for producer diagnostics. -/
 def combatDistribution (rules : RuleSet) (hero : Being) (hp : Int) (foes : List Being) :
     Distribution CombatResult :=
   combatDistributionWith rules heroPolicy hero hp foes
