@@ -79,7 +79,10 @@ The DM continues until acceptance, cancellation, an unsupported request, an API 
 a limit. One change gets at most 6 proposals (`maxChangeCalls`, the support-review pass included),
 3 fresh validation batches (`maxChangeValidations`), and 3 minutes (`maxChangeMs`), in
 `Main.lean`. With an API key, each proposal can use up to 3 tries when the server is busy
-(`callApi`), so one change can send up to 18 requests. The server checks the proposal and
+(`callApi`), so one change can send up to 18 requests. The loop of `generateChange` runs over
+the fixed list `changeRevisions` (1 to 6), one call for each number, so it cannot run longer
+than 6 proposals. Every proposal that is not accepted, parse errors and cut-off replies included,
+uses one of the 6. The server checks the proposal and
 validation limits after each proposal. At one of them, the change fails with "The Dungeon Master
 stopped after N proposals and could not find a balanced version. Your game is unchanged." A watch
 task (`watchChange`) enforces the time limit: at 3 minutes it ends the change and kills its
@@ -182,6 +185,13 @@ of the game's next dice roll. Generate fixtures into a temporary folder with
 local counter adjustment followed by fresh admission. `change-check --timing` measures
 sampling and exact interval comparison separately; `--tuning` screens a too-strong
 counter and verifies that a bounded variant passes without changing the gift.
+
+`tests/live_change_unsatisfiable.py` starts its own test servers (port 8097 by default) with
+recorded replies that can never pass: an unkillable hero, a reply that never parses, a cut-off
+reply, a missing counter-rule, a changed gift, an unsupported mechanic, an API refusal, an API
+failure, and the time limit. It also tries a Wish whose replies never parse. Each one must end
+in a fixed time as failed or refused, say why, and leave the game unchanged. Then the Player
+must be able to play on and to try again. Run it after `lake build rpg`, from the repository folder.
 The new guarantees are listed in `Comparator/Statements.lean` and proved in its paired
 proof file. Isolated proof replay and Comparator require Linux.
 

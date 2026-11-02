@@ -45,8 +45,12 @@ import { playbackView, reportDuration } from './playback.js';
     if (S.view && S.view.phase === 'title') renderFrontStatus(S.view);
   }
 
+  /** The longest wait for one reply from the server. Then the request fails, so a poll goes on
+   * and the page never waits forever. */
+  const REQUEST_MS = 30000;
+
   async function fetchView() {
-    const r = await fetch('/api/view', { cache: 'no-store' });
+    const r = await fetch('/api/view', { cache: 'no-store', signal: AbortSignal.timeout(REQUEST_MS) });
     reached();
     return r.json();
   }
@@ -72,6 +76,7 @@ import { playbackView, reportDuration } from './playback.js';
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body === undefined ? '' : JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_MS),
     });
     reached();
     const type = r.headers.get('Content-Type') || '';
