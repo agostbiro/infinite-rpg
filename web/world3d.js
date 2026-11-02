@@ -258,6 +258,9 @@ export class SpatialGame {
       const pyramid=this.mesh(new THREE.ConeGeometry(12,15,4),stone,0,7.5,0,group);
       pyramid.rotation.y=Math.PI/4;
     } else if(p.kind==='river') {
+      // Scale only the river's width and length. Its fixed heights keep the water below trails
+      // and place pads; a scaled height put the water top level with the pads, and they flickered.
+      group.scale.y=1;
       const water=this.material(0x387e92,{metalness:0.35,roughness:0.28});
       this.box(9,0.025,190,water,0,0.005,0,group);
       for(let i=0;i<15;i++) {
@@ -457,7 +460,8 @@ export class SpatialGame {
         slab.scale.z = 0.7;
       }
       this.box(0.12, 1.6, 0.12, wood, 0.95, 0.8, -0.5, group);
-      this.box(1.05, 0.38, 0.12, paleWood, 0.95, 1.5, -0.5, group);
+      // The board is deeper than the post, so their faces are never in the same plane and do not flicker.
+      this.box(1.05, 0.38, 0.16, paleWood, 0.95, 1.5, -0.5, group);
       const arrow = this.mesh(new THREE.ConeGeometry(0.27, 0.4, 3), paleWood, 1.63, 1.5, -0.5, group);
       arrow.rotation.z = -Math.PI / 2;
     }

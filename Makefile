@@ -66,7 +66,7 @@ check-rules:
 # Test the parts of the 3D page that have no browser in them: the objects for the inputs, the walk,
 # and the playback of Reports. This needs only Node.js.
 test-spatial:
-	node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js tests/travel.test.js
+	node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js tests/travel.test.js tests/world3d.test.js
 
 # The port of the test server for the browser test. It is not PORT, so the test never talks to a
 # game that a Player has open.
