@@ -33,13 +33,12 @@ instance (rules : RuleSet) (c : Being) (a : Adventure) (o : Outcome) :
 def need (p : Prop) [Decidable p] (msg : String) : List String :=
   if p then [] else [msg]
 
-/-- If `need p msg` gives no error, then `p` is true. -/
+/-- The diagnostic is empty exactly when its independently stated condition holds. -/
+@[simp] theorem need_eq_nil_iff {p : Prop} [Decidable p] {msg : String} :
+    need p msg = [] ↔ p := by simp [need]
+
 theorem need_sound {p : Prop} [Decidable p] {msg : String}
-    (h : need p msg = []) : p := by
-  unfold need at h
-  split at h
-  · assumption
-  · simp at h
+    (h : need p msg = []) : p := need_eq_nil_iff.mp h
 
 /-- Errors in the skills of a being. -/
 def checkSkills (rules : RuleSet) (b : Being) : List String :=
@@ -48,11 +47,12 @@ def checkSkills (rules : RuleSet) (b : Being) : List String :=
   need (b.skills.map (·.1)).Nodup
     s!"{b.name}: a skill is listed twice"
 
-/-- If `checkSkills` finds no errors, the skills are bought correctly. -/
+@[simp] theorem checkSkills_eq_nil_iff {rules : RuleSet} {b : Being} :
+    checkSkills rules b = [] ↔ SkillsWellBought rules b := by
+  simp [checkSkills, SkillsWellBought, List.append_eq_nil_iff]
+
 theorem checkSkills_sound {rules : RuleSet} {b : Being}
-    (h : checkSkills rules b = []) : SkillsWellBought rules b := by
-  simp only [checkSkills, List.append_eq_nil_iff] at h
-  exact ⟨need_sound h.1, need_sound h.2⟩
+    (h : checkSkills rules b = []) : SkillsWellBought rules b := checkSkills_eq_nil_iff.mp h
 
 /-- Errors in the build of a Creature. -/
 def checkCreature (rules : RuleSet) (b : Being) : List String :=
@@ -64,12 +64,12 @@ def checkCreature (rules : RuleSet) (b : Being) : List String :=
   need (rules.minST b.weapon ≤ b.st)
     s!"{b.name}: ST {b.st} is too low for a {b.weapon.name} (needs {rules.minST b.weapon})"
 
-/-- If `checkCreature` finds no errors, the Creature is a legal build. -/
+@[simp] theorem checkCreature_eq_nil_iff {rules : RuleSet} {b : Being} :
+    checkCreature rules b = [] ↔ LegalCreature rules b := by
+  simp [checkCreature, LegalCreature, List.append_eq_nil_iff, and_assoc]
+
 theorem checkCreature_sound {rules : RuleSet} {b : Being}
-    (h : checkCreature rules b = []) : LegalCreature rules b := by
-  simp only [checkCreature, List.append_eq_nil_iff] at h
-  obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := h
-  exact ⟨need_sound h1, need_sound h2, checkSkills_sound h3, need_sound h4⟩
+    (h : checkCreature rules b = []) : LegalCreature rules b := checkCreature_eq_nil_iff.mp h
 
 /-- Errors in the build of the Character. -/
 def checkCharacter (rules : RuleSet) (c : Being) : List String :=
@@ -82,14 +82,15 @@ def checkCharacter (rules : RuleSet) (c : Being) : List String :=
     s!"{c.name}: ST {c.st} is too low for a {c.weapon.name} (needs {rules.minST c.weapon})" ++
   need (c.naturalDR ≤ rules.characterNaturalDRLimit)
     (if rules.characterNaturalDRLimit = 0 then s!"{c.name}: the Character cannot have natural DR"
-     else s!"{c.name}: natural DR {c.naturalDR} is more than the limit of {rules.characterNaturalDRLimit}")
+     else s!"{c.name}: natural DR {c.naturalDR} is more than the limit of {rules.characterNaturalDRLimit}") ++
+  need (0 < rules.maxHP c) s!"{c.name}: maximum HP must be positive so the Character starts alive"
 
-/-- If `checkCharacter` finds no errors, the Character is a legal build. -/
+@[simp] theorem checkCharacter_eq_nil_iff {rules : RuleSet} {c : Being} :
+    checkCharacter rules c = [] ↔ LegalCharacter rules c := by
+  simp [checkCharacter, LegalCharacter, List.append_eq_nil_iff, and_assoc]
+
 theorem checkCharacter_sound {rules : RuleSet} {c : Being}
-    (h : checkCharacter rules c = []) : LegalCharacter rules c := by
-  simp only [checkCharacter, List.append_eq_nil_iff] at h
-  obtain ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩ := h
-  exact ⟨need_sound h1, need_sound h2, checkSkills_sound h3, need_sound h4, need_sound h5⟩
+    (h : checkCharacter rules c = []) : LegalCharacter rules c := checkCharacter_eq_nil_iff.mp h
 
 /-- Errors in the modifier of a Success Roll. -/
 def checkModifier (rules : RuleSet) : Outcome → List String
@@ -112,8 +113,8 @@ def checkFoesNonempty : Outcome → List String
 /-- Errors in one Creature of a Fight against the Character `c`. -/
 def checkFoe (rules : RuleSet) (c f : Being) : List String :=
   checkCreature rules f ++
-  need (FightCanEnd rules c f)
-    s!"{f.name}: the Fight can never end, because neither side can hurt the other (attack skill below {rules.minimumRollLevel}, or no hit can get past Dodge and DR)"
+  need (DamagePossible rules c f)
+    s!"{f.name}: the conservative damage screen found no injury in either direction (attack skill below {rules.minimumRollLevel}, or no hit can get past Dodge and DR)"
 
 /-- Errors in the Outcome of a Choice. -/
 def checkOutcome (rules : RuleSet) (c : Being) (a : Adventure) (o : Outcome) : List String :=
@@ -138,7 +139,7 @@ theorem checkOutcome_sound {rules : RuleSet} {c : Being} {a : Adventure} {o : Ou
   · cases o <;> first | trivial | exact need_sound hTry
   -- A Fight has at least one Creature.
   · cases o <;> first | trivial | exact need_sound hFoes
-  -- Each Creature is legal and its Fight can end.
+  -- Each Creature is legal and passes the damage screen.
   · intro f hf
     have hf' := hEach f hf
     simp only [checkFoe, List.append_eq_nil_iff] at hf'
@@ -157,39 +158,41 @@ theorem leads_of_mem_successors {a : Adventure} {s t : SceneId}
   obtain ⟨sc, ⟨hsc, hid⟩, ch, hch, ht⟩ := h
   exact ⟨sc, hsc, hid, ch, hch, ht⟩
 
-/-- Search from the Scenes in `seen`, for at most `fuel` steps.
-Returns `seen` plus every Scene found. Each step adds each new Scene once (`eraseDups`). Without
-that, a Scene that two Scenes lead to is added twice, and the list grows very fast. -/
-def explore (a : Adventure) : Nat → List SceneId → List SceneId
+/-- Finite closure search shared by forward and backward reachability. -/
+def exploreClosure (expand : List SceneId → List SceneId) : Nat → List SceneId → List SceneId
   | 0, seen => seen
-  | fuel + 1, seen =>
-    let found := ((seen.flatMap (successors a)).filter (· ∉ seen)).eraseDups
-    if found = [] then seen else explore a fuel (seen ++ found)
+  | fuel+1, seen =>
+    let found := ((expand seen).filter (· ∉ seen)).eraseDups
+    if found = [] then seen else exploreClosure expand fuel (seen ++ found)
 
-/-- If every Scene in `seen` can be reached, so can every Scene that `explore` returns. -/
-theorem explore_reachable {a : Adventure} :
-    ∀ (fuel : Nat) (seen : List SceneId),
-    (∀ x ∈ seen, Reachable a x) → ∀ x ∈ explore a fuel seen, Reachable a x := by
-  intro fuel
-  induction fuel with
-  -- No fuel: `explore` returns `seen`.
-  | zero =>
-    intro seen h
-    simpa [explore] using h
-  -- One more step: each Scene found is a successor of a Scene in `seen`.
+/-- Any invariant preserved by expansion is preserved by the closure search. -/
+theorem exploreClosure_invariant (expand : List SceneId → List SceneId) (P : SceneId → Prop)
+    (step : ∀ seen, (∀ x ∈ seen, P x) → ∀ x ∈ expand seen, P x)
+    (fuel : Nat) (seen : List SceneId) (initial : ∀ x ∈ seen, P x) :
+    ∀ x ∈ exploreClosure expand fuel seen, P x := by
+  induction fuel generalizing seen with
+  | zero => exact initial
   | succ n ih =>
-    intro seen h
-    simp only [explore]
+    simp only [exploreClosure]
     split
-    · exact h
+    · exact initial
     · apply ih
       intro x hx
       rcases List.mem_append.mp hx with hx | hx
-      · exact h x hx
+      · exact initial x hx
       · rw [List.mem_eraseDups] at hx
-        simp only [List.mem_filter, List.mem_flatMap] at hx
-        obtain ⟨⟨s, hs, hsucc⟩, _⟩ := hx
-        exact Reachable.next (h s hs) (leads_of_mem_successors hsucc)
+        exact step seen initial x (List.mem_filter.mp hx).1
+
+/-- Forward expansion follows every outcome target. -/
+def explore (a : Adventure) : Nat → List SceneId → List SceneId :=
+  exploreClosure (fun seen => seen.flatMap (successors a))
+
+theorem explore_reachable {a : Adventure} (fuel : Nat) (seen : List SceneId)
+    (h : ∀ x ∈ seen, Reachable a x) : ∀ x ∈ explore a fuel seen, Reachable a x := by
+  apply exploreClosure_invariant _ _ _ fuel seen h
+  intro seen hs x hx
+  obtain ⟨s, hmem, hedge⟩ := List.mem_flatMap.mp hx
+  exact Reachable.next (hs s hmem) (leads_of_mem_successors hedge)
 
 /-- The Scenes that the checker finds can be reached from the start. -/
 def reachableScenes (a : Adventure) : List SceneId :=
@@ -230,39 +233,18 @@ theorem isEnding_of_mem_endings {a : Adventure} {s : SceneId}
   obtain ⟨sc, ⟨hsc, hnil⟩, hid⟩ := h
   exact ⟨sc, hsc, hid, hnil⟩
 
-/-- Search back from the Scenes in `found`, for at most `fuel` steps. Each step adds every Scene
-with a Choice that leads into `found`. Returns `found` plus every Scene added. -/
-def exploreBack (a : Adventure) : Nat → List SceneId → List SceneId
-  | 0, found => found
-  | fuel + 1, found =>
-    let more := (a.scenes.map (·.id)).filter fun s =>
-      s ∉ found ∧ (successors a s).any (· ∈ found)
-    if more = [] then found else exploreBack a fuel (found ++ more)
+/-- Backward expansion finds scenes with an edge into the set already found. -/
+def exploreBack (a : Adventure) : Nat → List SceneId → List SceneId :=
+  exploreClosure (fun found => (a.scenes.map (·.id)).filter fun s =>
+    (successors a s).any (· ∈ found))
 
-/-- If an Ending can be reached from every Scene in `found`, the same is true for every Scene
-that `exploreBack` returns. -/
-theorem exploreBack_reachesEnding {a : Adventure} :
-    ∀ (fuel : Nat) (found : List SceneId),
-    (∀ x ∈ found, ReachesEnding a x) → ∀ x ∈ exploreBack a fuel found, ReachesEnding a x := by
-  intro fuel
-  induction fuel with
-  -- No fuel: `exploreBack` returns `found`.
-  | zero =>
-    intro found h
-    simpa [exploreBack] using h
-  -- One more step: each Scene added has a Choice that leads into `found`.
-  | succ n ih =>
-    intro found h
-    simp only [exploreBack]
-    split
-    · exact h
-    · apply ih
-      intro x hx
-      rcases List.mem_append.mp hx with hx | hx
-      · exact h x hx
-      · simp only [List.mem_filter, List.any_eq_true, decide_eq_true_eq] at hx
-        obtain ⟨_, _, t, ht, hfound⟩ := hx
-        exact ReachesEnding.next (leads_of_mem_successors ht) (h t hfound)
+theorem exploreBack_reachesEnding {a : Adventure} (fuel : Nat) (found : List SceneId)
+    (h : ∀ x ∈ found, ReachesEnding a x) : ∀ x ∈ exploreBack a fuel found, ReachesEnding a x := by
+  apply exploreClosure_invariant _ _ _ fuel found h
+  intro found hs x hx
+  simp only [List.mem_filter, List.any_eq_true, decide_eq_true_eq] at hx
+  obtain ⟨_, t, hedge, hfound⟩ := hx
+  exact ReachesEnding.next (leads_of_mem_successors hedge) (hs t hfound)
 
 /-- The Scenes from which the checker finds a way to an Ending. -/
 def endingScenes (a : Adventure) : List SceneId :=
@@ -296,8 +278,8 @@ def check (rules : RuleSet) (c : Being) (a : Adventure) : List String :=
 theorem check_sound {rules : RuleSet} {c : Being} {a : Adventure}
     (h : check rules c a = []) : LegalAdventure rules c a := by
   simp only [check, List.append_eq_nil_iff, List.flatMap_eq_nil_iff, List.map_eq_nil_iff] at h
-  obtain ⟨⟨⟨⟨⟨hStart, hNodup⟩, hEnding⟩, hScenes⟩, hReach⟩, hEnd⟩ := h
-  refine ⟨need_sound hStart, need_sound hNodup, need_sound hEnding, ?_, ?_, ?_⟩
+  obtain ⟨⟨⟨⟨⟨hStart, hNodup⟩, _hEnding⟩, hScenes⟩, hReach⟩, hEnd⟩ := h
+  refine ⟨need_sound hStart, need_sound hNodup, ?_, ?_, ?_⟩
   -- Every Choice is legal.
   · intro s hs ch hch
     exact checkOutcome_sound (hScenes s hs ch hch)

@@ -1,4 +1,7 @@
+import Rpg.Probability.DiceRefinement
 import Rpg.Play
+import Rpg.HPInvariant
+import Rpg.Probability.GraphProofs
 import Rpg.Adventures.Lafayette.Confidence
 import Rpg.WorldChange
 import Rpg.EventGraph
@@ -224,5 +227,76 @@ theorem timestamped_balance_if_covered (a : Probability.StatisticalCandidate)
 theorem live_change_spatial_matches (p : WorldChange.Prepared) :
     (∀ source target, (source, target) ∈ p.game.spatialProjection.links ↔ Leads p.game.adventure source target) ∧
     (∀ input, input ∈ p.game.spatialProjection.inputs ↔ AllowedInput p.game input) := p.spatial_matches
+
+/-- A certified fight ends with probability one under independent fair dice and the uniform policy. -/
+theorem combat_almostSurely {rules : RuleSet} {order : List Actor} {s : FightState}
+    (c : Probability.CertifiedFight rules order s) :
+    (Probability.combatProcess rules order).AlmostSurelyTerminates s := sorry
+
+/-- A certified fight supplies a finite horizon for every positive failure allowance. -/
+theorem combat_highProbability {rules : RuleSet} {order : List Actor} {s : FightState}
+    (c : Probability.CertifiedFight rules order s) (delta : Rat) (positive : 0 < delta) :
+    (Probability.combatProcess rules order).unfinished (c.stopping.horizon s delta) s ≤ delta := sorry
+
+/-- Certified result probabilities agree with finite shared-engine executions to any requested error. -/
+theorem combat_outcome_error {rules : RuleSet} {order : List Actor} {s : FightState}
+    (c : Probability.CertifiedFight rules order s) (event : Probability.CombatResult → Bool)
+    (delta : Rat) (positive : 0 < delta) :
+    let exact := (Probability.combatProcess rules order).eventBy
+      (fun s => event (Probability.terminalResult s)) (c.stopping.horizon s delta) s
+    exact ≤ c.outcomes.mass event ∧ c.outcomes.mass event ≤ exact + delta := sorry
+
+/-- Every admitted encounter terminates almost surely at every possible entry HP. -/
+theorem admitted_combats (a : Probability.StatisticalAdventure) (foes : List Being)
+    (encounter : foes ∈ Probability.encounterFoes a.candidate.story)
+    (hp : Int) (lower : 0 ≤ hp) (upper : hp ≤ a.candidate.rules.maxHP a.candidate.hero) :
+    (Probability.combatProcess a.candidate.rules (turnOrder a.candidate.rules a.candidate.hero foes)).AlmostSurelyTerminates
+      (Probability.fightStart a.candidate.rules a.candidate.hero hp foes) := sorry
+
+/-- A new game is well formed and its Character starts alive. -/
+theorem runtime_initialized (d : AdventureDefinition) (policy : Probability.BalancePolicy) :
+    (Game.new d policy).WellFormed ∧ 0 < (Game.new d policy).hp := sorry
+
+/-- Every input, including rejected inputs, preserves runtime consistency. -/
+theorem runtime_preserved (g : Game) (i : Input) (rng : Rng) (valid : g.WellFormed) :
+    ((step g i).run' rng).1.WellFormed := sorry
+
+/-- Every well-formed nonterminal game offers a rule-allowed input. -/
+theorem runtime_progress (g : Game) (valid : g.WellFormed) (ongoing : ¬ g.Terminal) :
+    ∃ i, AllowedInput g i := sorry
+
+/-- Normal gameplay never increases HP, so entry-HP certification has a finite bound. -/
+theorem hp_nonincreasing (g : Game) (i : Input) (rng : Rng) (valid : g.WellFormed) :
+    ((step g i).run' rng).1.hp ≤ g.hp := sorry
+
+/-- The generated graph has normalized kernels and absorbing terminal states. -/
+theorem generated_graph_valid (rules : RuleSet) (hero : Being) (story : Adventure) :
+    (Probability.adventureGraph rules hero story).Valid ∧
+    (Probability.adventureGraph rules hero story).Absorbing := sorry
+
+/-- An admitted live change preserves a valid runtime checkpoint. -/
+theorem live_change_runtime {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
+    (a : WorldChange.Admission p seed delta) : p.game.WellFormed := sorry
+
+/-- Every admitted adventure retains the short-loop guarantee. -/
+theorem admitted_noShortLoops (a : Probability.StatisticalAdventure) {s : SceneId} {n : Nat}
+    (loop : ChoicePath a.candidate.story s s n) (positive : 0 < n) : 4 ≤ n := sorry
+
+/-- The exact round model agrees with full independent fair-d6 execution of the shared engine. -/
+theorem combat_full_dice (rules : RuleSet)
+    (policy : FightState → Probability.Distribution (Maneuver × Nat))
+    (order : List Actor) (s : FightState) (observe : FightState → Rat) :
+    (Probability.roundDistribution rules policy order s).expect observe =
+      (roundWith (Probability.fullDiceAttack rules) policy order s).expect
+        (fun result => observe result.1) := sorry
+
+/-- Every installed change, including scenery-only edits, retains a valid checkpoint. -/
+theorem live_change_install_runtime {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
+    (permit : WorldChange.Permit p seed delta) : p.game.WellFormed := permit.wellFormed
+
+/-- A running fight prevents any edit to the event graph. -/
+theorem live_change_fight_graph (p : WorldChange.Prepared) (f : FightPhase)
+    (fight : p.before.phase = .fight f) : p.game.adventure = p.before.adventure :=
+  p.fight_graph_unchanged f fight
 
 end Verified

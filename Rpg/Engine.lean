@@ -104,15 +104,15 @@ def Fighter.dodge (rules : RuleSet) (f : Fighter) : Option Nat :=
 def CombatRule.active (r : CombatRule) (rules : RuleSet) (actor : Actor)
     (self other : Fighter) : Bool :=
   r.forHero actor.isNone && match r.trigger with
-  | "always" => true
-  | "wounded" => 2 * self.hp ≤ rules.maxHP self.being
-  | "desperate" => 3 * self.hp ≤ rules.maxHP self.being
-  | "reckless" => self.maneuver == .allOutAttack
-  | "guarding" => self.maneuver == .allOutDefense
-  | "againstReckless" => other.maneuver == .allOutAttack
-  | "againstGuarding" => other.maneuver == .allOutDefense
-  | "againstFlame" => other.being.weapon == .flamethrower
-  | _ => false
+  | .always => true
+  | .wounded => 2 * self.hp ≤ rules.maxHP self.being
+  | .desperate => 3 * self.hp ≤ rules.maxHP self.being
+  | .reckless => self.maneuver == .allOutAttack
+  | .guarding => self.maneuver == .allOutDefense
+  | .againstReckless => other.maneuver == .allOutAttack
+  | .againstGuarding => other.maneuver == .allOutDefense
+  | .againstFlame => other.being.weapon == .flamethrower
+
 
 /-- The damage dice for a hit. After an attack roll of 3, every die counts as 6 and no dice
 are rolled. Returns the faces and `true` if they are the maximum. -/
@@ -132,12 +132,12 @@ def attackWith [Monad m] (rules : RuleSet) (roll : Nat → m (List Nat))
     (r.hitBonus != 0 || r.damageBonus != 0)
   let defense := rules.combatRules.filter fun r => r.active rules dfnId dfn att && r.armorBonus > 0
   let effectReports := (offense ++ defense).map fun r => Report.worldRule r.name r.description
-  let level := rules.weaponLevel att.being + att.maneuver.hitBonus + (offense.map (·.hitBonus)).sum
+  let level := rules.weaponLevel attId.isNone att.being + att.maneuver.hitBonus + (offense.map (·.hitBonus)).sum
   if level < rules.minimumRollLevel then
     return (0, [.cannotAttack att.being.name level])
   let r ← rollAgainstWith rules roll level
   let line := Report.attack attId att.being.name dfnId dfn.being.name att.being.weapon
-    ((rules.equipmentFor att.being).map (·.name)) r
+    ((rules.equipmentFor attId.isNone att.being).map (·.name)) r
   if !r.result.succeeded then
     return (0, effectReports ++ [line])
   let mut reports := effectReports ++ [line]
@@ -152,7 +152,7 @@ def attackWith [Monad m] (rules : RuleSet) (roll : Nat → m (List Nat))
       reports := reports ++ [.dodge dfn.being.name { d with result := if dodged then .success else .failure }]
       if dodged then
         return (0, reports)
-  let baseDice := rules.weaponDice att.being
+  let baseDice := rules.weaponDice attId.isNone att.being
   let dice := { baseDice with add := baseDice.add + (offense.map (·.damageBonus)).sum }
   let kind := att.being.weapon.damageType
   let (faces, maxed) ← damageFacesWith roll dice.count r.total
@@ -176,6 +176,10 @@ structure FightState where
   hero : Fighter
   foes : List Fighter
   deriving DecidableEq
+
+/-- The numbers of the Creatures in a Fight that are alive. -/
+def FightState.livingFoes (s : FightState) : List Nat :=
+  (List.range s.foes.length).filter fun i => (s.foes[i]?.map (·.alive)).getD false
 
 /-- The Fight is over when the Character is dead or every Creature is dead. -/
 def FightState.over (s : FightState) : Bool :=

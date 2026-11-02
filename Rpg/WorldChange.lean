@@ -1,6 +1,8 @@
 import Rpg.Live
 import Rpg.Probability.Retry
 import Rpg.Probability.Screening
+import Rpg.Probability.ContinuationCertificate
+import Rpg.RuntimeInvariant
 
 /-! In-play changes are checked data, not generated executable code. An accepted
 patch keeps the checkpoint, HP, history, core rules, and balance policy. Admission samples the
@@ -26,22 +28,22 @@ structure Proposal where
 /-- A tuned effect's description states its actual condition and numbers. -/
 def counterDescription (r : CombatRule) : String :=
   let trigger := match r.trigger with
-    | "wounded" => "at half HP or less"
-    | "desperate" => "at one third HP or less"
-    | "reckless" => "after choosing All-Out Attack"
-    | "guarding" => "after choosing All-Out Defense"
-    | "againstReckless" => "against an opponent using All-Out Attack"
-    | "againstGuarding" => "against an opponent using All-Out Defense"
-    | "againstFlame" => "against an opponent wielding a flamethrower"
-    | _ => "always"
+    | .wounded => "at half HP or less"
+    | .desperate => "at one third HP or less"
+    | .reckless => "after choosing All-Out Attack"
+    | .guarding => "after choosing All-Out Defense"
+    | .againstReckless => "against an opponent using All-Out Attack"
+    | .againstGuarding => "against an opponent using All-Out Defense"
+    | .againstFlame => "against an opponent wielding a flamethrower"
+    | .always => "always"
   let effects := (if r.hitBonus = 0 then [] else [s!"{r.hitBonus} to hit"]) ++
     (if r.damageBonus = 0 then [] else [s!"{r.damageBonus} damage"]) ++
     (if r.armorBonus = 0 then [] else [s!"{r.armorBonus} extra armor"])
-  s!"{if r.side == "foes" then "Enemies" else "You"} gain {String.intercalate ", " effects} {trigger}."
+  s!"{if r.side == .foes then "Enemies" else "You"} gain {String.intercalate ", " effects} {trigger}."
 
 /-- Scale only positive enemy counter-effects; keep the named tactical trigger and all gifts. -/
 def tuneCounter (quarters : Nat) (r : CombatRule) : CombatRule :=
-  if r.side != "foes" then r else
+  if r.side != .foes then r else
   let scale (n cap : Nat) := if n = 0 then 0 else min cap (max 1 (n * quarters / 4))
   let tuned := { r with
     hitBonus := if r.hitBonus > 0 then (scale r.hitBonus.toNat 4 : Int) else r.hitBonus,
@@ -64,8 +66,8 @@ def ruleOfJson (j : Json) : Except String CombatRule := do
   return {
     name := ← j.getObjValAs? String "name"
     description := ← j.getObjValAs? String "description"
-    side := ← j.getObjValAs? String "side"
-    trigger := ← j.getObjValAs? String "trigger"
+    side := ← ofKey? CombatSide.all CombatSide.key "side" (← j.getObjValAs? String "side")
+    trigger := ← ofKey? CombatTrigger.all CombatTrigger.key "trigger" (← j.getObjValAs? String "trigger")
     hitBonus := ← j.getObjValAs? Int "hitBonus"
     damageBonus := ← j.getObjValAs? Int "damageBonus"
     armorBonus := ← j.getObjValAs? Nat "armorBonus" }
@@ -117,9 +119,7 @@ def Proposal.errors (p : Proposal) (g : Game) : List String :=
   (p.requestedRules ++ p.rules).flatMap (fun r =>
     (if r.name.isEmpty || r.description.isEmpty then ["Every rule needs a name and description."] else []) ++
     tooLong "a rule name" 80 r.name ++ tooLong "a rule description" 400 r.description ++
-    (if !["hero", "foes"].contains r.side || !combatTriggers.contains r.trigger then
-      [s!"Unsupported side or trigger for {r.name}."] else []) ++
-    (if r.side == "foes" && ["reckless", "guarding"].contains r.trigger then
+    (if r.side == .foes && [.reckless, .guarding].contains r.trigger then
       [s!"{r.name} cannot fire: enemies always choose Attack."] else []) ++
     (if r.hitBonus < -4 || r.hitBonus > 4 || r.damageBonus < -4 || r.damageBonus > 6 || r.armorBonus > 4 then
       [s!"{r.name}: hit bonus must be -4..4, damage -4..6, armor 0..4."] else []) ++
@@ -208,6 +208,7 @@ structure Prepared where
   graphStable : proposal.graphStableInFight before
   heroLegal : LegalCharacter (proposal.ruleSet before)
     { before.hero with weapon := proposal.equipment.map (·.weapon) |>.getD before.hero.weapon }
+  noShortLoops : (proposal.story before).NoShortLoops
   storyLegal : LegalAdventure (proposal.ruleSet before)
     { before.hero with weapon := proposal.equipment.map (·.weapon) |>.getD before.hero.weapon }
     (proposal.story before)
@@ -247,6 +248,14 @@ theorem Prepared.preserves_checkpoint (p : Prepared) :
       rename_i id
       by_cases empty : (p.definition.story.scene? id).any (·.choices.isEmpty) = true <;>
         simp [game, Game.sceneId?, h, empty]
+
+/-- Installation preserves the entire paused fight except the hero's equipment-bearing identity.
+In particular no wounds, maneuvers, enemy turns, or rounds are reset. -/
+theorem Prepared.preserves_fight_checkpoint (p : Prepared) (f : FightPhase)
+    (paused : p.before.phase = .fight f) :
+    p.game.phase = .fight { f with state := { f.state with
+      hero := { f.state.hero with being := p.definition.hero } } } := by
+  simp [Prepared.game, paused]
 
 /-- Every core field is unchanged, including dice, point budgets, HP rules, and turn order. -/
 theorem Prepared.preserves_core (p : Prepared) :
@@ -314,7 +323,8 @@ def Proposal.prepare (p : Proposal) (g : Game) (map : Option WorldEnvironment :=
   if sizes != [] then .error sizes else
   if hc : checkCharacter rules hero = [] then
     if ha : check rules hero story = [] then
-      if story.checkShortLoops then .ok ⟨g, p, he, hp, hk, hs, checkCharacter_sound hc, check_sound ha⟩
+      if hl : story.checkShortLoops then .ok ⟨g, p, he, hp, hk, hs, checkCharacter_sound hc,
+        story.checkShortLoops_sound hl, check_sound ha⟩
       else .error story.shortLoopErrors
     else .error (check rules hero story ++ story.shortLoopErrors)
   else .error (checkCharacter rules hero)
@@ -329,6 +339,18 @@ structure Admission (p : Prepared) (seed : Nat) (delta : Rat) where
   provenance : counts = sampleCounts p.candidate seed p.candidate.games
   accepted : p.candidate.accepts counts delta
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
+  combat : CertifiedAdventureCombat p.definition
+  /-- A live edit must preserve an executable checkpoint, even for custom core rules. -/
+  wellFormed : p.game.WellFormed
+  hpBound : p.game.hp ≤ p.game.rules.maxHP p.game.hero
+  /-- The paused fight is checked with its actual wounds, maneuvers, and remaining turn order. -/
+  checkpoint : match p.game.phase with
+    | .fight f => CertifiedContinuation p.game.rules f
+    | _ => Unit
+
+/-- The prepared definition already carries the short-loop proof; admission reuses it. -/
+theorem Admission.noShortLoops {p : Prepared} {seed : Nat} {delta : Rat}
+    (_a : Admission p seed delta) : p.game.adventure.NoShortLoops := p.noShortLoops
 
 -- The fact about one admission is `WorldChange.Admission.intervals_fit`.
 /-- The balance test at error allowance `delta` is sound for the changed Adventure, from its
@@ -408,14 +430,36 @@ def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
   let counts := sampleCounts p.candidate seed p.candidate.games
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
     if h : p.candidate.accepts counts delta then
-      (counts, some ⟨counts, rfl, h, hd⟩)
+      match certifyAdventureCombat p.definition with
+      | none => ({counts with combatRejected := true}, none)
+      | some combat =>
+        if hw : p.game.WellFormed then
+        if hb : p.game.hp ≤ p.game.rules.maxHP p.game.hero then
+          let checkpoint : Option (match p.game.phase with
+              | .fight f => CertifiedContinuation p.game.rules f | _ => Unit) :=
+            match p.game.phase with
+            | .fight f => certifyContinuation p.game.rules f
+            | .title | .scene _ | .ended _ | .dead _ => some ()
+          match checkpoint with
+          | none => ({counts with combatRejected := true}, none)
+          | some checkpoint => (counts, some ⟨counts, rfl, h, hd, combat, hw, hb, checkpoint⟩)
+        else ({counts with combatRejected := true}, none)
+        else ({counts with combatRejected := true}, none)
     else (counts, none)
   else (counts, none)
 
 /-- Gameplay changes need statistical evidence; scenery-only changes carry an identity proof. -/
 inductive Permit (p : Prepared) (seed : Nat) (delta : Rat) where
   | statistical (evidence : Admission p seed delta)
-  | visual (unchanged : p.proposal.visualOnly)
+  | visual (unchanged : p.proposal.visualOnly) (wellFormed : p.game.WellFormed)
+      (hpBound : p.game.hp ≤ p.game.rules.maxHP p.game.hero)
+
+/-- Both scenery-only and statistical installations preserve runtime consistency. -/
+theorem Permit.wellFormed {p : Prepared} {seed : Nat} {delta : Rat}
+    (permit : Permit p seed delta) : p.game.WellFormed := by
+  cases permit with
+  | statistical evidence => exact evidence.wellFormed
+  | visual _ valid _ => exact valid
 
 /-- Rebuilding from the revised game preserves exact render/event correspondence after any patch. -/
 theorem Prepared.spatial_matches (p : Prepared) :

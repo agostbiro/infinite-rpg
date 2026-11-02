@@ -2,6 +2,9 @@ import Rpg.WorldChangeCheckpointTests
 import Rpg.Adventures.TestAdventure.Confidence
 import Rpg.Adventures.Lafayette
 
+import Rpg.PlayTests
+import Rpg.WorldChangeTests
+
 open Rpg Rpg.WorldChange Rpg.Probability Rpg.Probability.Confidence
 
 /-- The road checkpoint of the test game. Like the server's home game, it has the test Adventure
@@ -59,7 +62,7 @@ def main (args : List String) : IO UInt32 := do
       return if admission.isSome && accepted.isNone then 0 else 1
   if args.contains "--tuning" then
     let heavy := { Tests.proposal with rules := [
-      { Tests.fury with trigger := "againstFlame", hitBonus := 4, damageBonus := 6, armorBonus := 2 }, Tests.shelter] }
+      { Tests.fury with trigger := .againstFlame, hitBonus := 4, damageBonus := 6, armorBonus := 2 }, Tests.shelter] }
     let mut results : List Bool := []
     for quarters in [4, 2, 1, 3, 5, 6, 8, 12, 16] do
       match (heavy.tune quarters).prepare homeRoad with

@@ -32,7 +32,21 @@
     "Verified.live_change_falseAcceptance",
     "Verified.timestamped_balance_target",
     "Verified.timestamped_balance_if_covered",
-    "Verified.live_change_spatial_matches"
+    "Verified.live_change_spatial_matches",
+    "Verified.combat_almostSurely",
+    "Verified.combat_highProbability",
+    "Verified.combat_outcome_error",
+    "Verified.admitted_combats",
+    "Verified.runtime_initialized",
+    "Verified.runtime_preserved",
+    "Verified.runtime_progress",
+    "Verified.hp_nonincreasing",
+    "Verified.generated_graph_valid",
+    "Verified.live_change_runtime",
+    "Verified.admitted_noShortLoops",
+    "Verified.combat_full_dice",
+    "Verified.live_change_install_runtime",
+    "Verified.live_change_fight_graph"
   ],
   "permitted_axioms": [
     "propext",

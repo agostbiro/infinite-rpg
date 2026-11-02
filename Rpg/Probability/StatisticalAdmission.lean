@@ -1,6 +1,8 @@
 import Rpg.Probability.Confidence
 import Rpg.Probability.Simulation
 import Rpg.Probability.Continuation
+import Rpg.Probability.AdventureCertificate
+import Rpg.EventGraph
 
 /-!
 Finite confidence intervals compare the adventure's conditional death expectations
@@ -66,6 +68,8 @@ structure ValidationCounts where
   deaths : Array Nat
   games : Nat := 0
   aborted : Bool := false
+  /-- Mandatory structural or combat evidence failed. -/
+  combatRejected : Bool := false
   deriving Repr
 
 /-- Add one qualifying Bernoulli observation to its row. -/
@@ -93,7 +97,7 @@ def ValidationCounts.observeTrace (c : ValidationCounts) (horizon : Nat)
 Exploration can use a separate seed; unresolved outcomes inside the window abort the batch. -/
 def sampleCounts (a : StatisticalCandidate) (seed games : Nat) : ValidationCounts := Id.run do
   let h := a.horizon
-  let mut counts : ValidationCounts := ⟨Array.replicate (h+1) 0, Array.replicate (h+1) 0, 0, false⟩
+  let mut counts : ValidationCounts := ⟨Array.replicate (h+1) 0, Array.replicate (h+1) 0, 0, false, false⟩
   let mut rng : Rng := ⟨seed.toUInt64⟩
   for _ in [:games] do
     let point := a.resume.getD (.scene a.story.start (a.rules.maxHP a.hero))
@@ -242,9 +246,11 @@ proof that every row passed. `balanced` says the test itself is sound; it holds 
 structure StatisticalAdventure where
   /-- The adventure that was checked. -/
   candidate : StatisticalCandidate
-  /-- The test is sound for this candidate (true for every candidate). -/
-  balanced : Balanced candidate
-  /-- The seed of the candidate's precommitted games. -/
+  /-- Admission covers the original adventure; continuation analysis is separate. -/
+  fromStart : candidate.resume = none ∧ candidate.elapsed = 0
+  shortLoops : candidate.story.NoShortLoops
+  combat : CertifiedAdventureCombat candidate.toAdventureDefinition
+  /-- The seed of the `validationGames` games. -/
   seed : Nat
   /-- The counts from those games. -/
   counts : ValidationCounts
@@ -252,12 +258,17 @@ structure StatisticalAdventure where
   delta : Rat
   /-- A retry can strengthen confidence, but cannot weaken it. -/
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
-  /-- The proof also covers the actual error allowance used by this admission. -/
-  confidence : BalancedAt candidate delta
   /-- The counts come from this candidate's own games with this seed. -/
   provenance : counts = sampleCounts candidate seed candidate.games
   /-- Every row passed, against the candidate's own policy. -/
   accepted : candidate.accepts counts delta
+
+/-- Generic soundness is derived, rather than stored redundantly in every admitted value. -/
+theorem StatisticalAdventure.balanced (a : StatisticalAdventure) : Balanced a.candidate :=
+  a.candidate.balanced
+
+theorem StatisticalAdventure.confidence (a : StatisticalAdventure) : BalancedAt a.candidate a.delta :=
+  a.candidate.balancedAt a.delta (Rat.le_of_lt a.riskValid.1)
 
 /-- Every admitted interval fits the Weibull tolerance band of the candidate's own policy. -/
 theorem StatisticalAdventure.intervals_fit (a : StatisticalAdventure) (i : Fin (a.candidate.horizon+1)) :
@@ -278,8 +289,13 @@ def admitWithRisk (candidate : StatisticalCandidate) (seed : Nat) (delta : Rat) 
   let counts := sampleCounts candidate seed candidate.games
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
     if h : candidate.accepts counts delta then
-      (counts, some ⟨candidate, candidate.balanced, seed, counts, delta, hd,
-        candidate.balancedAt delta (Rat.le_of_lt hd.1), rfl, h⟩)
+      if hs : candidate.resume = none ∧ candidate.elapsed = 0 then
+      if hl : candidate.story.NoShortLoops then
+        match certifyAdventureCombat candidate.toAdventureDefinition with
+        | some combat => (counts, some ⟨candidate,hs,hl,combat,seed,counts,delta,hd,rfl,h⟩)
+        | none => ({counts with combatRejected := true}, none)
+      else ({counts with combatRejected := true}, none)
+      else ({counts with combatRejected := true}, none)
     else (counts, none)
   else (counts, none)
 
@@ -292,12 +308,9 @@ theorem admitWithRisk_candidate {c : StatisticalCandidate} {seed : Nat} {delta :
     a.candidate = c := by
   unfold admitWithRisk at h
   dsimp only at h
-  by_cases hd : 0 < delta ∧ delta ≤ confidenceDelta
-  · by_cases hv : c.accepts (sampleCounts c seed c.games) delta
-    · simp only [hd, hv, and_self, ↓reduceDIte, Prod.mk.injEq, Option.some.injEq] at h
-      rw [← h.2]
-    · simp [hd, hv] at h
-  · simp [hd] at h
+  repeat split at h
+  all_goals simp_all
+  all_goals rw [← h.2]
 
 /-- A single admission attempt uses the shared confidence setting. -/
 def admitWithSeed (candidate : StatisticalCandidate) (seed : Nat) :
@@ -318,6 +331,7 @@ def failedRows (horizon : Nat) (c : ValidationCounts)
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   let general :=
+    (if c.combatRejected then ["admission certification failed: invalid checkpoint, short loop, or unverified combat"] else []) ++
     (if c.aborted then ["a game did not finish inside the window (a Fight went on too long)"] else []) ++
     (if c.games != expectedGames then [s!"only {c.games} of {expectedGames} games were played"] else [])
   general ++ (List.range (horizon + 1)).filterMap fun row =>

@@ -1,3 +1,4 @@
+import Rpg.Adventures.TestAdventure
 import Rpg.Probability.Simulation
 import Rpg.Probability.RuleSetExamples
 import Rpg.Probability.TestStory

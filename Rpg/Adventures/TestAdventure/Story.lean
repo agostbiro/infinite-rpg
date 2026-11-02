@@ -79,7 +79,7 @@ theorem test_adventure_legal : LegalAdventure rules mara testAdventure :=
 reached. -/
 theorem test_adventure_reaches_ending :
     ∀ s ∈ testAdventure.scenes, ReachesEnding testAdventure s.id :=
-  test_adventure_legal.2.2.2.2.2
+  test_adventure_legal.reachesEnding
 
 /-- Rule 7 by hand, for one Scene: from Steel in the Tent (Scene 6), the Fight with the chief leads
 to the Ending The Chief Falls (Scene 8). -/

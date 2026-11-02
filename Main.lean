@@ -32,7 +32,7 @@ Routes:
   with a new seed. It needs no API key.
 * `POST /api/wish`: ask the DM for an Adventure. The body is `{"wish", "name", "gender"}`.
 * `POST /api/change`: request an adventure rule change at the current checkpoint, with `{"wish"}`.
-* `POST /api/retry`: ask again with the last Wish after 3 failed tries, or with the last live change
+* `POST /api/retry`: ask again with the last Wish within its five-attempt limit, or with the last live change
   after it failed.
 * `POST /api/dismiss`: hide the result of a Wish (failed, refused, or ready to play), or of a failed
   or refused live change.
@@ -140,6 +140,8 @@ structure Generation where
   gender : String := ""
   /-- Wishes create games; changes revise the paused game. -/
   mode : String := "wish"
+  /-- Attempts already spent on this Wish, retained across Retry. -/
+  attempts : Nat := 0
 
 /-- The work state after the Player leaves the game in play. A live change belongs to the game
 that it changed, so its result goes away. The result of a Wish stays. -/
@@ -150,6 +152,18 @@ def Generation.afterLeave (g : Generation) : Generation :=
 #guard ({ state := .failed, mode := "change", wish := "a flamethrower" } : Generation).afterLeave.state == .idle
 #guard ({ state := .failed, mode := "change", wish := "a flamethrower" } : Generation).afterLeave.wish == ""
 #guard ({ state := .failed, mode := "wish", wish := "the Shire" } : Generation).afterLeave.state == .failed
+
+/-- A Wish has at most five generation attempts, including explicit retries. -/
+def maxWishAttempts : Nat := 5
+
+/-- Reserve one attempt before contacting the DM. Cancellation does not refund it. -/
+def Generation.takeWishAttempt (g : Generation) : Option (Nat × Generation) :=
+  if g.attempts < maxWishAttempts then
+    some (g.attempts + 1, { g with attempts := g.attempts + 1 })
+  else none
+
+#guard (({ attempts := 4 } : Generation).takeWishAttempt.map (·.1)) == some 5
+#guard ({ attempts := 5 } : Generation).takeWishAttempt.isNone
 
 /-- Everything the server keeps. -/
 structure ServerState where
@@ -775,13 +789,19 @@ def addMap (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (
     return none
   return some d
 
-/-- Ask the DM for an Adventure for a Wish: up to 3 tries. After a failed try, the DM gets the
+/-- Ask the DM for an Adventure for a Wish: up to five tries across generation and Retry. After a failed try, the DM gets the
 errors and sends a fixed version. -/
 def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState) (job : Nat)
     (wish name gender : String) : IO Unit := do
   let mut messages := [userTurn (wishMessage wish name gender)]
   let mut lastErrors : List String := []
-  for attempt in [1, 2, 3] do
+  for _ in List.range maxWishAttempts do
+    let attempt? ← ref.modifyGet fun s =>
+      if s.gen.job != job || s.gen.state != .running then (none, s) else
+      match s.gen.takeWishAttempt with
+      | none => (none, s)
+      | some (attempt, gen) => (some attempt, { s with gen })
+    let some attempt := attempt? | break
     let text := if attempt == 1 then "The Dungeon Master is writing..." else "The Dungeon Master is fixing them..."
     if !(← addStep ref job { text }) then return
     let reply ← callApi cfg children (jobOwner job) (jobWanted ref job) (adventureRequest messages)
@@ -821,16 +841,21 @@ def generate (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
     if !(← addStep ref job { text := errorsText errors.length, errors }) then return
     messages := messages ++ [assistantTurn content, userTurn (fixMessage errors hero?)]
   endJob ref job .failed
-    { text := "The Dungeon Master could not write a legal and balanced Adventure in 3 tries.", errors := lastErrors }
+    { text := "The Dungeon Master could not write a legal and balanced Adventure within the five-attempt limit.", errors := lastErrors }
 
 /-- Start the work on a Wish in the background. Returns `false`, and does nothing, if the DM is
 already writing. The check and the start are one atomic step. -/
 def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
-    (wish name gender : String) : IO Bool := do
+    (wish name gender : String) (retry : Bool := false)
+    (expectedJob : Option Nat := none) : IO Bool := do
   let job? ← ref.modifyGet fun s =>
-    if s.gen.state == .running then (none, s) else
+    if s.gen.state == .running || (retry &&
+        (s.gen.mode != "wish" || expectedJob != some s.gen.job || s.gen.attempts >= maxWishAttempts)) then
+      (none, s)
+    else
     let job := s.gen.job + 1
-    (some job, { s with gen := { job, state := .running, wish, name, gender } })
+    let attempts := if retry then s.gen.attempts else 0
+    (some job, { s with gen := { job, state := .running, wish, name, gender, attempts } })
   let some job := job? | return false
   let _ ← IO.asTask (prio := .dedicated) do
     try generate cfg children ref job wish name gender
@@ -998,7 +1023,11 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
           | .error errs => pure (errs, content)
           | .ok prepared =>
             if visual : prepared.proposal.visualOnly then
-              applyChange ref job prepared 0 0 (.visual visual)
+              if hw : prepared.game.WellFormed then
+                if hb : prepared.game.hp ≤ prepared.game.rules.maxHP prepared.game.hero then
+                  applyChange ref job prepared 0 0 (.visual visual hw hb)
+                else endJob ref job .failed { text := "The checkpoint HP exceeds its maximum. Your game is unchanged." }
+              else endJob ref job .failed { text := "The checkpoint is inconsistent. Your game is unchanged." }
               return
             gift := some (proposal.equipment, proposal.requestedRules)
             let signature := reprStr (proposal.equipment, proposal.requestedRules, proposal.rules, proposal.scenes)
@@ -1357,7 +1386,10 @@ def route (cfg : GameConfig) (webRoot : System.FilePath) (children : Children)
         match ← startChange cfg children state g.wish with
         | .error why => return ← replyJson .conflict (← view (error := some why))
         | .ok () => return ← replyJson .ok (← view)
-      if !(← startWish cfg children state g.wish g.name g.gender) then return ← busy
+      if g.attempts >= maxWishAttempts then
+        return ← replyJson .conflict (← view (error := some "This Wish has used its five attempts. Start a new Wish."))
+      if !(← startWish cfg children state g.wish g.name g.gender
+          (retry := true) (expectedJob := some g.job)) then return ← busy
       replyJson .ok (← view)
     | ["api", "load"] =>
       let id := (Json.parse body >>= (·.getObjValAs? String "id")).toOption.getD ""
@@ -1448,11 +1480,11 @@ def main (args : List String) : IO UInt32 := do
     IO.eprintln "The compiled checker rejects the built-in Adventure, so the game will not start:"
     for e in errs do IO.eprintln s!"  ERROR: {e}"
     return 1
-  -- The built-in Adventure must also pass the balance check, with the fixed validation seed.
+  -- Admission also checks sampled balance and combat certificates for every entry HP.
   let candidate := Lafayette.statisticalCandidate
   let (counts, admitted) := Probability.admitStatistically candidate
   if admitted.isNone then
-    IO.eprintln "The built-in Adventure failed the balance check, so the game will not start:"
+    IO.eprintln "The built-in Adventure failed admission, so the game will not start:"
     for e in Probability.failedRows candidate.horizon counts Probability.Confidence.confidenceDelta
         candidate.elapsed candidate.policy do
       IO.eprintln s!"  ERROR: {e}"

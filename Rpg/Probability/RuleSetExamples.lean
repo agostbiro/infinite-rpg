@@ -19,12 +19,12 @@ example : checkCharacter zeroPointRules rollHero = [] := by decide +kernel
 example : checkCharacter fixtureRules rollHero ≠ [] := by decide +kernel
 
 /-- No attack is falsely declared usable when the local success rule always fails. -/
-example : ¬ failureRules.canHurt strongHero harmlessFoe := by decide +kernel
+example : ¬ failureRules.canHurt true strongHero harmlessFoe := by decide +kernel
 
 /-- A rule variant with zero injury cannot pass the attack-possibility test. -/
 def noInjuryRules : RuleSet := { fixtureRules with injury := fun _ _ _ => 0 }
 
-example : ¬ noInjuryRules.canHurt strongHero harmlessFoe := by decide +kernel
+example : ¬ noInjuryRules.canHurt true strongHero harmlessFoe := by decide +kernel
 
 /-- A small graph keeps success and failure distinguishable after a roll. -/
 def rulesStory : Adventure where

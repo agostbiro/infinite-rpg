@@ -19,6 +19,7 @@ def gentlePrepared : Prepared where
   policyValid := by decide +kernel
   checkpointValid := by decide +kernel
   graphStable := by decide +kernel
+  noShortLoops := by decide +kernel
   heroLegal := checkCharacter_sound (by decide +kernel)
   storyLegal := check_sound (by decide +kernel)
 
@@ -89,7 +90,7 @@ example : WithinTolerance (20/100) (20/100) (1/20) ∧
 
 /-- Precision planning uses the absolute timestamp but samples only the new six-event window. -/
 def referenceCounts (a : StatisticalCandidate) : ValidationCounts := Id.run do
-  let mut c : ValidationCounts := ⟨#[], #[], a.games, false⟩
+  let mut c : ValidationCounts := ⟨#[], #[], a.games, false, false⟩
   for row in [:a.horizon+1] do
     let n := if row == 0 then a.games else
       ((a.games : Rat) * a.policy.remainingSurvival a.elapsed (row-1)).floor.toNat
@@ -171,7 +172,13 @@ def meetNapoleon : Proposal :=
 -- A permissive exploratory screen can never authorize a batch by itself.
 #guard
   let a := { gentlePrepared.candidate with policy := defaultPolicy }
-  let sparse : ValidationCounts := ⟨Array.replicate 6 0, Array.replicate 6 0, screenGames, false⟩
+  let sparse : ValidationCounts := ⟨Array.replicate 6 0, Array.replicate 6 0, screenGames, false, false⟩
   a.screenPlausible sparse && !decide (a.accepts sparse (attemptRisk 0))
+
+-- The render projection rejects invented commands and event links.
+example : (.choose 1) ∈ roadGame.spatialProjection.inputs := by decide +kernel
+example : (.choose 999) ∉ roadGame.spatialProjection.inputs := by decide +kernel
+example : (0, 1) ∈ roadGame.spatialProjection.links := by decide +kernel
+example : (0, 999) ∉ roadGame.spatialProjection.links := by decide +kernel
 
 end Rpg.WorldChange.Tests

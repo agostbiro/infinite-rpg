@@ -32,10 +32,4 @@ theorem Game.spatial_links_exact (g : Game) (source target : SceneId) :
 theorem Game.spatial_inputs_exact (g : Game) (input : Input) :
     input ∈ g.spatialProjection.inputs ↔ AllowedInput g input := mem_inputs_iff
 
--- The specification is inhabited and rejects invented render commands.
-example : (.choose 1) ∈ roadGame.spatialProjection.inputs := by decide +kernel
-example : (.choose 999) ∉ roadGame.spatialProjection.inputs := by decide +kernel
-example : (0, 1) ∈ roadGame.spatialProjection.links := by decide +kernel
-example : (0, 999) ∉ roadGame.spatialProjection.links := by decide +kernel
-
 end Rpg

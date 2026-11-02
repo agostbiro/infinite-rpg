@@ -21,8 +21,6 @@ namespace Rpg
 
 /-! ## Inputs -/
 
-/-- The Maneuvers the Player can choose, in menu order. -/
-def maneuverMenu : List Maneuver := [.attack, .allOutAttack, .allOutDefense]
 
 /-- The inputs for the Character's turn in a Fight. A Maneuver that attacks has one input
 for each living Creature. A Maneuver with no attack has one input with no target. -/
@@ -82,8 +80,8 @@ def Game.startFight (g : Game) (id : SceneId) (k : Nat) (foes : List Being) (onW
     { hero := { being := g.hero, hp := g.hp }, foes := foes.map fun b => { being := b, hp := g.rules.maxHP b } }
   let (s, first) ← foeTurns g.rules s (beforeCharacter order)
   let (g, last) := g.settle ⟨id, k, onWin, order, 1, s⟩
-  let cards := foes.map fun b => b.card g.rules (g.rules.maxHP b)
-  return (g, [.fightStarts (g.hero.card g.rules g.hp) cards, .round 1] ++ first ++ last)
+  let cards := foes.map fun b => b.card g.rules false (g.rules.maxHP b)
+  return (g, [.fightStarts (g.hero.card g.rules true g.hp) cards, .round 1] ++ first ++ last)
 
 /-- The Character's turn with Maneuver `m` at `target`. Then every Creature turn up to the
 Character's next turn: the rest of this round, and the start of the next round. -/
@@ -148,26 +146,31 @@ theorem step_rejects (g : Game) (i : Input) (dice : Rng)
   simp only [step, h, ↓reduceIte]
   rfl
 
+/-- The executable stopping test agrees exactly with the input specification. -/
+theorem not_over_iff_goesOn {s : FightState} : s.over = false ↔ FightGoesOn s := by
+  simp [FightState.over, FightGoesOn]
+
 /-- A Fight that is not over goes on. -/
 theorem goesOn_of_not_over {s : FightState}
     -- The Fight is not over.
     (h : s.over = false) :
-    FightGoesOn s := by
-  simp [FightState.over] at h
-  exact h
+    FightGoesOn s := not_over_iff_goesOn.mp h
+
+/-- The shared living-foe menu contains exactly the valid, living targets. -/
+theorem mem_livingFoes_iff {s : FightState} {t : Nat} :
+    t ∈ s.livingFoes ↔ ∃ foe, s.foes[t]? = some foe ∧ foe.alive = true := by
+  simp only [FightState.livingFoes, List.mem_filter, List.mem_range]
+  cases hfoe : s.foes[t]? with
+  | none => simp
+  | some foe =>
+    have ht := (List.getElem?_eq_some_iff.mp hfoe).1
+    simp [ht]
 
 /-- A Creature number in `livingFoes` names a living Creature. -/
 theorem mem_livingFoes {s : FightState} {t : Nat}
     -- `t` is in the list of living Creatures.
     (h : t ∈ s.livingFoes) :
-    ∃ foe, s.foes[t]? = some foe ∧ foe.alive = true := by
-  simp only [FightState.livingFoes, List.mem_filter, List.mem_range] at h
-  obtain ⟨_, halive⟩ := h
-  cases hfoe : s.foes[t]? with
-  -- There is no Creature number `t`: then `t` is not in the list.
-  | none => simp [hfoe] at halive
-  -- Creature number `t` is `foe`, and the filter says it is alive.
-  | some foe => exact ⟨foe, rfl, by simpa [hfoe] using halive⟩
+    ∃ foe, s.foes[t]? = some foe ∧ foe.alive = true := mem_livingFoes_iff.mp h
 
 /-- Every input for a Fight is allowed, while the Fight goes on. -/
 theorem fightInputs_allowed {g : Game} {f : FightPhase} {i : Input}
@@ -227,10 +230,7 @@ theorem inputs_allowed {g : Game} {i : Input}
 theorem not_over_of_goesOn {s : FightState}
     -- The Fight goes on.
     (h : FightGoesOn s) :
-    s.over = false := by
-  obtain ⟨hhero, foe, hmem, halive⟩ := h
-  simp only [FightState.over, hhero, Bool.not_true, Bool.false_or, List.all_eq_false]
-  exact ⟨foe, hmem, by simp [halive]⟩
+    s.over = false := not_over_iff_goesOn.mpr h
 
 /-- A living Creature is in `livingFoes`. -/
 theorem mem_livingFoes_of {s : FightState} {t : Nat} {foe : Fighter}
@@ -238,10 +238,7 @@ theorem mem_livingFoes_of {s : FightState} {t : Nat} {foe : Fighter}
     (hfoe : s.foes[t]? = some foe)
     -- `foe` is alive.
     (halive : foe.alive = true) :
-    t ∈ s.livingFoes := by
-  simp only [FightState.livingFoes, List.mem_filter, List.mem_range]
-  refine ⟨?_, by simp [hfoe, halive]⟩
-  exact (List.getElem?_eq_some_iff.mp hfoe).1
+    t ∈ s.livingFoes := mem_livingFoes_iff.mpr ⟨foe, hfoe, halive⟩
 
 /-- **The game offers every input that the rules allow.** -/
 theorem inputs_complete {g : Game} {i : Input}
@@ -275,53 +272,5 @@ theorem inputs_complete {g : Game} {i : Input}
 /-- **The game offers exactly the inputs that the rules allow.** -/
 theorem mem_inputs_iff {g : Game} {i : Input} : i ∈ g.inputs ↔ AllowedInput g i :=
   ⟨inputs_allowed, inputs_complete⟩
-
-/-! ## Tests -/
-
--- Seed 7 gives the faces 4, 1, 1 for the first 3d6.
-#guard ((rollDice 3).run' ⟨7⟩).run == [4, 1, 1]
-
--- The hypothesis of `inputs_allowed` can hold: The Road offers its second Choice.
-example : AllowedInput roadGame (.choose 1) := inputs_allowed (by decide)
-
--- The hypothesis of `step_rejects` can hold: the title screen does not offer a Choice.
--- A refused input leaves the game and the dice as they were.
-example : (step titleGame (.choose 0)).run ⟨7⟩ = ((titleGame, [.rejected rejectedWhy]), ⟨7⟩) :=
-  step_rejects _ _ _ (by decide)
-
--- `begin` goes to The Road and rolls no dice.
-#guard
-  let ((g, reports), dice) := (step titleGame .begin).run ⟨7⟩
-  g.phase.name == "scene" && g.sceneId? == some 0 && dice.state == 7 &&
-    reports.map (·.isRejected) == [false]
-
--- With seed 7, the bank (DX -2, so 10 or less) rolls 4, 1, 1 = 6: a success. Mara reaches The Wall Top.
-#guard
-  let (g, reports) := (step roadGame (.choose 1)).run' ⟨7⟩
-  g.sceneId? == some 2 && g.trail.map (·.rolled) == [some true] &&
-    reports.contains (.successRoll "Mara" (.attribute .dx) (-2) ⟨[4, 1, 1], 6, 10, .success⟩)
-
--- In a Fight, a forged attack on a Creature that is down is refused.
-#guard
-  let (g, reports) := (step fightGame (.maneuver .attack (some 0))).run' ⟨7⟩
-  g.phase.name == "fight" && reports == [.rejected rejectedWhy]
-
-/-- Play the first input the game offers, at most `n` times. Returns the last game and all Reports. -/
-def autoplay (g : Game) (dice : Rng) : Nat → Game × List Report
-  | 0 => (g, [])
-  | n + 1 =>
-    match g.inputs with
-    | [] => (g, [])
-    | i :: _ =>
-      let ((g, first), dice) := (step g i).run dice
-      let (g, later) := autoplay g dice n
-      (g, first ++ later)
-
--- For seeds 0 to 29, the game is over within 200 inputs, by an Ending or by death,
--- and the Engine never refuses an input it offered.
-#guard (List.range 30).all fun seed =>
-  let (g, reports) := autoplay titleGame ⟨seed.toUInt64⟩ 200
-  g.inputs.isEmpty && (g.phase.name == "ended" || g.phase.name == "dead") &&
-    !reports.any (·.isRejected)
 
 end Rpg

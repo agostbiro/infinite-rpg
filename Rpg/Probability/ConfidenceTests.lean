@@ -40,9 +40,9 @@ example : acceptsCount ⟨1/20, 1/10⟩ (1/10) ⟨20, 0⟩ := by decide +kernel
 example : ¬ acceptsCount ⟨1/20, 1/10⟩ (1/100) ⟨20, 0⟩ := by decide +kernel
 
 /-- An incomplete batch cannot be substituted for the precommitted game count. -/
-example : ¬ ValidationAccepted 1 ⟨#[10, 10], #[0, 0], 10, false⟩ confidenceDelta 0
+example : ¬ ValidationAccepted 1 ⟨#[10, 10], #[0, 0], 10, false, false⟩ confidenceDelta 0
     defaultPolicy := by decide +kernel
-example : ¬ ValidationAccepted 1 ⟨#[1200, 1200], #[0, 0], 1200, true⟩ confidenceDelta 0
+example : ¬ ValidationAccepted 1 ⟨#[1200, 1200], #[0, 0], 1200, true, false⟩ confidenceDelta 0
     defaultPolicy := by decide +kernel
 
 /-- Unresolved outcomes inside the tested window abort; later ones do not. -/
@@ -125,7 +125,7 @@ open Confidence
 
 /-- A full batch with games in every row but no deaths at all: an Adventure that is too easy. -/
 def noDeathCounts : ValidationCounts :=
-  ⟨#[1200, 1200, 1200, 1200, 1135, 800], #[0, 0, 0, 0, 0, 0], 1200, false⟩
+  ⟨#[1200, 1200, 1200, 1200, 1135, 800], #[0, 0, 0, 0, 0, 0], 1200, false, false⟩
 
 -- With horizon 5 (every Wish), the check rejects these counts: rows 3 to 5 have a lower edge
 -- above 0.

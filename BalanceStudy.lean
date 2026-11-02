@@ -82,7 +82,7 @@ def variants (acorn : Draft) : Except String (List StudyVariant) := do
   let harshRules : RuleSet := {
     combatRules := defaultCombatRules ++ [{
       name := "Unbalanced Opposition", description := "Enemies always gain +4 to hit and +6 damage.",
-      side := "foes", trigger := "always", hitBonus := 4, damageBonus := 6 }] }
+      side := .foes, trigger := .always, hitBonus := 4, damageBonus := 6 }] }
   let peaceful := { TestAdventure.testAdventure with
     scenes := TestAdventure.testAdventure.scenes.map fun scene => { scene with
       choices := scene.choices.map fun choice => { choice with

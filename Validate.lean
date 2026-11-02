@@ -42,8 +42,10 @@ def main (args : List String) : IO UInt32 := do
     let target := if row = 0 then 1 - policy.survival 1 else policy.deathAtTwo (row-1)
     IO.println s!"row {row}: {k}/{n}; interval=[{interval.lower}, {interval.upper}]; Weibull target={target}"
   if accepted.isSome then
-    IO.println "ACCEPTED: every exact-binomial interval enclosure fits the Weibull policy."
+    IO.println "ACCEPTED: all intervals fit the policy, short loops are absent, and combat certificates passed."
     IO.println s!"The theorem `balanced` gives per-row interval coverage and at most {100 * confidenceDelta}% false acceptance for this finite window under the sampling model."
     return 0
-  IO.println "NOT ADMITTED: an interval failed, sampling was incomplete, or an outcome inside the window was unresolved."
+  IO.println "NOT ADMITTED: balance, sampling, short-loop, or combat-certificate checks failed."
+  for error in failedRows Lafayette.balanceHorizon counts confidenceDelta 0 policy do
+    IO.println error
   return 1

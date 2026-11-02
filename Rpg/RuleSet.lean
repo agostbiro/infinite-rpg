@@ -72,21 +72,33 @@ structure RuleSet where
   /-- Named conditional effects active only in this Adventure. -/
   combatRules : List CombatRule := defaultCombatRules
 
-/-- Equipment affects only its named owner using its specified weapon. -/
-def RuleSet.equipmentFor (rules : RuleSet) (b : Being) : Option EquipmentRule :=
-  rules.equipment.find? fun e => e.owner == b.name && e.weapon == b.weapon
+/-- Adventure equipment is hero-only. Display names never grant an enemy equipment. -/
+def RuleSet.equipmentFor (rules : RuleSet) (isHero : Bool) (b : Being) : Option EquipmentRule :=
+  if !isHero then none else rules.equipment.find? fun e => e.owner == b.name && e.weapon == b.weapon
 
 /-- The attack level of the equipped weapon, before maneuvers and conditional effects. -/
-def RuleSet.weaponLevel (rules : RuleSet) (b : Being) : Int :=
-  match rules.equipmentFor b with
+def RuleSet.weaponLevel (rules : RuleSet) (isHero : Bool) (b : Being) : Int :=
+  match rules.equipmentFor isHero b with
   | some e => e.attackLevel
   | none => rules.attackLevel b
 
 /-- Equipment damage uses the same dice in play, simulation, and the graph. -/
-def RuleSet.weaponDice (rules : RuleSet) (b : Being) : Dice :=
-  match rules.equipmentFor b with
+def RuleSet.weaponDice (rules : RuleSet) (isHero : Bool) (b : Being) : Dice :=
+  match rules.equipmentFor isHero b with
   | some e => ⟨e.dice, e.add⟩
   | none => rules.damage b.weapon b.st
+
+/-- Enemy equipment lookup ignores all names and weapon matches. -/
+@[simp] theorem RuleSet.equipmentFor_foe (rules : RuleSet) (b : Being) :
+    rules.equipmentFor false b = none := rfl
+
+/-- Enemy attack level is independent of hero equipment. -/
+@[simp] theorem RuleSet.weaponLevel_foe (rules : RuleSet) (b : Being) :
+    rules.weaponLevel false b = rules.attackLevel b := rfl
+
+/-- Enemy damage is independent of hero equipment. -/
+@[simp] theorem RuleSet.weaponDice_foe (rules : RuleSet) (b : Being) :
+    rules.weaponDice false b = rules.damage b.weapon b.st := rfl
 
 /-- Remove the two data fields that an in-play proposal is allowed to change. -/
 def RuleSet.core (rules : RuleSet) : RuleSet :=
@@ -97,12 +109,12 @@ def possibleDiceSums (n : Nat) : List Nat :=
   (List.range (5 * n + 1)).map (· + n)
 
 /-- Use every negative hit effect for the state-independent fight legality check. -/
-def RuleSet.checkedAttackLevel (rules : RuleSet) (b : Being) : Int :=
-  rules.weaponLevel b + (rules.combatRules.map fun r => min 0 r.hitBonus).sum
+def RuleSet.checkedAttackLevel (rules : RuleSet) (isHero : Bool) (b : Being) : Int :=
+  rules.weaponLevel isHero b + (rules.combatRules.map fun r => min 0 r.hitBonus).sum
 
 /-- Use every negative damage effect for the state-independent fight legality check. -/
-def RuleSet.checkedDamage (rules : RuleSet) (b : Being) : Dice :=
-  let dice := rules.weaponDice b
+def RuleSet.checkedDamage (rules : RuleSet) (isHero : Bool) (b : Being) : Dice :=
+  let dice := rules.weaponDice isHero b
   { dice with add := dice.add + (rules.combatRules.map fun r => min 0 r.damageBonus).sum }
 
 /-- Include all possible extra armor, even when some triggers or sides cannot coincide. -/
@@ -112,19 +124,19 @@ def RuleSet.checkedArmor (rules : RuleSet) (b : Being) : Nat :=
 /-- Check for an attack that can hit, pass Dodge, and cause injury with conservative effects.
 Negative hit/damage effects and all extra armor count regardless of their side or trigger;
 positive offensive effects do not help this check. This can reject some playable fights. -/
-def RuleSet.canHurt (rules : RuleSet) (a b : Being) : Prop :=
-  rules.minimumRollLevel ≤ rules.checkedAttackLevel a ∧
+def RuleSet.canHurt (rules : RuleSet) (isHero : Bool) (a b : Being) : Prop :=
+  rules.minimumRollLevel ≤ rules.checkedAttackLevel isHero a ∧
   ∃ roll ∈ possibleDiceSums 3,
-    (rules.successRoll (rules.checkedAttackLevel a) roll).succeeded = true ∧
-    ((rules.successRoll (rules.checkedAttackLevel a) roll) = .criticalSuccess ∨
+    (rules.successRoll (rules.checkedAttackLevel isHero a) roll).succeeded = true ∧
+    ((rules.successRoll (rules.checkedAttackLevel isHero a) roll) = .criticalSuccess ∨
       ∃ defense ∈ possibleDiceSums 3,
         (rules.successRoll (rules.dodge b) defense).succeeded = false) ∧
-    ∃ damageRoll ∈ (if roll = 3 then [6 * (rules.checkedDamage a).count]
-        else possibleDiceSums (rules.checkedDamage a).count),
+    ∃ damageRoll ∈ (if roll = 3 then [6 * (rules.checkedDamage isHero a).count]
+        else possibleDiceSums (rules.checkedDamage isHero a).count),
       0 < rules.injury a.weapon.damageType (rules.checkedArmor b)
-        (rules.basicDamage (rules.checkedDamage a) a.weapon.damageType damageRoll)
+        (rules.basicDamage (rules.checkedDamage isHero a) a.weapon.damageType damageRoll)
 
-instance (rules : RuleSet) (a b : Being) : Decidable (rules.canHurt a b) := by
+instance (rules : RuleSet) (isHero : Bool) (a b : Being) : Decidable (rules.canHurt isHero a b) := by
   unfold RuleSet.canHurt
   infer_instance
 

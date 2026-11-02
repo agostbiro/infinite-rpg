@@ -26,9 +26,9 @@ def choose (n : Nat) : Roll Nat := do
 /-- The simulator's Player, with seeded random choices: each maneuver with chance 1/3, then a
 living target with equal chances if the maneuver attacks. This is `heroPolicy` in the model. -/
 def pickManeuver (s : FightState) : Roll (Maneuver × Nat) := do
-  let m := [Maneuver.attack, .allOutAttack, .allOutDefense].getD (← choose 3) .attack
+  let m := maneuverMenu.getD (← choose maneuverMenu.length) .attack
   if !m.attacks then return (m, 0)
-  let living := (s.foes.zipIdx.filter fun (f, _) => f.alive).map Prod.snd
+  let living := s.livingFoes
   return (m, living.getD (← choose living.length) 0)
 
 /-- A Fight of at most `fuel` rounds, with the same rounds as play (`roundWith`). The Player

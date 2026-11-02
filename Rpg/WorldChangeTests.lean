@@ -1,4 +1,5 @@
 import Rpg.WorldChangePrompt
+import Rpg.PlayTests
 import Rpg.Probability.ConfidenceTests
 
 /-! Regression checks for real adventure changes, their scope, and paused combat.
@@ -13,12 +14,12 @@ def flame : EquipmentRule :=
 /-- Wounded enemies rally; the player can finish them before they counterattack. -/
 def fury : CombatRule :=
   { name := "Scorched Fury", description := "Enemies at half HP or less gain +3 to hit and +2 damage. Finish them before they rally!",
-    side := "foes", trigger := "wounded", hitBonus := 3, damageBonus := 2 }
+    side := .foes, trigger := .wounded, hitBonus := 3, damageBonus := 2 }
 
 /-- A guarded turn offers a visible way to weather the enemies' retaliation. -/
 def shelter : CombatRule :=
   { name := "Cinder Veil", description := "All-Out Defense wraps you in ash: +2 armor until your next maneuver.",
-    side := "hero", trigger := "guarding", armorBonus := 2 }
+    side := .hero, trigger := .guarding, armorBonus := 2 }
 
 /-- A deterministic proposal fixture; numbers are tuned only with the screening seed. -/
 def proposal : Proposal :=
@@ -28,11 +29,11 @@ def proposal : Proposal :=
 
 -- Current/visited scenes and optional counters are supported; invalid triggers are rejected.
 #guard ({ proposal with rules := [] }.errors roadGame).isEmpty
-#guard !({ proposal with rules := [{ fury with trigger := "heal" }] }.errors roadGame).isEmpty
-#guard !({ proposal with rules := [{ fury with trigger := "guarding" }] }.errors roadGame).isEmpty
+#guard (ruleOfJson (Lean.Json.parse "{\"name\":\"bad\",\"description\":\"bad\",\"side\":\"foes\",\"trigger\":\"heal\",\"hitBonus\":1,\"damageBonus\":0,\"armorBonus\":0}").toOption.get!).toOption.isNone
+#guard !({ proposal with rules := [{ fury with trigger := .guarding }] }.errors roadGame).isEmpty
 #guard ({ proposal with scenes := TestAdventure.testAdventure.scenes.take 1 }.errors roadGame).isEmpty
 #guard !(proposal.errors titleGame).isEmpty
-#guard ({ proposal with rules := [{ fury with trigger := "always" }] }.errors roadGame).isEmpty
+#guard ({ proposal with rules := [{ fury with trigger := .always }] }.errors roadGame).isEmpty
 
 /-- A non-weapon request demonstrates that the same path accepts a general combat effect. -/
 def ironSkin : Proposal :=
@@ -41,7 +42,7 @@ def ironSkin : Proposal :=
     requestedRules := [{
       name := "Iron Skin"
       description := "Your skin gains 2 armor."
-      side := "hero", trigger := "always", armorBonus := 2 }] }
+      side := .hero, trigger := .always, armorBonus := 2 }] }
 
 -- Local tuning preserves the gift, the tactical trigger, and exact visible numbers.
 #guard
@@ -106,9 +107,9 @@ def newEnding : Scene := { id := 20, title := "Ending: Far Away", text := "You l
 #guard
   let unarmed := { TestAdventure.mara with weapon := .punch }
   let shell : CombatRule := {
-    name := "Shell", description := "Four extra armor.", side := "hero", trigger := "always", armorBonus := 4 }
-  let rules : RuleSet := { combatRules := [shell, { shell with side := "foes" }] }
-  decide (FightCanEnd {} unarmed unarmed) && !decide (FightCanEnd rules unarmed unarmed)
+    name := "Shell", description := "Four extra armor.", side := .hero, trigger := .always, armorBonus := 4 }
+  let rules : RuleSet := { combatRules := [shell, { shell with side := .foes }] }
+  decide (DamagePossible {} unarmed unarmed) && !decide (DamagePossible rules unarmed unarmed)
 
 /-- A two-attempt tree instantiates the retry theorem with a real candidate and sampling law. -/
 def safeRetries : RetryTree 2 :=
@@ -132,8 +133,8 @@ example : safeRetries.falseAcceptance 0 ≤ confidenceDelta := safeRetries.balan
   | .ok p => p.game.hero.weapon == .flamethrower && p.game.hp == 7 &&
     p.game.hero.name == roadGame.hero.name && p.game.hero.skills == roadGame.hero.skills &&
     p.game.hero.dx == roadGame.hero.dx && p.game.trail == roadGame.trail &&
-    p.game.rules.weaponLevel p.game.hero == 12 &&
-    (p.game.rules.weaponDice p.game.hero).count == 3
+    p.game.rules.weaponLevel true p.game.hero == 12 &&
+    (p.game.rules.weaponDice true p.game.hero).count == 3
 
 -- An active Fight retains both sides' wounds, last maneuvers, round, and order.
 #guard match proposal.prepare fightGame with
@@ -161,12 +162,32 @@ private def fixedRoll (n : Nat) : Id (List Nat) := pure (List.replicate n 1)
 #guard
   let gift := { flame with weapon := roadGame.hero.weapon, name := "Singing Blade" }
   let rules := { roadGame.rules with equipment := [gift] }
-  let oldCard := roadGame.hero.card roadGame.rules 11
-  weaponText rules roadGame.adventure.themes roadGame.hero == "Singing Blade" &&
-    weaponText rules roadGame.adventure.themes { roadGame.hero with name := "Someone else" } ==
+  let oldCard := roadGame.hero.card roadGame.rules true 11
+  weaponText rules roadGame.adventure.themes true roadGame.hero == "Singing Blade" &&
+    weaponText rules roadGame.adventure.themes false { roadGame.hero with name := "Someone else" } ==
       roadGame.adventure.themes.weapon roadGame.hero.weapon &&
     (cardJson roadGame.adventure.themes oldCard).getObjValD "weapon" ==
       Lean.Json.str (roadGame.adventure.themes.weapon roadGame.hero.weapon)
+
+-- A namesake enemy never receives the hero's equipment, including its attack and damage.
+#guard
+  let namesake := { TestAdventure.mara with weapon := .flamethrower }
+  let rules : RuleSet := { equipment := [flame] }
+  rules.equipmentFor true namesake == some flame &&
+    (rules.equipmentFor false namesake).isNone &&
+    rules.weaponLevel false namesake == rules.attackLevel namesake &&
+    rules.weaponDice false namesake == rules.damage namesake.weapon namesake.st
+
+-- The actual attack function also keeps a namesake foe on its ordinary weapon profile.
+#guard
+  let namesake : Fighter := { being := { TestAdventure.mara with weapon := .flamethrower }, hp := 11 }
+  let target : Fighter := { being := TestAdventure.bandit 1, hp := 10 }
+  let gift := { flame with attackLevel := 18, dice := 6 }
+  let rules : RuleSet := { equipment := [gift] }
+  (attackWith rules fixedRoll (some 0) namesake none target).run ==
+    (attackWith {} fixedRoll (some 0) namesake none target).run &&
+    (attackWith rules fixedRoll none namesake (some 0) target).run !=
+      (attackWith {} fixedRoll none namesake (some 0) target).run
 
 -- Fury fires only for a wounded enemy. The underlying attack still uses the shared Engine.
 #guard
@@ -228,7 +249,7 @@ def woundedFight : Game :=
   | .ok p => (List.finRange (liveHorizon+1)).all fun i => (p.candidate.bands i).tolerance == defaultPolicy.tolerance
 
 /-- Small trace counts expose the exact conditioning event without relying on random seeds. -/
-def emptyCounts : ValidationCounts := ⟨#[0,0,0,0], #[0,0,0,0], 0, false⟩
+def emptyCounts : ValidationCounts := ⟨#[0,0,0,0], #[0,0,0,0], 0, false, false⟩
 
 -- Death on the first event belongs to the first two-event window, but not later survivors.
 #guard
@@ -249,9 +270,9 @@ def emptyCounts : ValidationCounts := ⟨#[0,0,0,0], #[0,0,0,0], 0, false⟩
 #guard !observationsComplete 5 ⟨.censored, 6⟩ && observationsComplete 5 ⟨.censored, 7⟩
 
 -- A missing late row and an aborted combat batch cannot be admitted.
-#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,0,0], #[0,0,0,0,0,0],1200,false⟩ (attemptRisk 0) 3
+#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,0,0], #[0,0,0,0,0,0],1200,false,false⟩ (attemptRisk 0) 3
   defaultPolicy .window)
-#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,1200,1200], #[0,0,0,0,0,0],1200,true⟩ (attemptRisk 0) 0
+#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,1200,1200], #[0,0,0,0,0,0],1200,true,false⟩ (attemptRisk 0) 0
   defaultPolicy .window)
 
 /-- A non-default policy fixture tests that a change preserves its supplied policy. -/

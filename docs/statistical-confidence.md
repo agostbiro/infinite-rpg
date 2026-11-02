@@ -34,9 +34,9 @@ The allowed ranges of the rows, from first-turn death to death at 6 given active
 its Adventure. Both are always `defaultPolicy` in the game. A live change is checked against the
 policy of its game and keeps it (`WorldChange.Prepared.keeps_policy`).
 
-A Wish gets up to 3 tries, each with a fresh random seed that is saved with the
+A Wish gets at most five attempts, including Retry, each with a fresh random seed that is saved with the
 Adventure. If the sampling assumptions hold conditional on the history of each try,
-a union bound gives at most 3 × 5% = 15% false acceptance over the 3 tries.
+a union bound gives at most 5 × 5% = 25% false acceptance over the five attempts.
 Lean proves the per-try bound; it does not prove this retry bound.
 
 In-game rule changes use a separate, rigorously proved retry protocol. Validation attempt
