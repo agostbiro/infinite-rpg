@@ -22,6 +22,8 @@ deriving instance ToJson for Attribute
 deriving instance ToJson for Skill
 deriving instance ToJson for RollTarget
 deriving instance ToJson for Weapon
+deriving instance ToJson for CombatSide
+deriving instance ToJson for CombatTrigger
 deriving instance ToJson for CombatRule
 
 /-- Who acts in a Fight: `none` is the Character, `some i` is Creature number `i`. -/

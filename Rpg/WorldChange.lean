@@ -235,10 +235,10 @@ def Prepared.note (p : Prepared) (wish : String) : ChangeNote :=
   { wish
     summary := p.proposal.summary
     moment := p.proposal.moment
-    before := p.before.hero.card p.before.rules hp
-    after := p.game.hero.card p.game.rules hp
-    attackBefore := p.before.rules.weaponLevel p.before.hero
-    attackAfter := p.game.rules.weaponLevel p.game.hero
+    before := p.before.hero.card p.before.rules true hp
+    after := p.game.hero.card p.game.rules true hp
+    attackBefore := p.before.rules.weaponLevel true p.before.hero
+    attackAfter := p.game.rules.weaponLevel true p.game.hero
     equipment := p.proposal.equipment.isSome
     requested := p.proposal.requestedRules
     counter := p.proposal.rules

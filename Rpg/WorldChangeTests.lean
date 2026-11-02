@@ -145,7 +145,7 @@ example : safeRetries.falseAcceptance 0 ≤ confidenceDelta := safeRetries.balan
       n.before.weapon == roadGame.hero.weapon && n.before.equipmentName == none &&
       n.after.weapon == .flamethrower && n.after.equipmentName == some "Stormglass Flamethrower" &&
       n.after.damage == "3d burning" && n.before.hp == 7 && n.after.hp == 7 &&
-      n.attackBefore == roadGame.rules.weaponLevel roadGame.hero && n.attackAfter == 12 &&
+      n.attackBefore == roadGame.rules.weaponLevel true roadGame.hero && n.attackAfter == 12 &&
       n.requested == [] && n.counter == [fury, shelter] && n.scenes == 0
 
 -- The note's JSON names the new weapon, its kind, and the weapon it replaces.
