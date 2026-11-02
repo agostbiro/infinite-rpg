@@ -52,13 +52,6 @@
                 <option value="they">they</option>
               </select>
             </label>
-            <label>Difficulty
-              <select id="wish-difficulty">
-                <option value="easy">easy: 50% still alive after 10 turns</option>
-                <option value="medium" selected>medium: 30% still alive after 10 turns</option>
-                <option value="hard">hard: 10% still alive after 10 turns</option>
-              </select>
-            </label>
           </div>
           <div class="wish-buttons">
             <button id="wish-send" class="big-button" type="button">Ask the Dungeon Master</button>
@@ -155,7 +148,7 @@
 
   <section id="change-panel" class="panel change-panel" aria-labelledby="change-h" hidden>
     <h2 id="change-h">Change the world</h2>
-    <p class="wish-help">Ask for a new weapon or a twist in the rules. The Dungeon Master grants your wish and gives the world a fun response. Lean checks the rules and the balance before you continue. The balance check covers the next 6 events from your current position and health, using your difficulty curve at the current game age. A change is for this game only.</p>
+    <p class="wish-help">Ask for a new weapon or a twist in the rules. The Dungeon Master grants your wish and gives the world a fun response. Lean checks the rules and the balance before you continue. The balance check plays only the first 6 turns from the start, so a new Scene after turn 6 gets only the rule check. A change is for this game only.</p>
     <p id="change-off" class="change-off" hidden>Not available: the Dungeon Master is not connected. Set ANTHROPIC_API_KEY, then run the game again.</p>
     <div id="change-form" class="wish-form">
       <label class="wish-label" for="change-request">What would you like to change?</label>

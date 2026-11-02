@@ -2,36 +2,35 @@
 
 Work that is still open after the port of the 3D client. Do these in this order.
 
-## 1. Add a new built-in default Adventure
+## 1. Add a new built-in default Adventure (mostly done)
 
-The Lighthouse is removed (ADR 0007). Add a new built-in Adventure in its place.
+Done: the built-in Adventure is Lafayette at Barren Hill (`Rpg/Adventures/Lafayette/`). It passes
+the checker, the short-loop rule, and the balance check with `defaultPolicy`, with no exemption.
+It has a card on the Front Page, and the server holds it at start-up (`builtinGame` in
+`Main.lean`), after the checker and the balance check pass. The Comparator example theorems are
+now `barren_hill_legal`, `barren_hill_reaches_ending`, and `barren_hill_default_rules`, and
+`make validate` runs on it.
 
-- It must pass the checker, the short-loop rule (No Short Loops), and the balance check at medium
-  difficulty, with a tolerance of ±5 points.
-- Give it a card on the Front Page (see `renderGrid` in `web/app.js`), and let the server start it.
-  It takes the place of `homeGame` in `Main.lean`.
-- Move these from the test Adventure (`Rpg/Adventures/TestAdventure/`) to it:
-  - the Comparator example theorems `test_adventure_legal`, `test_adventure_reaches_ending`, and
-    `test_adventure_default_rules` (rename them, in `Comparator/` and `comparator.json`)
-  - `make validate`, `make cheats`, `make agree`, and `lake exe change-check`
-  - the balance study (`BalanceStudy.lean`, `experiments/plan.json`). Run it again, and make new
-    results in `experiments/results/`. The results there now come from the Lighthouse.
-- Run the balance study again at 1,200 games (`difficultyGames`). `lake exe balance-study` now
-  refuses `experiments/plan.json`, because the plan asks for 1,000 games.
-- The test Adventure fails medium, so it has an exemption: `policy := Probability.defaultPolicy`
-  in `Rpg/Adventures/TestAdventure/Confidence.lean` (the old curve, ±20 points). `homeGame`,
-  `make validate`, and `lake exe change-check` use it. The new Adventure gets no exemption.
+Still open:
+
+- `make cheats`, `make agree`, and `lake exe change-check` still run on the test Adventure
+  (`Rpg/Adventures/TestAdventure/`). Move them if that is useful.
+- The balance study (`BalanceStudy.lean`, `experiments/plan.json`) still runs on the test
+  Adventure. Run it again at 1,200 games (`validationGames`), and make new results in
+  `experiments/results/`. The results there now come from the Lighthouse. `lake exe balance-study`
+  now refuses `experiments/plan.json`, because the plan asks for 1,000 games.
 
 ## 2. Add back the fake-mode Wish
 
-The test mode (`RPG_FAKE_API`) has no recorded Wish now, because the old one failed the new balance
-check.
+The test mode (`RPG_FAKE_API`) has no recorded Wish now. The old one was removed in the 3D port,
+when the balance check was stricter (±5 points). First check whether the old reply
+(`git show 966566d^:tests/fake-api/adventure-1.sse`) passes the current check and the short-loop
+rule: then it may only need a world map.
 
-- Record Wish replies (`tests/fake-api/adventure-1.sse` and the next ones) that pass at easy,
-  medium, and hard. Record a world map reply for each too (`tests/fake-api/map-1.sse`, `map-2.sse`): the server asks for the map after the Wish passes. Write them with `tests/fake-api/make_fixtures.py`. Do
-  not edit the `.sse` files by hand. The server tries `adventure-<level>-<n>.sse` first, such as
-  `adventure-hard-1.sse`, and then `adventure-<n>.sse`.
-- Record live-change replies (`change-1.sse` to `change-3.sse`) that pass at medium for the
+- Record Wish replies (`tests/fake-api/adventure-1.sse` and the next ones) that pass the balance
+  check. Record a world map reply for each too (`tests/fake-api/map-1.sse`, `map-2.sse`): the server asks for the map after the Wish passes. Write them with `tests/fake-api/make_fixtures.py`. Do
+  not edit the `.sse` files by hand.
+- Record live-change replies (`change-1.sse` to `change-3.sse`) that pass the balance check for the
   Character of that Wish. The replies now are for Mara, with a flamethrower.
 
 ## 3. Turn the skipped tests back on
@@ -43,13 +42,3 @@ When the recorded Wish is back, these tests run again by themselves. Check that 
 - `tests/spatial.browser.spec.js` (`make test-browser`). It is skipped now. Change the Scene names in
   it to the names of the new Wish.
 - `make run-fake`: a Wish fails now with "no recorded reply".
-
-## 4. Expand changes during play
-
-Implement [the World-change properties](world-change-properties.md) on `expand_rules`.
-The Player may change the 3D environment, add or remove Scene Choices, or combine both with
-new general rules. The DM may add Scenes and adjust the Adventure to pass the existing balance
-admission. Extend the proposal language, checks and installation together. Verify exact offered
-inputs, physical access, revision-aware refresh and preservation of the current play checkpoint.
-The specification records the current statistical coverage limits and the checks still missing;
-it does not claim that writing these requirements implements or proves them.

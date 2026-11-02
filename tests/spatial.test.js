@@ -129,3 +129,21 @@ test('NPC decoration introduces no commands, while combat figures retain the eng
   const fight = { fight: { foes: [{ name: 'Grey Wolf', hp: 3, maxHP: 9, alive: true }, { name: 'Guard', hp: 0, maxHP: 10, alive: false }] } };
   assert.deepEqual(figuresForView(fight).map(f => [f.name, f.hp, f.alive]), [['Grey Wolf', 3, true], ['Guard', 0, false]]);
 });
+
+test('a render graph must match the event commands and map after an event is added', () => {
+  const view = viewFor(2);
+  view.worldRevision = 2;
+  view.spatialGraph = { scenes: [0, 1, 2], links: [[0, 1], [0, 2], [2, 1]], inputs: structuredClone(view.inputs) };
+  view.environment = { scenes: [{scene:0}, {scene:1}, {scene:2}] };
+  assert.equal(portalsForView(view).length, 2);
+  assert.ok(portalsForView(view).every(p => p.revision === 2));
+  const staleMap = structuredClone(view);
+  staleMap.environment.scenes.pop();
+  assert.throws(() => portalsForView(staleMap), /does not match/);
+  const staleCommands = structuredClone(view);
+  staleCommands.spatialGraph.inputs.pop();
+  assert.throws(() => portalsForView(staleCommands), /stale commands/);
+  const inventedEdge = structuredClone(view);
+  inventedEdge.spatialGraph.links.push([0,999]);
+  assert.throws(() => portalsForView(inventedEdge), /does not match/);
+});

@@ -34,8 +34,12 @@ _Avoid_: prompt, request, query
 The page where the Player chooses an Adventure to play or makes a Wish.
 _Avoid_: title screen, home page, menu
 
+**Built-in Adventure**:
+The Adventure that ships with the game, Lafayette at Barren Hill. Its card is on the Front Page, it plays without an API key, and the server checks it with the checker and the balance check when it starts.
+_Avoid_: default story, demo
+
 **Test Adventure**:
-A small Adventure, The Bandit Camp, for the tests and the example theorems. The server never offers it for play.
+A small Adventure, The Bandit Camp, for the tests. The server never offers it for play.
 _Avoid_: sample, demo adventure
 
 **Legal Adventure**:
@@ -51,12 +55,8 @@ The property that the balance check tests: the deaths on each turn of an Adventu
 _Avoid_: fairness
 
 **Admission**:
-The balance check that an Adventure must pass after the checker, before play and before a World change is installed. It plays the Adventure 1,200 times from its start with a seed, and compares the deaths on each turn with the target curve of its Difficulty level.
+The balance check that an Adventure must pass after the checker, before play and before a World change is installed. It plays the Adventure 1,200 times from its start with a seed, and compares the deaths on each turn with the target curve.
 _Avoid_: certification, validation (except for the run with the fixed seed)
-
-**Difficulty level**:
-How dangerous an Adventure is: easy, medium, or hard. The Player picks it before a Wish. Each level is a target curve for the balance check, with a tolerance of 5 percentage points. An Adventure keeps its level for its whole life. An Adventure with no level is medium.
-_Avoid_: difficulty profile, mode
 
 **Horizon**:
 How many turns after the first one the balance check looks at. With horizon 5, it looks at turns 1 to 6.

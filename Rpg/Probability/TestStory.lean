@@ -40,9 +40,8 @@ def safeCandidate5 : StatisticalCandidate where
   horizon := 5
   horizonPositive := by decide
 
--- With horizon 1 the safe story passes the medium curve (the default): the bands of rows 0 and 1
--- start at 0. On medium the check can reject an Adventure with no deaths only from row 2 on, so a
--- candidate needs horizon 2 or more for that.
+-- With horizon 1 the safe story passes: the bands of rows 0 and 1 start at 0. The check can reject
+-- an Adventure with no deaths only from row 3 on, so a candidate needs horizon 3 or more for that.
 #guard (admitWithSeed safeCandidate 1).2.isSome
 -- With horizon 5, as for the test Adventure and every Wish, admission rejects the safe story.
 #guard (admitWithSeed safeCandidate5 1).2.isNone

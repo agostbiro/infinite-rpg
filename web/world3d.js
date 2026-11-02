@@ -729,10 +729,11 @@ export class SpatialGame {
   async choose(portal) {
     if (!this.ready || this.paused || this.pending || !this.active || this.travel) return;
     // Re-check against the latest view, never a captured destination or old portal.
+    if (portal.revision !== this.view.worldRevision) return;
     if (!this.view.inputs.some(i => inputKey(i) === portal.key)) return;
     this.pending = true;
     this.keys.clear(); this.touches.clear();
-    try { await this.onChoose(portal.input); }
+    try { await this.onChoose(portal.input, portal.revision); }
     finally {
       this.pending = false;
       this.root.dataset.ready = String(this.ready);

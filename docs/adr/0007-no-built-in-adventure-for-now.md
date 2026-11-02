@@ -1,5 +1,7 @@
 # No built-in Adventure for now
 
+Superseded: the built-in Adventure is now Lafayette at Barren Hill (`Rpg/Adventures/Lafayette/`).
+
 This ADR changes ADR 0003 and ADR 0004. Those ADRs name The Drowned Lighthouse, the one built-in
 Adventure. It is removed. A new built-in default Adventure will take its place later
 (`docs/follow-ups.md`).

@@ -540,7 +540,6 @@ import { playbackView, reportDuration } from './playback.js';
     card.append(el('span', 'card-title', c.title));
     if (c.world) card.append(el('span', 'card-world', c.world));
     if (c.hero) card.append(el('span', 'card-hero', 'You play ' + c.hero));
-    if (c.difficulty) card.append(el('span', 'card-difficulty', 'Difficulty: ' + c.difficulty));
     if (c.about) card.append(el('span', 'card-about', c.about));
     if (o.why !== undefined) {
       card.append(el('span', 'card-why', 'Fails the checker now, so you cannot play it: ' + o.why));
@@ -577,7 +576,7 @@ import { playbackView, reportDuration } from './playback.js';
   /** The text of the status line while a load checks a saved Adventure again. */
   const checkText = (title) => 'Checking ' + title + ' against the rules and the balance check...';
 
-  /** The grid: the "New Adventure" tile and the saved Adventures (newest first).
+  /** The grid: the "New Adventure" tile, the saved Adventures (newest first), and the built-in one.
    * Each saved Adventure keeps its place when its check ends, so the cards do not move under the
    * pointer. One that the server still checks cannot be clicked yet; one that fails is greyed. */
   function renderGrid(v) {
@@ -586,7 +585,7 @@ import { playbackView, reportDuration } from './playback.js';
     const startKey = S.starting ? S.starting.key : null;
     // A poll every 2 seconds must not rebuild the same cards: that would take away keyboard focus
     // and lose a click. So draw again only when the cards change.
-    const key = JSON.stringify([v.saved, busy, startKey]);
+    const key = JSON.stringify([v.saved, v.builtin, busy, startKey]);
     if (key === S.gridKey && grid.querySelector('.adv-card')) return;
     S.gridKey = key;
     // A card that a check finished on is drawn again. Keep the keyboard focus on the same card.
@@ -612,7 +611,16 @@ import { playbackView, reportDuration } from './playback.js';
         starting: startKey === a.id ? 'Checking it again before you play...' : undefined,
       }));
     }
-    // A built-in default Adventure gets its card here, after the saved ones (docs/follow-ups.md).
+    // The built-in Adventure comes after the saved ones. It needs no API key, and the server
+    // checked it when it started, so it starts at once.
+    if (v.builtin) {
+      const builtinStart = { key: 'builtin', text: 'Starting ' + v.builtin.title + '...' };
+      grid.appendChild(adventureCard(v.builtin, 'builtin', {
+        onPlay: () => startGame('/api/builtin', undefined, builtinStart),
+        disabled: busy,
+        starting: startKey === 'builtin' ? 'Starting...' : undefined,
+      }));
+    }
     if (focused !== null) {
       const again = Array.from(grid.querySelectorAll('button[data-card]')).find((c) => c.dataset.card === focused);
       if (again && !again.disabled) again.focus();
@@ -795,12 +803,12 @@ import { playbackView, reportDuration } from './playback.js';
   }
 
   /** Send one input, exactly as the server offered it. */
-  async function send(input) {
+  async function send(input, revision = S.view?.worldRevision) {
     if (S.busy || S.playing) return;
     S.busy = true;
     if (S.view && S.view.phase !== 'title') renderMat();
     try {
-      const { ok, view } = await post('/api/input', { revision: S.view.worldRevision, input });
+      const { ok, view } = await post('/api/input', { revision, input });
       S.playbackBase = S.view;
       S.view = view;
       if (S.shown > view.reports.length) S.shown = view.reports.length;
@@ -839,7 +847,7 @@ import { playbackView, reportDuration } from './playback.js';
 
   /** Send a POST that loads an Adventure, such as a click on its card, then begin it.
    * `start` says what to show while the page waits: `{ key, text }`, where `key` is the id of the
-   * card, or "play-now". A load checks the saved
+   * card, "builtin", or "play-now". A load checks the saved
    * Adventure again, which takes a second or two. Until the reply comes, every card and button
    * that sends a request is disabled. */
   async function startGame(path, body, start) {
@@ -984,8 +992,7 @@ import { playbackView, reportDuration } from './playback.js';
     }
     const wish = box.value.trim();
     if (!wish) { toast('Type a Wish first.'); return; }
-    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value,
-      difficulty: $('wish-difficulty').value });
+    action('/api/wish', { wish, name: $('wish-name').value.trim(), gender: $('wish-gender').value });
   });
   $('cancel').addEventListener('click', async () => {
     try {
@@ -1028,7 +1035,6 @@ import { playbackView, reportDuration } from './playback.js';
     $('wish').value = '';
     $('wish-name').value = '';
     $('wish-gender').value = 'dm';
-    $('wish-difficulty').value = 'medium';
     $('wish-count').textContent = '0 / 500';
   }
 

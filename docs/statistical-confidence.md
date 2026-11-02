@@ -1,52 +1,38 @@
 # Exact binomial balance intervals
 
 `Rpg.Probability.StatisticalCandidate.balanced` is the main theorem, specialized as
-`Rpg.TestAdventure.balanced`. It is a theorem about the test, true for every candidate.
+`Rpg.Lafayette.balanced` (the built-in Adventure) and `Rpg.TestAdventure.balanced`. It is a theorem
+about the test, true for every candidate.
 What admits an Adventure is the run-time check `admitStatistically` (fixed seed) or
 `admitWithSeed` (a Wish, with a fresh seed).
 
 ## Protocol
 
-- Run **1,200 games total** (`difficultyGames`), fixed before validation.
+- Run **1,200 games total** (`validationGames`), fixed before validation.
 - Use **95% confidence**: `confidenceDelta = 1/20`.
 - First-turn death is row zero. For each `0 <= t < horizon`, another row measures
   `P(death exactly at t+2 | game active at t)`.
 - Use each row's actual qualifying count. Do not continue sampling until an
   interval passes or reaches a chosen width.
-- Admit the adventure only when every complete interval fits the Weibull band of its own
-  policy: the curve of its difficulty level, with a tolerance of 5 points.
+- Admit the adventure only when every complete interval fits its Weibull band:
+  `defaultPolicy` (q = 19/20, shape 2), with a tolerance of 20 points.
 
-The constants are `difficultyGames` and `validationSeed` in
+The constants are `validationGames` and `validationSeed` in
 `Rpg/Probability/StatisticalAdmission.lean`, and `confidenceDelta` in
-`Rpg/Probability/Confidence.lean`. The frozen seed is 20261103. The test Adventure and every Wish use
-horizon 5. There is no claim beyond the selected window. The first row with a band whose lower
-edge is above 0 is row 4 on easy, row 2 on medium, and row 1 on hard. So a candidate needs at
-least that horizon before the check can reject an Adventure where the Character never dies
-(`TestStory.lean` shows this for medium).
+`Rpg/Probability/Confidence.lean`. The frozen seed is 20261103. The built-in Adventure, the test Adventure, and every Wish
+use horizon 5. There is no claim beyond the selected window. Only rows 3 and later have a band with a
+lower edge above 0, so a candidate needs horizon 3 or more before the check can reject an
+Adventure where the Character never dies (`TestStory.lean` shows this).
 
-## Difficulty levels
+## One curve
 
-The Player picks easy, medium, or hard for a Wish. Each level is a `BalancePolicy`
-(`DifficultyLevel.policy` in `Rpg/Probability/Weibull.lean`): shape 2, a tolerance of 5 points
-(`difficultyTolerance`), and a q that leaves 50%, 30%, or 10% of Characters alive after
-10 turns. The targets of the rows, from first-turn death to death at 6 given active at 4, are:
+Every Adventure uses the same curve, `defaultPolicy` in `Rpg/Probability/Weibull.lean`.
+The allowed ranges of the rows, from first-turn death to death at 6 given active at 4, are
+0.0% to 25.0%, 0.0% to 33.5%, 0.0% to 39.3%, 3.3% to 43.3%, 5.8% to 45.8%, and 7.1% to 47.1%.
 
-| Level | q | Row targets |
-|---|---:|---|
-| easy | 993092495/10^9 | 0.69%, 2.04%, 3.33%, 4.57%, 5.76%, 6.89% |
-| medium | 988032459/10^9 | 1.19%, 3.50%, 5.63%, 7.61%, 9.43%, 11.13% |
-| hard | 977237220/10^9 | 2.27%, 6.52%, 10.14%, 13.26%, 15.93%, 18.18% |
-
-`StatisticalCandidate.policy` holds the policy of a candidate; with no explicit policy it is
-medium. A `Game` holds the policy of its Adventure, and a live change is checked against that
-policy and keeps it (`WorldChange.Prepared.keeps_policy`). The test Adventure fails the medium
-curve, so it is exempt: it keeps `defaultPolicy` (q = 19/20, tolerance 1/5) until a new default
-Adventure that passes medium takes its place (item 1 in [follow-ups](follow-ups.md)).
-`defaultPolicy` and `balanceTolerance` stay as they were; no level uses them.
-
-At 1,200 games, an Adventure that sits on its curve passes the 5-point tolerance even when its
-counts are 2 standard deviations off. The last row is always the limit, because it has the
-fewest qualifying games.
+`StatisticalCandidate.policy` holds the policy of a candidate, and a `Game` holds the policy of
+its Adventure. Both are always `defaultPolicy` in the game. A live change is checked against the
+policy of its game and keeps it (`WorldChange.Prepared.keeps_policy`).
 
 A Wish gets up to 3 tries, each with a fresh random seed that is saved with the
 Adventure. If the sampling assumptions hold conditional on the history of each try,
@@ -107,7 +93,7 @@ axioms, with no `sorry`, new axioms, or `native_decide`.
 ## Admission and validation
 
 `StatisticalAdventure` carries `balanced`, source-bound counts, and passing interval
-checks. Its provenance requires `counts = sampleCounts candidate seed difficultyGames`, with the seed it records; observations
+checks. Its provenance requires `counts = sampleCounts candidate seed validationGames`, with the seed it records; observations
 from a different story, hero, ruleset, or horizon cannot be substituted.
 `intervals_fit` proves that admitted intervals lie inside the bands of the candidate's own policy.
 
@@ -116,8 +102,29 @@ Continuing beyond the window is allowed. Zero qualifying observations cannot pas
 A failed batch is not retried until it passes; a changed protocol or tuning against
 validation data needs a fresh precommitted experiment.
 
-The rest of this section and the next one are history: they describe the 1,000-game check
-with `defaultPolicy`, before the difficulty levels.
+## The built-in Adventure, Lafayette at Barren Hill
+
+`make validate` runs the balance check on the built-in Adventure, and the server runs it at
+start-up with the frozen seed. The server does not start if it fails. `make validate SEED=n` runs
+it with another seed. Each cell gives deaths / qualifying games and the interval enclosure. The
+foes and Lafayette's build were tuned in a few rounds against the frozen seed, so these rows show
+that the check passes at three seeds, not new independent evidence.
+
+| Row | Band | Seed 20261103 | Seed 1 | Seed 7 |
+|---|---:|---:|---:|---:|
+| First turn | 0.0% to 25.0% | 0/1200 (0.0% to 0.4%) | 0/1200 (0.0% to 0.4%) | 0/1200 (0.0% to 0.4%) |
+| Death at 2, active at 0 | 0.0% to 33.5% | 0/1200 (0.0% to 0.4%) | 0/1200 (0.0% to 0.4%) | 0/1200 (0.0% to 0.4%) |
+| Death at 3, active at 1 | 0.0% to 39.3% | 180/1200 (12.9% to 17.2%) | 166/1200 (11.7% to 16.0%) | 170/1200 (12.1% to 16.4%) |
+| Death at 4, active at 2 | 3.3% to 43.3% | 132/1200 (9.0% to 13.3%) | 131/1200 (9.0% to 12.9%) | 146/1200 (10.2% to 14.5%) |
+| Death at 5, active at 3 | 5.8% to 45.8% | 205/1020 (17.6% to 23.0%) | 218/1034 (18.4% to 23.8%) | 189/1030 (16.0% to 21.1%) |
+| Death at 6, active at 4 | 7.1% to 47.1% | 312/888 (31.6% to 38.7%) | 323/903 (32.4% to 39.1%) | 307/884 (31.2% to 38.3%) |
+
+All three batches are ACCEPTED, with no exemption.
+
+## History
+
+This section and the next one are history: they describe the check with
+`defaultPolicy` at 1,000 games, before the batch grew to 1,200.
 
 The policy changed in the merge with the browser game (ADR 0004): Mara has a broadsword
 again, the model's Player picks maneuvers at random, and the curve is shape 2, q = 19/20,

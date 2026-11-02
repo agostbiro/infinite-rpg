@@ -11,8 +11,8 @@ A different balance curve does not change the game, so all settings use the same
 - The default check also passed Silver Acorn, where 83.44% of games end in death. The check looks at when deaths happen in the first turns, not at the overall win rate.
 
 The study only explores. It does not replace the balance check, and it does not prove confidence across all the comparisons at once.
-The study ran before the difficulty levels: "the default check" above is the old curve with a tolerance of 20 points and 1,000 games.
-The game now uses the curves of the difficulty levels and 1,200 games, so `lake exe balance-study` refuses this plan until a new plan is written.
+The study ran with 1,000 games: "the default check" above is the game's curve, with a tolerance of 20 points.
+The game now uses 1,200 games, so `lake exe balance-study` refuses this plan until a new plan is written.
 The study code now runs on the test adventure, with five variants; its new results are not made yet.
 
 ## Run it

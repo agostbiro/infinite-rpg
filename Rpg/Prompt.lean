@@ -72,27 +72,26 @@ def rulesText : String :=
     "- A skill may be listed only once, and never below the lowest level you can buy.",
     s!"- Example, Mara: {pointsBreakdown TestAdventure.mara}."])
 
-/-- The allowed death range of one row of the balance check at level `level`, as text. -/
-def bandText (level : Probability.DifficultyLevel) (row : Nat) : String :=
+/-- The allowed death range of one row of the balance check, as text. -/
+def bandText (row : Nat) : String :=
   let pct (r : Rat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   if h : row < liveHorizon + 1 then
-    let band := Probability.bandsFor .window level.policy 0 liveHorizon ⟨row, h⟩
+    let band := Probability.confidenceBandsFor Probability.defaultPolicy liveHorizon ⟨row, h⟩
     let what := if row = 0 then "Death on turn 1"
-      else s!"Death within turns {row} to {row + 1}, given survival through turn {row - 1}"
+      else s!"Death on turn {row + 1}, of the Characters alive at turn {row - 1}"
     s!"  - {what}: {pct (max 0 (band.target - band.tolerance))} to {pct (band.target + band.tolerance)}."
   else ""
 
-/-- The part of the DM prompt about the balance check, for the level that the Player picked.
-The numbers come from the curve of that level and the shared confidence settings. -/
-def dangerText (level : Probability.DifficultyLevel) : String :=
+/-- The part of the DM prompt about the balance check.
+The numbers come from the shared balance and confidence settings. -/
+def dangerText : String :=
   "\n".intercalate ([
     "## Danger (the balance check)",
-    s!"- The Player picked the {level.key} difficulty level. On this level, about {(100 * level.survivalAtTen).floor}% of Characters are still alive after 10 turns.",
-    s!"- After the checker, a program plays your Adventure in a precommitted batch of at least 5,000 runs. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
-    s!"- It counts first-event death and conditional two-event deaths, for the first {liveHorizon + 1} turns. Each count must fit its range for the {level.key} level, with {(100 * (1 - Probability.Confidence.confidenceDelta)).floor}% confidence:"] ++
-    (List.range (liveHorizon + 1)).map (bandText level) ++ [
+    s!"- After the checker, a program plays your Adventure {Probability.validationGames} times. On each turn it picks a Choice at random. In a Fight, it picks a maneuver and a target at random. One turn is one Choice, with its whole Fight.",
+    s!"- It counts how many Characters die on each turn, for the first {liveHorizon + 1} turns. Each count must fit its range, with {(100 * (1 - Probability.Confidence.confidenceDelta)).floor}% confidence:"] ++
+    (List.range (liveHorizon + 1)).map bandText ++ [
     "- So the first turns can be safe, but the danger must rise. From turn 4 on, some Fights must be able to kill the Character.",
     s!"- Most paths must be at least {liveHorizon + 2} Choices long. A turn that too few games reach fails.",
     "- If the check fails, you get the numbers for each turn that failed. Make Fights harder or easier, or move them earlier or later. The rules cannot change."])
@@ -111,9 +110,9 @@ def mapText : String :=
     "- `scenes`: exactly one `{scene, place, npcs}` for each Scene, Endings too. `npcs` names at most 4 people that the Player sees in that Scene (each name 1 to 60 characters), or is [].",
     "- Spread the Scenes over the places, and use every place. At least one third of the Choices must lead to a Scene at another place."]
 
-/-- The DM's instructions for an Adventure at difficulty level `level`. They are the same on every
-try and every Wish at that level, and `requestBody` marks them for the prompt cache. -/
-def dmSystemPrompt (level : Probability.DifficultyLevel) : String :=
+/-- The DM's instructions for an Adventure. They are the same on every try and every Wish, and
+`requestBody` marks them for the prompt cache. -/
+def dmSystemPrompt : String :=
   "\n".intercalate [
     "You are the DM (Dungeon Master) of a single-player game based on GURPS Lite.",
     "The Player sends a Wish. You write one Adventure and its Character as JSON.",
@@ -159,7 +158,7 @@ def dmSystemPrompt (level : Probability.DifficultyLevel) : String :=
     "- The Player picks a maneuver on each turn of a Fight: Attack; All-Out Attack (+4 to hit, but no Dodge until the next turn); or All-Out Defense (no attack, but +2 to Dodge). Creatures always Attack.",
     "- Make most Fights winnable: 1 to 3 Creatures, each with a weapon skill of 9 to 13.",
     "",
-    dangerText level,
+    dangerText,
     "",
     "## Theme Names",
     "- `themeNames` gives display names that fit the world to the Character's skills, weapon, and armor. For example, in a school for wizards, Broadsword could show as \"Wand Duelling\" and the broadsword as \"Holly Wand\".",
@@ -296,10 +295,10 @@ def userTurn (text : String) : Json := json% { role: "user", content: $(text) }
 /-- An assistant turn, with the content blocks exactly as the API sent them. -/
 def assistantTurn (content : Json) : Json := json% { role: "assistant", content: $(content) }
 
-/-- The request for an Adventure at level `level`, with the turns so far. Thinking cannot be turned
-off on this model, and it counts against `max_tokens`, so the limit is 64,000. -/
-def adventureRequest (level : Probability.DifficultyLevel) (messages : List Json) : Json :=
-  requestBody (dmSystemPrompt level) messages adventureSchema "medium" 64000
+/-- The request for an Adventure, with the turns so far. Thinking cannot be turned off on this
+model, and it counts against `max_tokens`, so the limit is 64,000. -/
+def adventureRequest (messages : List Json) : Json :=
+  requestBody dmSystemPrompt messages adventureSchema "medium" 64000
 
 /-- The DM's instructions for the world map of an Adventure that already passed its checks. -/
 def mapSystemPrompt : String :=
@@ -600,22 +599,15 @@ def sseFixtureMessage : String :=
 
 -- The fix turn counts the errors.
 #guard (fixMessage ["a", "b"] none).startsWith "The checker found 2 errors:\n- a\n- b"
--- The prompt gives the range of every row of the balance check, for the level that the Player
--- picked.
-#guard Probability.DifficultyLevel.all.all fun level => (List.range (liveHorizon + 1)).all fun row =>
-  ((dmSystemPrompt level).splitOn (bandText level row)).length == 2
--- The ranges differ between levels: the hard prompt does not show the medium range of turn 6.
-#guard bandText .hard 5 != bandText .medium 5 &&
-  ((dmSystemPrompt .hard).splitOn (bandText .medium 5)).length == 1
-#guard bandText .hard 5 == "  - Death within turns 5 to 6, given survival through turn 4: 31.9% to 41.9%."
-#guard bandText .medium 0 == "  - Death on turn 1: 0.0% to 6.1%."
--- The prompt names the level.
-#guard ((dmSystemPrompt .easy).splitOn "The Player picked the easy difficulty level.").length == 2
+-- The prompt gives the range of every row of the balance check.
+#guard (List.range (liveHorizon + 1)).all fun row => (dmSystemPrompt.splitOn (bandText row)).length == 2
+#guard bandText 0 == "  - Death on turn 1: 0.0% to 25.0%."
+#guard bandText 5 == "  - Death on turn 6, of the Characters alive at turn 4: 7.1% to 47.1%."
 -- The prompt names every theme and kind of prop that the map check accepts.
 #guard (worldThemes ++ worldPropKinds).all fun k => (mapText.splitOn k).length ≥ 2
-#guard ((dmSystemPrompt .medium).splitOn "## The world map").length == 1
+#guard (dmSystemPrompt.splitOn "## The world map").length == 1
 #guard ((mapSystemPrompt).splitOn "## The world map").length == 2
 -- The schema names every skill, and the prompt has a line for each one.
-#guard Skill.all.all fun s => ((dmSystemPrompt .medium).splitOn s!"- {s.key} (").length == 2
+#guard Skill.all.all fun s => (dmSystemPrompt.splitOn s!"- {s.key} (").length == 2
 
 end Rpg

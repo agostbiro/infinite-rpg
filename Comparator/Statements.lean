@@ -1,5 +1,5 @@
 import Rpg.Play
-import Rpg.Adventures.TestAdventure.Confidence
+import Rpg.Adventures.Lafayette.Confidence
 import Rpg.WorldChange
 import Rpg.EventGraph
 import Rpg.Probability.FastBinomial
@@ -25,13 +25,13 @@ theorem check_sound {rules : RuleSet} {c : Being} {a : Adventure}
 theorem checkCharacter_sound {rules : RuleSet} {c : Being}
     (h : checkCharacter rules c = []) : LegalCharacter rules c := sorry
 
-/-- The test Adventure, The Bandit Camp, is legal for Mara under its rules. This shows that the
-premise of `check_sound` can be met. -/
-theorem test_adventure_legal : LegalAdventure TestAdventure.rules TestAdventure.mara TestAdventure.testAdventure := sorry
+/-- The built-in Adventure, Lafayette at Barren Hill, is legal for Lafayette under its rules. This
+shows that the premise of `check_sound` can be met. -/
+theorem barren_hill_legal : LegalAdventure Lafayette.rules Lafayette.lafayette Lafayette.barrenHill := sorry
 
-/-- From every Scene of the test Adventure, an Ending can be reached. -/
-theorem test_adventure_reaches_ending :
-    ∀ s ∈ TestAdventure.testAdventure.scenes, ReachesEnding TestAdventure.testAdventure s.id := sorry
+/-- From every Scene of the built-in Adventure, an Ending can be reached. -/
+theorem barren_hill_reaches_ending :
+    ∀ s ∈ Lafayette.barrenHill.scenes, ReachesEnding Lafayette.barrenHill s.id := sorry
 
 /-- An input that the game does not offer changes nothing and rolls no dice. -/
 theorem step_rejects (g : Game) (i : Input) (dice : Rng)
@@ -42,16 +42,16 @@ theorem step_rejects (g : Game) (i : Input) (dice : Rng)
 /-- The game offers exactly the inputs that the rules allow. -/
 theorem mem_inputs_iff {g : Game} {i : Input} : i ∈ g.inputs ↔ AllowedInput g i := sorry
 
-/-- The test Adventure uses the default rules, in every place that play and the balance check read
-them. A DM cannot change the rules without breaking this statement. -/
-theorem test_adventure_default_rules :
-    TestAdventure.rules = {} ∧
-    TestAdventure.testAdventureDefinition.rules = {} ∧
-    TestAdventure.statisticalCandidate.rules = {} := sorry
+/-- The built-in Adventure uses the default rules, in every place that play and the balance check
+read them. A DM cannot change the rules without breaking this statement. -/
+theorem barren_hill_default_rules :
+    Lafayette.rules = {} ∧
+    Lafayette.barrenHillDefinition.rules = {} ∧
+    Lafayette.statisticalCandidate.rules = {} := sorry
 
-/-- The test Adventure and generated Adventures both inherit the shared tactical meta rules. -/
+/-- The built-in Adventure and generated Adventures both inherit the shared tactical meta rules. -/
 theorem shared_tactical_rules :
-    TestAdventure.rules.combatRules = defaultCombatRules ∧
+    Lafayette.rules.combatRules = defaultCombatRules ∧
     liveRules.combatRules = defaultCombatRules := sorry
 
 /-- The balance test is sound for every candidate, under the binomial sampling model. -/
@@ -118,7 +118,7 @@ theorem live_change_checkpoint_intervals {p : WorldChange.Prepared} {seed : Nat}
     let obs := a.counts.observation i.val
     let iv := Probability.Confidence.confidenceInterval delta obs.trials obs.deaths
     let target := p.before.policy.checkpointTarget p.before.trail.length i.val
-    target - 1/20 ≤ iv.lower ∧ iv.upper ≤ target + 1/20 :=
+    target - p.before.policy.tolerance ≤ iv.lower ∧ iv.upper ≤ target + p.before.policy.tolerance :=
   a.checkpoint_intervals i
 
 /-- Covered accepted intervals imply the requested semantic property of the checkpoint graph. -/
@@ -143,7 +143,7 @@ theorem live_change_falseAcceptance (p : WorldChange.Prepared) (delta : Rat)
 
 -- The fact about one admission is `WorldChange.Admission.intervals_fit`.
 /-- The balance test at error allowance `delta` is sound for the changed Adventure, from its
-checkpoint. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
+start. This holds for every proposal: it limits how often the test accepts an unbalanced change. It
 does not say that this change is balanced. -/
 theorem live_change_balanced {p : WorldChange.Prepared} {seed : Nat} {delta : Rat}
     (a : WorldChange.Admission p seed delta) :
@@ -153,26 +153,38 @@ theorem live_change_balanced {p : WorldChange.Prepared} {seed : Nat} {delta : Ra
 theorem retry_balanced {n : Nat} (tree : Probability.RetryTree n)
     (valid : tree.Valid) : tree.falseAcceptance 0 ≤ Probability.Confidence.confidenceDelta := sorry
 
-/-- Every difficulty level is a valid curve: 0 < q < 1, a positive shape, and a tolerance from
-0 to 1. -/
-theorem difficulty_valid (level : Probability.DifficultyLevel) : level.policy.Valid := sorry
-
-/-- At turn 10, more Characters are alive on easy than on medium, and more on medium than on
-hard. -/
-theorem difficulty_order :
-    -- Hard is more dangerous than medium.
-    Probability.DifficultyLevel.hard.policy.survival 10 <
-      Probability.DifficultyLevel.medium.policy.survival 10 ∧
-    -- Medium is more dangerous than easy.
-    Probability.DifficultyLevel.medium.policy.survival 10 <
-      Probability.DifficultyLevel.easy.policy.survival 10 := sorry
-
-/-- A live change keeps the difficulty level of the Adventure, and its check uses that level. -/
+/-- A live change keeps the balance policy of the Adventure, and its check uses that policy. -/
 theorem live_change_policy (p : WorldChange.Prepared) :
     -- The changed game has the policy of the game before the change.
     p.game.policy = p.before.policy ∧
     -- The balance check of the change uses that policy.
     p.candidate.policy = p.before.policy := sorry
+
+/-- The default balance curve: Weibull with q = 19/20 and shape 2, and a tolerance of 20 points. It
+has valid parameters. Every Adventure uses it. -/
+theorem default_policy :
+    -- The curve has valid Weibull parameters and a tolerance that is not vacuous.
+    Probability.defaultPolicy.Valid ∧
+    -- The Weibull retention q is 19/20.
+    Probability.defaultPolicy.retention = 19 / 20 ∧
+    -- The Weibull shape is 2.
+    Probability.defaultPolicy.shape = 2 ∧
+    -- The tolerance is 20 points.
+    Probability.defaultPolicy.tolerance = 1 / 5 := sorry
+
+/-- A Game from a Draft uses the default balance curve. After the balance check, the check
+admitted the Draft as a candidate with the default curve. On the fast load of an admitted Draft,
+no check runs, and the Game has the default curve. -/
+theorem draft_game_policy (d : Draft) (seed : Nat) (g : Game) :
+    -- A Game that passed the balance check comes from a check with the default curve.
+    (d.toGame seed = .ok g →
+      ∃ (defn : AdventureDefinition) (counts : Probability.ValidationCounts)
+        (a : Probability.StatisticalAdventure),
+        Probability.admitWithSeed (liveCandidate defn) seed = (counts, some a) ∧
+        a.candidate.policy = Probability.defaultPolicy ∧
+        g = Game.new a.candidate.toAdventureDefinition Probability.defaultPolicy) ∧
+    -- A Game from the fast load has the default curve.
+    (d.toGameAdmitted = .ok g → g.policy = Probability.defaultPolicy) := sorry
 
 /-- If the short-loop check passes, every loop has at least 4 steps: a path of Choices from a
 Scene back to the same Scene, with at least one step, has 4 steps or more. -/
@@ -207,5 +219,10 @@ theorem timestamped_balance_if_covered (a : Probability.StatisticalCandidate)
       let iv := Probability.Confidence.confidenceInterval delta obs.trials obs.deaths
       iv.lower ≤ a.truth i ∧ a.truth i ≤ iv.upper) : a.FitsBands :=
   a.fits_if_covered counts delta accepted covered
+
+/-- Every live graph edit rebuilds the exact logical projection used by the 3D renderer. -/
+theorem live_change_spatial_matches (p : WorldChange.Prepared) :
+    (∀ source target, (source, target) ∈ p.game.spatialProjection.links ↔ Leads p.game.adventure source target) ∧
+    (∀ input, input ∈ p.game.spatialProjection.inputs ↔ AllowedInput p.game input) := p.spatial_matches
 
 end Verified

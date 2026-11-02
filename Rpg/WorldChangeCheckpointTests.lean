@@ -18,6 +18,7 @@ def gentlePrepared : Prepared where
   proposalValid := by decide +kernel
   policyValid := by decide +kernel
   checkpointValid := by decide +kernel
+  graphStable := by decide +kernel
   heroLegal := checkCharacter_sound (by decide +kernel)
   storyLegal := check_sound (by decide +kernel)
 
@@ -63,7 +64,7 @@ example : expectation gentleLaw (fun observations =>
   rw [gentle_truth_zero]
   decide +kernel
 
--- Execute the full 5,000-run regression through the proved admission gate.
+-- Execute the precommitted-batch regression through the proved admission gate.
 -- The general theorem is kernel checked; enumerating thousands of deterministic simulations
 -- in the proof kernel adds no probability guarantee and is unnecessarily expensive.
 #guard (gentlePrepared.admit validationSeed (attemptRisk 0)).2.isSome
@@ -71,15 +72,14 @@ example : expectation gentleLaw (fun observations =>
 -- A concrete graph satisfies the shared semantic property, without assumed premises.
 example : gentlePrepared.CheckpointBalanced := by decide +kernel
 
--- The same safe world is too safe for every selectable difficulty over this window.
-#guard DifficultyLevel.all.all fun level =>
-  match ironSkin.prepare { gentleGame with policy := level.policy } with
+-- A safe world is too safe for main's unchanged default curve.
+#guard match ironSkin.prepare { gentleGame with policy := defaultPolicy } with
   | .error _ => false
   | .ok p => (p.admit validationSeed (attemptRisk 0)).2.isNone
 
 -- The checkpoint age matters even though the world and HP are unchanged.
 #guard
-  let c := sampleCounts gentlePrepared.candidate validationSeed difficultyGames
+  let c := sampleCounts gentlePrepared.candidate validationSeed validationGames
   decide (ValidationAccepted liveHorizon c (attemptRisk 0) 0 gentleGame.policy .window) &&
     !decide (ValidationAccepted liveHorizon c (attemptRisk 0) 30 gentleGame.policy .window)
 
@@ -97,20 +97,57 @@ def referenceCounts (a : StatisticalCandidate) : ValidationCounts := Id.run do
     c := { c with trials := c.trials.push n, deaths := c.deaths.push k }
   return c
 
--- The former 1,200-run plan could not admit even ideal counts at hard, age 10.
--- The new precommitted plan supports every selectable level at both timestamps.
-#guard [0, 10].all fun age => DifficultyLevel.all.all fun level =>
-  let a := { gentlePrepared.candidate with elapsed := age, policy := level.policy }
+-- Reference-centered counts can pass at initial and late timestamps under main's policy.
+#guard [0, 5, 10].all fun age =>
+  let a := { gentlePrepared.candidate with elapsed := age, policy := defaultPolicy }
   decide (a.accepts (referenceCounts a) (attemptRisk 0))
 
--- Initial and live admission share the same constructor, policy, targets and six-event window.
-example : liveCandidate gentlePrepared.definition gentleGame.policy =
-    StatisticalCandidate.atCheckpoint gentlePrepared.definition
-      (.scene gentlePrepared.definition.story.start
-        (gentlePrepared.definition.rules.maxHP gentlePrepared.definition.hero))
-      0 5 (by decide) gentleGame.policy := rfl
+-- Initial admission keeps main's point-probability rule and timestamp zero.
+example : (liveCandidate gentlePrepared.definition).protocol = .point ∧
+    (liveCandidate gentlePrepared.definition).elapsed = 0 ∧
+    (liveCandidate gentlePrepared.definition).policy = defaultPolicy := ⟨rfl, rfl, rfl⟩
 
 example : (StatisticalCandidate.atCheckpoint gentlePrepared.definition
-    (.scene 0 2) 10 5 (by decide) DifficultyLevel.hard.policy).elapsed = 10 := rfl
+    (.scene 0 2) 10 5 (by decide) defaultPolicy).elapsed = 10 := rfl
+
+/-- Add a current-scene option and a new event with its spatial placement. -/
+def addEvent : Proposal :=
+  { summary := "Add a lookout", moment := "A path opens.", equipment := none, rules := [],
+    scenes := [
+      { id := 0, title := "The Storm", text := "Two routes lead to shelter."
+        choices := [{ text := "Take shelter", outcome := .goto 1 },
+          { text := "Visit the lookout", outcome := .goto 2 }] },
+      { id := 2, title := "The lookout", text := "Shelter is nearby."
+        choices := [{ text := "Take shelter", outcome := .goto 1 }] }],
+    scenePlaces := [{ scene := 2, place := 1 }] }
+
+-- The same event edit is refused during a fight, before statistical admission.
+#guard match addEvent.prepare fightGame with
+  | .error errors => errors.contains
+      "The event graph cannot change during a fight. Finish the fight before editing scenes or choices."
+  | .ok _ => false
+
+-- This checks real graph patches and generated render data, not a parallel test graph.
+#guard match addEvent.prepare gentleGame (some (mapFor gentleGame)) with
+  | .error _ => false
+  | .ok p =>
+    let rendered := p.game.spatialProjection
+    let remove : Proposal := { addEvent with
+      scenes := [{ id := 0, title := "The Storm", text := "One route remains.", choices := [{ text := "Visit the lookout", outcome := .goto 2 }] }], scenePlaces := [] }
+    match remove.prepare p.game (addEvent.environmentAfter (some (mapFor gentleGame))) with
+    | .error _ => false
+    | .ok q =>
+      (p.admit validationSeed (attemptRisk 0)).2.isSome &&
+      (q.admit validationSeed (attemptRisk 0)).2.isSome &&
+      rendered.scenes.contains 2 && rendered.links.contains (0, 2) &&
+      rendered.inputs.length == 2 && q.game.spatialProjection.inputs.length == 1 &&
+      !q.game.spatialProjection.links.contains (0, 1) &&
+      q.game.hp == gentleGame.hp && q.candidate.elapsed == gentleGame.trail.length
+
+-- A permissive exploratory screen can never authorize a batch by itself.
+#guard
+  let a := { gentlePrepared.candidate with policy := defaultPolicy }
+  let sparse : ValidationCounts := ⟨Array.replicate 6 0, Array.replicate 6 0, screenGames, false⟩
+  a.screenPlausible sparse && !decide (a.accepts sparse (attemptRisk 0))
 
 end Rpg.WorldChange.Tests

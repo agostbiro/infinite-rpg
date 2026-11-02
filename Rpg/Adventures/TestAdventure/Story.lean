@@ -3,10 +3,11 @@ import Rpg.Adventures.TestAdventure.Characters
 /-!
 # The Bandit Camp, a test Adventure
 
-A small Adventure for the tests and the example theorems. The server never offers it for play.
+A small Adventure for the tests. The server never offers it for play. The Comparator example
+theorems are about the built-in Adventure (`Rpg/Adventures/Lafayette/`).
 The theorem `test_adventure_legal` at the end proves that it is legal for Mara. If a change breaks
 a rule, the build fails. Its Scenes, rolls, and Fights are the graph of the earlier built-in
-Adventure, so it passes the balance check (`make validate`).
+Adventure, so it passes the balance check.
 -/
 
 namespace Rpg.TestAdventure

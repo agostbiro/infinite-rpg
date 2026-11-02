@@ -12,7 +12,21 @@ export function inputKey(value) {
 /** One spatial selector per offered input. Labels never determine an input. */
 export function portalsForView(view) {
   if (!view || !['scene', 'fight'].includes(view.phase)) return [];
-  const offered = new Set(view.inputs.map(inputKey));
+  const contract = view.spatialGraph;
+  if (view.worldRevision !== undefined && !contract) throw new Error('The spatial graph is missing.');
+  const inputs = contract?.inputs || view.inputs;
+  if (contract && inputKey(inputs) !== inputKey(view.inputs)) throw new Error('The spatial graph has stale commands.');
+  if (contract && view.environment) {
+    const ids = new Set(contract.scenes);
+    const mappings = view.environment.scenes;
+    if (mappings.length !== ids.size || mappings.some(s => !ids.has(s.scene)) ||
+        new Set(mappings.map(s => s.scene)).size !== ids.size ||
+        contract.links.some(([source, target]) => !ids.has(source) || !ids.has(target))) {
+      throw new Error('The spatial map does not match the event graph.');
+    }
+  }
+  const offered = new Set(inputs.map(inputKey));
+  if (offered.size !== inputs.length) throw new Error('The spatial graph repeats a command.');
   const candidates = view.phase === 'scene'
     ? (view.scene?.choices || []).filter(c => c.input !== null).map(c => ({ label: c.text, input: c.input, kind: 'choice' }))
     : (view.fight?.maneuvers || []).flatMap(m => m.options.map(o => ({
@@ -24,7 +38,7 @@ export function portalsForView(view) {
     const key = inputKey(p.input);
     if (seen.has(key)) throw new Error('The server offered the same spatial input twice.');
     seen.add(key);
-    return { ...p, key, visual: appearanceFor(p, view) };
+    return { ...p, key, revision: view.worldRevision, visual: appearanceFor(p, view) };
   });
   if (seen.size !== offered.size) throw new Error('The spatial view does not represent every offered input.');
   return portals;

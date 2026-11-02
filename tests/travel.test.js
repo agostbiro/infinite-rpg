@@ -155,3 +155,21 @@ test('the real renderer refreshes changed options, NPCs and scene placement', t 
   game.update(changed, true);
   assert.equal(game.travel, null); // Manual takeover is retained across polls.
 });
+
+test('the real renderer rejects an old option even if its index exists in the revised graph', async t => {
+  const {game, view, sent} = rendererHarness(t);
+  view.worldRevision = 1;
+  view.spatialGraph = {scenes:view.environment.scenes.map(s=>s.scene), links:[], inputs:view.inputs};
+  game.update(view, true);
+  game.travelFrame(100);
+  const oldPortal = game.layout.portals[0];
+  const changed = structuredClone(view);
+  changed.worldRevision = 2;
+  changed.scene.choices[0].text = 'A different event now owns this index';
+  game.update(changed, true);
+  if (game.travel) game.travelFrame(100);
+  await game.choose(oldPortal);
+  assert.equal(sent.length, 0);
+  await game.choose(game.layout.portals[0]);
+  assert.equal(sent.length, 1);
+});

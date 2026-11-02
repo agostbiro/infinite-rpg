@@ -1,10 +1,11 @@
 import Rpg.Adventures.TestAdventure.Confidence
+import Rpg.Adventures.Lafayette.Confidence
 
 namespace Rpg
 
-/-- The Adventures in this repo, for the balance screen (`screen.lean`): now only the test
-Adventure. A new built-in Adventure goes here too (see `docs/follow-ups.md`). -/
+/-- The Adventures in this repo, for the balance screen (`screen.lean`): the built-in Adventure,
+Lafayette at Barren Hill, and the test Adventure. -/
 def statisticalCandidates : List Probability.StatisticalCandidate :=
-  [TestAdventure.statisticalCandidate]
+  [Lafayette.statisticalCandidate, TestAdventure.statisticalCandidate]
 
 end Rpg

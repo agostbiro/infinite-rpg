@@ -16,12 +16,11 @@ Character and on the Adventure. A `Game` needs the proofs `LegalCharacter` and `
 (see `Game.new`), and `Draft.toGame` gets them only from `checkCharacter_sound` and `check_sound`.
 So a Draft that the checker rejects can never be played.
 
-Then `Draft.toGame` runs the balance check (admission): `difficultyGames` games from a seed, with
-horizon 5, against the curve of the Draft's difficulty level. A Draft that fails a row is not
-played either. The server picks a fresh random seed for each try and saves it with the Adventure,
+Then `Draft.toGame` runs the balance check (admission): `validationGames` games from a seed, with
+horizon 5, against the one balance curve, `Probability.defaultPolicy`. A Draft that fails a row
+is not played either. The server picks a fresh random seed for each try and saves it with the Adventure,
 so a saved Adventure gives the same result when it loads.
-A Wish uses the default rules (`liveRules`). The DM cannot change them.
-The Player picks the level. The server sets it on the Draft, so the DM cannot change it either.
+A Wish uses the default rules (`liveRules`) and the default curve. The DM cannot change them.
 
 Before the checker runs, `sizeErrors` refuses a Draft that is too large to show well, for
 example more than 40 Scenes, and a world map that the 3D page cannot draw
@@ -109,8 +108,6 @@ structure Draft where
   intro : String := ""
   /-- The world map for the 3D page. An older save has none: then the page draws a default map. -/
   environment : Option WorldEnvironment := none
-  /-- The difficulty level that the Player picked. An older save has none: then it is medium. -/
-  difficulty : Probability.DifficultyLevel := .medium
   deriving Repr
 
 /-- Add a context, such as "Scene 3", to the front of an error. -/
@@ -192,18 +189,8 @@ def optStrField (j : Json) (k : String) : Except String String :=
   | .ok v => inCtx k (fromJson? v)
   | .error _ => pure ""
 
-/-- Read the difficulty level from field `difficulty`. A missing field is medium. A field that
-is not "easy", "medium", or "hard" is an error. -/
-def difficultyOfJson (j : Json) : Except String Probability.DifficultyLevel :=
-  match j.getObjVal? "difficulty" with
-  | .error _ => pure .medium
-  | .ok v => do
-    let key ← inCtx "difficulty" (fromJson? (α := String) v)
-    match Probability.DifficultyLevel.ofKey? key with
-    | some level => pure level
-    | none => throw s!"difficulty: \"{key}\" is not easy, medium, or hard"
-
-/-- Read a Draft from the DM's JSON. -/
+/-- Read a Draft from the DM's JSON. It ignores fields that it does not know, such as the
+`difficulty` field of an older save. -/
 def Draft.ofJson (j : Json) : Except String Draft := do
   let title ← j.getObjValAs? String "title"
   let world ← optStrField j "world"
@@ -219,9 +206,7 @@ def Draft.ofJson (j : Json) : Except String Draft := do
   let environment ← match j.getObjVal? "environment" with
     | .ok v => inCtx "environment" (fromJson? v : Except String (Option WorldEnvironment))
     | .error _ => pure none
-  let difficulty ← difficultyOfJson j
-  return { adventure := { title, start, scenes, themes }, hero, background, world, intro, environment,
-           difficulty }
+  return { adventure := { title, start, scenes, themes }, hero, background, world, intro, environment }
 
 /-- Read a Draft from JSON text. -/
 def Draft.parse (s : String) : Except String Draft := do
@@ -253,7 +238,6 @@ def Draft.toJson (d : Draft) : Json :=
   let th := a.themes
   let j := json% {
     title: $(a.title),
-    difficulty: $(d.difficulty.key),
     world: $(d.world),
     intro: $(d.intro),
     character: $((beingToJson d.hero).setObjVal! "background" (Json.str d.background)),
@@ -356,31 +340,89 @@ private def Draft.checked (d : Draft) : Except (List String) AdventureDefinition
   else .error (checkCharacter liveRules d.hero ++ check liveRules d.hero d.adventure ++
     d.adventure.shortLoopErrors)
 
-/-- A Draft that passed the checker, as a candidate for the balance check with `policy`. -/
-def liveCandidate (defn : AdventureDefinition) (policy : Probability.BalancePolicy) :
-    Probability.StatisticalCandidate :=
-  Probability.StatisticalCandidate.atCheckpoint defn
-    (.scene defn.story.start (defn.rules.maxHP defn.hero)) 0 liveHorizon (by decide) policy
+/-- A Draft that passed the checker, as a candidate for the balance check with the default
+curve. -/
+def liveCandidate (defn : AdventureDefinition) : Probability.StatisticalCandidate where
+  toAdventureDefinition := defn
+  horizon := liveHorizon
+  horizonPositive := by decide
+  policy := Probability.defaultPolicy
 
 /-- A Game from a Draft that this build of the server already admitted: it runs the size limits and
 the checker again, but not the balance check. Use it only when a saved verdict for this exact
 text and this build says that the Draft passed both checks (see `loadSaved` in `Main.lean`).
-The Game gets the policy of the Draft's level. -/
+The Game gets the default curve. -/
 def Draft.toGameAdmitted (d : Draft) : Except (List String) Game :=
-  d.checked.map (Game.new · d.difficulty.policy)
+  d.checked.map (Game.new · Probability.defaultPolicy)
 
 /-- **The only way in this code from a Draft to a Game that runs the balance check.** It runs the
-checker, then the balance check with `difficultyGames` games from `seed`, against the curve of the
-Draft's level. If both pass, it returns the Game, with that policy. Else it returns the errors.
+checker, then the balance check with `validationGames` games from `seed`, against the default
+curve. If both pass, it returns the Game, with that policy. Else it returns the errors.
 Each balance error starts with "balance:" and names the row that failed. -/
 def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=
   match d.checked with
   | .error errs => .error errs
   | .ok defn =>
-    match Probability.admitWithSeed (liveCandidate defn d.difficulty.policy) seed with
+    match Probability.admitWithSeed (liveCandidate defn) seed with
     | (_, some a) => .ok (Game.new a.candidate.toAdventureDefinition a.candidate.policy)
     | (counts, none) =>
-      .error (((liveCandidate defn d.difficulty.policy).failures counts Probability.Confidence.confidenceDelta).map ("balance: " ++ ·))
+      .error ((Probability.failedRows liveHorizon counts Probability.Confidence.confidenceDelta 0
+        Probability.defaultPolicy).map ("balance: " ++ ·))
+
+/-- A Game that `Draft.toGame` returns comes from a balance check that admitted the Draft as a
+candidate with the default curve, and the Game has that curve. -/
+theorem Draft.toGame_admitted {d : Draft} {seed : Nat} {g : Game}
+    -- The Draft passed the checker and the balance check.
+    (h : d.toGame seed = .ok g) :
+    -- Some checked definition was admitted with this seed.
+    ∃ (defn : AdventureDefinition) (counts : Probability.ValidationCounts)
+      (a : Probability.StatisticalAdventure),
+      Probability.admitWithSeed (liveCandidate defn) seed = (counts, some a) ∧
+      -- The admitted candidate has the default curve.
+      a.candidate.policy = Probability.defaultPolicy ∧
+      -- The Game is the admitted Adventure, with the default curve.
+      g = Game.new a.candidate.toAdventureDefinition Probability.defaultPolicy := by
+  unfold Draft.toGame at h
+  split at h
+  · simp at h
+  · rename_i defn _
+    split at h
+    · rename_i counts a ha
+      have hc := Probability.admitWithRisk_candidate ha
+      simp only [Except.ok.injEq] at h
+      refine ⟨defn, counts, a, ha, ?_, ?_⟩
+      · rw [hc]
+        rfl
+      · rw [← h, hc]
+        rfl
+    · simp at h
+
+/-- A Game that `Draft.toGame` returns uses the default balance curve. -/
+theorem Draft.toGame_policy {d : Draft} {seed : Nat} {g : Game}
+    -- The Draft passed the checker and the balance check.
+    (h : d.toGame seed = .ok g) :
+    -- The Game has the default policy.
+    g.policy = Probability.defaultPolicy := by
+  obtain ⟨_, _, _, _, _, hg⟩ := Draft.toGame_admitted h
+  rw [hg]
+  rfl
+
+/-- A Game that `Draft.toGameAdmitted` returns uses the default balance curve. -/
+theorem Draft.toGameAdmitted_policy {d : Draft} {g : Game}
+    -- The Draft passed the checker.
+    (h : d.toGameAdmitted = .ok g) :
+    -- The Game has the default policy.
+    g.policy = Probability.defaultPolicy := by
+  unfold Draft.toGameAdmitted at h
+  cases hc : d.checked with
+  | error e =>
+    rw [hc] at h
+    simp [Except.map] at h
+  | ok defn =>
+    rw [hc] at h
+    simp only [Except.map, Except.ok.injEq] at h
+    rw [← h]
+    rfl
 
 /-- How the points of a being add up, such as "ST 11: 10, DX 12: 40, ... Total: 100". The DM
 gets this with the errors, so it can fix a build. -/
@@ -524,41 +566,28 @@ def draftErrors (s : String) : List String :=
       ["environment: Scene 0 needs exactly one place"]
   | .error _ => false
 
-/-- Fixture: the legal Draft, saved at difficulty level `key`. -/
-def fixtureAt (key : String) : String :=
-  fixtureLegal.replace "\"start\": 0," s!"\"start\": 0, \"difficulty\": \"{key}\","
+/-- Fixture: the legal Draft, saved with a `difficulty` field, as an older save has. -/
+def fixtureWithDifficulty : String :=
+  fixtureLegal.replace "\"start\": 0," "\"start\": 0, \"difficulty\": \"hard\","
 
--- A Draft with no `difficulty` field is medium. Each level reads back from its JSON name.
-#guard (Draft.parse fixtureLegal).toOption.map (·.difficulty) == some .medium
-#guard (Draft.parse fixtureOld).toOption.map (·.difficulty) == some .medium
-#guard (Draft.parse (fixtureAt "easy")).toOption.map (·.difficulty) == some .easy
-#guard (Draft.parse (fixtureAt "hard")).toOption.map (·.difficulty) == some .hard
--- A level that does not exist is an error, not medium.
-#guard draftErrors (fixtureAt "extreme") == ["difficulty: \"extreme\" is not easy, medium, or hard"]
--- A saved level reads back the same.
-#guard match Draft.parse (fixtureAt "hard") with
-  | .ok d => (Draft.ofJson d.toJson).toOption.map (·.difficulty) == some .hard
+-- An older save with a `difficulty` field reads as the same Draft: the field is ignored.
+#guard match Draft.parse fixtureWithDifficulty, Draft.parse fixtureLegal with
+  | .ok old, .ok d => old.toJson == d.toJson
+  | _, _ => false
+-- A saved Draft has no `difficulty` field.
+#guard match Draft.parse fixtureWithDifficulty with
+  | .ok d => (d.toJson.getObjVal? "difficulty").toOption.isNone
   | .error _ => false
--- A Game from an admitted Draft has the policy of the Draft's level.
-#guard match Draft.parse (fixtureAt "hard") with
-  | .ok d => (d.toGameAdmitted.toOption.map (·.policy)) == some Probability.DifficultyLevel.hard.policy
-  | .error _ => false
-#guard match Draft.parse fixtureOld with
-  | .ok d => (d.toGameAdmitted.toOption.map (·.policy)) == some Probability.DifficultyLevel.medium.policy
+-- A Game from an admitted Draft has the default curve.
+#guard match Draft.parse fixtureWithDifficulty with
+  | .ok d => (d.toGameAdmitted.toOption.map (·.policy)) == some Probability.defaultPolicy
   | .error _ => false
 
--- The balance check uses the curve of the Draft's level. On turn 6 the allowed range is
--- 16.3% to 26.3% on medium (the default), and 31.9% to 41.9% on hard.
+-- The balance check uses the default curve. On turn 6 the allowed range is 7.1% to 47.1%.
 #guard match Draft.parse fixtureLegal with
   | .ok d => match d.toGame 1 with
     | .ok _ => false
-    | .error errs => errs.any (·.endsWith "the allowed range is 16.3% to 26.3%")
-  | .error _ => false
-#guard match Draft.parse (fixtureAt "hard") with
-  | .ok d => match d.toGame 1 with
-    | .ok _ => false
-    | .error errs => errs.any (·.endsWith "the allowed range is 31.9% to 41.9%") &&
-      !errs.any (·.endsWith "the allowed range is 16.3% to 26.3%")
+    | .error errs => errs.any (·.endsWith "the allowed range is 7.1% to 47.1%")
   | .error _ => false
 
 -- The legal fixture passes the checker but fails the balance check: it is too short and too safe.

@@ -23,12 +23,12 @@ def report (a : StatisticalCandidate) (validation : Bool) : IO Bool := do
   let (c, admitted) := if validation then
       let (counts, evidence) := admitStatistically a
       (counts, evidence.isSome)
-    else (sampleCounts a screenSeed difficultyGames, true)
+    else (sampleCounts a screenSeed validationGames, true)
   IO.println s!"== {a.story.title} (horizon {a.horizon}, {c.games} games)"
   if c.aborted then
     IO.println "ABORTED: an outcome inside the window was unresolved or invalid."
     return false
-  let mut passed := admitted && c.games == difficultyGames
+  let mut passed := admitted && c.games == validationGames
   for row in [:a.horizon + 1] do
     let some i := (if h : row < a.horizon + 1 then some (⟨row, h⟩ : Fin (a.horizon + 1)) else none)
       | continue
@@ -58,7 +58,7 @@ def main (args : List String) : IO UInt32 := do
     return 2
   let validation := args == ["--validation"]
   let label := if validation then "Validation" else "Screen"
-  IO.println s!"{label}: {difficultyGames} games per adventure; round limit={validationRoundLimit}; interval failure bound={confidenceDelta}; endpoint steps={intervalSteps}"
+  IO.println s!"{label}: {validationGames} games per adventure; round limit={validationRoundLimit}; interval failure bound={confidenceDelta}; endpoint steps={intervalSteps}"
   (← IO.getStdout).flush
   let mut passed := true
   for a in statisticalCandidates do

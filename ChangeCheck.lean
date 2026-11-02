@@ -1,5 +1,6 @@
 import Rpg.WorldChangeCheckpointTests
 import Rpg.Adventures.TestAdventure.Confidence
+import Rpg.Adventures.Lafayette
 
 open Rpg Rpg.WorldChange Rpg.Probability Rpg.Probability.Confidence
 
@@ -10,21 +11,52 @@ def homeRoad : Game := { roadGame with policy := TestAdventure.statisticalCandid
 /-- Run compiled checks for a live-change fixture without consuming the held-out validation seed.
 The change is checked against the policy of the game it changes. -/
 def main (args : List String) : IO UInt32 := do
+  if args.contains "--render-fixture" then
+    match Tests.addEvent.prepare Tests.gentleGame (some (Tests.mapFor Tests.gentleGame)) with
+    | .error errs => IO.eprintln s!"{errs}"; return 1
+    | .ok p =>
+      let view := (viewJson p.game 7 #[] 0 none)
+        |>.setObjVal! "worldRevision" (Lean.toJson (1 : Nat))
+        |>.setObjVal! "environment" (Lean.toJson (p.proposal.environmentAfter (some (Tests.mapFor Tests.gentleGame))))
+      IO.println view.compress
+      return 0
+  if args.contains "--benchmark" then
+    let initial := Game.new Lafayette.barrenHillDefinition
+    let ((started, _), dice) := (step initial .begin).run ⟨7⟩
+    let ((road, _), dice) := (step started (.choose 1)).run dice
+    let ((combat, _), _) := (step road (.choose 0)).run dice
+    for (name, game) in [("initial scene", started), ("later scene", road), ("paused combat", combat)] do
+      let c := StatisticalCandidate.atCheckpoint Lafayette.barrenHillDefinition game.balancePoint
+        game.trail.length liveHorizon (by decide) defaultPolicy
+      let start ← IO.monoNanosNow
+      let mut fullPass := 0
+      for seed in [1:21] do
+        let counts := sampleCounts c seed c.games
+        if decide (c.accepts counts (attemptRisk 0)) then fullPass := fullPass + 1
+      let oldMs := ((← IO.monoNanosNow) - start) / 1000000
+      let start ← IO.monoNanosNow
+      let mut screenPass := 0
+      for seed in [1:21] do
+        if c.screenPlausible (sampleCounts c seed screenGames) then screenPass := screenPass + 1
+      let screenMs := ((← IO.monoNanosNow) - start) / 1000000
+      let start ← IO.monoNanosNow
+      let counts := sampleCounts c validationSeed c.games
+      let accepted := decide (c.accepts counts (attemptRisk 0))
+      let validationMs := ((← IO.monoNanosNow) - start) / 1000000
+      IO.println s!"{name}; age={c.elapsed}; validation_runs={c.games}; old_screen_20x_ms={oldMs}; new_screen_20x_ms={screenMs}; validation_ms={validationMs}; accepted={accepted}; old_pass={fullPass}; screen_pass={screenPass}"
+    let (_, builtIn) := admitStatistically Lafayette.statisticalCandidate
+    IO.println s!"Main built-in admission unchanged: {builtIn.isSome}"
+    return if builtIn.isSome then 0 else 1
   if args.contains "--checkpoint" then
     let started ← IO.monoMsNow
     let (counts, admission) := Tests.gentlePrepared.admit validationSeed (attemptRisk 0)
     IO.println s!"Checkpoint admission: {admission.isSome}; {counts.games} games; {(← IO.monoMsNow) - started} ms"
-    let mut rejected := true
-    for level in DifficultyLevel.all do
-      match Tests.ironSkin.prepare { Tests.gentleGame with policy := level.policy } with
-      | .error errs =>
-        IO.eprintln s!"Unexpected preparation failure: {errs}"
-        return 1
-      | .ok p =>
-        let (_, accepted) := p.admit validationSeed (attemptRisk 0)
-        IO.println s!"Too-safe world rejected on {level.key}: {accepted.isNone}"
-        rejected := rejected && accepted.isNone
-    return if admission.isSome && rejected then 0 else 1
+    match Tests.ironSkin.prepare { Tests.gentleGame with policy := defaultPolicy } with
+    | .error errs => IO.eprintln s!"Unexpected preparation failure: {errs}"; return 1
+    | .ok p =>
+      let (_, accepted) := p.admit validationSeed (attemptRisk 0)
+      IO.println s!"Too-safe world rejected: {accepted.isNone}"
+      return if admission.isSome && accepted.isNone then 0 else 1
   if args.contains "--tuning" then
     let heavy := { Tests.proposal with rules := [
       { Tests.fury with trigger := "againstFlame", hitBonus := 4, damageBonus := 6, armorBonus := 2 }, Tests.shelter] }

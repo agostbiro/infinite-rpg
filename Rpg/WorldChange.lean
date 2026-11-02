@@ -1,5 +1,6 @@
 import Rpg.Live
 import Rpg.Probability.Retry
+import Rpg.Probability.Screening
 
 /-! In-play changes are checked data, not generated executable code. An accepted
 patch keeps the checkpoint, HP, history, core rules, and balance policy. Admission samples the
@@ -187,6 +188,16 @@ instance (g : Game) : Decidable (checkpointConsistent g) := by
   unfold checkpointConsistent
   split <;> infer_instance
 
+/-- Event scenes cannot be edited while a fight is running. -/
+def Proposal.graphStableInFight (p : Proposal) (g : Game) : Prop :=
+  match g.phase with
+  | .fight _ => p.scenes = []
+  | _ => True
+
+instance (p : Proposal) (g : Game) : Decidable (p.graphStableInFight g) := by
+  unfold Proposal.graphStableInFight
+  split <;> infer_instance
+
 /-- A prepared change carries the legality proofs, but cannot yet be installed. -/
 structure Prepared where
   before : Game
@@ -194,6 +205,7 @@ structure Prepared where
   proposalValid : proposal.errors before = []
   policyValid : before.policy.Valid
   checkpointValid : checkpointConsistent before
+  graphStable : proposal.graphStableInFight before
   heroLegal : LegalCharacter (proposal.ruleSet before)
     { before.hero with weapon := proposal.equipment.map (·.weapon) |>.getD before.hero.weapon }
   storyLegal : LegalAdventure (proposal.ruleSet before)
@@ -215,6 +227,13 @@ def Prepared.game (p : Prepared) : Game :=
       | .fight f => .fight { f with state := { f.state with hero := { f.state.hero with being := d.hero } } }
       | .scene id => if (d.story.scene? id).any (·.choices.isEmpty) then .ended id else .scene id
       | phase => phase }
+
+/-- Every accepted preparation preserves the event graph throughout an ongoing fight. -/
+theorem Prepared.fight_graph_unchanged (p : Prepared) (f : FightPhase)
+    (fight : p.before.phase = .fight f) : p.game.adventure = p.before.adventure := by
+  have unchanged : p.proposal.scenes = [] := by
+    simpa [Proposal.graphStableInFight, fight] using p.graphStable
+  simp [game, definition, Proposal.story, unchanged]
 
 /-- State preservation does not depend on the GM following its prompt. -/
 theorem Prepared.preserves_checkpoint (p : Prepared) :
@@ -291,13 +310,15 @@ def Proposal.prepare (p : Proposal) (g : Game) (map : Option WorldEnvironment :=
   if he : errs = [] then
   if hp : g.policy.Valid then
   if hk : checkpointConsistent g then
+  if hs : p.graphStableInFight g then
   if sizes != [] then .error sizes else
   if hc : checkCharacter rules hero = [] then
     if ha : check rules hero story = [] then
-      if story.checkShortLoops then .ok ⟨g, p, he, hp, hk, checkCharacter_sound hc, check_sound ha⟩
+      if story.checkShortLoops then .ok ⟨g, p, he, hp, hk, hs, checkCharacter_sound hc, check_sound ha⟩
       else .error story.shortLoopErrors
     else .error (check rules hero story ++ story.shortLoopErrors)
   else .error (checkCharacter rules hero)
+  else .error ["The event graph cannot change during a fight. Finish the fight before editing scenes or choices."]
   else .error ["The checkpoint HP does not match the paused Fight."]
   else .error ["The current balance policy is invalid."]
   else .error errs
@@ -325,14 +346,14 @@ theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
       iv.upper ≤ (p.candidate.bands i).target + (p.candidate.bands i).tolerance :=
   p.candidate.accepted_intervals a.counts delta a.accepted i
 
-/-- Admission requires the complete interval to fit the original curve's conditional target within five points. -/
+/-- Admission requires the complete interval to fit the original curve's conditional target within its policy tolerance. -/
 theorem Admission.checkpoint_intervals {p : Prepared} {seed : Nat} {delta : Rat}
     (a : Admission p seed delta) (i : Fin (p.candidate.horizon+1)) :
     let obs := a.counts.observation i.val
     let iv := confidenceInterval delta obs.trials obs.deaths
     let target := p.before.policy.checkpointTarget p.before.trail.length i.val
-    target - 1/20 ≤ iv.lower ∧ iv.upper ≤ target + 1/20 := by
-  simpa only [StatisticalCandidate.bands, Prepared.candidate, StatisticalCandidate.atCheckpoint, bandsFor, difficultyTolerance]
+    target - p.before.policy.tolerance ≤ iv.lower ∧ iv.upper ≤ target + p.before.policy.tolerance := by
+  simpa only [StatisticalCandidate.bands, Prepared.candidate, StatisticalCandidate.atCheckpoint, bandsFor, balanceTolerance]
     using a.intervals_fit i
 
 /-- The checked pair probability uses the original Weibull parameters at the true elapsed time. -/
@@ -358,7 +379,7 @@ instance (p : Prepared) : Decidable p.CheckpointBalanced := by
   infer_instance
 
 /-- If the admitted intervals cover the true checkpoint probabilities, the changed graph
-meets the original aged difficulty curve within five points at every tested row. -/
+meets the original aged difficulty curve within its policy tolerance at every tested row. -/
 theorem Admission.difficulty_preserved_if_covered {p : Prepared} {seed : Nat} {delta : Rat}
     (a : Admission p seed delta)
     (covered : ∀ i : Fin (p.candidate.horizon + 1),
@@ -368,7 +389,7 @@ theorem Admission.difficulty_preserved_if_covered {p : Prepared} {seed : Nat} {d
   p.candidate.fits_if_covered a.counts delta a.accepted covered
 
 /-- Under the existing binomial sampling hypotheses, accepting every checkpoint interval
-while the changed graph violates the five-point property has probability at most delta.
+while the changed graph violates the policy-band property has probability at most delta.
 This is a bound on false acceptance, not a claim that a finite sample gives certainty. -/
 theorem Prepared.checkpoint_falseAcceptance (p : Prepared) (delta : Rat)
     (nonnegative : 0 ≤ delta)
@@ -395,5 +416,11 @@ def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
 inductive Permit (p : Prepared) (seed : Nat) (delta : Rat) where
   | statistical (evidence : Admission p seed delta)
   | visual (unchanged : p.proposal.visualOnly)
+
+/-- Rebuilding from the revised game preserves exact render/event correspondence after any patch. -/
+theorem Prepared.spatial_matches (p : Prepared) :
+    (∀ source target, (source, target) ∈ p.game.spatialProjection.links ↔ Leads p.game.adventure source target) ∧
+    (∀ input, input ∈ p.game.spatialProjection.inputs ↔ AllowedInput p.game input) :=
+  ⟨p.game.spatial_links_exact, p.game.spatial_inputs_exact⟩
 
 end Rpg.WorldChange

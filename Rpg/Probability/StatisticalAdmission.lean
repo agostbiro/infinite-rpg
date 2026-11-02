@@ -6,7 +6,7 @@ import Rpg.Probability.Continuation
 Finite confidence intervals compare the adventure's conditional death expectations
 with the Weibull targets of its own policy. The theorem `balanced` proves interval coverage and
 bounds false acceptance under the explicitly assumed binomial sampling model.
-Each candidate carries its policy. A candidate with no explicit policy uses the medium level.
+Each candidate carries its policy. Production games retain main's defaultPolicy.
 -/
 namespace Rpg.Probability
 open Confidence
@@ -27,9 +27,8 @@ structure StatisticalCandidate extends AdventureDefinition where
   elapsed : Nat := 0
   /-- A live change uses first-event death and conditional two-event windows. -/
   protocol : BalanceProtocol := .point
-  /-- The target curve and tolerance that this candidate must fit. An Adventure with no
-  difficulty level uses the medium level. -/
-  policy : BalancePolicy := DifficultyLevel.medium.policy
+  /-- The target curve and tolerance. Production games use defaultPolicy. -/
+  policy : BalancePolicy := defaultPolicy
 
 /-- One timestamped check for both a new world and a changed world. -/
 def StatisticalCandidate.atCheckpoint (d : AdventureDefinition) (point : ResumePoint)
@@ -37,25 +36,26 @@ def StatisticalCandidate.atCheckpoint (d : AdventureDefinition) (point : ResumeP
   { toAdventureDefinition := d, resume := some point, elapsed, horizon,
     horizonPositive := positive, policy, protocol := .window }
 
-/-- Precommit enough trajectories for roughly 2,000 survivors at the last row of the target curve.
-The 50,000-run cap bounds work; it never relaxes admission. No observed deaths select this budget. -/
-def StatisticalCandidate.games (a : StatisticalCandidate) : Nat :=
-  match a.protocol with
-  | .point => 1200
-  | .window => max 5000 (min 50000
-      ((2000 : Rat) / a.policy.remainingSurvival a.elapsed (a.horizon - 1)).ceil.toNat)
+/-- The number of initial-adventure validation runs, unchanged from main. -/
+def validationGames : Nat := 1200
 
-/-- Every timestamped check has a bounded, nonempty precommitted batch. -/
-theorem StatisticalCandidate.window_games_bounds (a : StatisticalCandidate)
-    (window : a.protocol = .window) : 5000 ≤ a.games ∧ a.games ≤ 50000 := by
-  simp only [games, window]
-  omega
-
-/-- The fixed, independently chosen validation seed. Never search seeds for a favorable result. -/
+/-- The fixed, independently chosen validation seed. -/
 def validationSeed : Nat := 20261103
 
-/-- Fixed batch size retained for historical point-probability fixtures. Live checks use `games`. -/
-def difficultyGames : Nat := 1200
+/-- Precommit a batch from timestamp and policy, before observing validation outcomes.
+With the twenty-point band, aim for 100 last-row survivors; cap work at 5,000 trajectories.
+A cap never bypasses the exact confidence-interval gate. -/
+def StatisticalCandidate.games (a : StatisticalCandidate) : Nat :=
+  match a.protocol with
+  | .point => validationGames
+  | .window => max validationGames (min 5000
+      ((100 : Rat) / a.policy.remainingSurvival a.elapsed (a.horizon - 1)).ceil.toNat)
+
+/-- Timestamped admission has bounded work and at least the initial-adventure batch size. -/
+theorem StatisticalCandidate.window_games_bounds (a : StatisticalCandidate)
+    (window : a.protocol = .window) : validationGames ≤ a.games ∧ a.games ≤ 5000 := by
+  simp only [games, window, validationGames]
+  omega
 
 /-- Combat timeouts abort validation rather than selecting only completed fights. -/
 def validationRoundLimit : Nat := 200
@@ -119,12 +119,12 @@ def continuationBandsFor (policy : BalancePolicy) (elapsed horizon : Nat) (i : F
   ⟨if i.val = 0 then 1 - policy.survival (elapsed+1) / policy.survival elapsed
    else policy.deathAtTwo (elapsed+i.val-1), policy.tolerance⟩
 
-/-- Checkpoint windows always use a five-point band, even for an old exempt test policy. -/
+/-- A checkpoint keeps the policy tolerance, including main's twenty-point default. -/
 def bandsFor (protocol : BalanceProtocol) (policy : BalancePolicy)
     (elapsed horizon : Nat) (i : Fin (horizon+1)) : Band :=
   match protocol with
   | .point => continuationBandsFor policy elapsed horizon i
-  | .window => ⟨policy.checkpointTarget elapsed i.val, difficultyTolerance⟩
+  | .window => ⟨policy.checkpointTarget elapsed i.val, policy.tolerance⟩
 
 /-- The bands of this candidate's own policy, for its finite continuation window. -/
 def StatisticalCandidate.bands (a : StatisticalCandidate) : Fin (a.horizon+1) → Band :=
@@ -138,7 +138,7 @@ def ValidationCounts.observation (c : ValidationCounts) (row : Nat) : Observatio
 The policy has no default value, so each caller names the curve that it checks against. -/
 def ValidationAccepted (horizon : Nat) (c : ValidationCounts)
     (delta : Rat) (elapsed : Nat) (policy : BalancePolicy)
-    (protocol : BalanceProtocol := .point) (expectedGames : Nat := difficultyGames) : Prop :=
+    (protocol : BalanceProtocol := .point) (expectedGames : Nat := validationGames) : Prop :=
   c.aborted = false ∧ c.games = expectedGames ∧
   c.trials.size = horizon+1 ∧ c.deaths.size = horizon+1 ∧
   ∀ i : Fin (horizon+1), c.trials[i.val]! ≤ c.games ∧
@@ -283,6 +283,22 @@ def admitWithRisk (candidate : StatisticalCandidate) (seed : Nat) (delta : Rat) 
     else (counts, none)
   else (counts, none)
 
+/-- An admitted Adventure is about the candidate that was checked. -/
+theorem admitWithRisk_candidate {c : StatisticalCandidate} {seed : Nat} {delta : Rat}
+    {counts : ValidationCounts} {a : StatisticalAdventure}
+    -- The check admitted `a`.
+    (h : admitWithRisk c seed delta = (counts, some a)) :
+    -- `a` is about the candidate `c`.
+    a.candidate = c := by
+  unfold admitWithRisk at h
+  dsimp only at h
+  by_cases hd : 0 < delta ∧ delta ≤ confidenceDelta
+  · by_cases hv : c.accepts (sampleCounts c seed c.games) delta
+    · simp only [hd, hv, and_self, ↓reduceDIte, Prod.mk.injEq, Option.some.injEq] at h
+      rw [← h.2]
+    · simp [hd, hv] at h
+  · simp [hd] at h
+
 /-- A single admission attempt uses the shared confidence setting. -/
 def admitWithSeed (candidate : StatisticalCandidate) (seed : Nat) :
     ValidationCounts × Option StatisticalAdventure :=
@@ -297,7 +313,7 @@ def admitStatistically (candidate : StatisticalCandidate) :
 server log. An empty list means that every row passed. -/
 def failedRows (horizon : Nat) (c : ValidationCounts)
     (delta : Rat) (elapsed : Nat) (policy : BalancePolicy)
-    (protocol : BalanceProtocol := .point) (expectedGames : Nat := difficultyGames) : List String :=
+    (protocol : BalanceProtocol := .point) (expectedGames : Nat := validationGames) : List String :=
   let pct (r : Rat) : String :=
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"

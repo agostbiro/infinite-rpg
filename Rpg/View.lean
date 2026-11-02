@@ -1,4 +1,5 @@
 import Rpg.Map
+import Rpg.SpatialProjection
 
 /-!
 # View
@@ -152,6 +153,7 @@ def viewJson (g : Game) (seed : Nat) (reports : Array Report) (fresh : Nat)
     | _ => Json.null
   json% {
     seed: $(seed),
+    spatialGraph: $(g.spatialProjection),
     adventure: $(g.adventure.title),
     phase: $(g.phase.name),
     character: $(characterJson g.rules th g.hero hp),
