@@ -144,6 +144,30 @@ def addEvent : Proposal :=
       !q.game.spatialProjection.links.contains (0, 1) &&
       q.game.hp == gentleGame.hp && q.candidate.elapsed == gentleGame.trail.length
 
+/-- A meeting is an event and an offered choice, with its NPC placed in the world. -/
+def meetNapoleon : Proposal :=
+  { addEvent with
+    summary := "Napoleon offers advice.", moment := "A route to his camp opens."
+    scenes := [
+      { id := 0, title := "The Storm", text := "A messenger points toward the camp."
+        choices := [{ text := "Take shelter", outcome := .goto 1 },
+          { text := "Meet Napoleon for advice", outcome := .goto 2 }] },
+      { id := 2, title := "Napoleon's advice", text := "Napoleon says: Scout the route and protect your supplies before advancing."
+        choices := [{ text := "Thank Napoleon and continue", outcome := .goto 1 }] }],
+    scenePlaces := [{ scene := 2, place := 1, npcs := ["Napoleon"] }] }
+
+-- Execute the actual command to reach the added meeting; no cosmetic-only shortcut can install it.
+#guard match meetNapoleon.prepare gentleGame (some (mapFor gentleGame)) with
+  | .error _ => false
+  | .ok p =>
+    let (met, _) := (step p.game (.choose 1)).run' ⟨7⟩
+    !decide p.proposal.visualOnly &&
+      (p.admit validationSeed (attemptRisk 0)).2.isSome &&
+      met.sceneId? == some 2 && met.trail.length == gentleGame.trail.length + 1 &&
+      met.spatialProjection.scenes.contains 2 &&
+      (meetNapoleon.environmentAfter (some (mapFor gentleGame))).any
+        (fun e => e.scenes.any (fun s => s.scene == 2 && s.npcs.contains "Napoleon"))
+
 -- A permissive exploratory screen can never authorize a batch by itself.
 #guard
   let a := { gentlePrepared.candidate with policy := defaultPolicy }

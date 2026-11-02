@@ -40,6 +40,8 @@ def schema : Json := objSchema [
 /-- The GM may revise scenes and scenery; gameplay changes must satisfy the shared balance check. -/
 def systemPrompt : String := "\n".intercalate [
   "You are the GM adapting an RPG that is ALREADY IN PLAY. Grant the player's requested change now and make the world's response fun.",
+  "Requests to meet a person, ask for advice, visit a place, or experience an event are encounter requests, not equipment requests. Outside combat, implement them as actual new scenes with unused IDs, actionable choices, and dialogue in the scene text. A person mentioned only in summary, moment, or map decoration does not implement an encounter. Include the named person in the new scene's scenePlaces.npcs when a map exists. During combat, explain that the player must finish the fight before adding an encounter; do not substitute a cosmetic change.",
+  "Make a requested encounter reachable from the CURRENT scene: add a clearly named option leading to it, or route an existing suitable option through it when the current scene already has four choices. Include the complete replacement choice list. Reconnect the encounter to the continuing story, keep all original scenes reachable, and avoid short return loops. Advice must contain actual useful dialogue and a way to continue. Keep the requested encounter and its access route in every revised proposal; rebalance other encounters if the statistical check fails. Do not replace the meeting with a combat bonus or silently drop it to pass validation.",
   "Make a serious effort to support the mechanic the player asks for. Identify its defining behavior, then compose equipment profiles, requested combat effects, and future scenes to deliver it. An unfamiliar name, theme, or lack of a dedicated mechanic key is not a reason to decline. Use creative, reasonable defaults for details the player leaves open.",
   "Consider multiple faithful implementations before declaring a request unsupported. For example, iron skin can grant real armor, a berserker's rage can grant damage while wounded, and a duelist's committed lunge can grant damage during All-Out Attack. Describe the actual trigger and effect; do not claim an automatic counterattack when the effect only modifies the player's next attack. Favor combinations that preserve the requested experience and balance the opposition around them.",
   "Return a PATCH, not a new Adventure. Preserve the hero's identity, attributes, purchased skills, armor, HP, completed history, current scene ID, and active fight. Never resurrect foes or restart a fight.",
@@ -75,6 +77,7 @@ def context (g : Game) (wish : String) (risk : Rat) (map : Option WorldEnvironme
     | _ => Json.null
   let snapshot := json% {
     request: $(wish), world: $(d.toJson),
+    nextUnusedSceneId: $((g.adventure.scenes.map (·.id)).foldl max 0 + 1),
     checkpoint: { scene: $(g.sceneId?), hp: $(g.hp), phase: $(g.phase.name),
       elapsed: $(g.trail.length), combat: $(combat) },
     balanceStart: "current checkpoint, remaining HP and combat state, original Weibull age",
