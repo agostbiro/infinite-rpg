@@ -221,6 +221,40 @@ theorem Prepared.preserves_existing_rule (p : Prepared) (r : CombatRule)
     (existing : r ∈ p.before.rules.combatRules) : r ∈ p.game.rules.combatRules := by
   simp [Prepared.game, Prepared.definition, Proposal.ruleSet, existing]
 
+/-- The Character's HP now. In a Fight, this is the HP of the Character's fighter. -/
+def heroHP (g : Game) : Int :=
+  match g.phase with
+  | .fight f => f.state.hero.hp
+  | .dead f => f.state.hero.hp
+  | _ => g.hp
+
+/-- The note that tells the Player what this change put in play. It shows the Character's card
+before and after the change, at the HP of now. `wish` is the Player's own words. -/
+def Prepared.note (p : Prepared) (wish : String) : ChangeNote :=
+  let hp := heroHP p.before
+  { wish
+    summary := p.proposal.summary
+    moment := p.proposal.moment
+    before := p.before.hero.card p.before.rules hp
+    after := p.game.hero.card p.game.rules hp
+    attackBefore := p.before.rules.weaponLevel p.before.hero
+    attackAfter := p.game.rules.weaponLevel p.game.hero
+    equipment := p.proposal.equipment.isSome
+    requested := p.proposal.requestedRules
+    counter := p.proposal.rules
+    scenes := p.proposal.scenes.length }
+
+/-- The note shows the rules that the change puts in play: the requested effects and the
+counter-rules, as they were admitted. -/
+theorem Prepared.note_rules (p : Prepared) (wish : String) :
+    -- The requested effects are the ones that the change adds.
+    (p.note wish).requested = p.proposal.requestedRules ∧
+    -- The counter-rules are the ones that the change adds.
+    (p.note wish).counter = p.proposal.rules ∧
+    -- The rules of the changed game end with them, in this order.
+    p.game.rules.combatRules = p.before.rules.combatRules ++ (p.note wish).requested ++ (p.note wish).counter :=
+  ⟨rfl, rfl, rfl⟩
+
 /-- The balance check starts the updated adventure at full initial HP and turn zero, with the
 game's own policy. The installed game separately retains the player's actual checkpoint. -/
 def Prepared.candidate (p : Prepared) : StatisticalCandidate :=

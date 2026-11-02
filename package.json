@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js tests/travel.test.js",
+    "test": "node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js tests/travel.test.js tests/world3d.test.js tests/story.test.js tests/change.test.js tests/gear.test.js",
     "test:browser": "playwright test"
   },
   "devDependencies": {

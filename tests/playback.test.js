@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { playbackView, reportDuration } from '../web/playback.js';
+import { playbackView, reportDuration, hasResultToRead } from '../web/playback.js';
 
 const before = {
   phase: 'fight', scene: { id: 4 }, character: { hp: 11 },
@@ -35,4 +35,24 @@ test('visible dice have bounded playback while metadata introduces no hidden pau
   const total = round.reduce((sum, r) => sum + reportDuration(r), 0);
   assert.ok(total <= 2000);
   assert.equal(reportDuration(damage, 2), reportDuration(damage, 1) / 2);
+});
+
+test('a skill roll stays long enough to read its result before the next Scene', () => {
+  // The dice tumble for 0.4 s. The Player then needs well over a second to read "Success."
+  const roll = { successRoll: {} };
+  assert.ok(reportDuration(roll) >= 1500 && reportDuration(roll) <= 2500);
+  assert.ok(reportDuration({ cannotTry: {} }) >= 1000);
+  assert.equal(reportDuration(roll, 0), 0);
+});
+
+test('only a Choice with a result to read waits for Continue', () => {
+  const roll = { successRoll: {} };
+  // A plain Choice that moves on.
+  assert.equal(hasResultToRead([{ scene: { id: 0 } }, { picked: {} }, { scene: { id: 1 } }]), false);
+  // A Choice with a skill roll, and a Fight that ends.
+  assert.equal(hasResultToRead([{ scene: { id: 0 } }, { picked: {} }, roll, { scene: { id: 2 } }]), true);
+  assert.equal(hasResultToRead([{ fightStarts: {} }, { round: {} }, { fightWon: {} }, { scene: { id: 3 } }]), true);
+  // The first Scene of a game, and a roll from an earlier Scene, do not count.
+  assert.equal(hasResultToRead([{ scene: { id: 0 } }]), false);
+  assert.equal(hasResultToRead([roll, { scene: { id: 1 } }, { picked: {} }, { scene: { id: 2 } }]), false);
 });

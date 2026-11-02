@@ -374,6 +374,24 @@ button:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 .active-rules { font-size: 14px; line-height: 1.5; }
 .active-rules p { margin-bottom: 8px; }
 .worldRule { border-left: 2px solid var(--lamp); padding-left: 10px; color: var(--lamp-hot); }
+/* A live change in the journal: what the Player got, and the world's answer. */
+.log .changeApplied { border-left: 3px solid var(--lamp-hot); padding: 4px 0 4px 12px; margin: 8px 0; }
+.changeApplied p { margin: 0 0 4px; }
+.change-wish { font-size: 13px; color: var(--ink-dim); }
+.change-title { font-family: var(--serif); font-size: 18px; font-weight: 600; color: var(--lamp-hot); }
+.change-detail { font-size: 14px; }
+.change-answer-h { margin-top: 8px !important; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lamp); }
+.change-answers { margin: 0 0 4px; padding-left: 18px; font-size: 14px; }
+.change-story { font-style: italic; color: var(--ink-dim); font-size: 14px; }
+/* A short word tag, such as "New" or "Your change". It is text, so it does not rely on color. */
+.new-tag, .rule-tag {
+  display: inline-block; padding: 0 6px; border-radius: 4px; font: 600 10px/1.6 var(--sans);
+  letter-spacing: 0.08em; text-transform: uppercase; vertical-align: middle;
+  background: var(--lamp-hot); color: #241c10;
+}
+.rule-tag.counter { background: #e7a08e; }
+.change-done { margin: 10px 0 14px; padding: 10px 12px; border: 1px solid var(--lamp); border-radius: 8px; }
+.change-done p { margin: 0 0 8px; }
 
 .char-name {
   margin: 0 0 2px;

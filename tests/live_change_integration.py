@@ -149,7 +149,7 @@ def main():
     assert view["environment"] == before["environment"], "The change moved the world map"
     assert view["seed"] == before["seed"]
     assert view["reports"][:-1] == before["reports"]
-    assert "worldRule" in view["reports"][-1]
+    assert view["reports"][-1]["changeApplied"]["equipment"]["name"] == "Stormglass Flamethrower"
     assert view["worldRules"][:len(before["worldRules"])] == before["worldRules"]
     assert [r["name"] for r in view["worldRules"][len(before["worldRules"]):]] == ["Scorched Fury", "Cinder Veil"]
 

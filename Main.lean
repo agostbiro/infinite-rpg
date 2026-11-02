@@ -861,12 +861,13 @@ def startWish (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState
       endJob ref job .failed { text := "Something went wrong.", errors := [toString e] }
   return true
 
-/-- Install only a source-bound admitted adventure. The original session dice and log stay. -/
+/-- Install only a source-bound admitted adventure. The original session dice and log stay. A
+`changeApplied` Report tells the Player what the change put in play. -/
 def applyChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
     (seed : Nat) (delta : Rat) (_accepted : WorldChange.Admission p seed delta) : IO Unit := do
   ref.modify fun s =>
     if s.gen.job != job || s.gen.state != .running then s else
-    let report := Report.worldRule "The world answers" (p.proposal.summary ++ " " ++ p.proposal.moment)
+    let report := Report.changeApplied (p.note s.gen.wish)
     { s with
       session := { s.session with game := p.game, reports := s.session.reports.push report }
       source := { s.source with environment := s.source.environment.map p.proposal.map }
@@ -909,6 +910,34 @@ def changeBudgetLeft (calls validations : Nat) : Bool :=
 #guard changeBudgetLeft 5 2
 #guard !changeBudgetLeft 6 0
 #guard !changeBudgetLeft 1 3
+
+/-- If a live change can ask again, it made fewer than `maxChangeCalls` calls and fewer than
+`maxChangeValidations` validations. -/
+theorem changeBudgetLeft_bound {calls validations : Nat}
+    -- The budget check lets the change ask again.
+    (h : changeBudgetLeft calls validations = true) :
+    -- Fewer calls than the limit.
+    calls < maxChangeCalls ∧
+    -- Fewer validations than the limit.
+    validations < maxChangeValidations := by
+  simpa [changeBudgetLeft] using h
+
+/-- The proposal numbers of one live change: 1, 2, and so on up to `maxChangeCalls`.
+`generateChange` asks the Dungeon Master once for each number, so it stops after at most
+`maxChangeCalls` calls. -/
+def changeRevisions : List Nat := List.range' 1 maxChangeCalls
+
+/-- A live change has exactly `maxChangeCalls` proposal numbers. -/
+theorem changeRevisions_length : changeRevisions.length = maxChangeCalls := by
+  simp [changeRevisions]
+
+/-- The last proposal number is `maxChangeCalls`. There the budget check fails, so the loop ends
+with the out-of-budget step. -/
+theorem changeRevisions_last_out_of_budget (validations : Nat) :
+    changeBudgetLeft (changeRevisions.getLast?.getD 0) validations = false := by
+  rfl
+
+#guard changeRevisions == [1, 2, 3, 4, 5, 6]
 
 /-- `n` and a unit, singular for 1: "1 minute", "2 minutes". -/
 def countText (n : Nat) (unit : String) : String :=
@@ -978,19 +1007,25 @@ def changeOutOfBudget (calls : Nat) (errors : List String) : Step :=
   "The Dungeon Master stopped after 6 proposals and could not find a balanced version. Your game is unchanged."
 
 /-- Generate a fun patch, screen local counter variants, then validate a frozen proposal. Stop
-after `maxChangeCalls` calls, `maxChangeValidations` validations, or `maxChangeMs`. -/
+after `maxChangeCalls` calls (the loop over `changeRevisions`), `maxChangeValidations`
+validations, or `maxChangeMs` (`watchChange`). Every way out ends the job, so the page sees a
+last state. -/
 def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
     (job : Nat) (before : Game) (wish : String) : IO Unit := do
   -- The world map of the Adventure in play. The changed Adventure must fit it.
   let map := (← ref.get).source.environment
   let initial := WorldChange.context before wish (Probability.attemptRisk (← ref.get).changeChecks) map
   let mut messages := [userTurn initial]
-  let mut revision := 0
   let mut gift : Option (Option EquipmentRule × List CombatRule) := none
   let mut validated : List String := []
   let mut supportReviewed := false
-  while ← jobWanted ref job do
-    revision := revision + 1
+  -- The last errors and the number of proposals, for the last step if the budget runs out.
+  let mut lastErrors : List String := []
+  let mut calls := 0
+  -- One pass of this loop asks the Dungeon Master once. The loop has at most `maxChangeCalls`
+  -- passes, so the change always ends.
+  for revision in changeRevisions do
+    calls := revision
     if !(← addStep ref job { text := s!"The Dungeon Master is shaping your change and its counter-rule (proposal {revision})..." }) then return
     let reply ← callApi cfg children (jobOwner job) (jobWanted ref job)
       (WorldChange.request messages) [s!"change-{revision}", "change"]
@@ -1046,7 +1081,10 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                 let spent ← ref.modifyGet fun s =>
                   if s.gen.job != job || s.gen.state != .running || s.changeChecks != index then (false, s)
                   else (true, { s with changeChecks := index + 1 })
-                if !spent then return
+                if !spent then
+                  -- Only one job runs at a time, so this happens only when the job has ended.
+                  endJob ref job .failed { text := "The change could not finish. Your game is unchanged." }
+                  return
                 if !(← addStep ref job { text := "The screen passed. Checking a fresh validation batch..." }) then return
                 let seed ← if cfg.fake.isSome then pure Probability.validationSeed else randomSeed
                 validated := signature :: validated
@@ -1062,10 +1100,9 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                     ["The validated counter-rules were: " ++
                       (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress]
                   pure (feedback, content)
+    lastErrors := errors
     -- `validated` gets one entry for each fresh validation batch.
-    if !changeBudgetLeft revision validated.length then
-      endJob ref job .failed (changeOutOfBudget revision errors)
-      return
+    if !changeBudgetLeft revision validated.length then break
     if !(← addStep ref job { text := "The Dungeon Master is revising the world's response; your game is still paused.", errors := errors.take 20 }) then return
     let risk := Probability.attemptRisk (← ref.get).changeChecks
     let locked := match gift with
@@ -1075,6 +1112,9 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
           equipment: $(equipment.map WorldChange.equipmentJson),
           requestedRules: $(requested.map WorldChange.ruleJson) }).compress
     messages := [userTurn initial, assistantTurn content, userTurn (WorldChange.correction errors risk ++ locked)]
+  -- Each pass that did not end the job came here: the budget of calls or validations is used up.
+  -- If the job ended already (Cancel or the time limit), `endJob` does nothing.
+  endJob ref job .failed (changeOutOfBudget calls lastErrors)
 
 /-- Freeze an active session atomically before asking the Dungeon Master for a rule change. -/
 def startChange (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
@@ -1124,7 +1164,9 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     |>.setObjVal! "builtin" builtinCard.toJson
     |>.setObjVal! "environment" (toJson s.source.environment)
     |>.setObjVal! "canChange" (toJson (WorldChange.available g.game))
-    |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map WorldChange.ruleJson))
+    -- Each rule says where it comes from: the Adventure, or the request or answer of a change.
+    |>.setObjVal! "worldRules" (toJson (g.game.rules.combatRules.map fun r =>
+      (WorldChange.ruleJson r).setObjVal! "origin" (toJson (ruleOrigin g.reports r))))
   return v.compress
 
 /-! ## Responses -/

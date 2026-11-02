@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { portalsForView } from '../web/spatial.js';
+import { portalsForView, interactionPoints } from '../web/spatial.js';
 import {environmentFor,placeForScene,eventAnchorForScene,worldLayout} from '../web/environment.js';
 
 // The test plays an Adventure from a recorded Wish (tests/fake-api/adventure-1.sse). There is none
@@ -16,51 +16,45 @@ async function settled(page) {
   if (await page.locator('#skip').isVisible()) await page.locator('#skip').click();
   await expect(page.locator('body')).toHaveAttribute('data-state', 'ready', { timeout: 30000 });
   await expect(page.locator('#world')).toHaveAttribute('data-ready', 'true');
+  // A new Scene waits for the Player to press Continue.
+  if (await page.locator('#world-continue').isVisible()) await page.keyboard.press('Enter');
   await expect(page.locator('#world')).toHaveAttribute('data-travelling', 'false', { timeout: 15000 });
 }
 
-/** Reach a real interaction with keyboard events, never by changing app state. */
+/** Reach a real interaction with keyboard events, never by changing app state: walk up to the
+ * point that holds the Choice until its menu shows, then press the Choice's number. */
 async function walkThrough(page, index) {
   await settled(page);
   const before = await view(page);
   const env=environmentFor(before);
   const place=placeForScene(env,before.scene.id);
-  const gate=worldLayout(portalsForView(before),place,null,eventAnchorForScene(env,before.scene.id)).portals[index];
-  expect(gate).toBeTruthy();
+  const portals=portalsForView(before);
+  const layout=worldLayout(interactionPoints(before,portals),place,null,eventAnchorForScene(env,before.scene.id));
+  const point=layout.points.find(p=>p.actions.some(a=>a.key===portals[index].key));
+  expect(point).toBeTruthy();
+  const number=point.actions.findIndex(a=>a.key===portals[index].key)+1;
   const world = page.locator('#world');
   await page.locator('#world-canvas').focus();
-  const nearText = await page.locator('#world-choice').textContent();
-  if (await page.locator('#world-prompt').isVisible() && nearText === gate.label) {
-    const request = page.waitForRequest(r => r.url().endsWith('/api/input') && r.method() === 'POST');
-    await page.keyboard.press('e');
-    expect((await request).postDataJSON()).toEqual(gate.input);
-  } else {
-    // Return to the inner floor before changing lanes. This never crosses a different gate.
-    const moveAxis = async (axis, target) => {
-      const initial = Number(await world.getAttribute('data-player-' + axis));
-      if (Math.abs(target - initial) < 0.13) return;
-      const sign = Math.sign(target - initial);
-      const key = axis === 'x' ? (sign > 0 ? 'ArrowRight' : 'ArrowLeft') : (sign > 0 ? 'ArrowDown' : 'ArrowUp');
-      await page.keyboard.down('Shift');
-      await page.keyboard.down(key);
-      try {
-        await page.waitForFunction(({ axis, target, sign }) => {
-          const p = Number(document.getElementById('world').getAttribute('data-player-' + axis));
-          return sign * (p - target) >= -0.12;
-        }, { axis, target, sign }, { timeout: 15000 });
-      } finally {
-        await page.keyboard.up(key); await page.keyboard.up('Shift');
-      }
-    };
-    await moveAxis('z', place.z+5);
-    await moveAxis('x', gate.x);
-    const request = page.waitForRequest(r => r.url().endsWith('/api/input') && r.method() === 'POST');
-    const key = gate.z < place.z+5 ? 'ArrowUp' : 'ArrowDown';
-    await page.keyboard.down('Shift');
+  // Walk on one axis at a time. The camera looks north at the start of each Scene.
+  const moveAxis = async (axis, target) => {
+    const initial = Number(await world.getAttribute('data-player-' + axis));
+    if (Math.abs(target - initial) < 0.13) return;
+    const sign = Math.sign(target - initial);
+    const key = axis === 'x' ? (sign > 0 ? 'ArrowRight' : 'ArrowLeft') : (sign > 0 ? 'ArrowDown' : 'ArrowUp');
     await page.keyboard.down(key);
-    try { expect((await request).postDataJSON()).toEqual(gate.input); }
-    finally { await page.keyboard.up(key); await page.keyboard.up('Shift'); }
-  }
+    try {
+      await page.waitForFunction(({ axis, target, sign }) => {
+        const p = Number(document.getElementById('world').getAttribute('data-player-' + axis));
+        return sign * (p - target) >= -0.12;
+      }, { axis, target, sign }, { timeout: 15000 });
+    } finally { await page.keyboard.up(key); }
+  };
+  await moveAxis('x', point.x);
+  await moveAxis('z', point.z + 1.6);
+  await expect(world).toHaveAttribute('data-menu', point.id);
+  const request = page.waitForRequest(r => r.url().endsWith('/api/input') && r.method() === 'POST');
+  await page.keyboard.press(String(number));
+  expect((await request).postDataJSON()).toEqual(portals[index].input);
   await expect.poll(async () => (await view(page)).reports.length).toBeGreaterThan(before.reports.length);
   await settled(page);
   const after = await view(page);
@@ -120,8 +114,9 @@ test('a Wish passes the real checks and is playable in 3D through a Fight to the
   await expect(page.locator('#world-location')).toHaveText('Teeth in the Hedge');
   let current = await walkThrough(page, 0);
   expect(current.phase).toBe('fight');
+  // Each foe is drawn once. The Maneuver buttons are the only way to pick a Maneuver.
   await expect(page.locator('[data-actor="Grey Wolf"]')).toHaveCount(1);
-  await expect(page.locator('[data-object="shield"]')).toHaveCount(1);
+  await expect(page.locator('[data-object]')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('combat-3d.png') });
   let turns = 0;
   while (current.phase === 'fight' && turns++ < 80) {

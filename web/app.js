@@ -5,6 +5,7 @@
 // the server offers, and sends that input unchanged (docs/adr/0006-the-3d-world-shows-the-graph.md).
 import { SpatialGame } from './world3d.js';
 import { playbackView, reportDuration } from './playback.js';
+import { ruleEffect, originTag, changeSummary, changeSentence, addsChange, freshChange } from './change.js';
 
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -45,8 +46,12 @@ import { playbackView, reportDuration } from './playback.js';
     if (S.view && S.view.phase === 'title') renderFrontStatus(S.view);
   }
 
+  /** The longest wait for one reply from the server. Then the request fails, so a poll goes on
+   * and the page never waits forever. */
+  const REQUEST_MS = 30000;
+
   async function fetchView() {
-    const r = await fetch('/api/view', { cache: 'no-store' });
+    const r = await fetch('/api/view', { cache: 'no-store', signal: AbortSignal.timeout(REQUEST_MS) });
     reached();
     return r.json();
   }
@@ -72,6 +77,7 @@ import { playbackView, reportDuration } from './playback.js';
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body === undefined ? '' : JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_MS),
     });
     reached();
     const type = r.headers.get('Content-Type') || '';
@@ -204,10 +210,35 @@ import { playbackView, reportDuration } from './playback.js';
       case 'worldRule':
         li.append(el('strong', '', d.name + ': '), document.createTextNode(d.text));
         break;
+      case 'changeApplied':
+        li.append(...changeParts(d, true));
+        break;
       default:
         li.textContent = k;
     }
     return li;
+  }
+
+  /** The parts of a change note: what the Player got, its numbers, and the world's answer. With
+   * `story`, also the Player's wish and the Dungeon Master's words, for the journal. */
+  function changeParts(note, story) {
+    const s = changeSummary(note);
+    const parts = [];
+    if (story) parts.push(el('p', 'change-wish', 'You asked: ' + note.wish));
+    parts.push(el('p', 'change-title', s.title));
+    for (const line of s.details) parts.push(el('p', 'change-detail', line));
+    if (s.answers.length) {
+      parts.push(el('p', 'change-answer-h', 'The world answers'));
+      const list = el('ul', 'change-answers');
+      for (const a of s.answers) {
+        const item = el('li');
+        item.append(el('strong', '', a.name + ': '), document.createTextNode(a.effect));
+        list.append(item);
+      }
+      parts.push(list);
+    }
+    if (story) parts.push(el('p', 'change-story', note.summary + ' ' + note.moment));
+    return parts;
   }
 
   // ---------- Story ----------
@@ -391,10 +422,17 @@ import { playbackView, reportDuration } from './playback.js';
   function showSpatialReport(r) {
     const tray = $('world-events');
     const k = kindOf(r);
-    if (['picked', 'round', 'maneuver'].includes(k)) return;
-    if (k === 'scene') { tray.hidden = true; return; }
+    // A new Choice clears the old result. A new Scene keeps it: the 3D view hides it at Continue.
+    if (k === 'picked') { tray.hidden = true; return; }
+    if (['scene', 'round', 'maneuver'].includes(k)) return;
     tray.hidden = false;
-    const row = reportEl(r);
+    // A change gets its own card in the tray, with its own heading. The tray is a live region, so
+    // a screen reader reads the change once, here.
+    const change = k === 'changeApplied';
+    $('world-event-heading').textContent = change ? 'World changed' : 'Dice and results';
+    tray.setAttribute('aria-label', change ? 'World changed' : 'Dice and results');
+    const row = change ? el('li', k) : reportEl(r);
+    if (change) row.append(...changeParts(dataOf(r), false));
     row.classList.add('world-event');
     if (S.speed !== 0) for (const die of row.querySelectorAll('.die')) die.classList.add('tumble');
     $('world-event-list').replaceChildren(row);
@@ -443,7 +481,13 @@ import { playbackView, reportDuration } from './playback.js';
     p.appendChild(skills);
     p.appendChild(el('p', 'sub-h', 'Gear'));
     const gear = el('ul', 'stat-list');
-    const g1 = el('li'); g1.append(el('span', '', c.weapon), el('b', '', c.damage)); gear.appendChild(g1);
+    const g1 = el('li');
+    const weapon = el('span', '', c.weapon);
+    // A "New" tag while the last Report on screen is a change that gave this weapon.
+    const fresh = freshChange(S.view.reports, S.shown);
+    if (fresh && fresh.equipment) weapon.append(' ', el('span', 'new-tag', 'New'));
+    g1.append(weapon, el('b', '', c.damage));
+    gear.appendChild(g1);
     const g2 = el('li'); g2.append(el('span', '', c.armor), el('b', '', 'DR ' + c.dr)); gear.appendChild(g2);
     p.appendChild(gear);
   }
@@ -498,7 +542,9 @@ import { playbackView, reportDuration } from './playback.js';
       } else if (last && running) {
         li.classList.add('now');
         li.prepend(spinnerEl());
-      } else if (last) {
+      } else if (last && (gen.state === 'failed' || gen.state === 'refused')) {
+        // Only the last step of a Wish that failed is red. A Wish that is ready can end on any step,
+        // for example the world map.
         li.classList.add('bad');
       }
       list.appendChild(li);
@@ -671,22 +717,6 @@ import { playbackView, reportDuration } from './playback.js';
     $('change-send').disabled = !ready || !S.view?.canChange;
   }
 
-  /** Describe the actual numeric effect alongside the Dungeon Master's fiction. */
-  function ruleEffect(rule) {
-    const triggers = {
-      always: 'always', wounded: 'at half HP or less', desperate: 'at one third HP or less',
-      reckless: 'while using All-Out Attack', guarding: 'while using All-Out Defense',
-      againstReckless: 'against All-Out Attack', againstGuarding: 'against All-Out Defense',
-      againstFlame: 'against a flamethrower'
-    };
-    const signed = (n) => n > 0 ? '+' + n : String(n);
-    const effects = [];
-    if (rule.hitBonus) effects.push(signed(rule.hitBonus) + ' to hit');
-    if (rule.damageBonus) effects.push(signed(rule.damageBonus) + ' damage');
-    if (rule.armorBonus) effects.push('+' + rule.armorBonus + ' armor');
-    return (rule.side === 'hero' ? 'You' : 'Enemies') + ', ' + triggers[rule.trigger] + ': ' + effects.join(', ') + '.';
-  }
-
   /** The game stays paused while a proposed rule change is being checked. */
   function renderChange() {
     const v = S.view;
@@ -716,11 +746,21 @@ import { playbackView, reportDuration } from './playback.js';
       }
       steps.append(item);
     }
+    // The last change, while it is the last Report on screen. This block is not a live region:
+    // the 3D tray or the journal already reads the change out.
+    const fresh = freshChange(v.reports, S.shown);
+    $('change-done').hidden = !fresh || changing;
+    if (fresh) {
+      $('change-done-text').textContent = 'Your change is in play: ' + changeSentence(fresh);
+      $('change-back').hidden = !spatial;
+    }
     const rules = $('active-rules');
     rules.textContent = '';
     if ((v.worldRules || []).length) rules.append(el('h3', '', 'Rules of this world'));
     for (const rule of v.worldRules || []) {
       const entry = el('p');
+      const tag = originTag(rule);
+      if (tag) entry.append(el('span', 'rule-tag ' + rule.origin, tag), ' ');
       entry.append(el('strong', '', rule.name + '. '), document.createTextNode(rule.description));
       entry.append(el('br'), el('small', '', ruleEffect(rule)));
       rules.append(entry);
@@ -944,6 +984,20 @@ import { playbackView, reportDuration } from './playback.js';
       (v.phase === 'title' && v.saved.some((a) => a.checking)));
   }
 
+  /** If the view `v` adds Reports to the game on screen, and they put a live change in play, play
+   * them like the Reports of an input, so the Player sees the change. Returns `true` if it did. */
+  async function playChange(v) {
+    if (!S.view || v.phase === 'title' || v.seed !== S.view.seed) return false;
+    if (!addsChange(S.view.reports, v.reports)) return false;
+    S.playbackBase = S.view;
+    S.shown = Math.min(S.shown, S.view.reports.length);
+    S.view = v;
+    // The change is in play, so its request is done.
+    $('change-request').value = '';
+    await play();
+    return true;
+  }
+
   let pollTimer = null;
   /** Ask the server for news every 2 seconds while it works in the background.
    * The state lives on the server, so a reload shows the same steps. */
@@ -958,6 +1012,7 @@ import { playbackView, reportDuration } from './playback.js';
     try {
       const v = await fetchView();
       if (S.busy || S.playing) { schedulePoll(); return; }
+      if (await playChange(v)) { schedulePoll(); return; }
       const sameGame = S.view && v.seed === S.view.seed &&
         v.reports.length === S.view.reports.length && v.phase === S.view.phase;
       // Draw everything again only when it changed: during a live change, the steps change.
@@ -1050,6 +1105,11 @@ import { playbackView, reportDuration } from './playback.js';
     action('/api/change', { wish });
   });
   $('change-cancel').addEventListener('click', () => action('/api/cancel'));
+  // Back to the 3D world after reading the change: scroll up to it and give the keys to it.
+  $('change-back').addEventListener('click', () => {
+    $('world').scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    $('world-canvas').focus({ preventScroll: true });
+  });
   $('change-retry').addEventListener('click', () => action('/api/retry'));
   $('change-dismiss').addEventListener('click', () => action('/api/dismiss'));
   $('later').addEventListener('click', async () => {
@@ -1092,6 +1152,8 @@ import { playbackView, reportDuration } from './playback.js';
     if (S.busy || S.playing || !S.view) return;
     try {
       const v = await fetchView();
+      if (S.busy || S.playing) return;
+      if (await playChange(v)) { schedulePoll(); return; }
       // Another tab may have sent a Wish, or started or stopped a live change. On the Front Page,
       // a saved Adventure may also have changed, so the server checks it again.
       const wishChanged = JSON.stringify(v.generation) !== JSON.stringify(S.view.generation) ||

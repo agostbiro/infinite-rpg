@@ -22,9 +22,17 @@
 .world-mode { margin: 0 0 8px; font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: .19em; color: #f4d69b; }
 #world-location { margin: 0 0 10px; font: 500 clamp(25px, 3vw, 38px)/1.12 var(--serif); text-wrap: balance; }
 #world-description { max-width: 53ch; font: 15px/1.55 var(--serif); margin: 0; color: #f5eddd; max-height: 115px; overflow: auto; pointer-events: auto; scrollbar-width: thin; }
+/* The Scene text unfolds word by word (`setStory` in world3d.js). */
+#world-description .story-word { opacity: 0; transition: opacity .5s ease; }
+#world-description .story-word.shown { opacity: 1; }
 .world-toolbar { position: absolute; top: 25px; right: 24px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; justify-content: flex-end; max-width: 34%; }
 .world-toolbar .small-button { background: #101d29b8; border-color: #d5dfd02b; font-size: 11px; padding: 8px 11px; backdrop-filter: blur(10px); }
 .world-hp { font-size: 11px; width: 100%; text-align: right; margin-bottom: 7px; color: #e4eddd; text-shadow: 0 1px 6px #000; }
+/* The gear chip: the weapon in hand and its damage. "New" shows after a change gives it. */
+.world-status { width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 7px; min-width: 0; }
+.world-status .world-hp { width: auto; margin: 0; white-space: nowrap; }
+.world-gear { font-size: 11px; padding: 4px 9px; border-radius: 999px; color: #f3ead2; background: #101d29b8; border: 1px solid #d5dfd02b; backdrop-filter: blur(10px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.world-gear.new { border-color: #ffd98a; color: #fff3d0; box-shadow: 0 0 14px #ffd98a55; }
 .world-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .portal-label {
   position: absolute; transform: translate(-50%, -100%); width: 175px; text-align: center;
@@ -34,7 +42,6 @@
 }
 .portal-label > span:last-child { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .portal-number { display: block; margin-bottom: 4px; color: #e5c989; letter-spacing: .16em; font-size: 10px; }
-.portal-label.near { border-color: #f9d38a; background: #302c22e8; }
 .actor-label { position: absolute; transform: translate(-50%, -100%); font-size: 11px; white-space: nowrap; color: #eff3db; text-shadow: 0 2px 5px #000; background: #15222b96; border-radius: 4px; padding: 4px 7px; }
 .actor-label.taking-hit { color: #ffb7a0; background: #652e27; }
 .world-events { position: absolute; left: 24px; bottom: 85px; width: min(480px, calc(100% - 48px)); border: 1px solid #e4ca8c55; border-radius: 12px; padding: 14px 18px; background: #101c29ee; backdrop-filter: blur(10px); pointer-events: none; }
@@ -43,6 +50,22 @@
 .world-event .dice { display: flex; margin: 10px 0; gap: 8px; }
 .world-event .die { width: 38px; height: 38px; padding: 5px; }
 .world-event .die.tumble { animation-duration: .4s; }
+/* The verdict of a roll is big, and appears when the dice stop, so the Player sees it before the next Scene. */
+.world-event .result { display: block; margin-top: 6px; font-size: 24px; font-weight: 700; letter-spacing: .02em; }
+.world-event .result.good { color: #9fd98a; }
+.world-event .result.crit { color: #ffd36b; }
+.world-event .result.bad { color: #f08a7e; }
+.world-event:has(.die.tumble) .result { animation: world-verdict .35s ease-out .4s both; }
+/* The card of a live change in the tray. */
+.world-event.changeApplied p { margin: 0 0 3px; }
+.world-event .change-title { font: 600 22px/1.25 var(--serif); color: #ffd98a; }
+.world-event .change-detail { font: 14px/1.45 var(--sans); color: #e9e1cc; }
+.world-event .change-answer-h { margin-top: 10px !important; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #dfc58c; }
+.world-event .change-answers { margin: 2px 0 0; padding-left: 18px; font: 14px/1.45 var(--sans); }
+.world-events[data-report="changeApplied"] { border-color: #ffd98aaa; box-shadow: 0 0 30px #ffd98a33; }
+.world-event.changeApplied { animation: world-change-in .45s ease-out both; }
+@keyframes world-change-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes world-verdict { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
 .world-combat-actions { position: absolute; left: 50%; transform: translateX(-50%); bottom: 22px; display: flex; justify-content: center; gap: 7px; max-width: 94%; z-index: 2; flex-wrap: wrap; }
 .world-combat-actions button { border: 1px solid #ecc88580; background: #302b20ed; color: #fff0cb; border-radius: 8px; padding: 12px 15px; font: 12px var(--sans); cursor: pointer; }
 .world-combat-actions button.defense { border-color: #80bbaa; background: #203a38ed; }
@@ -59,15 +82,25 @@
 .world-prompt { position: absolute; bottom: 88px; left: 50%; transform: translateX(-50%); width: min(520px, 85%); padding: 16px 23px; border: 1px solid #ead0a354; border-radius: 13px; background: #121f29ec; box-shadow: 0 10px 40px #0006; text-align: center; backdrop-filter: blur(12px); }
 #world-choice { margin: 0 0 6px; font: 20px/1.25 var(--serif); }
 #world-detail { margin: 0; font-size: 12px; color: #bec8c8; }
-#world-use { margin: 12px 0 0; padding: 6px 15px; background: #e9c78d; border: 0; border-radius: 5px; color: #27241d; font-size: 12px; cursor: pointer; }
+.world-menu { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 8px; }
+.world-menu button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 12px; border: 1px solid #ead0a35c; border-radius: 8px; background: #2a2a22e6; color: #fff0cb; font: 14px/1.3 var(--sans); cursor: pointer; }
+.world-menu button:hover:not(:disabled), .world-menu button:focus-visible { background: #4a4330f0; border-color: #f9d38a; }
+.world-menu button:disabled { opacity: .5; cursor: wait; }
+.menu-number { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 5px; background: #e9c78d; color: #27241d; font-size: 12px; font-weight: 600; }
+.actor-label .label-hint { display: block; font-size: 10px; color: #e5c989; letter-spacing: .08em; text-align: center; }
+.actor-label.has-actions { border: 1px solid #f5dfae3d; }
+.actor-label.near { border-color: #f9d38a; background: #302c22e8; }
 .world-controls { position: absolute; bottom: 20px; left: 28px; font-size: 11px; line-height: 1.5; color: #d5dfdc; pointer-events: none; }
 .world-controls p { margin: 3px 0; }
 .world-controls p:last-child { color: #a7b9bb; font-size: 11px; }
 .world-controls kbd { font-family: inherit; font-size: 10px; display: inline-block; padding: 2px 5px; border: 1px solid #ebeeeb44; border-radius: 4px; background: #14212c6b; }
 .world-loading { position: absolute; bottom: 27px; right: 27px; background: #17232edb; border: 1px solid #e7d8b52b; border-radius: 7px; padding: 11px 16px; font-size: 12px; }
-.world-travel { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); width: min(440px, 85%); padding: 14px 18px; border: 1px solid #ead0a354; border-radius: 12px; background: #121f29ed; text-align: center; z-index: 2; }
-.world-travel p { margin: 0 0 5px; font: 20px/1.3 var(--serif); }
-.world-travel span { display: block; margin-bottom: 10px; font-size: 12px; color: #bec8c8; }
+/* The fade between two Scenes. The script sets its opacity on each frame. */
+/* Continue starts the trip to the next Scene, after the Player reads the result of the Choice. */
+.world-continue { position: absolute; bottom: 88px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 3; }
+.world-continue p { margin: 0; font-size: 11px; color: #e9dcc0; text-shadow: 0 1px 6px #000c; }
+.world-travel { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #0b141b; opacity: 0; pointer-events: none; z-index: 4; }
+.world-travel p { margin: 0; font: 30px/1.3 var(--serif); color: #f3e3bd; letter-spacing: .02em; }
 .world-paused { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #101c29da; backdrop-filter: blur(8px); padding: 30px; text-align: center; z-index: 5; }
 .world-paused h2 { font: 36px var(--serif); margin: 0; }
 .world-paused p:not(.kicker) { font-size: 14px; color: #b9c8c8; margin-bottom: 25px; }
@@ -100,6 +133,13 @@ body:not(.spatial-mode) .world-over { position: static; transform: none; width: 
   #world-description { font-size: 13px; max-height: 65px; max-width: 100%; }
   .world-toolbar { top: 13px; left: 16px; right: 16px; max-width: none; flex-wrap: nowrap; }
   .world-hp { width: auto; flex: 1; text-align: left; margin: 0; font-size: 10px; }
+  /* On a narrow screen the chip shows only while the weapon is new. */
+  .world-status { width: auto; flex: 1; justify-content: flex-start; margin: 0; }
+  .world-gear { font-size: 10px; }
+  .world-gear:not(.new) { display: none; }
+  /* A new gear chip shows on its own line under the buttons, and the Scene title moves down for it. */
+  .world-gear.new { position: absolute; top: calc(100% + 6px); right: 0; max-width: 100%; }
+  .world:has(.world-gear.new) .world-heading { top: 95px; }
   .portal-label { width: 130px; padding: 7px 8px; font-size: 10px; }
   .world-controls { left: 17px; bottom: 14px; max-width: 60%; }
   .world-controls span { display: none; }
@@ -114,7 +154,7 @@ body:not(.spatial-mode) .world-over { position: static; transform: none; width: 
   .world-combat-actions button { padding: 9px; font-size: 11px; flex: 1; }
   .world[data-phase="fight"] .world-touch { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .world-hit, .world-hit::after, .world-event .die.tumble { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .world-hit, .world-hit::after, .world-event .die.tumble, .world-event .result, .world-event.changeApplied { animation: none !important; } }
 @media (pointer: coarse), (max-width: 760px) {
   .world-touch { position: absolute; bottom: 22px; right: 18px; display: grid; grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(2, 42px); gap: 4px; }
   .world-touch button { border: 1px solid #ece3c150; border-radius: 9px; background: #102030af; color: #eee7cb; touch-action: none; font-size: 20px; }

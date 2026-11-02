@@ -1,10 +1,15 @@
 import * as THREE from './vendor/three.module.js';
-import { portalsForView, crossedPortal, inputKey, themeFor, figuresForView } from './spatial.js';
+import { portalsForView, inputKey, themeFor, figuresForView, interactionPoints, nearestPoint, pointRadius } from './spatial.js';
 import { environmentFor, placeForScene, eventAnchorForScene, worldLayout, sceneryFor, propRadius, moveInWorld } from './environment.js';
-import { planTravel, advanceTravel } from './travel.js';
+import { arrivalForLayout, planTransition, transitionAt, DEFAULT_PITCH } from './travel.js';
+import { storyTimeline } from './story.js';
+import { hasResultToRead } from './playback.js';
+import { heldWeapon } from './gear.js';
+import { gearChip } from './change.js';
 
 const $ = id => document.getElementById(id);
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+const choiceCount = n => n + (n === 1 ? ' choice' : ' choices');
 const motionKeys = new Set(['w', 'a', 's', 'd', 'z', 'q', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift']);
 
 /** The 3D world. It draws the view and walks the Player. Only `onChoose` sends an input to the
@@ -40,6 +45,7 @@ export class SpatialGame {
     this.scene.add(this.lantern);
     this.group = new THREE.Group();
     this.scene.add(this.group);
+    this.installHand();
     this.position = { x: 0, z: 2 };
     this.yaw = 0;
     this.pitch = -0.04;
@@ -57,10 +63,15 @@ export class SpatialGame {
     this.effect = null;
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     this.actors = [];
-    this.gates = [];
+    this.points = [];
+    this.portals = [];
+    this.selectedId = null;
+    this.raycaster = new THREE.Raycaster();
     this.installControls();
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.root);
+    $('world-description').addEventListener('click', () => this.finishStory());
+    $('world-continue-button').addEventListener('click', () => this.continueOn());
     this.renderer.setAnimationLoop(t => this.frame(t));
     this.root.dataset.renderer = 'webgl';
     document.body.classList.add('spatial-mode');
@@ -78,40 +89,49 @@ export class SpatialGame {
         e.preventDefault();
         // A held key from the previous choice must be released before moving again.
         if (e.repeat && !this.keys.has(key)) return;
-        if (key !== 'shift' && this.canMove()) this.cancelTravel();
+        // During a transition to the next Scene, or while it waits for Continue, the Player cannot move.
+        if (this.travel || this.waiting) return;
         this.keys.add(key);
       }
+      if (this.waiting && ['enter', ' ', 'e'].includes(key) && !e.repeat) { e.preventDefault(); this.continueOn(); return; }
       if (key === 'e' && !e.repeat) { e.preventDefault(); this.useNearest(); }
-      if (/^[1-9]$/.test(key) && !e.repeat && this.view?.phase === 'fight') {
-        const option = this.layout?.portals[Number(key) - 1];
+      if (/^[1-9]$/.test(key) && !e.repeat) {
+        const options = this.view?.phase === 'fight' ? this.portals : this.menuPoint()?.actions || [];
+        const option = options[Number(key) - 1];
         if (option) { e.preventDefault(); this.choose(option); }
       }
     });
     window.addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => this.keys.clear());
     document.addEventListener('visibilitychange', () => { this.keys.clear(); this.frameTime = 0; });
+    // A reload keeps the last position, even one reached since the last save.
+    window.addEventListener('pagehide', () => { if (this.active && this.storageKey && !this.travel) this.savePosition(); });
     let dragging = null;
     this.canvas.addEventListener('pointerdown', e => {
       if (this.paused) return;
       this.canvas.focus({ preventScroll: true });
-      dragging = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      dragging = { id: e.pointerId, x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, at: performance.now() };
       this.canvas.setPointerCapture(e.pointerId);
     });
     this.canvas.addEventListener('pointermove', e => {
-      if (!dragging || dragging.id !== e.pointerId || this.paused) return;
+      if (!dragging || dragging.id !== e.pointerId || this.paused || this.travel) return;
       this.yaw -= (e.clientX - dragging.x) * 0.004;
       this.pitch = clamp(this.pitch - (e.clientY - dragging.y) * 0.003, -0.6, 0.65);
       dragging.x = e.clientX; dragging.y = e.clientY;
     });
     const endDrag = () => { dragging = null; };
-    this.canvas.addEventListener('pointerup', endDrag);
+    this.canvas.addEventListener('pointerup', e => {
+      // A short press with no drag is a click: it selects the person or object under the pointer.
+      if (dragging && Math.hypot(e.clientX - dragging.startX, e.clientY - dragging.startY) < 6
+        && performance.now() - dragging.at < 500) this.selectAt(e.clientX, e.clientY);
+      endDrag();
+    });
     this.canvas.addEventListener('pointercancel', endDrag);
     this.canvas.addEventListener('lostpointercapture', endDrag);
     for (const button of this.root.querySelectorAll('[data-move]')) {
       let pressedAt = 0;
       button.addEventListener('pointerdown', e => {
         e.preventDefault();
-        if (this.canMove()) this.cancelTravel();
         pressedAt = performance.now();
         this.touches.set(e.pointerId, button.dataset.move);
         button.setPointerCapture(e.pointerId);
@@ -125,13 +145,9 @@ export class SpatialGame {
       button.addEventListener('pointercancel', stop);
       button.addEventListener('lostpointercapture', stop);
     }
-    $('world-use').addEventListener('click', () => this.useNearest());
     $('world-pause').addEventListener('click', () => this.pause(!this.paused));
     $('world-resume').addEventListener('click', () => this.pause(false));
     $('world-journal').addEventListener('click', () => this.journal());
-    $('world-travel-skip').addEventListener('click', () => {
-      if (this.canMove() && this.travel) this.finishTravel();
-    });
     this.canvas.addEventListener('webglcontextlost', e => {
       e.preventDefault();
       this.pause(true);
@@ -162,6 +178,135 @@ export class SpatialGame {
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.handCamera.aspect = width / height;
+    this.handCamera.updateProjectionMatrix();
+  }
+
+  /** The weapon in the Player's hand. It is drawn in its own small scene, after the world, on top
+   * of it: so it never cuts into a wall or a person, the lantern does not glare on it, and a click
+   * on the world never hits it. Its camera looks the same way as the Player at all times. */
+  installHand() {
+    this.handScene = new THREE.Scene();
+    this.handCamera = new THREE.PerspectiveCamera(60, 1, 0.01, 10);
+    this.handScene.add(new THREE.HemisphereLight(0xe9f2ff, 0x5b5040, 2.2));
+    const key = new THREE.DirectionalLight(0xffe7c4, 2.6);
+    key.position.set(-1, 2, 1.5);
+    this.handScene.add(key);
+    this.hand = new THREE.Group();
+    this.handScene.add(this.hand);
+    this.heldKey = '';
+    this.handReveal = null;
+  }
+
+  /** The meshes of a held weapon, from `heldWeapon` in gear.js. The weapon's long side is local y,
+   * with the grip at 0. A shape of null gives an empty group: a punch has no weapon to show. */
+  buildHeld(spec) {
+    const group = new THREE.Group();
+    if (!spec.shape) return group;
+    const add = (geometry, material, x, y, z) => {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(x, y, z);
+      group.add(mesh);
+      return mesh;
+    };
+    const dark = new THREE.MeshStandardMaterial({ color: 0x2c2b2a, roughness: 0.55, metalness: 0.6 });
+    const leather = new THREE.MeshStandardMaterial({ color: 0x5a3a24, roughness: 0.9 });
+    const wood = new THREE.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.85 });
+    // A glowing part has a bright core, which ignores light, and a soft halo around it.
+    const core = new THREE.MeshBasicMaterial({ color: new THREE.Color(spec.color).lerp(new THREE.Color(0xffffff), 0.2),
+      toneMapped: false });
+    const halo = new THREE.MeshBasicMaterial({ color: spec.color, transparent: true, opacity: 0.3,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    const steel = new THREE.MeshStandardMaterial({ color: spec.color, roughness: spec.finish === 'ice' ? 0.15 : 0.32,
+      metalness: spec.finish === 'ice' ? 0.1 : 0.75, emissive: spec.finish === 'ice' ? 0x24506a : 0x000000,
+      transparent: spec.finish === 'ice', opacity: spec.finish === 'ice' ? 0.88 : 1 });
+    const glowing = spec.glow;
+    /** A blade of `length` from height `base`: a glowing rod, or a flat blade with a point. */
+    const blade = (base, length, width) => {
+      if (glowing) {
+        add(new THREE.CylinderGeometry(width * 0.3, width * 0.34, length, 12), core, 0, base + length / 2, 0);
+        add(new THREE.CylinderGeometry(width * 0.62, width * 0.66, length * 1.03, 12), halo, 0, base + length / 2, 0);
+        return;
+      }
+      add(new THREE.BoxGeometry(width, length, width * 0.22), steel, 0, base + length / 2, 0);
+      const tip = add(new THREE.ConeGeometry(width * 0.7, width * 2.2, 4), steel, 0, base + length + width * 1.1, 0);
+      tip.rotation.y = Math.PI / 4;
+      tip.scale.z = 0.3;
+    };
+    if (spec.shape === 'sword' || spec.shape === 'knife') {
+      const long = spec.shape === 'sword';
+      const grip = long ? 0.2 : 0.12;
+      add(new THREE.CylinderGeometry(0.017, 0.019, grip, 10), glowing ? dark : leather, 0, 0, 0);
+      add(new THREE.SphereGeometry(0.026, 10, 8), dark, 0, -grip / 2 - 0.012, 0);
+      if (glowing) add(new THREE.CylinderGeometry(0.026, 0.022, 0.035, 12), dark, 0, grip / 2 + 0.012, 0);
+      else add(new THREE.BoxGeometry(long ? 0.17 : 0.09, 0.024, 0.04), dark, 0, grip / 2 + 0.012, 0);
+      blade(grip / 2 + 0.024, long ? 0.78 : 0.26, long ? 0.045 : 0.034);
+    } else if (spec.shape === 'staff' || spec.shape === 'spear') {
+      add(new THREE.CylinderGeometry(0.021, 0.024, 1.7, 10), spec.finish === 'wood' || glowing ? wood : steel, 0, 0.25, 0);
+      if (spec.shape === 'spear') blade(1.1, 0.16, 0.05);
+      else if (glowing) {
+        add(new THREE.SphereGeometry(0.035, 14, 10), core, 0, 1.12, 0);
+        add(new THREE.SphereGeometry(0.07, 14, 10), halo, 0, 1.12, 0);
+      }
+    } else if (spec.shape === 'sprayer') {
+      // A tube that points ahead, with a grip under it and a small flame at the nozzle.
+      add(new THREE.CylinderGeometry(0.028, 0.034, 0.55, 12), dark, 0, 0.2, 0);
+      add(new THREE.BoxGeometry(0.035, 0.05, 0.12), leather, 0, 0.02, -0.07);
+      add(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 14), steel, 0.07, 0.08, 0.02);
+      if (glowing) {
+        add(new THREE.SphereGeometry(0.022, 10, 8), core, 0, 0.5, 0);
+        add(new THREE.SphereGeometry(0.045, 10, 8), halo, 0, 0.5, 0);
+      }
+    }
+    return group;
+  }
+
+  /** Show the weapon of `character` in the hand. A new weapon rises into view, unless the Player
+   * asked for reduced motion. */
+  setHeld(character) {
+    const spec = heldWeapon(character.weaponKind, character.weapon || '');
+    const key = JSON.stringify(spec);
+    if (key === this.heldKey) return;
+    const first = this.heldKey === '';
+    this.heldKey = key;
+    for (const old of [...this.hand.children]) {
+      old.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
+      this.hand.remove(old);
+    }
+    const weapon = this.buildHeld(spec);
+    // Leaning forward and in toward the middle of the view. A sprayer points ahead.
+    if (spec.shape === 'sprayer') weapon.rotation.set(-Math.PI / 2 + 0.12, 0.1, 0);
+    else weapon.rotation.set(-1.05, 0, 0.3);
+    this.hand.add(weapon);
+    this.root.dataset.held = spec.shape ? spec.shape + ':' + spec.finish : 'none';
+    this.handReveal = first || this.reducedMotion?.matches ? null : { started: this.elapsed };
+  }
+
+  /** Place the hand for this frame: a small bob while walking, a rise for a new weapon, and a
+   * swing when the Character attacks. */
+  handFrame(moving, reduced) {
+    const bob = moving && !reduced ? Math.sin(this.elapsed * 11) : 0;
+    let rise = 0;
+    if (this.handReveal) {
+      const t = Math.min(1, (this.elapsed - this.handReveal.started) / 0.8);
+      rise = (1 - t) * (1 - t) * 0.45;
+      if (t >= 1) this.handReveal = null;
+    }
+    let swing = 0;
+    const age = this.effect ? this.elapsed - this.effect.started : 10;
+    if (!reduced && this.effect?.kind === 'attack' && this.effect.data.attacker === null && age < 0.45) {
+      swing = Math.sin(Math.PI * age / 0.45);
+    }
+    // The grip sits low and to the right of the view, at the same place on the screen for every
+    // window shape. A narrow (portrait) view shows a smaller weapon.
+    const depth = 0.9;
+    const halfHeight = depth * Math.tan(THREE.MathUtils.degToRad(this.handCamera.fov / 2));
+    const aspect = this.handCamera.aspect || 1;
+    const x = 0.6 * halfHeight * Math.min(aspect, 1.6);
+    const y = -0.88 * halfHeight;
+    this.hand.scale.setScalar(clamp(0.45 + 0.35 * aspect, 0.6, 1));
+    this.hand.position.set(x + bob * 0.006 - swing * 0.12, y + Math.abs(bob) * 0.012 - rise, -depth - swing * 0.1);
+    this.hand.rotation.set(-swing * 0.9, swing * 0.3, swing * 0.5);
   }
 
   material(color, options = {}) {
@@ -196,7 +341,8 @@ export class SpatialGame {
     textures.forEach(t => t.dispose());
     this.group.clear();
     this.labels.replaceChildren();
-    this.gates = []; this.actors = [];
+    this.points = []; this.actors = [];
+    this.menuKey = '';
   }
 
   buildWorld(view, environment) {
@@ -258,6 +404,9 @@ export class SpatialGame {
       const pyramid=this.mesh(new THREE.ConeGeometry(12,15,4),stone,0,7.5,0,group);
       pyramid.rotation.y=Math.PI/4;
     } else if(p.kind==='river') {
+      // Scale only the river's width and length. Its fixed heights keep the water below trails
+      // and place pads; a scaled height put the water top level with the pads, and they flickered.
+      group.scale.y=1;
       const water=this.material(0x387e92,{metalness:0.35,roughness:0.28});
       this.box(9,0.025,190,water,0,0.005,0,group);
       for(let i=0;i<15;i++) {
@@ -307,22 +456,16 @@ export class SpatialGame {
     this.clearRoom();
     const stone=this.material(this.theme.stone);
     const brass=this.material(this.theme.glow,{metalness:0.6,roughness:0.3});
-    const figures=figuresForView(view);
-    for(const p of layout.portals) this.buildObject(p,stone,brass,figures);
-    const conversationNames=new Set(layout.portals.filter(p=>p.visual.type==='person').map(p=>
-      (figures.find(f=>p.label.includes(f.name))||figures[0])?.name));
-    const hasConversation=conversationNames.size>0;
-    figures.forEach((figure,i)=>{
-      if(conversationNames.has(figure.name)) return;
-      this.buildActor(figure,layout.center.x+(i-(figures.length-1)/2)*2.1,layout.center.z-6,i);
-    });
+    // Each point is drawn once: a character, an object, or the shared marker of the Scene.
+    for(const point of layout.points) this.buildPoint(point,layout.facing,stone,brass);
     // An objective pennant is a visual guide. It has no interaction of its own.
     const pole=this.box(0.12,8,0.12,stone,layout.place.x+8,4,layout.place.z);
     const flag=this.mesh(new THREE.PlaneGeometry(2.5,1.2),this.material(this.theme.glow,{side:THREE.DoubleSide}),
       pole.position.x+1.25,7.2,pole.position.z);
     flag.castShadow=false;
-    this.root.dataset.portalCount=String(layout.portals.length);
-    this.root.dataset.npcCount=String(figures.length||Number(hasConversation));
+    this.root.dataset.portalCount=String(this.portals.length);
+    this.root.dataset.pointCount=String(layout.points.length);
+    this.root.dataset.npcCount=String(this.actors.length);
     this.renderer.shadowMap.needsUpdate=true;
     this.root.dataset.buildMs=(performance.now()-this.buildStarted).toFixed(2);
     this.awaitingFirstFrame=true;
@@ -357,18 +500,59 @@ export class SpatialGame {
     this.root.dataset.placeId=String(p.id);
   }
 
-  buildObject(p, stone, brass, figures) {
+  /** Draw one point: a character, an object, or the shared marker. It faces the Player. Points with
+   * actions get a ring on the ground. A click on any of its meshes selects the point. */
+  buildPoint(point, facing, stone, brass) {
     const group = new THREE.Group();
-    group.position.set(p.x, 0, p.z);
-    group.rotation.y = -p.angle;
+    group.position.set(point.x, 0, point.z);
+    group.rotation.y = facing;
+    group.userData.pointId = point.id;
     this.group.add(group);
-    const tint = p.kind === 'attack' ? 0xf18c75 : p.kind === 'defense' ? 0x83d6c1 : this.theme.glow;
+    let label = null;
+    if (point.kind === 'figure') {
+      const actor = this.buildActor(point.figure, group);
+      actor.pointId = point.id;
+      if (point.actions.length) {
+        actor.label.classList.add('has-actions');
+        const hint = document.createElement('span');
+        hint.className = 'label-hint';
+        hint.textContent = choiceCount(point.actions.length);
+        actor.label.append(hint);
+      }
+    } else {
+      this.buildObject(point.kind === 'marker' ? 'marker' : point.visual.type, group, stone, brass);
+      label = document.createElement('div');
+      label.className = 'portal-label';
+      label.dataset.point = point.id;
+      label.dataset.object = point.kind === 'marker' ? 'marker' : point.visual.type;
+      const kind = document.createElement('span');
+      kind.className = 'portal-number';
+      kind.textContent = point.kind === 'marker' ? choiceCount(point.actions.length) : point.visual.type;
+      const title = document.createElement('span');
+      // A marker with one Choice shows that Choice, so the Player can read it from afar.
+      title.textContent = point.kind === 'marker' && point.actions.length === 1 ? point.actions[0].label : point.title;
+      label.append(kind, title);
+      this.labels.appendChild(label);
+    }
+    let ring = null;
+    if (point.actions.length) {
+      ring = this.mesh(new THREE.RingGeometry(0.95, 1.0, 48),
+        new THREE.MeshBasicMaterial({ color: this.theme.glow, side: THREE.DoubleSide, transparent: true, opacity: 0.65 }), 0, 0.065, 0, group);
+      ring.rotation.x = -Math.PI / 2;
+      ring.castShadow = false;
+    }
+    this.points.push({ ...point, group, label, ring });
+  }
+
+  /** Draw an object for a Choice, or the shared marker, in `group`. */
+  buildObject(type, group, stone, brass) {
     const wood = this.material(0x785135), paleWood = this.material(0xb68855);
     const metal = this.material(0xc0ccd0, { metalness: 0.7, roughness: 0.3 });
-    const type = p.visual.type;
-    if (type === 'person') {
-      const figure = figures.find(f=>p.label.includes(f.name)) || figures[0] || { name: 'Traveller', alive: true, combat: false };
-      this.buildActor(figure, 0, -0.3, 0, group);
+    if (type === 'marker') {
+      // A low stone with a glowing stone on top. It holds the Choices that have no object.
+      this.mesh(new THREE.CylinderGeometry(0.45, 0.6, 1.0, 8), stone, 0, 0.5, 0, group);
+      const glow = this.material(this.theme.glow, { emissive: this.theme.glow, emissiveIntensity: 0.8 });
+      this.mesh(new THREE.OctahedronGeometry(0.32, 0), glow, 0, 1.35, 0, group);
     } else if (type === 'ladder') {
       this.mesh(new THREE.DodecahedronGeometry(1.3, 0), stone, 0, 0.9, -0.8, group);
       for (const side of [-1, 1]) {
@@ -451,38 +635,16 @@ export class SpatialGame {
         this.mesh(new THREE.ConeGeometry(0.3, 0.8, 6), this.material(0xffb04c, { emissive: 0xee6429 }), 0, 0.5, 0, group);
       }
     } else {
-      // A real trail, with a direction sign, rather than a generic portal.
-      for (let i = 0; i < 7; i++) {
-        const slab = this.mesh(new THREE.CylinderGeometry(0.48, 0.5, 0.06, 6), stone, Math.sin(i) * 0.24, 0.025, 1.4 - i * 0.48, group);
-        slab.scale.z = 0.7;
-      }
-      this.box(0.12, 1.6, 0.12, wood, 0.95, 0.8, -0.5, group);
-      this.box(1.05, 0.38, 0.12, paleWood, 0.95, 1.5, -0.5, group);
-      const arrow = this.mesh(new THREE.ConeGeometry(0.27, 0.4, 3), paleWood, 1.63, 1.5, -0.5, group);
-      arrow.rotation.z = -Math.PI / 2;
+      // Any other look gets the marker shape.
+      this.buildObject('marker', group, stone, brass);
     }
-    const circle = this.mesh(new THREE.RingGeometry(0.82, 0.86, 48),
-      new THREE.MeshBasicMaterial({ color: tint, side: THREE.DoubleSide, transparent: true, opacity: 0.65 }), 0, 0.065, 0, group);
-    circle.rotation.x = -Math.PI / 2;
-    circle.castShadow = false;
-    const label = document.createElement('div');
-    label.className = 'portal-label';
-    label.dataset.portal = String(p.index);
-    label.dataset.object = type;
-    const number = document.createElement('span');
-    number.className = 'portal-number';
-    number.textContent = String(p.index + 1).padStart(2, '0') + ' · ' + (type === 'person' ? 'Talk' : type);
-    const title = document.createElement('span');
-    title.textContent = p.label;
-    label.append(number, title);
-    this.labels.appendChild(label);
-    this.gates.push({ ...p, label, ring: circle });
   }
 
-  buildActor(foe, x, z, index, parent = this.group) {
+  /** Draw one character in `parent`, at its centre, with a name label. Returns its actor entry. */
+  buildActor(foe, parent) {
     const actor = new THREE.Group();
-    actor.position.set(x, 0, z);
     parent.add(actor);
+    const index = foe.index;
     const body = this.material(foe.combat ? 0x70473b : index % 2 ? 0x526c77 : 0x777850);
     const metal = this.material(0x939a9e, { metalness: 0.65, roughness: 0.35 });
     const isWolf = /wolf|loup|hound|dog/i.test(foe.name);
@@ -522,7 +684,9 @@ export class SpatialGame {
     label.dataset.actor = foe.name;
     label.textContent = foe.name + (foe.combat ? ' · ' + Math.max(0, foe.hp) + ' HP' : '');
     this.labels.appendChild(label);
-    this.actors.push({ mesh: actor, alive: foe.alive, index, combat: foe.combat, label, name: foe.name, x, z });
+    const entry = { mesh: actor, alive: foe.alive, index, combat: foe.combat, label, name: foe.name };
+    this.actors.push(entry);
+    return entry;
   }
 
   /** Animate only events received from Lean. Geometry never computes combat outcomes. */
@@ -572,9 +736,14 @@ export class SpatialGame {
     }
     this.ready = ready;
     const portals = portalsForView(view);
+    this.portals = portals;
     this.combatActions(view, portals);
     const worldKey = JSON.stringify([view.seed, view.adventure, view.world, view.environment]);
     const newWorld = this.worldKey !== worldKey;
+    const visits = view.reports.filter(r => r && typeof r === 'object' && r.scene).length;
+    const sceneKey = JSON.stringify([worldKey, view.scene?.id, visits]);
+    // The saved position belongs to one visit of one Scene.
+    const sceneTag = String(view.scene?.id) + ':' + visits;
     if (newWorld) {
       this.cancelTravel();
       this.worldKey = worldKey;
@@ -583,29 +752,29 @@ export class SpatialGame {
       this.buildWorld(view, this.environment);
       this.root.dataset.environmentBuildMs=(performance.now()-worldStarted).toFixed(2);
       this.environmentFrameStarted=worldStarted;
-      const place = placeForScene(this.environment, view.scene?.id);
-      this.position = {x:place.x,z:place.z+5};
-      this.yaw = 0; this.pitch = -0.04;
-      this.storageKey = 'rpg-position:' + view.adventure + ':' + view.seed;
-      try {
-        const saved = JSON.parse(localStorage.getItem(this.storageKey));
-        if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.z) && Math.abs(saved.x)<115 && Math.abs(saved.z)<115
-          && this.obstacles.every(o=>Math.hypot(saved.x-o.x,saved.z-o.z)>o.radius+0.4)) {
-          this.position = {x:saved.x,z:saved.z};
-          this.yaw = Number.isFinite(saved.yaw) ? saved.yaw : 0;
-        }
-      } catch { /* Storage is optional. */ }
+      // A live change of the same game builds the world again. The camera stays where it is.
+      const gameKey = JSON.stringify([view.seed, view.adventure]);
+      const sameGame = this.gameKey === gameKey;
+      this.gameKey = gameKey;
+      if (!sameGame) this.placeAtStart(view, sceneKey, sceneTag);
     }
-    const visits = view.reports.filter(r => r && typeof r === 'object' && r.scene).length;
-    const sceneKey = JSON.stringify([worldKey, view.scene?.id, visits]);
+    this.sceneTag = sceneTag;
     // Labels and NPCs can change without changing the command keys. Refresh them too.
     const roomKey = JSON.stringify([sceneKey, view.phase, portals,
       figuresForView(view).map(f => [f.name, f.index, f.species, f.combat])]);
     if (roomKey !== this.roomKey) {
       this.roomKey = roomKey;
       const place = placeForScene(this.environment, view.scene?.id);
-      if(view.phase==='fight' && (newWorld || this.previousPhase!=='fight')) this.combatAnchor={...this.position};
-      this.layout = worldLayout(portals, place, view.phase==='fight'?this.combatAnchor:null, eventAnchorForScene(this.environment, view.scene?.id));
+      const fight = view.phase === 'fight';
+      // The foes stand in front of the way the Player looks when the Fight starts.
+      if (fight && (newWorld || this.previousPhase !== 'fight')) {
+        this.combatAnchor = { ...this.position };
+        this.combatFacing = this.yaw;
+      }
+      this.layout = worldLayout(interactionPoints(view, portals), place, fight ? this.combatAnchor : null,
+        eventAnchorForScene(this.environment, view.scene?.id), fight ? this.combatFacing : 0);
+      this.pointObstacles = this.layout.points.map(p => ({ x: p.x, z: p.z, radius: pointRadius(p) }));
+      this.selectedId = null;
       this.buildRoom(view, this.layout);
       // The next scene's presentation changes; the landscape remains in place.
       this.keys.clear(); this.touches.clear();
@@ -623,16 +792,20 @@ export class SpatialGame {
       this.cancelTravel(); this.travelSceneKey = '';
     } else if (sceneKey !== this.travelSceneKey) {
       this.cancelTravel();
-      // Wait for authoritative report playback to finish before starting the trip.
-      if (ready) { this.travelSceneKey = sceneKey; this.startTravel(); }
+      // Wait for authoritative report playback to finish. If the Choice has a result to read, the
+      // Player starts the trip with Continue. A plain Choice starts the trip at once.
+      if (ready) {
+        this.travelSceneKey = sceneKey;
+        if (hasResultToRead(view.reports)) this.waitForContinue(); else this.startTravel();
+      }
     }
     $('world-location').textContent = view.scene?.title || view.adventure;
-    $('world-description').textContent = view.phase === 'fight'
-      ? 'Choose a Maneuver below, press its number, or walk to a weapon. The dice decide each attack, Dodge, and hit.'
-      : (view.scene?.text || '');
+    if (view.phase === 'fight') this.setStory('Choose a Maneuver below, or press its number. The dice decide each attack, Dodge, and hit.', false);
+    else this.setStory(view.scene?.text || '', true);
     $('world-mode').textContent = view.phase === 'fight' ? 'Combat · round ' + view.fight.round
       : view.phase === 'dead' ? 'The Adventure is over' : view.phase === 'ended' ? 'The End' : 'Explore · ' + portals.length + (portals.length === 1 ? ' Choice' : ' Choices');
     $('world-hp').textContent = view.character.name + ' · ' + Math.max(0, view.character.hp) + ' / ' + view.character.maxHP + ' HP';
+    this.showGear(view);
     $('world-loading').hidden = ready;
     this.root.dataset.phase = view.phase;
     this.root.dataset.sceneId = String(view.scene?.id ?? '');
@@ -641,82 +814,244 @@ export class SpatialGame {
     document.body.classList.toggle('game-ended', ended);
   }
 
-  nearest() {
-    let nearest = null, distance = 2.1;
-    for (const p of this.layout?.portals || []) {
-      const d = Math.hypot(this.position.x - p.x, this.position.z - p.z);
-      if (d < distance) { nearest = p; distance = d; }
-    }
-    return nearest;
+  /** The gear chip next to the HP, with a "New" tag while the last Report is a change that gave the
+   * weapon, and the weapon in the hand. */
+  showGear(view) {
+    const chip = gearChip(view.character, view.reports);
+    const box = $('world-gear');
+    box.hidden = false;
+    box.classList.toggle('new', chip.isNew);
+    const tag = document.createElement('span');
+    tag.className = 'new-tag';
+    tag.textContent = 'New';
+    box.replaceChildren(chip.text, ...(chip.isNew ? [' ', tag] : []));
+    this.setHeld(view.character);
+    this.hand.visible = view.phase !== 'dead';
   }
 
+  /** Show `text` under the Scene title. With `unfold`, new text appears word by word, like a story
+   * being told. It starts when the dice and the transition end. The same text again changes
+   * nothing. A click on the text shows all of it. Every word is in the page from the start, so a
+   * screen reader reads the whole text. */
+  setStory(text, unfold) {
+    if (text === this.story?.text) return;
+    const box = $('world-description');
+    if (!unfold || this.reducedMotion?.matches || !box.replaceChildren) {
+      box.textContent = text;
+      this.story = { text, words: [], next: 0 };
+      return;
+    }
+    box.replaceChildren();
+    const words = [];
+    for (const part of storyTimeline(text)) {
+      if (part.space) { box.append(part.space); continue; }
+      const span = document.createElement('span');
+      span.className = 'story-word';
+      span.textContent = part.word;
+      box.append(span);
+      words.push({ span, at: part.at });
+    }
+    box.scrollTop = 0;
+    this.story = { text, words, next: 0, start: null };
+  }
+
+  /** Show the words of the story whose time has come. Called once per frame. */
+  unfoldStory() {
+    const story = this.story;
+    if (!story || story.next >= story.words.length) return;
+    if (story.start === null) {
+      if (!this.ready || this.travel || this.waiting) return;
+      story.start = performance.now();
+    }
+    const now = performance.now() - story.start;
+    let last = null;
+    while (story.next < story.words.length && story.words[story.next].at <= now) {
+      last = story.words[story.next++].span;
+      last.classList.add('shown');
+    }
+    // Keep the newest word in sight when the text is longer than its box.
+    const box = $('world-description');
+    if (last && last.offsetTop + last.offsetHeight > box.scrollTop + box.clientHeight) {
+      box.scrollTop = last.offsetTop + last.offsetHeight - box.clientHeight;
+    }
+  }
+
+  /** Show the rest of the story at once. */
+  finishStory() {
+    const story = this.story;
+    if (!story) return;
+    for (; story.next < story.words.length; story.next++) story.words[story.next].span.classList.add('shown');
+  }
+
+  /** Put the Player at the start of a new game: at the arrival point of its Scene, with no
+   * transition. After a reload, the saved position and angle of the same Scene come back. */
+  placeAtStart(view, sceneKey, sceneTag) {
+    const place = placeForScene(this.environment, view.scene?.id);
+    this.position = arrivalForLayout(worldLayout([], place, null, eventAnchorForScene(this.environment, view.scene?.id)));
+    this.yaw = 0; this.pitch = DEFAULT_PITCH;
+    this.travelSceneKey = sceneKey;
+    this.storageKey = 'rpg-position:' + view.adventure + ':' + view.seed;
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.storageKey));
+      if (saved && saved.scene === sceneTag && Number.isFinite(saved.x) && Number.isFinite(saved.z)
+        && Math.abs(saved.x)<115 && Math.abs(saved.z)<115
+        && this.obstacles.every(o=>Math.hypot(saved.x-o.x,saved.z-o.z)>o.radius+0.4)) {
+        this.position = {x:saved.x,z:saved.z};
+        this.yaw = Number.isFinite(saved.yaw) ? saved.yaw : 0;
+      }
+    } catch { /* Storage is optional. */ }
+  }
+
+  /** The closest point with Choices in reach of the Player, or null. */
+  nearest() {
+    return nearestPoint(this.position, this.layout?.points || []);
+  }
+
+  /** The point whose menu shows now: the one in reach, else the one the Player clicked. */
+  menuPoint() {
+    if (this.travel || this.waiting || this.view?.phase !== 'scene') return null;
+    const near = this.nearest();
+    if (near) return near;
+    const selected = this.layout?.points.find(p => p.id === this.selectedId && p.actions.length);
+    if (selected && Math.hypot(this.position.x - selected.x, this.position.z - selected.z) < 30) return selected;
+    return null;
+  }
+
+  /** E picks the Choice of the point in the menu, when it has only one. */
   useNearest() {
-    const p = this.nearest();
-    if (p) this.choose(p);
+    const p = this.menuPoint();
+    if (p && p.actions.length === 1) this.choose(p.actions[0]);
+  }
+
+  /** Select the person or object under the pointer, so its menu shows. A click on nothing clears it. */
+  selectAt(clientX, clientY) {
+    if (!this.canMove()) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const pointer = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(pointer, this.camera);
+    this.selectedId = null;
+    for (const hit of this.raycaster.intersectObjects(this.group.children, true)) {
+      let obj = hit.object;
+      while (obj && obj.userData.pointId === undefined) obj = obj.parent;
+      const point = obj && this.layout.points.find(p => p.id === obj.userData.pointId);
+      if (point) {
+        if (point.actions.length) this.selectedId = point.id;
+        return;
+      }
+    }
+  }
+
+  /** Draw the menu of the point in reach or clicked: one button for each of its Choices. */
+  renderMenu(canMove) {
+    const point = this.menuPoint();
+    $('world-prompt').hidden = !point;
+    const key = point ? JSON.stringify([point.id, point.actions.map(a => [a.key, a.label])]) : '';
+    if (key !== this.menuKey) {
+      this.menuKey = key;
+      const list = $('world-menu');
+      list.replaceChildren();
+      if (point) {
+        $('world-choice').textContent = point.kind === 'object'
+          ? point.visual.type[0].toUpperCase() + point.visual.type.slice(1) : point.title;
+        $('world-detail').textContent = point.actions.length === 1
+          ? 'Click the Choice, or press E or 1.' : 'Click a Choice, or press its number.';
+        point.actions.forEach((action, i) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.inputKey = action.key;
+          const number = document.createElement('span');
+          number.className = 'menu-number';
+          number.textContent = String(i + 1);
+          button.append(number, document.createTextNode(action.label));
+          button.addEventListener('click', () => this.choose(action));
+          list.appendChild(button);
+        });
+      }
+    }
+    for (const button of $('world-menu').children) button.disabled = !canMove;
+    return point;
   }
 
   canMove() {
-    return this.active && this.ready && !this.pending && !this.paused
+    return this.active && this.ready && !this.pending && !this.paused && !this.travel && !this.waiting
       && !document.body.classList.contains('journal-open') && !document.querySelector('dialog[open]');
   }
 
-  /** Schedule a route for this scene only. Polls never restart an existing journey. */
+  /** After a Choice with a result (a roll, the end of a Fight) leads to a new Scene, hold the result
+   * on screen. The trip to the new Scene starts only when the Player presses Continue. */
+  waitForContinue() {
+    this.waiting = true;
+    this.keys.clear(); this.touches.clear();
+    this.selectedId = null;
+    $('world-continue').hidden = false;
+    $('world-continue-button').textContent = 'Continue to ' + this.layout.place.name;
+  }
+
+  /** Start the trip to the new Scene, if it waits for Continue. It never sends an input. */
+  continueOn() {
+    if (!this.waiting || this.paused) return;
+    this.waiting = false;
+    $('world-continue').hidden = true;
+    $('world-events').hidden = true;
+    this.startTravel();
+  }
+
+  /** Move the camera to the next Scene with a short glide or fade. The Player cannot move or
+   * choose until it ends. It never sends an input. */
   startTravel() {
-    const route = planTravel(this.environment, this.position, this.layout, this.obstacles);
-    this.root.dataset.travelError = route ? '' : 'no-clear-route';
-    if (!route) return; // Manual exploration remains available if the player is off the trails.
-    this.travel = { route, index: 0, speed: Math.max(10, route.length / 8) };
+    const arrival = arrivalForLayout(this.layout);
+    const plan = planTransition(this.position, arrival, this.yaw, this.pitch, this.layout.facing);
+    this.keys.clear(); this.touches.clear();
+    this.selectedId = null;
+    this.travel = { plan, t: 0 };
+    if (this.reducedMotion.matches) { this.finishTravel(); return; }
     this.root.dataset.travelling = 'true';
-    $('world-travel').hidden = false;
-    $('world-travel-status').textContent = 'Travelling to ' + this.layout.place.name;
-    if (this.reducedMotion.matches || route.length < 0.05) this.finishTravel();
+    this.root.dataset.transition = plan.kind;
+    const overlay = $('world-travel');
+    overlay.hidden = plan.kind !== 'fade';
+    overlay.style.opacity = '0';
+    $('world-travel-status').textContent = this.layout.place.name;
   }
 
   cancelTravel() {
     this.travel = null;
+    this.waiting = false;
+    $('world-continue').hidden = true;
     this.root.dataset.travelling = 'false';
-    $('world-travel').hidden = true;
+    const overlay = $('world-travel');
+    overlay.hidden = true;
+    if (overlay.style) overlay.style.opacity = '0';
   }
 
-  /** Arrival is camera movement only; it cannot send a choice or enter a contact disc. */
+  /** End the transition at its last frame, so the camera does not jump. */
   finishTravel() {
     if (!this.travel) return;
-    this.position = { ...this.travel.route.arrival };
+    const end = transitionAt(this.travel.plan, this.travel.plan.duration);
+    this.position = end.position;
+    this.yaw = end.yaw; this.pitch = end.pitch;
     this.cancelTravel();
     this.keys.clear(); this.touches.clear();
-    this.yaw = 0; this.pitch = -0.04;
     this.savePosition();
   }
 
   savePosition() {
-    try { localStorage.setItem(this.storageKey, JSON.stringify({ ...this.position, yaw: this.yaw })); }
+    try { localStorage.setItem(this.storageKey, JSON.stringify({ ...this.position, yaw: this.yaw, scene: this.sceneTag })); }
     catch { /* Storage is optional. */ }
   }
 
   travelFrame(dt) {
-    const before = this.position;
-    const step = advanceTravel(before, this.travel.route, this.travel.index,
-      this.travel.speed * dt, this.obstacles, this.layout.bound);
-    this.position = step.position;
-    this.travel.index = step.index;
-    const dx = this.position.x-before.x, dz = this.position.z-before.z;
-    if (Math.hypot(dx, dz) > 0.00001) {
-      const targetYaw = Math.atan2(-dx, -dz);
-      const turn = Math.atan2(Math.sin(targetYaw-this.yaw), Math.cos(targetYaw-this.yaw));
-      this.yaw += turn * (1-Math.exp(-dt*6));
-    }
-    if (step.blocked) {
-      this.cancelTravel(); this.root.dataset.travelError = 'blocked';
-    } else if (step.done) this.finishTravel();
+    this.travel.t += dt;
+    const now = transitionAt(this.travel.plan, this.travel.t);
+    this.position = now.position;
+    this.yaw = now.yaw; this.pitch = now.pitch;
+    $('world-travel').style.opacity = String(now.fade);
+    if (now.done) this.finishTravel();
   }
 
   move(dx, dz) {
     if (!this.canMove() || !this.layout) return;
-    this.cancelTravel();
-    const next = moveInWorld(this.position, dx, dz, this.obstacles, this.layout.bound);
-    const selected = crossedPortal(this.position, next, this.layout.portals);
-    this.position = next;
-    if (selected) this.choose(selected);
+    // People and objects are solid, so the Player stops in front of them.
+    this.position = moveInWorld(this.position, dx, dz, [...this.obstacles, ...(this.pointObstacles || [])], this.layout.bound);
   }
 
   nudge(direction) {
@@ -739,17 +1074,27 @@ export class SpatialGame {
     }
   }
 
+  /** Put a label at the screen position of a world point, or hide it when it is off screen or far. */
+  placeLabel(label, world, maxDistance = 22) {
+    const point = world.clone().project(this.camera);
+    const hidden = world.distanceTo(this.camera.position) > maxDistance || point.z < -1 || point.z > 1
+      || Math.abs(point.x) > 1.1 || Math.abs(point.y) > 1.2;
+    label.hidden = hidden;
+    if (!hidden) {
+      label.style.left = ((point.x + 1) * 50) + '%';
+      label.style.top = ((1 - point.y) * 50) + '%';
+    }
+  }
+
   frame(time) {
     const dt = this.frameTime ? Math.min((time - this.frameTime) / 1000, 0.05) : 0;
     this.frameTime = time;
     if (!this.active || document.hidden || !this.layout) return;
     this.elapsed += dt;
-    const canMove = this.canMove();
     let moving = false;
-    if (canMove && this.travel) {
-      this.travelFrame(dt);
-      moving = true;
-    } else if (canMove) {
+    if (this.travel && !this.paused) this.travelFrame(dt);
+    const canMove = this.canMove();
+    if (canMove) {
       const has = (...keys) => keys.some(k => this.keys.has(k) || [...this.touches.values()].includes(k));
       let forward = Number(has('w', 'z', 'arrowup')) - Number(has('s', 'arrowdown'));
       let right = Number(has('d', 'arrowright')) - Number(has('a', 'q', 'arrowleft'));
@@ -764,56 +1109,57 @@ export class SpatialGame {
       }
     }
     const reduced = this.reducedMotion.matches;
-    $('world-travel-skip').disabled = !canMove;
     for (const button of $('world-combat-actions').children) button.disabled = !canMove;
     this.camera.position.set(this.position.x, 1.7 + (moving && !reduced ? Math.sin(this.elapsed * 11) * 0.025 : 0), this.position.z);
     this.camera.rotation.set(this.pitch, this.yaw, 0);
     this.camera.updateMatrixWorld();
     this.lantern.position.copy(this.camera.position);
     this.lantern.position.y -= 0.3;
-    const near = this.travel ? null : this.nearest();
-    $('world-prompt').hidden = !near || !canMove;
-    $('world-use').disabled = !near || !canMove;
-    if (near) {
-      $('world-choice').textContent = near.label;
-      $('world-detail').textContent = near.detail || 'Approach the marked object to interact, or press E here.';
-    }
-    for (const gate of this.gates) {
-      const point = new THREE.Vector3(gate.x, 2.3, gate.z).project(this.camera);
-      const visible = Math.hypot(gate.x-this.position.x,gate.z-this.position.z)<22 && point.z > -1 && point.z < 1 && Math.abs(point.x) < 1.15 && Math.abs(point.y) < 1.3;
-      gate.label.hidden = !visible;
-      if (visible) {
-        gate.label.style.left = ((point.x + 1) * 50) + '%';
-        gate.label.style.top = ((1 - point.y) * 50) + '%';
-        gate.label.classList.toggle('near', near?.key === gate.key);
-      }
-      gate.ring.material.opacity = near?.key === gate.key ? 1 : 0.55;
+    const menu = this.renderMenu(canMove);
+    this.unfoldStory();
+    for (const point of this.points) {
+      if (point.ring) point.ring.material.opacity = menu?.id === point.id ? 1 : 0.55;
+      if (!point.label) continue;
+      this.placeLabel(point.label, new THREE.Vector3(point.x, 2.3, point.z));
+      // The open menu shows the same words, so its label hides. Close up, it would cover the text.
+      if (menu?.id === point.id) point.label.hidden = true;
     }
     for (const actor of this.actors) {
       const age = this.effect ? this.elapsed - this.effect.started : 10;
       const pulse = age < 0.6 && !reduced ? Math.sin(Math.PI * Math.min(1, age / 0.6)) : 0;
       const attacking = this.effect?.kind === 'attack' && this.effect.data.attacker === actor.index;
       const hurt = this.effect?.kind === 'damage' && this.effect.data.injury > 0 && this.effect.data.defender === actor.index;
-      actor.mesh.position.z = actor.z + (attacking ? pulse * 0.75 : 0);
-      actor.mesh.position.x = actor.x + (hurt ? Math.sin(age * 45) * pulse * 0.09 : 0);
+      // The actor sits at the centre of its point. A lunge moves it toward the Player.
+      actor.mesh.position.z = attacking ? pulse * 0.75 : 0;
+      actor.mesh.position.x = hurt ? Math.sin(age * 45) * pulse * 0.09 : 0;
       if (actor.alive) actor.mesh.position.y = reduced ? 0 : Math.sin(this.elapsed * 2 + actor.index) * 0.03;
       actor.label.classList.toggle('taking-hit', !!hurt && pulse > 0);
-      const point = actor.mesh.localToWorld(new THREE.Vector3(0, 2.35, 0)).project(this.camera);
-      actor.label.hidden = actor.mesh.getWorldPosition(new THREE.Vector3()).distanceTo(this.camera.position)>22 || point.z < -1 || point.z > 1 || Math.abs(point.x) > 1 || Math.abs(point.y) > 1;
-      actor.label.style.left = ((point.x + 1) * 50) + '%';
-      actor.label.style.top = ((1 - point.y) * 50) + '%';
+      actor.label.classList.toggle('near', !!menu && menu.id === actor.pointId);
+      this.placeLabel(actor.label, actor.mesh.localToWorld(new THREE.Vector3(0, 2.35, 0)));
     }
     // Presentation coordinates let navigation tests observe movement without controlling it.
     this.root.dataset.playerX = this.position.x.toFixed(3);
     this.root.dataset.playerZ = this.position.z.toFixed(3);
+    this.root.dataset.yaw = this.yaw.toFixed(3);
+    this.root.dataset.menu = menu ? menu.id : '';
     if (!this.lastMapFrame || time-this.lastMapFrame>100) {
       this.drawMap(); this.lastMapFrame=time;
     }
-    if(moving && (!this.lastSavedPosition || time-this.lastSavedPosition>500)) {
+    // Save the position while the Player walks, and once more when the walk stops.
+    if((moving && (!this.lastSavedPosition || time-this.lastSavedPosition>500)) || (!moving && this.wasMoving)) {
       this.savePosition();
       this.lastSavedPosition=time;
     }
+    this.wasMoving=moving;
     this.renderer.render(this.scene, this.camera);
+    // The hand is drawn last, on top of the world, with the world's depth cleared.
+    this.handFrame(moving, reduced);
+    if (this.hand.visible && this.hand.children.length) {
+      this.renderer.autoClear = false;
+      this.renderer.clearDepth();
+      this.renderer.render(this.handScene, this.handCamera);
+      this.renderer.autoClear = true;
+    }
     if (this.environmentFrameStarted !== undefined) {
       this.root.dataset.environmentFirstFrameMs=(performance.now()-this.environmentFrameStarted).toFixed(2);
       this.environmentFrameStarted=undefined;

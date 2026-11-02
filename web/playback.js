@@ -34,10 +34,26 @@ export function playbackView(before, after, shown) {
     inputs: current ? after.inputs : [], reports: after.reports.slice(0, shown) };
 }
 
-/** Cosmetic timing is short and applies only to reports the player can actually see. */
+/** `true` if the Reports that led to the last Scene show a result for the Player to read, such as a
+ * skill roll or the end of a Fight. A plain Choice that only moves to the next Scene shows none. */
+export function hasResultToRead(reports) {
+  let i = reports.length - 1;
+  while (i >= 0 && reportKind(reports[i]) !== 'scene') i--;
+  for (i--; i >= 0; i--) {
+    const kind = reportKind(reports[i]);
+    if (kind === 'picked' || kind === 'scene') return false;
+    if (!['round', 'maneuver'].includes(kind)) return true;
+  }
+  return false;
+}
+
+/** Cosmetic timing is short and applies only to reports the player can actually see. A skill roll,
+ * such as Diplomacy, often decides the next Scene, so it stays long enough to read its result. */
 export function reportDuration(report, speed = 1, spatial = true) {
   const kind = reportKind(report);
-  const duration = ['attack', 'dodge', 'successRoll'].includes(kind) ? 700
+  const duration = kind === 'successRoll' ? 1900
+    : kind === 'cannotTry' ? 1500
+    : ['attack', 'dodge'].includes(kind) ? 700
     : kind === 'damage' ? 550
     : ['fightStarts', 'fightWon', 'died', 'scene'].includes(kind) ? 280
     : spatial ? 0 : 180;

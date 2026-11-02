@@ -48,7 +48,7 @@ export function appearanceFor(option) {
   if (/lamp|light|lantern|phare|allum/.test(text)) return { type: 'lantern' };
   if (/fight|attack|sword|combat|épée|attaqu|défier|sabre/.test(text)) return { type: 'sword' };
   if (/rest|sleep|wait|repos|dormir|attendre/.test(text)) return { type: 'camp' };
-  // A traversable trail is a safe visual fallback for unfamiliar narrative text.
+  // Unknown text has no object of its own. It goes to the shared marker of the Scene.
   return { type: 'path' };
 }
 
@@ -77,28 +77,60 @@ export function figuresForView(view) {
   return figures;
 }
 
-/** The first gate crossed by a movement segment, including a large frame step. */
-export function crossedPortal(from, to, portals, radius = 0.72) {
-  const dx = to.x - from.x;
-  const dz = to.z - from.z;
-  const a = dx * dx + dz * dz;
-  if (a === 0) return null;
-  let first = null;
-  let firstTime = Infinity;
-  for (const p of portals) {
-    const ox = from.x - p.x;
-    const oz = from.z - p.z;
-    const c = ox * ox + oz * oz - radius * radius;
-    // A failed request must not retrigger until the player leaves and re-enters.
-    if (c <= 0) continue;
-    const b = 2 * (ox * dx + oz * dz);
-    const discriminant = b * b - 4 * a * c;
-    if (discriminant < 0) continue;
-    const t = (-b - Math.sqrt(discriminant)) / (2 * a);
-    if (t >= 0 && t <= 1 && t < firstTime) { first = p; firstTime = t; }
-  }
-  return first;
+/** `true` if `text` names the character `name`. Case does not matter, and a plural matches. */
+export function namesCharacter(text, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('(?:^|[^\\p{L}])' + escaped, 'iu').test(text);
 }
+
+/** The places in the world where the Player picks inputs. Each character is one point, drawn once,
+ * with all the Choices that name it or talk to it. A Choice with a known object (a door, a boat)
+ * is its own point. All other Choices share one marker. Every portal is in exactly one point.
+ * In a Fight the foes are points with no actions: the Maneuver buttons pick the input. */
+export function interactionPoints(view, portals) {
+  const figures = figuresForView(view);
+  const points = figures.map(figure => ({ id: 'figure:' + figure.index, kind: 'figure', figure, title: figure.name, actions: [] }));
+  if (view.phase === 'fight') return points;
+  let marker = null;
+  for (const portal of portals) {
+    let point = points.find(p => p.kind === 'figure' && namesCharacter(portal.label, p.figure.name));
+    if (!point && portal.visual.type === 'person') {
+      point = points.find(p => p.kind === 'figure');
+      if (!point) {
+        const figure = { name: 'Traveller', index: 0, species: 'person', alive: true, combat: false };
+        point = { id: 'figure:traveller', kind: 'figure', figure, title: figure.name, actions: [] };
+        points.push(point);
+      }
+    }
+    if (!point && portal.visual.type !== 'path') {
+      point = { id: 'object:' + portal.key, kind: 'object', visual: portal.visual, title: portal.label, actions: [] };
+      points.push(point);
+    }
+    if (!point) {
+      if (!marker) {
+        marker = { id: 'marker', kind: 'marker', title: 'What next?', actions: [] };
+        points.push(marker);
+      }
+      point = marker;
+    }
+    point.actions.push(portal);
+  }
+  return points;
+}
+
+/** The closest point with actions within `range` metres of the Player, or null. */
+export function nearestPoint(position, points, range = 2.6) {
+  let nearest = null, best = range;
+  for (const p of points) {
+    if (!p.actions.length) continue;
+    const d = Math.hypot(position.x - p.x, position.z - p.z);
+    if (d < best) { nearest = p; best = d; }
+  }
+  return nearest;
+}
+
+/** The solid size of a point, in metres, so the Player stops in front of it. */
+export const pointRadius = p => p.kind === 'figure' ? 0.5 : 0.8;
 
 /** Visual variation only: this never participates in a logical transition. */
 export function themeFor(view) {

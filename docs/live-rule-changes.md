@@ -79,7 +79,10 @@ The DM continues until acceptance, cancellation, an unsupported request, an API 
 a limit. One change gets at most 6 proposals (`maxChangeCalls`, the support-review pass included),
 3 fresh validation batches (`maxChangeValidations`), and a 3-minute installation deadline
 (`maxChangeMs`) in `Main.lean`. This deadline does not bound certificate computation. With an API key, each proposal can use up to 3 tries when the server is busy
-(`callApi`), so one change can send up to 18 requests. The server checks the proposal and
+(`callApi`), so one change can send up to 18 requests. The loop of `generateChange` runs over
+the fixed list `changeRevisions` (1 to 6), one call for each number, so it cannot run longer
+than 6 proposals. Every proposal that is not accepted, parse errors and cut-off replies included,
+uses one of the 6. The server checks the proposal and
 validation limits after each proposal. At one of them, the change fails with "The Dungeon Master
 stopped after N proposals and could not find a balanced version. Your game is unchanged." A watch
 task (`watchChange`) enforces the installation deadline: at 3 minutes it marks the change failed
@@ -93,6 +96,29 @@ change has failed or been canceled. Starting another request can overlap another
 
 Changes are local to the in-memory playthrough and survive a browser reload. They do not
 overwrite saved adventures. Restarting starts the original adventure again.
+
+## What the Player sees
+
+Installation adds one `changeApplied` Report (`Rpg/Report.lean`). The server makes it from the
+admitted proposal with `Prepared.note` (`Rpg/WorldChange.lean`): the Player's wish, the summary
+and moment, the Character's card and attack level before and after, the requested rules, the
+counter-rules as tuned, and the number of changed Scenes. `Prepared.note_rules` proves that the
+rules in the note are the rules that the change adds. The view (`changeNoteJson` in
+`Rpg/View.lean`) sends the new weapon with its kind (the weapon's JSON name, such as
+`broadsword`), its damage and attack, and the weapon it replaces, by Theme Name. Each entry in
+`worldRules` has an `origin`: `requested`, `counter`, or `adventure` (`ruleOrigin`).
+
+The page plays the new Report as it plays the Reports of an input (`addsChange` in
+`web/change.js`). The 3D tray shows a "World changed" card: "You received: Laser Sabre", its
+numbers, what it replaces, and "The world answers" with each counter-rule in plain words. A
+rule-only change shows "New rule: ..."; a change of Scenes only shows "The road ahead changed",
+with no Scene names. The tray is a live region, so a screen reader reads the change once. A gear
+chip next to the HP and the Gear row of the Character panel say "New" until the next input. The
+weapon shows in the Player's hand in the 3D view (`web/gear.js` picks a shape from the kind and a
+style from words in the name, such as "laser" or "frost"). With reduced motion, nothing animates.
+The change panel says "Your change is in play" and tags each rule as "Your change" or "The
+world's answer". `tests/live_change_applied.py` checks the Report end to end with a recorded
+Laser Sabre change on the built-in Adventure.
 
 ## Balance from the beginning and retries
 
@@ -204,6 +230,13 @@ of the game's next dice roll. Generate fixtures into a temporary folder with
 local counter adjustment followed by fresh admission. `change-check --timing` measures
 sampling and exact interval comparison separately; `--tuning` screens a too-strong
 counter and verifies that a bounded variant passes without changing the gift.
+
+`tests/live_change_unsatisfiable.py` starts its own test servers (port 8097 by default) with
+recorded replies that can never pass: an unkillable hero, a reply that never parses, a cut-off
+reply, a missing counter-rule, a changed gift, an unsupported mechanic, an API refusal, an API
+failure, and the time limit. It also tries a Wish whose replies never parse. Each one must end
+in a fixed time as failed or refused, say why, and leave the game unchanged. Then the Player
+must be able to play on and to try again. Run it after `lake build rpg`, from the repository folder.
 The new guarantees are listed in `Comparator/Statements.lean` and proved in its paired
 proof file. Isolated proof replay and Comparator require Linux.
 
