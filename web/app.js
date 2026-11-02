@@ -504,7 +504,9 @@ import { playbackView, reportDuration } from './playback.js';
       } else if (last && running) {
         li.classList.add('now');
         li.prepend(spinnerEl());
-      } else if (last) {
+      } else if (last && (gen.state === 'failed' || gen.state === 'refused')) {
+        // Only the last step of a Wish that failed is red. A Wish that is ready can end on any step,
+        // for example the world map.
         li.classList.add('bad');
       }
       list.appendChild(li);
