@@ -47,17 +47,30 @@ export function eventAnchorForScene(environment, sceneId) {
   return {x: place.x + 2.8*Math.sin(angle), z: place.z + 2.8*Math.cos(angle)};
 }
 
-/** Distinct objects in a clear square at the active location. No destination inference. */
-export function worldLayout(portals, place, anchor = null, eventAnchor = null) {
+/** The unit vectors forward and right for a camera that turns by `yaw` (0 looks down -z). */
+export function facingVectors(yaw) {
+  return { forward: { x: -Math.sin(yaw), z: -Math.cos(yaw) }, right: { x: Math.cos(yaw), z: -Math.sin(yaw) } };
+}
+
+/** Put the points of a Scene in rows in front of `center`, as seen from the direction `facing`.
+ * In a Scene the rows start 3 m north of the event anchor. In a Fight (`anchor` is the Player)
+ * the foes stand 6 m in front of the Player, so the camera does not need to turn. */
+export function worldLayout(points, place, anchor = null, eventAnchor = null, facing = 0) {
   const center = anchor || eventAnchor || place;
+  const { forward, right } = facingVectors(facing);
+  const ahead = anchor ? 6 : 3, spacing = anchor ? 2.4 : 3.6;
   return {
-    bound: WORLD_BOUND, place, center,
-    spawn: { x: place.x, z: place.z + 5 },
-    portals: portals.map((p, i) => ({
-      ...p, index: i, angle: 0,
-      x: center.x + ((i % 4) - (Math.min(portals.length, 4) - 1) / 2) * 3.6,
-      z: anchor ? center.z + 2 + Math.floor(i / 4) * 3.6 : center.z - 3 - Math.floor(i / 4) * 3.6,
-    })),
+    bound: WORLD_BOUND, place, center, facing,
+    points: points.map((p, i) => {
+      const row = Math.floor(i / 4), inRow = Math.min(points.length - row * 4, 4);
+      // A back row with the same parity as the front row moves half a step, into the gaps.
+      const shift = row > 0 && inRow % 2 === Math.min(points.length, 4) % 2 ? 0.5 : 0;
+      const side = ((i % 4) - (inRow - 1) / 2 + shift) * spacing;
+      const depth = ahead + row * 3.6;
+      return { ...p, index: i,
+        x: center.x + forward.x * depth + right.x * side,
+        z: center.z + forward.z * depth + right.z * side };
+    }),
   };
 }
 

@@ -391,8 +391,9 @@ import { playbackView, reportDuration } from './playback.js';
   function showSpatialReport(r) {
     const tray = $('world-events');
     const k = kindOf(r);
-    if (['picked', 'round', 'maneuver'].includes(k)) return;
-    if (k === 'scene') { tray.hidden = true; return; }
+    // A new Choice clears the old result. A new Scene keeps it: the 3D view hides it at Continue.
+    if (k === 'picked') { tray.hidden = true; return; }
+    if (['scene', 'round', 'maneuver'].includes(k)) return;
     tray.hidden = false;
     const row = reportEl(r);
     row.classList.add('world-event');

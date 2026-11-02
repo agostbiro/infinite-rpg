@@ -85,7 +85,7 @@
   </header>
 
   <section id="world" class="world" aria-label="Explore the Adventure in 3D" hidden>
-    <canvas id="world-canvas" tabindex="0" aria-label="The Adventure in 3D. Move with WASD, ZQSD, or the arrow keys. Drag to look. Walk to a marked object or person to choose it, or press E near it. Press Escape to pause, or J for the journal."></canvas>
+    <canvas id="world-canvas" tabindex="0" aria-label="The Adventure in 3D. Move with WASD, ZQSD, or the arrow keys. Drag to look. Walk up to a person or a marked object, or click it, to see its Choices. Pick one with a click or its number key. Press Escape to pause, or J for the journal."></canvas>
     <div id="world-labels" class="world-labels" aria-hidden="true"></div>
     <div class="world-vignette" aria-hidden="true"></div>
     <div class="world-heading">
@@ -104,10 +104,8 @@
       <canvas id="world-minimap" width="160" height="160" role="img" aria-label="World map"></canvas>
       <p id="world-objective"></p>
     </div>
-    <div id="world-travel" class="world-travel" hidden>
-      <p id="world-travel-status" role="status"></p>
-      <span>Move to take control, or wait to arrive.</span>
-      <button id="world-travel-skip" class="small-button" type="button">Skip the walk</button>
+    <div id="world-travel" class="world-travel" aria-hidden="true" hidden>
+      <p id="world-travel-status"></p>
     </div>
     <div class="world-crosshair" aria-hidden="true">+</div>
     <div id="world-combat-actions" class="world-combat-actions" aria-label="Maneuvers" hidden></div>
@@ -118,12 +116,16 @@
     <div id="world-hit" class="world-hit" aria-hidden="true"></div>
     <div id="world-prompt" class="world-prompt" hidden>
       <p id="world-choice"></p>
+      <div id="world-menu" class="world-menu" role="group" aria-label="Choices here"></div>
       <p id="world-detail"></p>
-      <button id="world-use" type="button">Choose · E</button>
+    </div>
+    <div id="world-continue" class="world-continue" hidden>
+      <button id="world-continue-button" class="big-button" type="button">Continue</button>
+      <p>Press Enter, Space, or E</p>
     </div>
     <div class="world-controls">
       <p><kbd>WASD</kbd> / <kbd>ZQSD</kbd> / <kbd>↑↓←→</kbd> move <span>· Drag to look · Shift to run</span></p>
-      <p>Walk to a marked object or person to choose it.</p>
+      <p>Walk up to a person or object, or click it, to see your Choices.</p>
     </div>
     <div class="world-touch" aria-label="Movement controls">
       <button type="button" data-move="arrowup" aria-label="Move forward">↑</button>
