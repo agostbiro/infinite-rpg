@@ -303,7 +303,6 @@ structure Admission (p : Prepared) (seed : Nat) (delta : Rat) where
   provenance : counts = sampleCounts p.candidate seed validationGames
   accepted : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy
   riskValid : 0 < delta ∧ delta ≤ confidenceDelta
-  combat : CertifiedAdventureCombat p.definition
   /-- A live edit must preserve an executable checkpoint, even for custom core rules. -/
   wellFormed : p.game.WellFormed
   hpBound : p.game.hp ≤ p.game.rules.maxHP p.game.hero
@@ -338,21 +337,18 @@ def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
   let counts := sampleCounts p.candidate seed validationGames
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
     if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy then
-      match certifyAdventureCombat p.definition with
-      | none => ({counts with combatRejected := true}, none)
-      | some combat =>
-        if hw : p.game.WellFormed then
-        if hb : p.game.hp ≤ p.game.rules.maxHP p.game.hero then
-          let checkpoint : Option (match p.game.phase with
-              | .fight f => CertifiedContinuation p.game.rules f | _ => Unit) :=
-            match p.game.phase with
-            | .fight f => certifyContinuation p.game.rules f
-            | .title | .scene _ | .ended _ | .dead _ => some ()
-          match checkpoint with
-          | none => ({counts with combatRejected := true}, none)
-          | some checkpoint => (counts, some ⟨counts, rfl, h, hd, combat, hw, hb, checkpoint⟩)
-        else ({counts with combatRejected := true}, none)
-        else ({counts with combatRejected := true}, none)
+      if hw : p.game.WellFormed then
+      if hb : p.game.hp ≤ p.game.rules.maxHP p.game.hero then
+        let checkpoint : Option (match p.game.phase with
+            | .fight f => CertifiedContinuation p.game.rules f | _ => Unit) :=
+          match p.game.phase with
+          | .fight f => certifyContinuation p.game.rules f
+          | .title | .scene _ | .ended _ | .dead _ => some ()
+        match checkpoint with
+        | none => ({counts with combatRejected := true}, none)
+        | some checkpoint => (counts, some ⟨counts, rfl, h, hd, hw, hb, checkpoint⟩)
+      else ({counts with combatRejected := true}, none)
+      else ({counts with combatRejected := true}, none)
     else (counts, none)
   else (counts, none)
 

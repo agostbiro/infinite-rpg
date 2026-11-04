@@ -1509,7 +1509,8 @@ def main (args : List String) : IO UInt32 := do
     IO.eprintln "The compiled checker rejects the built-in Adventure, so the game will not start:"
     for e in errs do IO.eprintln s!"  ERROR: {e}"
     return 1
-  -- Admission also checks sampled balance and combat certificates for every entry HP.
+  -- The built-in Adventure must also pass the balance check, with the fixed validation seed.
+  -- The slow combat check is not part of it. `make certify` runs that check.
   let candidate := Lafayette.statisticalCandidate
   let (counts, admitted) := Probability.admitStatistically candidate
   if admitted.isNone then

@@ -159,12 +159,14 @@ theorem combat_outcome_error {rules : RuleSet} {order : List Actor} {s : FightSt
       (fun s => event (Probability.terminalResult s)) (c.stopping.horizon s delta) s
     exact ≤ c.outcomes.mass event ∧ c.outcomes.mass event ≤ exact + delta := c.outcome_error event delta positive
 
-/-- Every admitted encounter terminates almost surely at every possible entry HP. -/
-theorem admitted_combats (a : Probability.StatisticalAdventure) (foes : List Being)
-    (encounter : foes ∈ Probability.encounterFoes a.candidate.story)
-    (hp : Int) (lower : 0 ≤ hp) (upper : hp ≤ a.candidate.rules.maxHP a.candidate.hero) :
-    (Probability.combatProcess a.candidate.rules (turnOrder a.candidate.rules a.candidate.hero foes)).AlmostSurelyTerminates
-      (Probability.fightStart a.candidate.rules a.candidate.hero hp foes) := a.combat.ends_almostSurely foes encounter hp lower upper
+/-- In a certified Adventure, each Fight ends with probability one, at each starting HP.
+Admission alone does not give this. `make certify` builds the certified value. -/
+theorem admitted_combats (a : Probability.CertifiedAdventure) (foes : List Being)
+    (encounter : foes ∈ Probability.encounterFoes a.admitted.candidate.story)
+    (hp : Int) (lower : 0 ≤ hp) (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero) :
+    (Probability.combatProcess a.admitted.candidate.rules
+      (turnOrder a.admitted.candidate.rules a.admitted.candidate.hero foes)).AlmostSurelyTerminates
+      (Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes) := a.combat.ends_almostSurely foes encounter hp lower upper
 
 /-- A new game is well formed and its Character starts alive. -/
 theorem runtime_initialized (d : AdventureDefinition) (policy : Probability.BalancePolicy) :

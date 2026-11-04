@@ -62,10 +62,10 @@ Lean [proves](./Rpg/Probability/StatisticalAdmission.lean#L154) that the test is
 
 ## Limitations
 
-- Combat certification can delay startup and loading saved adventures: it solves and checks every encounter at every possible starting HP, even when a saved balance verdict is reused. Full admission of Lafayette exceeded a 120-second smoke-test limit; its completion time has not been established.
-- Cancel and the live-change time limit prevent a late change from being installed, but they do not stop a combat-certificate computation already running inside Lean. Such workers can keep using CPU and memory after cancellation, and another request can start additional work. The three-minute limit is not a computation or resource limit.
+- The server does not run the combat check. The check solves each Fight at each starting HP, and on Lafayette it did not finish in 20 minutes. So the server starts the built-in Adventure, Wishes, saved Adventures, and live changes after the balance check only. `make certify` runs the combat check on Lafayette by hand. The theorem `admitted_combats` is about Adventures that passed it.
+- Cancel and the live-change time limit prevent a late change from being installed, but they do not stop a check of a paused Fight already running inside Lean. Such workers can keep using CPU and memory after cancellation, and another request can start additional work. The three-minute limit is not a computation or resource limit.
 - No Dead Ends ignores dice, so the character can still die before reaching an ending.
-- Combat admission proves probability-one termination under fair independent dice and the uniform combat policy, with a finite horizon for every positive failure allowance. It does not guarantee victory or termination under every player strategy.
+- The combat check (`make certify`) proves probability-one termination under fair independent dice and the uniform combat policy, with a finite horizon for every positive failure allowance. It does not guarantee victory or termination under every player strategy.
 - Each proof is about one character, so the same adventure can fail for another character.
 - The balance test plays with a model player who picks choices and maneuvers at random, not like a real player.
 - The 5% bound assumes that the seeded random generator acts like fair dice, and this is not proved.

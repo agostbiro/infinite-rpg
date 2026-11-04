@@ -1,4 +1,4 @@
-.PHONY: install run run-fake build check check-rules cheats validate comparator agree test-spatial test-browser
+.PHONY: install run run-fake build check check-rules cheats validate certify comparator agree test-spatial test-browser
 
 # The port of the game server: make run PORT=9000
 PORT ?= 8080
@@ -86,6 +86,12 @@ cheats:
 # make validate SEED=7
 validate:
 	lake exe validate $(if $(SEED),--seed $(SEED),)
+
+# Run the slow combat check on the built-in Adventure: each Fight must end with probability one, at
+# each starting HP. The server does not run this check, because it takes a long time (more than 20
+# minutes on Lafayette). It builds the value that the theorem `admitted_combats` is about.
+certify:
+	lake exe certify
 
 # Check that the main theorems in Comparator/Proofs.lean prove the statements in
 # Comparator/Statements.lean, pass the kernel, and use only the standard axioms (see comparator.json).

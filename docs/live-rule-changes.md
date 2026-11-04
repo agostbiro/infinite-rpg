@@ -129,7 +129,7 @@ uses the original Weibull bands. Empty late rows and unresolved combat reject th
 
 **Deep Scenes are not covered by the sampled balance check.** The sampled games stop after 6 turns. A change
 can add or replace Scenes that are not visited yet. If such a Scene is more than 6 turns from
-the start, no sampled game reaches it, so its new encounters get legality and combat-termination certification, but not
+the start, no sampled game reaches it, so its new encounters get only the legality check, not
 the sampled balance check. Combat rules and equipment apply to every Fight, so the early Fights do
 test them. This gap is stated here, in the README, and in the panel. It is not fixed.
 
@@ -146,10 +146,10 @@ uses the whole adventure graph at turn zero. `Prepared.preserves_core` and
 `preserves_checkpoint` state the scope and state guarantees.
 `Prepared.preserves_fight_checkpoint` additionally fixes the whole paused fight record,
 including enemy wounds, turn order, round, and maneuvers; only the hero's equipped being changes.
-Admission also carries `WellFormed`, the current HP upper bound, `NoShortLoops`, a certificate
-for every encounter's combat, and a certificate for the actual paused fight continuation.
-These combat certificates establish almost-sure termination under the model's random policy;
-they do not turn the six-turn sampled balance check into a balance guarantee for later scenes.
+Admission also carries `WellFormed`, the current HP upper bound, `NoShortLoops`, and a certificate
+for the actual paused fight continuation. It does not check the other Fights of the Adventure: that
+check is too slow for play (see below). The paused-fight certificate establishes almost-sure
+termination under the model's random policy; it does not turn the six-turn sampled balance check into a balance guarantee for later scenes.
 
 Combat sides and triggers are enums decoded at the JSON boundary. Unknown values are rejected
 before constructing a rule. Equipment lookup receives the actual hero/enemy actor explicitly:
@@ -189,10 +189,9 @@ The preceding real request took 156 seconds and needed a second DM proposal. The
 individual measurements from before mandatory whole-adventure combat certification, not
 a latency guarantee for the current admission path.
 
-Current whole-adventure certification is a known performance limitation. In the review run,
-Lafayette admission had not completed after 120 seconds. Startup performs that admission before
-opening the HTTP listener. Saved loads regenerate combat certificates even when a saved verdict
-allows the sampled balance check to be skipped; background checking can duplicate that work.
+Whole-adventure combat certification is too slow to run in the server. On Lafayette it did not
+finish in 20 minutes. So startup, Wishes, saved loads, and live changes do not run it. `make
+certify` runs it on Lafayette by hand (`Probability.certify`).
 
 Thirty seconds is an earlier target, not a demonstrated bound for the current checker.
 The 3-minute watch prevents late installation and stops provider processes, but it does not

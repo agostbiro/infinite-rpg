@@ -52,6 +52,7 @@ private def candidate : StatisticalCandidate :=
   {toAdventureDefinition := admissionDefinition, horizon := 1, horizonPositive := by decide}
 
 #guard (admitWithSeed candidate 1).2.isSome
+#guard ((admitWithSeed candidate 1).2.bind certify).isSome
 
 -- A nonmonotone custom success rule defeats the old static damage argument:
 -- positive bonuses disable every actual attack, although the static screen passes.
@@ -80,8 +81,8 @@ private def badGame : Game := {Game.new definition with phase := .scene 999}
 -- Admission is tied to the original starting point; continuation analysis is separate.
 #guard (admitWithSeed {TestStory.safeCandidate with resume := some (.scene 0 1)} 1).2.isNone
 
--- Exercise the complete live-change gate, including runtime checks and the
--- mandatory adventure certificate, without an expensive large encounter.
+-- Exercise the complete live-change gate, including runtime checks, without an expensive large
+-- encounter.
 private def liveStory : Adventure :=
   {title := "Live certification fixture", start := 0, scenes := (List.range 7).map fun i =>
     {id := i, title := "Scene", text := "", choices :=
@@ -142,11 +143,12 @@ private def loopCandidate : StatisticalCandidate :=
   Confidence.confidenceDelta 0 defaultPolicy)
 #guard (admitWithSeed loopCandidate 1).2.isNone
 
--- A public admitted value necessarily supplies the probability theorem.
-example (a : StatisticalAdventure) (foes : List Being) (hf : foes ∈ encounterFoes a.candidate.story)
-    (hp : Int) (lo : 0 ≤ hp) (hi : hp ≤ a.candidate.rules.maxHP a.candidate.hero) :
-    (combatProcess a.candidate.rules (turnOrder a.candidate.rules a.candidate.hero foes)).AlmostSurelyTerminates
-      (fightStart a.candidate.rules a.candidate.hero hp foes) :=
+-- A certified Adventure necessarily supplies the probability theorem.
+example (a : CertifiedAdventure) (foes : List Being) (hf : foes ∈ encounterFoes a.admitted.candidate.story)
+    (hp : Int) (lo : 0 ≤ hp) (hi : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero) :
+    (combatProcess a.admitted.candidate.rules
+      (turnOrder a.admitted.candidate.rules a.admitted.candidate.hero foes)).AlmostSurelyTerminates
+      (fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes) :=
   a.combat.ends_almostSurely foes hf hp lo hi
 
 end Rpg.AdmissionTests

@@ -29,7 +29,7 @@ A Legal Adventure obeys these rules:
    Each Scene that an Outcome can lead to counts, whatever the dice do.
 
 These static rules do not prove combat termination, balance, or that the Adventure can be won.
-Admission additionally requires `CertifiedAdventureCombat`: every encounter at every entry HP
+A separate, slow check builds `CertifiedAdventureCombat`: every encounter at every entry HP
 has checked probability-one termination and outcome equations under independent fair dice
 and the uniform combat policy. It is defined in `Probability/AdventureCertificate.lean`.
 For example, a Fight that the Character cannot win is legal.

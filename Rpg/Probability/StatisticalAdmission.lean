@@ -40,7 +40,7 @@ structure ValidationCounts where
   deaths : Array Nat
   games : Nat := 0
   aborted : Bool := false
-  /-- Mandatory structural or combat evidence failed. -/
+  /-- A structural check failed: the start point, the short-loop rule, or a paused Fight. -/
   combatRejected : Bool := false
   deriving Repr
 
@@ -166,7 +166,6 @@ structure StatisticalAdventure where
   /-- Admission covers the original adventure; continuation analysis is separate. -/
   fromStart : candidate.resume = none ∧ candidate.elapsed = 0
   shortLoops : candidate.story.NoShortLoops
-  combat : CertifiedAdventureCombat candidate.toAdventureDefinition
   /-- The seed of the `validationGames` games. -/
   seed : Nat
   /-- The counts from those games. -/
@@ -208,9 +207,7 @@ def admitWithRisk (candidate : StatisticalCandidate) (seed : Nat) (delta : Rat) 
     if h : ValidationAccepted candidate.horizon counts delta candidate.elapsed candidate.policy then
       if hs : candidate.resume = none ∧ candidate.elapsed = 0 then
       if hl : candidate.story.NoShortLoops then
-        match certifyAdventureCombat candidate.toAdventureDefinition with
-        | some combat => (counts, some ⟨candidate,hs,hl,combat,seed,counts,delta,hd,rfl,h⟩)
-        | none => ({counts with combatRejected := true}, none)
+        (counts, some ⟨candidate,hs,hl,seed,counts,delta,hd,rfl,h⟩)
       else ({counts with combatRejected := true}, none)
       else ({counts with combatRejected := true}, none)
     else (counts, none)
@@ -228,6 +225,19 @@ theorem admitWithRisk_candidate {c : StatisticalCandidate} {seed : Nat} {delta :
   repeat split at h
   all_goals simp_all
   all_goals rw [← h.2]
+
+/-- An admitted Adventure whose Fights also passed the combat check: each Fight, at each
+starting HP, ends with probability one. The check is slow, so admission does not run it.
+`make certify` runs it. -/
+structure CertifiedAdventure where
+  /-- The Adventure that passed admission. -/
+  admitted : StatisticalAdventure
+  /-- The checked combat evidence for each Fight of that Adventure. -/
+  combat : CertifiedAdventureCombat admitted.candidate.toAdventureDefinition
+
+/-- Run the combat check on an admitted Adventure. Returns `none` if a Fight fails it. -/
+def certify (a : StatisticalAdventure) : Option CertifiedAdventure :=
+  (certifyAdventureCombat a.candidate.toAdventureDefinition).map fun combat => ⟨a, combat⟩
 
 /-- A single admission attempt uses the shared confidence setting. -/
 def admitWithSeed (candidate : StatisticalCandidate) (seed : Nat) :
@@ -247,7 +257,7 @@ def failedRows (horizon : Nat) (c : ValidationCounts)
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   let general :=
-    (if c.combatRejected then ["admission certification failed: invalid checkpoint, short loop, or unverified combat"] else []) ++
+    (if c.combatRejected then ["admission failed: the start point is not valid, the Adventure has a short loop, or the paused Fight could not be checked"] else []) ++
     (if c.aborted then ["a game did not finish inside the window (a Fight went on too long)"] else []) ++
     (if c.games != validationGames then [s!"only {c.games} of {validationGames} games were played"] else [])
   general ++ (List.range (horizon + 1)).filterMap fun row =>

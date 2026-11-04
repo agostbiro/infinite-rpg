@@ -105,7 +105,8 @@ validation data needs a fresh precommitted experiment.
 ## The built-in Adventure, Lafayette at Barren Hill
 
 `make validate` runs the balance check on the built-in Adventure, and the server runs it at
-start-up with the frozen seed. The server does not start if it fails. `make validate SEED=n` runs
+start-up with the frozen seed. The server does not start if it fails. The slow combat check is
+not part of it: `make certify` runs that check. `make validate SEED=n` runs
 it with another seed. Each cell gives deaths / qualifying games and the interval enclosure. The
 foes and Lafayette's build were tuned in a few rounds against the frozen seed, so these rows show
 that the check passes at three seeds, not new independent evidence.

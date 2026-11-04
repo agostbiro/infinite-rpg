@@ -24,6 +24,11 @@ root = "Cheats"
 name = "validate"
 root = "Validate"
 
+# Runs the slow combat check on the built-in Adventure. Run: make certify
+[[lean_exe]]
+name = "certify"
+root = "Certify"
+
 # Compares the exact Fight model with the simulator, for the add-mechanic skill. It takes
 # minutes, so it is outside the one-minute routine check. Run: lake exe agree
 [[lean_exe]]
