@@ -11,6 +11,11 @@ Lean verifies a bunch of [properties](#properties) of the generated adventures t
 During gameplay, the player can ask the AI dungeon master for a change in the adventure, such as replacing their sword with a flamethrower.
 Lean checks the changed adventure again, so the AI must keep it consistent and balanced, for example by giving the opponents a water shield.
 
+## Demo
+
+The [demo video](https://youtu.be/gulcJwxCdkI) (4.5 minutes) shows live gameplay: it creates a new adventure, plays it, and swaps the hero's sword for a light sabre.
+It also explains what Lean verifies and how.
+
 ## Quick Start
 
 Prerequisites: `make`, `git`, and `curl`. `make install` installs Lean.
