@@ -1,0 +1,62 @@
+name = "MarkovRPG"
+version = "0.1.0"
+defaultTargets = ["MarkovRPG", "MarkovRPGDistributions", "MarkovRPGMainTypes", "MarkovRPGCharacters", "MarkovRPGCharacterGraph", "MarkovRPGCombatState", "MarkovRPGCombat", "MarkovRPGCombatTheorems", "MarkovRPGCombatStrategies", "MarkovRPGRules", "MarkovRPGCombatExits", "MarkovRPGCombatEvents", "MarkovRPGNamedDistributions", "MarkovRPGWorkshop", "MarkovRPGAdventureProperties", "add_rules", "MarkovRPGLiveRules", "MarkovRPGScenes"]
+
+[[lean_lib]]
+name = "MarkovRPG"
+
+[[lean_lib]]
+name = "MarkovRPGDistributions"
+
+[[lean_lib]]
+name = "MarkovRPGMainTypes"
+
+[[lean_lib]]
+name = "MarkovRPGCharacters"
+
+[[lean_lib]]
+name = "MarkovRPGCharacterGraph"
+
+[[lean_lib]]
+name = "MarkovRPGCombatState"
+
+[[lean_lib]]
+name = "MarkovRPGCombat"
+
+[[lean_lib]]
+name = "MarkovRPGCombatTheorems"
+
+[[lean_lib]]
+name = "MarkovRPGCombatStrategies"
+
+[[lean_lib]]
+name = "MarkovRPGRules"
+
+[[lean_lib]]
+name = "MarkovRPGCombatExits"
+
+[[lean_lib]]
+name = "MarkovRPGCombatEvents"
+
+[[lean_lib]]
+name = "MarkovRPGNamedDistributions"
+
+[[lean_lib]]
+name = "MarkovRPGWorkshop"
+
+[[lean_lib]]
+name = "MarkovRPGAdventureProperties"
+
+[[lean_lib]]
+name = "add_rules"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.33.0"
+
+[[lean_lib]]
+name = "MarkovRPGLiveRules"
+
+[[lean_lib]]
+name = "MarkovRPGScenes"
