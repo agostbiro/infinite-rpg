@@ -357,7 +357,7 @@ def Draft.toGameAdmitted (d : Draft) : Except (List String) Game :=
 
 /-- **The only way in this code from a Draft to a Game that runs the balance check.** It runs the
 checker, then the balance check with `validationGames` games from `seed`, against the default
-curve. It does not run the slow combat check (`Probability.certify`).
+curve. It does not run the combat check (`Probability.certify`).
 If all checks pass, it returns the Game with that policy. Else it returns the errors.
 Each balance error starts with "balance:" and names the row that failed. -/
 def Draft.toGame (d : Draft) (seed : Nat) : Except (List String) Game :=

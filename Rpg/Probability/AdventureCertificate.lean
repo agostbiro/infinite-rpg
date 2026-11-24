@@ -22,19 +22,19 @@ structure CertifiedEncounter (rules : RuleSet) (hero : Being) (foes : List Being
   starts : ∀ hp ∈ entryHPs rules hero, witness.contains (fightStart rules hero hp foes)
   rows : ∀ s ∈ witness.states, witness.RowValid rules (turnOrder rules hero foes) s
 
+/-- The start state of the Fight against `foes` at each entry HP. -/
+def encounterStarts (rules : RuleSet) (hero : Being) (foes : List Being) : List FightState :=
+  (entryHPs rules hero).map fun (hp : Nat) => fightStart rules hero hp foes
+
 def certifyEncounter (rules : RuleSet) (hero : Being) (foes : List Being) :
     Option (CertifiedEncounter rules hero foes) :=
-  let cache := ((entryHPs rules hero).reverse.foldl (fun cache (hp : Nat) =>
-    ((solveCombatAnswer rules heroPolicy (turnOrder rules hero foes)
-      (fightStart rules hero hp foes)).run cache).2) [])
-  let witness : CombatWitness := ⟨cache⟩
-  have : Decidable ((∀ hp ∈ entryHPs rules hero, witness.contains (fightStart rules hero hp foes)) ∧
-      (∀ s ∈ witness.states, witness.RowValid rules (turnOrder rules hero foes) s)) := by
-    unfold CombatWitness.RowValid CombatWitness.contains Distribution.Valid
-    infer_instance
-  if h : (∀ hp ∈ entryHPs rules hero, witness.contains (fightStart rules hero hp foes)) ∧
-      (∀ s ∈ witness.states, witness.RowValid rules (turnOrder rules hero foes) s) then
-    some ⟨witness,h.1,h.2⟩
+  let order := turnOrder rules hero foes
+  let starts := encounterStarts rules hero foes
+  let witness : CombatWitness := ⟨solveFight (fastRound rules order) starts⟩
+  if h : witness.check rules order starts = true then
+    some ⟨witness,
+      fun hp hm => (CombatWitness.check_sound h).1 _ (List.mem_map.mpr ⟨hp, hm, rfl⟩),
+      (CombatWitness.check_sound h).2⟩
   else none
 
 def CertifiedEncounter.atHP {rules : RuleSet} {hero : Being} {foes : List Being}
@@ -75,5 +75,94 @@ theorem CertifiedAdventureCombat.finishes_with_high_probability {a : AdventureDe
     ∃ n, (combatProcess a.rules (turnOrder a.rules a.hero foes)).unfinished n
       (fightStart a.rules a.hero hp foes) ≤ delta :=
   c.ends_almostSurely foes hf hp lo hi delta hd
+
+/-! ## Exit laws
+
+The exit law of a Fight is the chance of each result (a win with each HP left, or death) for one
+entry HP. An exact model of the whole Adventure can use it in place of the Fight. -/
+
+/-- The exit law of the Fight against `foes` when the Character enters it with `hp` HP. -/
+def CertifiedEncounter.exitLaw {rules : RuleSet} {hero : Being} {foes : List Being}
+    (c : CertifiedEncounter rules hero foes) (hp : Nat) : Distribution CombatResult :=
+  (c.witness.answer (fightStart rules hero hp foes)).outcomes
+
+/-- The exit law at an entry HP is the answer of the checked Fight at that HP. -/
+theorem CertifiedEncounter.exitLaw_eq {rules : RuleSet} {hero : Being} {foes : List Being}
+    (c : CertifiedEncounter rules hero foes) (hp : Nat) (hi : hp ≤ rules.maxHP hero) :
+    c.exitLaw hp = (c.atHP hp (by omega) (by omega)).outcomes := by
+  simp [CertifiedEncounter.exitLaw, CertifiedFight.outcomes, CertifiedEncounter.atHP]
+
+/-- The exit law is the exact law of the Fight. For each result and each number of rounds `n`,
+the chance to end with that result within `n` rounds is at most the exit law's chance. The
+exit law's chance is at most that plus the chance that the Fight is not over after `n` rounds.
+The Fight ends with probability one, so this last chance goes to zero. -/
+theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes : List Being}
+    (c : CertifiedEncounter rules hero foes) (hp : Nat) (hi : hp ≤ rules.maxHP hero)
+    (event : CombatResult → Bool) (n : Nat) :
+    let p := combatProcess rules (turnOrder rules hero foes)
+    let start := fightStart rules hero hp foes
+    -- The chance to end with the event within `n` rounds is at most the exit law's chance.
+    p.eventBy (fun s => event (terminalResult s)) n start ≤ (c.exitLaw hp).mass event ∧
+    -- The exit law's chance is at most that chance plus the chance to be unfinished.
+    (c.exitLaw hp).mass event ≤
+      p.eventBy (fun s => event (terminalResult s)) n start + p.unfinished n start := by
+  intro p start
+  let f := c.atHP hp (by omega) (by omega)
+  have h := (f.outcomeCertificate event).finite_error n start f.checked.1
+  have same := fastProcess_sameOdds rules (turnOrder rules hero foes)
+  rw [same.eventBy_eq, same.unfinished_eq] at h
+  rw [c.exitLaw_eq hp hi]
+  exact h
+
+/-- The exit law is a probability distribution. -/
+theorem CertifiedEncounter.exitLaw_valid {rules : RuleSet} {hero : Being} {foes : List Being}
+    (c : CertifiedEncounter rules hero foes) (hp : Nat) (hi : hp ≤ rules.maxHP hero) :
+    (c.exitLaw hp).Valid := by
+  rw [c.exitLaw_eq hp hi]
+  exact CertifiedFight.outcomes_valid _
+
+/-- The exit law gives no weight to `stalled`: every Fight ends in a win or a death. -/
+theorem CertifiedEncounter.exitLaw_stalled {rules : RuleSet} {hero : Being} {foes : List Being}
+    (c : CertifiedEncounter rules hero foes) (hp : Nat) (hi : hp ≤ rules.maxHP hero) :
+    (c.exitLaw hp).mass (· == .stalled) = 0 := by
+  let p := combatProcess rules (turnOrder rules hero foes)
+  let start := fightStart rules hero hp foes
+  -- No end state has the result `stalled`, so its chance within `n` rounds is zero.
+  have never : ∀ n s, p.eventBy (fun s => terminalResult s == .stalled) n s = 0 := by
+    have hz : ∀ s, (terminalResult s == .stalled) = false := by
+      intro s; unfold terminalResult; split <;> rfl
+    intro n
+    induction n with
+    | zero => intro s; simp [StoppingProcess.eventBy, hz]
+    | succ n ih =>
+      intro s
+      simp only [StoppingProcess.eventBy]
+      split
+      · simp [hz]
+      · have zero : p.eventBy (fun s => terminalResult s == .stalled) n = fun _ => 0 := funext ih
+        rw [zero]
+        exact Distribution.expect_const _ (p.valid _) 0
+  have lower := Distribution.mass_bounds _ (c.exitLaw_valid hp hi) (· == .stalled)
+  -- The chance is at most every positive number, so it is zero.
+  have upper : ∀ delta : Rat, 0 < delta → (c.exitLaw hp).mass (· == .stalled) ≤ delta := by
+    intro delta hd
+    let f := c.atHP hp (by omega) (by omega)
+    have h := (c.exitLaw_exact hp hi (· == .stalled) (f.stopping.horizon start delta)).2
+    have tail := f.finishes_with_high_probability delta hd
+    rw [never, Rat.zero_add] at h
+    exact Rat.le_trans h tail
+  have hle : (c.exitLaw hp).mass (· == .stalled) ≤ 0 := by
+    apply Classical.byContradiction
+    intro hn
+    have pos : 0 < (c.exitLaw hp).mass (· == .stalled) := Rat.not_le.mp hn
+    have half := upper ((c.exitLaw hp).mass (· == .stalled) / 2) (by grind)
+    grind
+  exact Rat.le_antisymm hle lower.1
+
+/-- The exit law of a story Fight in a certified Adventure, at entry HP `hp`. -/
+def CertifiedAdventureCombat.exitLaw {a : AdventureDefinition} (c : CertifiedAdventureCombat a)
+    (foes : List Being) (hf : foes ∈ encounterFoes a.story) (hp : Nat) :
+    Distribution CombatResult :=
+  (c.encounter foes hf).exitLaw hp
 
 end Rpg.Probability

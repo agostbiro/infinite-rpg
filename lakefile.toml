@@ -58,3 +58,10 @@ root = "ChangeCheck"
 [[lean_exe]]
 name = "balance-study"
 root = "BalanceStudy"
+
+# Times the combat solver and its checker on each Fight of the built-in Adventure.
+# Run: lake exe profile-combat (add --compare to compare with the old solver on one-foe Fights)
+[[lean_exe]]
+name = "profile-combat"
+srcDir = "experiments/profile"
+root = "ProfileCombat"

@@ -1,5 +1,8 @@
 import Rpg.Engine
 import Rpg.Probability.Distribution
+import Std.Data.HashMap.Basic
+import Std.Data.HashSet.Basic
+import Rpg.Probability.Parallel
 
 /-!
 # Exact Fight odds
@@ -93,6 +96,11 @@ abbrev Weighted := List (CombatResult × Rat)
 def Weighted.scale (c : Rat) (w : Weighted) : Weighted :=
   w.map fun (x, p) => (x, c * p)
 
+/-- Add `c` times the weights of `v` to `w`, and merge equal results. A Fight has few results,
+so the lists stay short. -/
+def Weighted.addScaled (w : Weighted) (c : Rat) (v : Weighted) : Weighted :=
+  v.foldl (fun acc (x, p) => addWeight x (c * p) acc) w
+
 /-- Solve the linear system `m · x = b` by Gauss-Jordan elimination. Each `x` and `b` is a list of
 weighted results. `m` must have an inverse. Rows with no pivot keep their `b`. -/
 def solveLinear (m : Array (Array Rat)) (b : Array Weighted) : Array Weighted := Id.run do
@@ -115,7 +123,7 @@ def solveLinear (m : Array (Array Rat)) (b : Array Weighted) : Array Weighted :=
       if r != k && f != 0 then
         let row := m[k]!
         m := m.set! r ((Array.range n).map fun j => m[r]![j]! - f * row[j]!)
-        b := b.set! r (b[r]! ++ b[k]!.scale (-f))
+        b := b.set! r (b[r]!.addScaled (-f) b[k]!)
   return b
 
 /-- The results of each state in a group.
@@ -150,23 +158,39 @@ structure CombatAnswer where
   outcomes : Distribution CombatResult
   rounds : Rat
 
-abbrev CombatCache := List (FightState × CombatAnswer)
+/-- A small number for a maneuver. -/
+def _root_.Rpg.Maneuver.index : Maneuver → Nat
+  | .attack => 0
+  | .allOutAttack => 1
+  | .allOutDefense => 2
+
+/-- A number made from the HP and the last maneuver of each Fighter. Equal states get equal
+numbers. It is used to sort states and to hash them. Different states can get the same number. -/
+def stateKey (s : FightState) : Nat :=
+  let code (f : Fighter) : Nat := ((f.hp + 512).toNat % 1024) * 4 + f.maneuver.index
+  s.foes.foldl (fun acc f => acc * 4096 + code f) (code s.hero)
+
+instance : Hashable FightState := ⟨fun s => hash (stateKey s)⟩
+
+/-- The solved states, with their answers. -/
+abbrev CombatCache := Std.HashMap FightState CombatAnswer
 
 /-- Reuse the elimination algorithm for a single scalar coordinate. The marker is
 only a coordinate label; these weights are not a probability distribution. -/
 def solveScalar (m : Array (Array Rat)) (b : Array Rat) : Array Rat :=
   (solveLinear m (b.map fun x => [(CombatResult.died, x)])).map fun row => (row.map Prod.snd).sum
 
-/-- Generate candidate answers by HP recursion and three-state elimination.
-Correctness of this producer is not trusted by the certificate checker. -/
-def solveCombatAnswer (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
-    (order : List Actor) (s : FightState) : StateM CombatCache CombatAnswer := do
-  if !s.hero.alive then return ⟨pure .died, 0⟩
-  if s.foes.all (!·.alive) then return ⟨pure (.won s.hero.hp), 0⟩
-  if let some entry := (← get).find? (fun e => decide (e.1 = s)) then
-    return entry.2
-  let group := maneuverStates s
-  let rounds := group.map (roundDistribution rules policy order)
+/-- The answer that the solver knows for `w`: an ended Fight has its result, and a state with
+no answer in `cache` gets `stalled`. -/
+def knownAnswer (cache : CombatCache) (w : FightState) : CombatAnswer :=
+  if !w.hero.alive then ⟨pure .died, 0⟩
+  else if w.foes.all (!·.alive) then ⟨pure (.won w.hero.hp), 0⟩
+  else cache.getD w ⟨pure .stalled, 0⟩
+
+/-- Solve one group. `rounds` are the rounds of the states of `group`, in the same order.
+`exitAnswer` gives the answer of each state outside the group that a round can reach. -/
+def groupAnswers (group : List FightState) (rounds : List (Distribution FightState))
+    (exitAnswer : FightState → CombatAnswer) : List CombatAnswer := Id.run do
   let mut exits : Array Weighted := #[]
   let mut costs : Array Rat := #[]
   for d in rounds do
@@ -174,11 +198,8 @@ def solveCombatAnswer (rules : RuleSet) (policy : FightState → Distribution (M
     let mut cost : Rat := 1
     for (w, p) in d.entries do
       if p ≠ 0 ∧ w ∉ group then
-        -- A malformed transition can produce a candidate, but cannot pass the
-        -- independently checked closure and expected-duration inequalities.
-        let r ← if _h : livingHP w < livingHP s then solveCombatAnswer rules policy order w
-          else pure ⟨pure .stalled, 0⟩
-        acc := acc ++ r.outcomes.entries.map fun (o, q) => (o, p * q)
+        let r := exitAnswer w
+        acc := acc.addScaled p r.outcomes.entries
         cost := cost + p * r.rounds
     exits := exits.push acc
     costs := costs.push cost
@@ -195,17 +216,86 @@ def solveCombatAnswer (rules : RuleSet) (policy : FightState → Distribution (M
   let matrix := (Array.range n).map fun i => (Array.range n).map fun j =>
     (if i = j then 1 else 0) - stay i j
   let budgets := solveScalar matrix costs
-  let solutions := answers.zip budgets.toList |>.map fun (outcomes, rounds) => ({outcomes, rounds} : CombatAnswer)
+  return answers.zip budgets.toList |>.map fun (outcomes, rounds) => ({outcomes, rounds} : CombatAnswer)
+
+/-- Generate candidate answers by HP recursion and three-state elimination. `round` gives the
+odds of one round. Correctness of this producer is not trusted by the certificate checker. -/
+def solveCombatAnswer (round : FightState → Distribution FightState) (s : FightState) :
+    StateM CombatCache CombatAnswer := do
+  if !s.hero.alive then return ⟨pure .died, 0⟩
+  if s.foes.all (!·.alive) then return ⟨pure (.won s.hero.hp), 0⟩
+  if let some answer := (← get)[s]? then
+    return answer
+  let group := maneuverStates s
+  let rounds := group.map round
+  for d in rounds do
+    for (w, p) in d.entries do
+      if p ≠ 0 ∧ w ∉ group then
+        -- A malformed transition can produce a candidate, but cannot pass the
+        -- independently checked closure and expected-duration inequalities.
+        if _h : livingHP w < livingHP s then
+          discard <| solveCombatAnswer round w
+  let cache ← get
+  let solutions := groupAnswers group rounds fun w =>
+    if livingHP w < livingHP s then knownAnswer cache w else ⟨pure .stalled, 0⟩
   for (u, a) in group.zip solutions do
-    modify ((u, a) :: ·)
+    modify (·.insert u a)
   return solutions.headD ⟨pure .stalled, 0⟩
 termination_by livingHP s
+
+/-- The state that names the group of `s`: the same state, with the Character's last maneuver
+set to Attack. -/
+def groupName (s : FightState) : FightState :=
+  {s with hero := {s.hero with maneuver := .attack}}
+
+/-- Generate candidate answers for every state that the Fight can reach from `starts`, on many
+cores. First it finds each group that the Fight can reach, with the rounds of its states. Then it
+solves the groups in order of their total HP, from low to high. The groups with the same total
+HP do not depend on each other, so they are solved at the same time.
+Correctness of this producer is not trusted by the certificate checker. -/
+def solveFight (round : FightState → Distribution FightState) (starts : List FightState) :
+    CombatCache := Id.run do
+  let mut seen : Std.HashSet FightState := {}
+  let mut frontier : List FightState := []
+  for s in starts do
+    let g := groupName s
+    if !s.over && !seen.contains g then
+      seen := seen.insert g
+      frontier := g :: frontier
+  -- Find the groups that the Fight can reach, and the round of each of their states.
+  let mut rounds : Std.HashMap FightState (Distribution FightState) := {}
+  let mut levels : Std.HashMap Nat (List FightState) := {}
+  while !frontier.isEmpty do
+    let found := parallelMap (fun g => (maneuverStates g).map fun u => (u, round u)) frontier
+    let mut next : List FightState := []
+    for (g, members) in frontier.zip found do
+      levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
+      for (u, d) in members do
+        rounds := rounds.insert u d
+        for (w, _) in d.entries do
+          let r := groupName w
+          if !w.over && !seen.contains r then
+            seen := seen.insert r
+            next := r :: next
+    frontier := next
+  -- Solve the groups, from the lowest total HP up.
+  let mut cache : CombatCache := {}
+  for (_, groups) in levels.toList.mergeSort (fun a b => a.1 ≤ b.1) do
+    let known := cache
+    let solved := parallelMap (fun g =>
+      let group := maneuverStates g
+      group.zip (groupAnswers group (group.map fun u => rounds.getD u (pure u)) (knownAnswer known)))
+      groups
+    for members in solved do
+      for (u, a) in members do
+        cache := cache.insert u a
+  return cache
 
 /-- Compatibility entry point for the candidate solver. Use certification when a
 probabilistic guarantee is required. -/
 def solveCombat (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
     (order : List Actor) (s : FightState) : StateM CombatCache (Distribution CombatResult) := do
-  return (← solveCombatAnswer rules policy order s).outcomes
+  return (← solveCombatAnswer (roundDistribution rules policy order) s).outcomes
 
 /-- Unverified candidate odds for a Character at `hp` against `foes`.
 Use `checkedCombat` or a `CertifiedFight` for probability guarantees. -/
@@ -213,7 +303,7 @@ def combatDistributionWith (rules : RuleSet) (policy : FightState → Distributi
     (hero : Being) (hp : Int) (foes : List Being) : Distribution CombatResult :=
   let start : FightState :=
     { hero := { being := hero, hp }, foes := foes.map fun f => { being := f, hp := rules.maxHP f } }
-  (solveCombat rules policy (turnOrder rules hero foes) start).run' []
+  (solveCombat rules policy (turnOrder rules hero foes) start).run' {}
 
 /-- Unverified candidate odds for `heroPolicy`; kept for producer diagnostics. -/
 def combatDistribution (rules : RuleSet) (hero : Being) (hp : Int) (foes : List Being) :

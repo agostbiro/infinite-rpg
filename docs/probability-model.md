@@ -57,6 +57,9 @@ lose HP is `stalled`. It memoizes solved states. There is no imposed combat roun
 With the policy "always Attack" (`attackOnlyPolicy`), the solver gave exactly the odds of the
 old solver on the Fights of the earlier built-in Adventure (now the test Adventure). This was a one-off check in the merge, not a build test. Exact rational state enumeration is expensive: one such
 Fight takes minutes in the interpreter. Do not assume large fights are cheap to analyze.
+The combat check compiles the solver and checks a faster round (`fastRound`) that has the same
+odds as the spec round (`fastRound_expect`). On Lafayette all Fights at all entry HPs take about
+5 seconds with 14 cores. See [exact exit laws](exact-exit-laws.md).
 
 ## Meaning of `balanced`
 

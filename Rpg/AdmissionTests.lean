@@ -30,10 +30,17 @@ example : checkCharacter {rules with maxHP := fun _ => 0} hero ≠ [] := by deci
 -- A certificate for full HP alone therefore cannot replace encounter-wide admission.
 #guard
   let start := fightStart rules hero 2 [foe]
-  let (_,cache) := (solveCombatAnswer rules heroPolicy (turnOrder rules hero [foe]) start).run []
+  let (_,cache) := (solveCombatAnswer (fastRound rules (turnOrder rules hero [foe])) start).run {}
   !(decide ((CombatWitness.mk cache).contains (fightStart rules hero 1 [foe])))
 
 #guard (certifyEncounter rules hero [foe]).isSome
+-- The exit law at each entry HP is a probability law with no weight on `stalled`, and a
+-- Character who enters with 0 HP is already dead.
+#guard match certifyEncounter rules hero [foe] with
+  | some c => (entryHPs rules hero).all (fun hp =>
+      (c.exitLaw hp).mass (fun _ => true) == 1 && (c.exitLaw hp).mass (· == .stalled) == 0) &&
+      (c.exitLaw 0).mass (· == .died) == 1
+  | none => false
 #guard (certifyAdventureCombat definition).isSome
 
 -- End-to-end positive admission includes a real stochastic fight. Seven safe

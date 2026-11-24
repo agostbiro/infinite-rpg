@@ -89,9 +89,10 @@ cheats:
 validate:
 	lake exe validate $(if $(SEED),--seed $(SEED),)
 
-# Run the slow combat check on the built-in Adventure: each Fight must end with probability one, at
-# each starting HP. The server does not run this check, because it takes a long time (more than 20
-# minutes on Lafayette). It builds the value that the theorem `admitted_combats` is about.
+# Run the combat check on the built-in Adventure: each Fight must end with probability one, at
+# each starting HP. It also prints the exact exit law of each Fight at full HP. It takes about 5
+# seconds on Lafayette with 14 cores (docs/exact-exit-laws.md). The server does not run it yet.
+# It builds the value that the theorem `admitted_combats` is about.
 certify:
 	lake exe certify
 
