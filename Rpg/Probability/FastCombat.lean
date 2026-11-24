@@ -104,6 +104,26 @@ def fastRound (rules : RuleSet) (order : List Actor) (s : FightState) : Distribu
       Prod.fst <$> heroTurnWith (fastAttack rules) s m t).sortCollect stateKey
   (mine.bind fun s => fastFoes rules s (afterCharacter order)).sortCollect stateKey
 
+/-- An upper estimate of the number of results that `fastRound` makes from `s` before it merges
+them. The solver uses it to reject a Fight that is too large before it computes the round. No
+proof uses it. -/
+def roundSizeEstimate (rules : RuleSet) (order : List Actor) (s : FightState) : Nat :=
+  let injuries (a : Actor) (att : Fighter) (b : Actor) (dfn : Fighter) : Nat :=
+    max 1 (injuryDistribution rules a att b dfn).entries.length
+  let living := s.livingFoes
+  -- The Character's turn: one branch for each maneuver and target of `heroPolicy`.
+  let heroBranch (m : Maneuver) (t : Nat) : Nat :=
+    let hero := {s.hero with maneuver := m}
+    if !m.attacks then 1
+    else if hero.being.weapon.spray then
+      living.foldl (fun acc i => acc * injuries none hero (some i) (s.foes.getD i hero)) 1
+    else injuries none hero (some t) (s.foes.getD t hero)
+  let heroPart := ((heroPolicy s).entries.map fun ((m, t), _) => heroBranch m t).sum
+  -- The turns of the Creatures: each one multiplies the results by its injuries, at most.
+  let foePart := (order.filterMap id).foldl (fun acc i =>
+    if i ∈ living then acc * injuries (some i) (s.foes.getD i s.hero) none s.hero else acc) 1
+  max 1 heroPart * foePart
+
 /-- One round of the fast process. An ended Fight stays as it is. -/
 def fastStep (rules : RuleSet) (order : List Actor) (s : FightState) : Distribution FightState :=
   if s.over then pure s else fastRound rules order s

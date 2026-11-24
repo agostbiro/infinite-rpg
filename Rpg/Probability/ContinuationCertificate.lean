@@ -52,9 +52,13 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
   starts : ∀ e ∈ (remainingDistribution rules f).entries, witness.contains e.1
   rows : ∀ s ∈ witness.states, witness.RowValid rules f.order s
 
+/-- Check a paused Fight. A Fight whose round is too large for the solver's budget is rejected
+before the rest of the paused round is computed. -/
 def certifyContinuation (rules : RuleSet) (f : FightPhase) : Option (CertifiedContinuation rules f) :=
+  if roundSizeEstimate rules f.order f.state > ({} : SolveBudget).roundEntries then none else
   let starts := (remainingDistribution rules f).entries.map Prod.fst
-  let w : CombatWitness := ⟨solveFight (fastRound rules f.order) starts⟩
+  let w : CombatWitness :=
+    ⟨solveFight (fastRound rules f.order) starts (roundSizeEstimate rules f.order)⟩
   if h : w.check rules f.order starts = true then
     some ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),
       (CombatWitness.check_sound h).2⟩

@@ -73,6 +73,21 @@ private def twoFoesOrder := turnOrder {} (sturdy "Hero") [sturdy "A", sturdy "B"
     | none => false) &&
   (CombatWitness.mk byLevel).check {} twoFoesOrder [start]
 
+-- Batches keep at most 2 items and a cost of at most 5, except for one item alone.
+#guard batchesBy id 5 2 [1, 2, 3, 4, 10] == [[1, 2], [3], [4], [10]]
+
+/-- A Fight in which the Character sprays four Creatures with a flamethrower. -/
+private def sprayFour : FightState :=
+  {hero := {being := {sturdy "Hero" with weapon := .flamethrower}, hp := 4},
+   foes := ["A", "B", "C", "D"].map fun n => {being := sturdy n, hp := 4}}
+
+private def sprayFourOrder :=
+  turnOrder {} sprayFour.hero.being (sprayFour.foes.map (·.being))
+
+-- One round of this Fight is too large, so it is rejected before any round is computed.
+#guard roundSizeEstimate {} sprayFourOrder sprayFour > ({} : SolveBudget).roundEntries
+#guard (certifyFight {} sprayFourOrder sprayFour).isNone
+
 -- Bad output is rejected: the fast round is not the round with no attacks at all.
 #guard !decide ((fastRound {} twoFoesOrder (twoFoes .attack 4)).sameWeights
   (pure (twoFoes .attack 4)))

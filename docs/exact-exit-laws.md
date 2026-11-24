@@ -53,16 +53,32 @@ experiments/profile/exit-laws-2d4b8cf` checks that the new exit laws are the sam
 weight. (A program at `2d4b8cf` makes the files with the same text form as `--dump`.)
 
 **Larger Fights.** The cost grows fast with the number of Creatures: one round with 4 Creatures
-takes about 25 times as long as one with 2. `solveFight` has a budget (`SolveBudget`: 60,000
-states and 1.5 million round results in memory, about 3 times the largest Fight of Lafayette).
-Above it, the solver gives up, the check fails, and the Fight is rejected. That is sound, and it
-keeps memory below 400 MB. Measured with `lake exe profile-combat --grenadiers N`:
+takes about 25 times as long as one with 2. A weapon that hits every Creature (the flamethrower)
+grows it more: each round makes one result for each mix of injuries. `solveFight` has a budget
+(`SolveBudget`). Above it, the solver gives up, the check fails, and the Fight is rejected. That
+is sound, and it keeps memory below 400 MB.
+
+* Before it computes any round, the solver estimates how many results the round makes before
+  they are merged (`roundSizeEstimate`). It rejects the Fight if one round is above 1 million,
+  and it starts rounds together only up to 4 million estimated results. The largest estimate
+  on Lafayette is 1,421. `certifyContinuation` checks the paused round the same way before it
+  computes it.
+* It also stops at 60,000 states or 1.5 million round results in memory, about 3 times the
+  largest Fight of Lafayette.
+
+Measured with `lake exe profile-combat --grenadiers N` (add `--flamethrower` to give Lafayette
+a flamethrower):
 
 | Fight | 14 cores | 4 cores | Memory | Result |
 | - | -: | -: | -: | - |
 | 2 Grenadiers, paused | 1.2 s | | 180 MB | certified |
 | 3 Grenadiers, paused | 5.8 s | | 340 MB | rejected (over budget) |
 | 4 Grenadiers, paused | 18 s | 30 s | 390 MB | rejected (over budget) |
+| 2 Grenadiers, flamethrower, paused | 11 s | | 360 MB | rejected (over budget) |
+| 3 or 4 Grenadiers, flamethrower | under 0.1 s | | 73 MB | rejected (round estimate 1.9 million and 171 million) |
+
+With no budget, the Fight against 2 Grenadiers with a flamethrower has 13,959 states and 4.2
+million round results, and the solver alone takes 120 s and 815 MB.
 
 Without the budget, a paused Fight with 4 Creatures ran out of memory and stopped the server
 process. Before this change such a Fight never finished at all. To certify Fights with 3 or more

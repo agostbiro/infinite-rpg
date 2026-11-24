@@ -134,7 +134,8 @@ structure CertifiedFight (rules : RuleSet) (order : List Actor) (start : FightSt
 
 def certifyFight (rules : RuleSet) (order : List Actor) (start : FightState) :
     Option (CertifiedFight rules order start) :=
-  let witness : CombatWitness := ⟨solveFight (fastRound rules order) [start]⟩
+  let witness : CombatWitness :=
+    ⟨solveFight (fastRound rules order) [start] (roundSizeEstimate rules order)⟩
   if h : witness.check rules order [start] = true then
     some ⟨witness, (CombatWitness.check_sound h).1 start (by simp), (CombatWitness.check_sound h).2⟩
   else none

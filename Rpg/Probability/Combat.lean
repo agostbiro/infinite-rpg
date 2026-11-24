@@ -264,13 +264,29 @@ structure SolveBudget where
   states : Nat := 60000
   /-- The most round results that the solver keeps in memory at one time. -/
   entries : Nat := 1500000
+  /-- The most results that one round may make before they are merged, by the estimate that
+  the solver gets. A larger round is not computed. -/
+  roundEntries : Nat := 1000000
+  /-- The most estimated results of the rounds that the solver computes at the same time. -/
+  batchEntries : Nat := 4000000
+
+/-- Split `xs` into batches, in order. A batch has at most `count` items, and the sum of `cost`
+over a batch is at most `limit`, unless the batch has only one item. -/
+def batchesBy (cost : α → Nat) (limit count : Nat) (xs : List α) : List (List α) :=
+  let (done, current, _) := xs.foldl (fun (done, current, total) x =>
+    let c := cost x
+    if !current.isEmpty && (total + c > limit || current.length ≥ count) then
+      (current.reverse :: done, [x], c)
+    else (done, x :: current, total + c)) ([], [], 0)
+  (if current.isEmpty then done else current.reverse :: done).reverse
 
 /-- Generate candidate answers for every state that the Fight can reach from `starts`, on many
 cores. It finds the reachable groups and their rounds, then solves the groups by total HP, from
-low to high, with each level on many cores. The certificate checker does not trust this
-producer. -/
+low to high, with each level on many cores. `size` estimates the results of a round before it is
+computed, so that a Fight that is too large is rejected before the work. The certificate checker
+does not trust this producer. -/
 def solveFight (round : FightState → Distribution FightState) (starts : List FightState)
-    (budget : SolveBudget := {}) : CombatCache := Id.run do
+    (size : FightState → Nat := fun _ => 0) (budget : SolveBudget := {}) : CombatCache := Id.run do
   let mut seen : Std.HashSet FightState := {}
   let mut frontier : List FightState := []
   for s in starts do
@@ -289,9 +305,14 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
     if frontier.isEmpty then break
     let mut next : List FightState := []
     -- Work in batches, so that a Fight that is too large stops before it uses much memory.
-    for batch in chunksOf 48 frontier do
+    -- Estimate the rounds of each group before any of them is computed.
+    let sizes := parallelMap (fun g => (maneuverStates g).map size) frontier
+    if sizes.any (·.any (· > budget.roundEntries)) then return {}
+    let sized := frontier.zip (sizes.map List.sum)
+    for batch in batchesBy Prod.snd budget.batchEntries 48 sized do
       -- Give up when the Fight is too large. Each group has 3 states.
       if 3 * seen.size > budget.states || kept > budget.entries then return {}
+      let batch := batch.map Prod.fst
       let found := parallelMap (fun g => (maneuverStates g).map fun u => (u, round u)) batch
       for (g, members) in batch.zip found do
         levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
