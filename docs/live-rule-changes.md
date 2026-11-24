@@ -230,8 +230,9 @@ local counter adjustment followed by fresh admission. `change-check --timing` me
 sampling and exact interval comparison separately; `--tuning` screens a too-strong
 counter and verifies that a bounded variant passes without changing the gift.
 
-`tests/live_change_unsatisfiable.py` starts its own test servers (port 8097 by default) with
-recorded replies that can never pass: an unkillable hero, a reply that never parses, a cut-off
+`tests/live_change_unsatisfiable.py` starts its own test servers, one for each case, and runs
+the cases at the same time (ports 8100 to 8109 by default). Each server has recorded replies
+that can never pass: an unkillable hero, a reply that never parses, a cut-off
 reply, a missing counter-rule, a changed gift, an unsupported mechanic, an API refusal, an API
 failure, and the time limit. It also tries a Wish whose replies never parse. Each one must end
 in a fixed time as failed or refused, say why, and leave the game unchanged. Then the Player

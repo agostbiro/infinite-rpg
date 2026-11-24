@@ -97,7 +97,7 @@ run_cmd do
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--final', action='store_true',
-                        help='After freezing the mechanic, run held-out admission and Linux replay.')
+                        help='After freezing the mechanic, also run held-out admission.')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[4]
     start = time.monotonic()
@@ -114,16 +114,14 @@ def main():
         if args.final:
             run_step('Compiled held-out admission',
                      ['.lake/build/bin/screen', '--validation'], root, deadline)
-            if sys.platform.startswith('linux'):
-                run_step('Isolated kernel replay', ['lake', 'check'], root, deadline)
-            else:
-                print('PENDING: isolated kernel replay requires Linux; it was not run.', flush=True)
         if source_digest(root) != before:
             raise CheckFailure('INCOMPLETE: source inputs changed during validation')
         elapsed = time.monotonic() - start
         if elapsed > CHECK_SECONDS:
             raise CheckFailure('INCOMPLETE: shared deadline exceeded', 124)
         print(f'\nLOCAL CHECKS PASSED in {elapsed:.2f}s; exact combat enumeration was not run.')
+        if args.final:
+            print('PENDING: kernel replay and Comparator. Run `make check comparator` (Linux only).')
         return 0
     except CheckFailure as error:
         print(f'\n{error}; elapsed={time.monotonic() - start:.2f}s', file=sys.stderr)

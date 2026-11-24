@@ -1,5 +1,5 @@
 import Rpg.EventGraph
-import Lean
+import Lean.Data.Json
 
 /-!
 # World maps

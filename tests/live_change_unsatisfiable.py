@@ -11,17 +11,23 @@ fresh server on its own port, starts the built-in Adventure, and asks for a chan
 
 A last case does the same for a Wish whose replies never parse.
 
+The cases run at the same time, each with its own server on its own port.
+
 Build first with `lake build rpg`. Run from the repository folder:
     python3 tests/live_change_unsatisfiable.py [PORT]
-The default port is 8097. The test stops every server it starts.
+The cases use the ports from PORT (default 8100) up, one port for each case. The test stops every
+server it starts.
 """
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -30,18 +36,21 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "fake-api"))
 from make_fixtures import stream  # noqa: E402
 
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8097
+PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8100
 BASE = f"http://127.0.0.1:{PORT}"
 # `RPG_BINARY` can name another build of the server, such as an older one.
 BINARY = os.environ.get("RPG_BINARY", os.path.join(".lake", "build", "bin", "rpg"))
 # The most proposals for one change (`maxChangeCalls` in Main.lean).
 MAX_CALLS = 6
+# The most tries for one Wish (`maxWishAttempts` in Main.lean).
+MAX_WISH_ATTEMPTS = 5
 
 
-def request(path, body=None):
-    """Send a GET (no body) or a POST (a JSON body). Returns the status and the JSON view."""
+def request(path, body=None, base=None):
+    """Send a GET (no body) or a POST (a JSON body) to `base` (default BASE).
+    Returns the status and the JSON view."""
     data = None if body is None else json.dumps(body).encode()
-    req = Request(BASE + path, data=data, headers={"Content-Type": "application/json"})
+    req = Request((base or BASE) + path, data=data, headers={"Content-Type": "application/json"})
     try:
         with urlopen(req, timeout=20) as response:
             return response.status, json.load(response)
@@ -56,11 +65,11 @@ def checkpoint(view):
              "environment", "worldRules")}
 
 
-def wait_ended(seconds):
+def wait_ended(seconds, base=None):
     """Poll until the DM stops. Returns the last view and the time it took."""
     started = time.monotonic()
     while time.monotonic() - started < seconds:
-        _, view = request("/api/view")
+        _, view = request("/api/view", base=base)
         if view["generation"]["state"] != "running":
             return view, time.monotonic() - started
         time.sleep(0.25)
@@ -68,15 +77,21 @@ def wait_ended(seconds):
 
 
 class Server:
-    """A fresh test server that reads recorded replies from `folder`."""
+    """A fresh test server on `port` (default PORT) that reads recorded replies from `folder`."""
 
-    def __init__(self, folder, limit_ms=None):
+    def __init__(self, folder, limit_ms=None, port=None):
+        port = port or PORT
+        self.base = f"http://127.0.0.1:{port}"
+        # Refuse a port that is in use, so the test never talks to another server.
+        with socket.socket() as probe:
+            if probe.connect_ex(("127.0.0.1", port)) == 0:
+                raise AssertionError(f"Port {port} is in use. Pass another first port: PORT")
         env = dict(os.environ, RPG_FAKE_API=folder)
         env.pop("ANTHROPIC_API_KEY", None)
         if limit_ms is not None:
             env["RPG_CHANGE_LIMIT_MS"] = str(limit_ms)
         self.log = tempfile.TemporaryFile()
-        self.proc = subprocess.Popen([BINARY, "--port", str(PORT), "--seed", "7"], env=env,
+        self.proc = subprocess.Popen([BINARY, "--port", str(port), "--seed", "7"], env=env,
                                      stdout=self.log, stderr=subprocess.STDOUT)
 
     def __enter__(self):
@@ -86,7 +101,7 @@ class Server:
                 self.log.seek(0)
                 raise AssertionError("The server stopped: " + self.log.read().decode())
             try:
-                request("/api/view")
+                request("/api/view", base=self.base)
                 return self
             except (URLError, ConnectionError):
                 time.sleep(0.2)
@@ -167,19 +182,22 @@ def proposals(view):
     return max(numbers, default=0)
 
 
-def run_change_case(name, files, state, text, error, most, limit_ms):
+def run_change_case(port, name, files, state, text, error, most, limit_ms):
+    """Run one case of CASES on a fresh server on `port`."""
     with tempfile.TemporaryDirectory() as folder:
         for fixture, body in files.items():
             with open(os.path.join(folder, fixture + ".sse"), "w") as f:
                 f.write(body)
-        with Server(folder, limit_ms):
-            code, before = request("/api/input", "begin")
+        with Server(folder, limit_ms, port) as server:
+            base = server.base
+            code, before = request("/api/input", "begin", base)
             assert code == 200 and before["canChange"], (name, before.get("error"))
-            code, working = request("/api/change", {"wish": "Make me unkillable"})
+            code, working = request("/api/change", {"wish": "Make me unkillable"}, base)
             assert code == 200 and working["generation"]["state"] == "running", name
             # Each proposal waits 1.5 seconds for its recorded reply, so 6 proposals take about 10.
-            bound = 4 if limit_ms else 60
-            view, took = wait_ended(bound)
+            # The other cases run at the same time and use the CPU, so the bound has a margin.
+            bound = 8 if limit_ms else 60
+            view, took = wait_ended(bound, base)
             gen = view["generation"]
             last = gen["steps"][-1]["text"] if gen["steps"] else ""
             assert gen["mode"] == "change", (name, gen)
@@ -193,42 +211,53 @@ def run_change_case(name, files, state, text, error, most, limit_ms):
             assert checkpoint(view) == checkpoint(before), f"{name}: the game changed"
 
             # The Player can play on. The failed change stays on screen until Dismiss.
-            code, moved = request("/api/input", before["inputs"][0])
+            code, moved = request("/api/input", before["inputs"][0], base)
             assert code == 200 and len(moved["reports"]) > len(before["reports"]), name
             assert moved["generation"]["state"] == state, name
             # The Player can ask again, and Cancel leaves the game as it was.
-            code, again = request("/api/retry", {})
+            code, again = request("/api/retry", {}, base)
             assert code == 200 and again["generation"]["state"] == "running", (name, again.get("error"))
-            code, canceled = request("/api/cancel", {})
+            code, canceled = request("/api/cancel", {}, base)
             assert code == 200 and canceled["generation"]["state"] == "idle", name
             assert checkpoint(canceled) == checkpoint(moved), f"{name}: Cancel changed the game"
             print(f"PASS {name}: {state} after {took:.1f}s and {proposals(view)} proposals: {last[:90]}")
 
 
-def run_wish_case():
-    """A Wish whose replies never parse fails after its 3 tries, and the title screen stays."""
+def run_wish_case(port):
+    """A Wish whose replies never parse fails after all its tries, and the title screen stays.
+    It runs on a fresh server on `port`."""
     name = "a Wish whose replies never parse"
     with tempfile.TemporaryDirectory() as folder:
-        for attempt in (1, 2, 3):
+        for attempt in range(1, MAX_WISH_ATTEMPTS + 1):
             with open(os.path.join(folder, f"adventure-{attempt}.sse"), "w") as f:
                 f.write(stream("Here is a lovely Adventure, told in prose and not in JSON."))
-        with Server(folder):
-            _, before = request("/api/view")
-            code, _ = request("/api/wish", {"wish": "A quiet walk in the Shire"})
+        with Server(folder, port=port) as server:
+            base = server.base
+            _, before = request("/api/view", base=base)
+            code, _ = request("/api/wish", {"wish": "A quiet walk in the Shire"}, base)
             assert code == 200, name
-            view, took = wait_ended(30)
+            view, took = wait_ended(30, base)
             gen = view["generation"]
             assert gen["state"] == "failed", (name, gen)
-            assert "in 3 tries" in gen["steps"][-1]["text"], (name, gen["steps"][-1])
+            assert "five-attempt limit" in gen["steps"][-1]["text"], (name, gen["steps"][-1])
             assert view["phase"] == "title" and view["seed"] == before["seed"], name
             print(f"PASS {name}: failed after {took:.1f}s: {gen['steps'][-1]['text']}")
 
 
 def main():
     assert os.path.exists(BINARY), "Build first: lake build rpg"
-    for case in CASES:
-        run_change_case(*case)
-    run_wish_case()
+    # Each case waits for recorded replies most of the time, so the cases run at the same time.
+    # Each one has its own server and port, and no case reads the state of another.
+    jobs = [(case[0], lambda port=PORT + i, case=case: run_change_case(port, *case))
+            for i, case in enumerate(CASES)]
+    jobs.append(("a Wish whose replies never parse", lambda port=PORT + len(CASES): run_wish_case(port)))
+    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+        futures = [(name, pool.submit(job)) for name, job in jobs]
+    failures = [(name, f.exception()) for name, f in futures if f.exception() is not None]
+    for name, failure in failures:
+        print(f"FAIL {name}:\n" + "".join(traceback.format_exception(failure)), end="")
+    if failures:
+        sys.exit(1)
     print("PASS: every unsatisfiable request ended, said why, and left the game unchanged")
 
 

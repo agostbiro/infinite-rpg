@@ -5,3 +5,5 @@
 node_modules/
 test-results/
 playwright-report/
+# Python bytecode, written when the check scripts run.
+__pycache__/
