@@ -92,10 +92,9 @@ theorem CertifiedEncounter.exitLaw_eq {rules : RuleSet} {hero : Being} {foes : L
     c.exitLaw hp = (c.atHP hp (by omega) (by omega)).outcomes := by
   simp [CertifiedEncounter.exitLaw, CertifiedFight.outcomes, CertifiedEncounter.atHP]
 
-/-- The exit law is the exact law of the Fight. For each result and each `n`, the exit law's
-chance is between the chance to end with that result within `n` rounds and that chance plus the
-chance that the Fight is not over after `n` rounds. The Fight ends with probability one, so the
-second chance goes to zero. -/
+/-- The exit law is the exact law of the Fight. For each set of results and each `n`, its chance
+is between the chance to end in the set within `n` rounds and that chance plus the chance that
+the Fight is not over after `n` rounds, which goes to zero. -/
 theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes : List Being}
     (c : CertifiedEncounter rules hero foes) (hp : Nat)
     -- The entry HP is at most full HP.

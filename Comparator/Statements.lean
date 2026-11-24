@@ -167,9 +167,9 @@ theorem admitted_combats (a : Probability.CertifiedAdventure) (foes : List Being
       (Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes) := sorry
 
 /-- In a certified Adventure, the exit law of each Fight at each entry HP is the exact law of that
-Fight. For each result and each `n`, the chance to end with that result within `n` rounds is at
-most the exit law's weight, and the weight is at most that chance plus the chance that the Fight
-is not over after `n` rounds. -/
+Fight. For each set of results and each `n`, the chance to end in the set within `n` rounds is at
+most the exit law's weight of the set, and that weight is at most this chance plus the chance
+that the Fight is not over after `n` rounds. -/
 theorem admitted_exit_law (a : Probability.CertifiedAdventure) (foes : List Being)
     -- The Fight is in the story.
     (encounter : foes ∈ Probability.encounterFoes a.admitted.candidate.story)
