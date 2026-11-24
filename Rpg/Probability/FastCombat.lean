@@ -120,11 +120,15 @@ theorem injuryDistribution_expect (rules : RuleSet) (a : Actor) (att : Fighter) 
     (dfn : Fighter) (g : Nat → Rat) :
     (injuryDistribution rules a att b dfn).expect g =
       (attackDistribution rules a att b dfn).expect (fun r => g r.1) := by
+  -- Both sides become sums over the sum of three dice, one case for each Dodge score.
   cases h : dfn.dodge rules <;>
     simp [injuryDistribution, attackDistribution, attackWith, rollAgainstWith, damageFacesWith,
       Bind.bind, Distribution.expect_bind, sumAsFaces, threeDice, h]
+  -- Split on whether the attack level is too low to roll.
   all_goals split
+  -- Too low: both sides give no injury.
   all_goals try rfl
+  -- High enough: the sums over the dice agree term by term.
   all_goals congr 1
 
 /-- The injury of one attack is a probability distribution. -/
@@ -298,7 +302,9 @@ include hA
 theorem sprayWith_valid (att : Fighter) (i : Nat) (foes : List Fighter) :
     (sprayWith A att i foes).Valid := by
   induction foes generalizing i with
+  -- No Creature is left to hit.
   | nil => exact Distribution.valid_pure _
+  -- The first Creature, then the rest.
   | cons foe foes ih =>
     simp only [sprayWith, Bind.bind]
     repeat first
@@ -325,10 +331,13 @@ theorem heroTurnWith_valid (s : FightState) (m : Maneuver) (target : Nat) :
 theorem foeTurnsWith_valid (s : FightState) (actors : List Actor) :
     (foeTurnsWith A s actors).Valid := by
   induction actors generalizing s with
+  -- No turn is left.
   | nil => exact Distribution.valid_pure _
   | cons a actors ih =>
     cases a with
+    -- The Character's place in the list is skipped.
     | none => exact ih s
+    -- Creature `i` acts, then the rest of the list.
     | some i =>
       simp only [foeTurnsWith, foeTurnWith, Bind.bind]
       repeat first
@@ -348,6 +357,7 @@ theorem fastFoes_correct (rules : RuleSet) (s : FightState) (actors : List Actor
     (fastFoes rules s actors).expect observe =
       (foeTurnsWith (fastAttack rules) s actors).expect (fun result => observe result.1) := by
   induction actors generalizing s observe with
+  -- No turn is left.
   | nil => rfl
   | cons actor actors ih =>
     cases actor with

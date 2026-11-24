@@ -1,4 +1,5 @@
 import Rpg.Adventures.Lafayette.Confidence
+import Rpg.Probability.ContinuationCertificate
 
 /-!
 # Timings and baseline of the combat check
@@ -12,6 +13,8 @@ checker (`CombatWitness.check`) over all entry HPs.
   `2d4b8cf` gave, before this program's solver existed. It used the spec round
   (`roundDistribution`) and none of the new code.
 * `--stress` merges two million entries, to check that the merge needs no deep stack.
+* `--grenadiers N` checks a Fight against `N` Grenadiers, at all entry HPs and as a paused Fight
+  in a live change. A Fight above the solver's budget (`SolveBudget`) is rejected fast.
 -/
 
 open Rpg Rpg.Probability
@@ -39,7 +42,8 @@ def argAfter (flag : String) : List String → Option String
   | f :: v :: rest => if f == flag then some v else argAfter flag (v :: rest)
   | _ => none
 
-/-- Print the timings of each Fight, and dump or compare the exit laws if asked. -/
+/-- Print the timings of each Fight, and dump or compare the exit laws if asked. Return 1 if a
+check or a comparison fails. -/
 def main (args : List String) : IO UInt32 := do
   if args.contains "--stress" then
     -- Two million entries with distinct values: the merge must not use one stack frame each.
@@ -52,9 +56,22 @@ def main (args : List String) : IO UInt32 := do
   let d := Lafayette.barrenHillDefinition
   let rules := d.rules
   let hero := d.hero
+  if let some n := (argAfter "--grenadiers" args).bind String.toNat? then
+    let foes := (List.range n).map fun i => Lafayette.grenadier (i + 1)
+    let order := turnOrder rules hero foes
+    let t0 ← IO.monoMsNow
+    let encounter := (certifyEncounter rules hero foes).isSome
+    let t1 ← IO.monoMsNow
+    IO.println s!"{n} Grenadiers, all entry HPs: certified={encounter} ms={t1 - t0}"
+    (← IO.getStdout).flush
+    let paused : FightPhase := ⟨0, 0, 1, order, 1, fightStart rules hero (rules.maxHP hero) foes⟩
+    let continuation := (certifyContinuation rules paused).isSome
+    IO.println s!"{n} Grenadiers, paused Fight: certified={continuation} ms={(← IO.monoMsNow) - t1}"
+    return 0
   let mut totalSolve := 0
   let mut totalCheck := 0
   let mut allSame := true
+  let mut allOk := true
   for (foes, i) in (encounterFoes d.story).zipIdx do
     let order := turnOrder rules hero foes
     let starts := encounterStarts rules hero foes
@@ -65,6 +82,7 @@ def main (args : List String) : IO UInt32 := do
     let w : CombatWitness := ⟨cache⟩
     let ok := w.check rules order starts
     let t2 ← IO.monoMsNow
+    allOk := allOk && ok
     totalSolve := totalSolve + (t1 - t0)
     totalCheck := totalCheck + (t2 - t1)
     IO.println s!"{foes.map (·.name)} states={size} solve-ms={t1 - t0} check-ms={t2 - t1} ok={ok} max-digits={maxDigits cache}"
@@ -79,4 +97,4 @@ def main (args : List String) : IO UInt32 := do
       IO.println s!"  same exit laws as {dir}/fight-{i}.txt at every entry HP: {same}"
     (← IO.getStdout).flush
   IO.println s!"total solve-ms={totalSolve} check-ms={totalCheck}"
-  return if allSame then 0 else 1
+  return if allSame && allOk then 0 else 1

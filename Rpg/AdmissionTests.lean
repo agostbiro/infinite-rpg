@@ -46,6 +46,27 @@ example : checkCharacter {rules with maxHP := fun _ => 0} hero ≠ [] := by deci
   | none => false
 #guard (certifyAdventureCombat definition).isSome
 
+/-- The two bounds of `exitLaw_exact` at `n` rounds, for the results that `event` picks. -/
+private def withinExactBounds (law : Distribution CombatResult) (event : CombatResult → Bool)
+    (n : Nat) : Bool :=
+  let p := combatProcess rules (turnOrder rules hero [foe])
+  let start := fightStart rules hero 2 [foe]
+  let by_n := p.eventBy (fun s => event (terminalResult s)) n start
+  by_n ≤ law.mass event && law.mass event ≤ by_n + p.unfinished n start
+
+-- The real exit law at full HP is inside the bounds of `exitLaw_exact`, for death and for a win,
+-- after 1, 2 and 3 rounds of the spec process.
+#guard match certifyEncounter rules hero [foe] with
+  | some c => match c.exitLaw? 2 with
+    | some law => [1, 2, 3].all fun n =>
+        withinExactBounds law (· == .died) n && withinExactBounds law (· matches .won _) n
+    | none => false
+  | none => false
+
+-- The bounds reject a wrong exit law: a sure win breaks the lower bound for death, because the
+-- Character can die in the first round.
+#guard !withinExactBounds (pure (.won 2)) (· == .died) 1
+
 -- End-to-end positive admission includes a real stochastic fight. Seven safe
 -- choices keep its first-turn risk inside the fixed horizon-one policy band.
 private def admissionStory : Adventure :=

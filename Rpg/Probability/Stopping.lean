@@ -186,7 +186,9 @@ structure StoppingProcess.SameOdds (p q : StoppingProcess α) : Prop where
 theorem StoppingProcess.SameOdds.unfinished_eq {q : StoppingProcess α} (h : p.SameOdds q)
     (n : Nat) (s : α) : p.unfinished n s = q.unfinished n s := by
   induction n generalizing s with
+  -- No steps: only the end states count, and they are the same.
   | zero => simp only [StoppingProcess.unfinished, h.terminal]
+  -- One more step.
   | succ n ih =>
     simp only [StoppingProcess.unfinished]
     rw [← h.terminal]
@@ -204,7 +206,9 @@ theorem StoppingProcess.SameOdds.unfinished_eq {q : StoppingProcess α} (h : p.S
 theorem StoppingProcess.SameOdds.eventBy_eq {q : StoppingProcess α} (h : p.SameOdds q)
     (event : α → Bool) (n : Nat) (s : α) : p.eventBy event n s = q.eventBy event n s := by
   induction n generalizing s with
+  -- No steps: only the end states count, and they are the same.
   | zero => simp only [StoppingProcess.eventBy, h.terminal]
+  -- One more step.
   | succ n ih =>
     simp only [StoppingProcess.eventBy]
     rw [← h.terminal]

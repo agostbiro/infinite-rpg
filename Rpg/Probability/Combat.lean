@@ -256,12 +256,21 @@ set to Attack. -/
 def groupName (s : FightState) : FightState :=
   {s with hero := {s.hero with maneuver := .attack}}
 
+/-- Limits on the work of `solveFight`. Above a limit, it gives up and returns no answers, so the
+check fails and the Fight is rejected. The defaults are well above the Fights of Lafayette (at most
+7,623 states and 450,000 round results), and they keep memory to a few hundred MB. -/
+structure SolveBudget where
+  /-- The most states that the solver solves. -/
+  states : Nat := 60000
+  /-- The most round results that the solver keeps in memory at one time. -/
+  entries : Nat := 1500000
+
 /-- Generate candidate answers for every state that the Fight can reach from `starts`, on many
 cores. It finds the reachable groups and their rounds, then solves the groups by total HP, from
 low to high, with each level on many cores. The certificate checker does not trust this
 producer. -/
-def solveFight (round : FightState → Distribution FightState) (starts : List FightState) :
-    CombatCache := Id.run do
+def solveFight (round : FightState → Distribution FightState) (starts : List FightState)
+    (budget : SolveBudget := {}) : CombatCache := Id.run do
   let mut seen : Std.HashSet FightState := {}
   let mut frontier : List FightState := []
   for s in starts do
@@ -275,20 +284,27 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
   let passes := (starts.map livingHP).foldl max 0 + 2
   let mut rounds : Std.HashMap FightState (Distribution FightState) := {}
   let mut levels : Std.HashMap Nat (List FightState) := {}
+  let mut kept := 0
   for _ in [:passes] do
     if frontier.isEmpty then break
-    let found := parallelMap (fun g => (maneuverStates g).map fun u => (u, round u)) frontier
     let mut next : List FightState := []
-    for (g, members) in frontier.zip found do
-      levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
-      for (u, d) in members do
-        rounds := rounds.insert u d
-        for (w, _) in d.entries do
-          let r := groupName w
-          if !w.over && !seen.contains r then
-            seen := seen.insert r
-            next := r :: next
+    -- Work in batches, so that a Fight that is too large stops before it uses much memory.
+    for batch in chunksOf 48 frontier do
+      -- Give up when the Fight is too large. Each group has 3 states.
+      if 3 * seen.size > budget.states || kept > budget.entries then return {}
+      let found := parallelMap (fun g => (maneuverStates g).map fun u => (u, round u)) batch
+      for (g, members) in batch.zip found do
+        levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
+        for (u, d) in members do
+          rounds := rounds.insert u d
+          kept := kept + d.entries.length
+          for (w, _) in d.entries do
+            let r := groupName w
+            if !w.over && !seen.contains r then
+              seen := seen.insert r
+              next := r :: next
     frontier := next
+  if 3 * seen.size > budget.states || kept > budget.entries || !frontier.isEmpty then return {}
   -- Solve the groups, from the lowest total HP up.
   let mut cache : CombatCache := {}
   for (_, groups) in levels.toList.mergeSort (fun a b => a.1 ≤ b.1) do

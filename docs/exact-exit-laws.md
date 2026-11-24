@@ -19,7 +19,7 @@ checked. `CertifiedEncounter.exitLaw?` gives `none` above full HP. Three theorem
 | - | - |
 | `CertifiedEncounter.exitLaw_valid` | The weights are not negative, and their sum is 1. |
 | `CertifiedEncounter.exitLaw_stalled` | The result `stalled` has weight 0. Each Fight ends in a win or a death. |
-| `CertifiedEncounter.exitLaw_exact` | For each result and each `n`: the chance of that result within `n` rounds is at most the exit law's weight, and the weight is at most that chance plus the chance that the Fight is still going after `n` rounds. |
+| `CertifiedEncounter.exitLaw_exact` | For each set of results and each `n`: the chance to end in the set within `n` rounds is at most the exit law's weight of the set, and that weight is at most this chance plus the chance that the Fight is still going after `n` rounds. |
 
 Comparator pins these facts as `admitted_exit_law` and `admitted_exit_law_valid`.
 `admitted_combats` (Comparator) says that each Fight ends with probability one. So the chance
@@ -51,6 +51,22 @@ every entry HP, as exact fractions. The solver of commit `2d4b8cf` made them, on
 before any code of this change existed. `lake exe profile-combat --compare
 experiments/profile/exit-laws-2d4b8cf` checks that the new exit laws are the same, weight for
 weight. (A program at `2d4b8cf` makes the files with the same text form as `--dump`.)
+
+**Larger Fights.** The cost grows fast with the number of Creatures: one round with 4 Creatures
+takes about 25 times as long as one with 2. `solveFight` has a budget (`SolveBudget`: 60,000
+states and 1.5 million round results in memory, about 3 times the largest Fight of Lafayette).
+Above it, the solver gives up, the check fails, and the Fight is rejected. That is sound, and it
+keeps memory below 400 MB. Measured with `lake exe profile-combat --grenadiers N`:
+
+| Fight | 14 cores | 4 cores | Memory | Result |
+| - | -: | -: | -: | - |
+| 2 Grenadiers, paused | 1.2 s | | 180 MB | certified |
+| 3 Grenadiers, paused | 5.8 s | | 340 MB | rejected (over budget) |
+| 4 Grenadiers, paused | 18 s | 30 s | 390 MB | rejected (over budget) |
+
+Without the budget, a paused Fight with 4 Creatures ran out of memory and stopped the server
+process. Before this change such a Fight never finished at all. To certify Fights with 3 or more
+Creatures needs a faster round or a smaller state space, not a larger budget.
 
 ## Where the time went, and what changed
 

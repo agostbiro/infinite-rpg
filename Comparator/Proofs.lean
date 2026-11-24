@@ -186,7 +186,7 @@ theorem admitted_exit_law (a : Probability.CertifiedAdventure) (foes : List Bein
       (a.combat.exitLaw foes encounter hp upper).mass event ∧
     -- The weight is at most that chance plus the chance to be unfinished after `n` rounds.
     (a.combat.exitLaw foes encounter hp upper).mass event ≤
-      p.eventBy (fun s => event (Probability.terminalResult s)) n start + p.unfinished n start := 
+      p.eventBy (fun s => event (Probability.terminalResult s)) n start + p.unfinished n start :=
   (a.combat.encounter foes encounter).exitLaw_exact hp upper event n
 
 /-- In a certified Adventure, the exit law of each Fight at each entry HP is a probability law,
@@ -199,7 +199,7 @@ theorem admitted_exit_law_valid (a : Probability.CertifiedAdventure) (foes : Lis
     -- The weights are not negative, and their sum is 1.
     (a.combat.exitLaw foes encounter hp upper).Valid ∧
     -- The result `stalled` has weight 0.
-    (a.combat.exitLaw foes encounter hp upper).mass (· == .stalled) = 0 := 
+    (a.combat.exitLaw foes encounter hp upper).mass (· == .stalled) = 0 :=
   ⟨(a.combat.encounter foes encounter).exitLaw_valid hp upper,
     (a.combat.encounter foes encounter).exitLaw_stalled hp upper⟩
 

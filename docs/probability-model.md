@@ -157,7 +157,10 @@ model tests.
 ## Trusted surface and validation
 
 The probability specification, graph builder, distribution operations, and
-combat elimination algorithm are part of the trusted definitions. Sharing the
+combat elimination algorithm are part of the trusted definitions. The combat certificate is
+checked against `fastProcess` (`FastCombat.lean`), whose odds equal those of `combatProcess`
+(`fastRound_expect`); its definitions, `stateKey`, the `Hashable FightState` instance and
+`Std.HashMap` appear in the certificate's type, so a reviewer should read them too. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
 but there is not yet a general theorem proving the elimination algorithm equals
 the infinite stochastic operational execution. The ideal sampling correspondence

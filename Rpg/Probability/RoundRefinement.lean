@@ -38,7 +38,9 @@ theorem spray_forgets (h : ForgetsReports A B) (att : Fighter) (foes : List Figh
     (sprayWith B att i foes).expect (fun r => observe r.1) =
       (sprayWith A att i foes).expect (fun r => observe r.1) := by
   induction foes generalizing i observe with
+  -- No Creature is left to hit.
   | nil => simp [sprayWith]
+  -- The first Creature, then the rest.
   | cons foe foes ih =>
     simp only [sprayWith]
     split <;> simp only [Bind.bind, Distribution.expect_bind, Distribution.expect_pure]

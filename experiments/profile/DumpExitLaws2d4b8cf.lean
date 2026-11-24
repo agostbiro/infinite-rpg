@@ -1,3 +1,5 @@
+import Rpg.Adventures.Lafayette.Confidence
+
 /-!
 # The baseline exit laws, at commit 2d4b8cf
 
@@ -9,10 +11,8 @@ check existed. It wrote the files in `experiments/profile/exit-laws-2d4b8cf`. To
     (add `[[lean_exe]] name = "dump-exit-laws" root = "DumpExitLaws"` to OLD/lakefile.toml)
     cd OLD && lake build dump-exit-laws && .lake/build/bin/dump-exit-laws OUT
 
-It takes about 9 minutes. The text form is the same as `profile-combat --dump`.
+It takes about 9 to 11 minutes. The text form is the same as `profile-combat --dump`.
 -/
-import Rpg.Adventures.Lafayette.Confidence
-
 open Rpg Rpg.Probability
 
 /-- A fixed text form of an exit law: results sorted, equal results merged, zero weights dropped. -/
