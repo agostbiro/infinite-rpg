@@ -189,7 +189,7 @@ The preceding real request took 156 seconds and needed a second DM proposal. The
 individual measurements from before mandatory whole-adventure combat certification, not
 a latency guarantee for the current admission path.
 
-Whole-adventure combat certification is not run in the server yet. It used to take more than 20
+Whole-adventure combat certification is not run in the server yet. It used to take 42
 minutes on Lafayette. It now takes about 5 seconds with 14 cores ([exact exit
 laws](exact-exit-laws.md)), so it fits inside the 3-minute limit. Startup, Wishes, saved loads,
 and live changes do not run it yet. `make certify` runs it on Lafayette by hand

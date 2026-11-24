@@ -33,13 +33,14 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 
 | Fight | States | Before: solve | Before: check | After: solve | After: check |
 | - | -: | -: | -: | -: | -: |
-| Grenadier 1 | 231 | 3.3 s | 6.8 s | 0.03 s | 0.01 s |
+| Grenadier 1 | 231 | 3.4 s | 6.9 s | 0.03 s | 0.01 s |
 | Dragoon Scout | 231 | 3.9 s | 7.5 s | 0.05 s | 0.02 s |
-| Grenadier 1 and 2 | 7,623 | 280 s | 1,029 s | 1.3 s | 0.7 s |
-| Loyalist Scout | 231 | 3.3 s | 6.4 s | 0.05 s | 0.02 s |
-| Jäger 1 and 2 | 6,336 | BEFORE_JAGER_SOLVE | BEFORE_JAGER_CHECK | 1.5 s | 0.8 s |
-| Dragoon Sergeant | 396 | BEFORE_DRAGOON_SOLVE | BEFORE_DRAGOON_CHECK | 0.08 s | 0.04 s |
-| **All (`make certify`)** | | | **BEFORE_TOTAL** | | **4.6 s** (36 s of CPU) |
+| Grenadier 1 and 2 | 7,623 | 281 s | 1,052 s | 1.3 s | 0.7 s |
+| Loyalist Scout | 231 | 3.3 s | 6.5 s | 0.05 s | 0.02 s |
+| Jäger 1 and 2 | 6,336 | 253 s | 864 s | 1.5 s | 0.8 s |
+| Dragoon Sergeant | 396 | 9.5 s | 18.7 s | 0.08 s | 0.04 s |
+| **All** | 15,048 | 555 s | 1,955 s | 3.0 s | 1.6 s |
+| **Total wall time** | | **2,510 s (42 min)** | | **4.6 s** (36 s of CPU) | |
 
 `lake exe profile-combat` prints the "after" numbers. Pinned to one core (`taskset -c 5`),
 `make certify` takes 28 s, so it fits inside the 3-minute live-change limit even on one core. With `--compare`, it also solves
