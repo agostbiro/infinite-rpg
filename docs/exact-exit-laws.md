@@ -58,11 +58,13 @@ grows it more: each round makes one result for each mix of injuries. `solveFight
 (`SolveBudget`). Above it, the solver gives up, the check fails, and the Fight is rejected. That
 is sound, and it keeps memory below 400 MB.
 
-* Before it computes any round, the solver estimates how many results the round makes before
-  they are merged (`roundSizeEstimate`). It rejects the Fight if one round is above 1 million,
-  and it starts rounds together only up to 4 million estimated results. The largest estimate
-  on Lafayette is 1,421. `certifyContinuation` checks the paused round the same way before it
-  computes it.
+* Before it computes any round, the solver bounds how many results the round makes before
+  they are merged (`roundSizeBound`). For each pair of Fighters it uses the most injury results
+  of one attack over every HP and every maneuver of the two (`attackBounds`), so the bound holds
+  whatever wounds and maneuvers change during the round. The solver rejects the Fight if one
+  round is above 1 million, and it starts rounds together only up to 4 million. The largest
+  bound on Lafayette is 1,421. `certifyContinuation` checks the paused round the same way before
+  it computes it. `solveChecked` is the one solver call that the check and `profile-combat` use.
 * It also stops at 60,000 states or 1.5 million round results in memory, about 3 times the
   largest Fight of Lafayette.
 
@@ -75,7 +77,7 @@ a flamethrower):
 | 3 Grenadiers, paused | 5.8 s | | 340 MB | rejected (over budget) |
 | 4 Grenadiers, paused | 18 s | 30 s | 390 MB | rejected (over budget) |
 | 2 Grenadiers, flamethrower, paused | 11 s | | 360 MB | rejected (over budget) |
-| 3 or 4 Grenadiers, flamethrower | under 0.1 s | | 73 MB | rejected (round estimate 1.9 million and 171 million) |
+| 4 Grenadiers, flamethrower, paused | 0.5 s | | 85 MB | rejected (round bound 418 million) |
 
 With no budget, the Fight against 2 Grenadiers with a flamethrower has 13,959 states and 4.2
 million round results, and the solver alone takes 120 s and 815 MB.

@@ -85,8 +85,26 @@ private def sprayFourOrder :=
   turnOrder {} sprayFour.hero.being (sprayFour.foes.map (·.being))
 
 -- One round of this Fight is too large, so it is rejected before any round is computed.
-#guard roundSizeEstimate {} sprayFourOrder sprayFour > ({} : SolveBudget).roundEntries
+#guard roundSizeBound sprayFourOrder (attackBounds {} sprayFour) sprayFour >
+  ({} : SolveBudget).roundEntries
 #guard (certifyFight {} sprayFourOrder sprayFour).isNone
+
+/-- Rules in which the Character gets +4 armor while guarding. -/
+private def guardArmor : RuleSet :=
+  {combatRules := defaultCombatRules ++
+    [{name := "Guard Armor", description := "Armor while guarding.", side := CombatSide.hero,
+      trigger := CombatTrigger.guarding, armorBonus := 4}]}
+
+/-- The same Fight, paused after the Character's All-Out Defense. -/
+private def sprayFourGuarded : FightState :=
+  {sprayFour with hero := {sprayFour.hero with maneuver := .allOutDefense}}
+
+-- The bound does not depend on the maneuver before the round: an attack in the round drops the
+-- guard armor, so the bound must count the Creatures' attacks without it.
+#guard roundSizeBound sprayFourOrder (attackBounds guardArmor sprayFourGuarded) sprayFourGuarded ==
+  roundSizeBound sprayFourOrder (attackBounds guardArmor sprayFour) sprayFour
+#guard roundSizeBound sprayFourOrder (attackBounds guardArmor sprayFourGuarded) sprayFourGuarded >
+  ({} : SolveBudget).roundEntries
 
 -- Bad output is rejected: the fast round is not the round with no attacks at all.
 #guard !decide ((fastRound {} twoFoesOrder (twoFoes .attack 4)).sameWeights

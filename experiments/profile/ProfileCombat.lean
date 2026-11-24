@@ -75,7 +75,7 @@ def main (args : List String) : IO UInt32 := do
     IO.println s!"{n} Grenadiers, all entry HPs: certified={encounter} ms={t1 - t0}"
     (← IO.getStdout).flush
     let paused : FightPhase := ⟨0, 0, 1, order, 1, fightStart rules hero (rules.maxHP hero) foes⟩
-    IO.println s!"  largest round estimate at the start: {roundSizeEstimate rules order paused.state}"
+    IO.println s!"  round bound at the start: {roundSizeBound order (attackBounds rules paused.state) paused.state}"
     let continuation := (certifyContinuation rules paused).isSome
     IO.println s!"{n} Grenadiers, paused Fight: certified={continuation} ms={(← IO.monoMsNow) - t1}"
     return 0
@@ -87,7 +87,9 @@ def main (args : List String) : IO UInt32 := do
     let order := turnOrder rules hero foes
     let starts := encounterStarts rules hero foes
     let t0 ← IO.monoMsNow
-    let cache := solveFight (fastRound rules order) starts
+    -- The same solver call as `certifyEncounter`, with the same round bounds.
+    let bounds := attackBounds rules (fightStart rules hero 0 foes)
+    let cache := solveChecked rules order bounds starts
     let size := cache.size
     let t1 ← IO.monoMsNow
     let w : CombatWitness := ⟨cache⟩
@@ -96,8 +98,8 @@ def main (args : List String) : IO UInt32 := do
     allOk := allOk && ok
     totalSolve := totalSolve + (t1 - t0)
     totalCheck := totalCheck + (t2 - t1)
-    let largest := cache.fold (fun m s _ => max m (roundSizeEstimate rules order s)) 0
-    IO.println s!"{foes.map (·.name)} states={size} solve-ms={t1 - t0} check-ms={t2 - t1} ok={ok} max-digits={maxDigits cache} largest-round-estimate={largest}"
+    let largest := cache.fold (fun m s _ => max m (roundSizeBound order bounds s)) 0
+    IO.println s!"{foes.map (·.name)} states={size} solve-ms={t1 - t0} check-ms={t2 - t1} ok={ok} max-digits={maxDigits cache} largest-round-bound={largest}"
     let text := lawsText rules hero foes w
     if let some dir := argAfter "--dump" args then
       IO.FS.createDirAll dir

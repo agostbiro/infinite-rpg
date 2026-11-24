@@ -104,25 +104,56 @@ def fastRound (rules : RuleSet) (order : List Actor) (s : FightState) : Distribu
       Prod.fst <$> heroTurnWith (fastAttack rules) s m t).sortCollect stateKey
   (mine.bind fun s => fastFoes rules s (afterCharacter order)).sortCollect stateKey
 
-/-- An upper estimate of the number of results that `fastRound` makes from `s` before it merges
-them. The solver uses it to reject a Fight that is too large before it computes the round. No
-proof uses it. -/
-def roundSizeEstimate (rules : RuleSet) (order : List Actor) (s : FightState) : Nat :=
-  let injuries (a : Actor) (att : Fighter) (b : Actor) (dfn : Fighter) : Nat :=
-    max 1 (injuryDistribution rules a att b dfn).entries.length
+/-- The most injury results that one attack of `att` on `dfn` can have, over every HP from 1 to
+`attHP` and `dfnHP` and every maneuver of the two. HP and maneuvers are the only parts of a
+Fighter that change during a Fight. -/
+def maxInjuries (rules : RuleSet) (a : Actor) (att : Fighter) (attHP : Nat) (b : Actor)
+    (dfn : Fighter) (dfnHP : Nat) : Nat :=
+  (List.range attHP).foldl (fun best i => maneuverMenu.foldl (fun best m =>
+    (List.range dfnHP).foldl (fun best j => maneuverMenu.foldl (fun best n =>
+      let attacker := {att with hp := i + 1, maneuver := m}
+      let defender := {dfn with hp := j + 1, maneuver := n}
+      max best (injuryDistribution rules a attacker b defender).entries.length) best) best) best) 1
+
+/-- For each Creature of a Fight, the most injury results of one attack by the Character on it
+(`heroHits`) and by it on the Character (`foeHits`), from `maxInjuries`. -/
+structure AttackBounds where
+  /-- The bound for an attack by the Character on each Creature, by number. -/
+  heroHits : List Nat
+  /-- The bound for an attack by each Creature on the Character, by number. -/
+  foeHits : List Nat
+
+/-- The attack bounds of the Fight that `s` is in. HP never goes up in a Fight, so each Fighter's
+HP stays at most its full HP or its HP in `s`, whichever is larger. -/
+def attackBounds (rules : RuleSet) (s : FightState) : AttackBounds :=
+  let limit (f : Fighter) : Nat := max (rules.maxHP f.being) f.hp.toNat
+  let pairs := parallelMap (fun (f, i) =>
+    (maxInjuries rules none s.hero (limit s.hero) (some i) f (limit f),
+     maxInjuries rules (some i) f (limit f) none s.hero (limit s.hero))) s.foes.zipIdx
+  {heroHits := pairs.map Prod.fst, foeHits := pairs.map Prod.snd}
+
+/-- An upper bound on the number of results that `fastRound` makes from `s` before it merges
+them, if no results were merged. It uses `bounds` for each attack, so it holds whatever
+maneuvers and wounds the Fighters have during the round. No proof uses it. -/
+def roundSizeBound (order : List Actor) (bounds : AttackBounds) (s : FightState) : Nat :=
   let living := s.livingFoes
   -- The Character's turn: one branch for each maneuver and target of `heroPolicy`.
   let heroBranch (m : Maneuver) (t : Nat) : Nat :=
-    let hero := {s.hero with maneuver := m}
     if !m.attacks then 1
-    else if hero.being.weapon.spray then
-      living.foldl (fun acc i => acc * injuries none hero (some i) (s.foes.getD i hero)) 1
-    else injuries none hero (some t) (s.foes.getD t hero)
+    else if s.hero.being.weapon.spray then
+      living.foldl (fun acc i => acc * bounds.heroHits.getD i 1) 1
+    else bounds.heroHits.getD t 1
   let heroPart := ((heroPolicy s).entries.map fun ((m, t), _) => heroBranch m t).sum
-  -- The turns of the Creatures: each one multiplies the results by its injuries, at most.
+  -- The turns of the living Creatures: each one multiplies the results by its injuries, at most.
   let foePart := (order.filterMap id).foldl (fun acc i =>
-    if i ∈ living then acc * injuries (some i) (s.foes.getD i s.hero) none s.hero else acc) 1
+    if i ∈ living then acc * bounds.foeHits.getD i 1 else acc) 1
   max 1 heroPart * foePart
+
+/-- The solver as the combat check runs it: `fastRound`, with each round bounded by
+`roundSizeBound` with the attack bounds of the Fight. -/
+def solveChecked (rules : RuleSet) (order : List Actor) (bounds : AttackBounds)
+    (starts : List FightState) : CombatCache :=
+  solveFight (fastRound rules order) starts (roundSizeBound order bounds)
 
 /-- One round of the fast process. An ended Fight stays as it is. -/
 def fastStep (rules : RuleSet) (order : List Actor) (s : FightState) : Distribution FightState :=

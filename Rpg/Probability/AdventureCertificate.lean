@@ -30,8 +30,8 @@ def certifyEncounter (rules : RuleSet) (hero : Being) (foes : List Being) :
     Option (CertifiedEncounter rules hero foes) :=
   let order := turnOrder rules hero foes
   let starts := encounterStarts rules hero foes
-  let witness : CombatWitness :=
-    ⟨solveFight (fastRound rules order) starts (roundSizeEstimate rules order)⟩
+  let witness : CombatWitness := 
+    ⟨solveChecked rules order (attackBounds rules (fightStart rules hero 0 foes)) starts⟩
   if h : witness.check rules order starts = true then
     some ⟨witness,
       fun hp hm => (CombatWitness.check_sound h).1 _ (List.mem_map.mpr ⟨hp, hm, rfl⟩),

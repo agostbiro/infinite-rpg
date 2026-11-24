@@ -55,10 +55,10 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
 /-- Check a paused Fight. A Fight whose round is too large for the solver's budget is rejected
 before the rest of the paused round is computed. -/
 def certifyContinuation (rules : RuleSet) (f : FightPhase) : Option (CertifiedContinuation rules f) :=
-  if roundSizeEstimate rules f.order f.state > ({} : SolveBudget).roundEntries then none else
+  let bounds := attackBounds rules f.state
+  if roundSizeBound f.order bounds f.state > ({} : SolveBudget).roundEntries then none else
   let starts := (remainingDistribution rules f).entries.map Prod.fst
-  let w : CombatWitness :=
-    ⟨solveFight (fastRound rules f.order) starts (roundSizeEstimate rules f.order)⟩
+  let w : CombatWitness := ⟨solveChecked rules f.order bounds starts⟩
   if h : w.check rules f.order starts = true then
     some ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),
       (CombatWitness.check_sound h).2⟩
