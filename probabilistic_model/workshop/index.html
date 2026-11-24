@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Graph Workshop · Markov RPG</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<header class="masthead"><a class="brand" href="/"><span class="brand-icon">⌘</span> GRAPH WORKSHOP <span class="brand-tag">MARKOV RPG</span></a><span class="local"><i></i> Local workspace · Lean 4</span></header>
+<main>
+<aside class="builder">
+  <div class="eyebrow">01 / CONFIGURE THE GRAPH</div><h1>Graphs,<br>with proof.</h1><p class="intro">Choose the size and characters. Generate a finite game graph and verify its exact probabilities.</p>
+  <form id="generate-form">
+  <label for="max-nodes">Maximum graph nodes</label><input id="max-nodes" type="number" min="21" max="60" step="1" value="30" required aria-describedby="node-help"><p class="field-help" id="node-help">21–60 nodes. Includes HP variants and Win/Lose. Internal combat states are separate.</p>
+  <label for="character-count">Number of characters</label><input id="character-count" type="number" min="2" max="12" step="1" value="4" required aria-describedby="character-help"><p class="field-help" id="character-help">2–12 distinct characters, including the player. Each appears in the graph.</p>
+  <label>Difficulty</label><div class="segmented" id="difficulty"><button type="button" class="active" data-value="easy">Easy</button><button type="button" data-value="medium">Medium</button><button type="button" data-value="hard">Hard</button></div>
+  <div class="target-copy">Target defeat probability <strong id="target">50%</strong><span>±5 percentage points</span></div>
+  <label for="branches">Combat entry routes <span id="branches-label">2</span></label><input id="branches" type="range" min="2" max="4" value="2">
+  <button class="primary generate" id="generate" type="submit" disabled><span>Generate & verify</span><span>↗</span></button>
+  </form>
+  <div class="builder-note"><strong>Current graph family</strong><p>Two combats and variable neutral event layers. Additional characters are noncombat participants. With two characters, the opponent is reused.</p><p>Exact 3d6 probabilities. Uniform Attack / Defend. Current HP carries between events.</p></div>
+  <div id="error" class="error" hidden role="alert"></div>
+</aside>
+<section class="workspace">
+  <div class="workspace-head"><div><div class="eyebrow">02 / EXPLORE THE MODEL</div><h2 id="world-title">Your next graph</h2></div><span class="badge neutral" id="status">Ready to generate</span></div>
+  <div class="metrics"><div><span>DEFEAT PROBABILITY</span><strong id="loss">—</strong><small id="loss-detail">Exact rational arithmetic</small></div><div><span>GRAPH NODES</span><strong id="states">—</strong><small id="states-detail">Event + current HP</small></div><div><span>GENERATION / LEAN</span><strong id="timing">—</strong><small id="timing-detail">Measured on this machine</small></div></div>
+  <section id="rule-panel" class="rule-panel" hidden aria-labelledby="rules-title">
+    <div class="rule-head"><div><div class="eyebrow">CHANGE THE LIVE GAME</div><h3 id="rules-title">Three ways to change a rule</h3></div><span id="rule-clock" class="badge neutral"></span></div>
+    <p class="rule-intro">Each change searches for compensation and is applied only after Lean accepts it. Your current node, HP and elapsed event time are preserved.</p>
+    <div class="rule-cards">
+      <form id="combat-rule-form"><fieldset id="combat-rule-fields"><legend>1 · Combat statistics & equipment</legend>
+        <label for="hero-dx">Player DX</label><input id="hero-dx" type="number" min="8" max="16" value="12" required>
+        <label for="hero-weapon">Equipped weapon</label><select id="hero-weapon"><option value="punch">Fists</option><option value="largeKnife">Large knife</option><option value="broadsword">Broadsword</option></select>
+        <p>Rebuild combat probabilities at the actual entry HP. The GM searches opponent DX and equipment to keep the fixed fairness bands.</p>
+        <button type="submit" class="primary">Rebalance combat</button>
+      </fieldset></form>
+      <form id="adventure-rule-form"><fieldset id="adventure-rule-fields"><legend>2 · Adventure statistics</legend>
+        <label for="hero-iq">Player IQ</label><input id="hero-iq" type="number" min="2" max="18" value="10" required>
+        <p>Careful recovery success = IQ / 20. The GM counterbalances Bold recovery. Their individual dice probabilities change; the uniform average is preserved.</p>
+        <button type="submit" class="primary">Rebalance adventure</button>
+      </fieldset></form>
+      <form id="insert-rule-form"><fieldset id="insert-rule-fields"><legend>3 · Insert a new event</legend>
+        <label for="insert-edge">Action outcome at your current node</label><select id="insert-edge" required></select>
+        <label for="insert-scene">Scene for the new event</label><select id="insert-scene"></select>
+        <p>Split this route with a real new node. If needed, the GM shortens a later neutral layer. The node limit grows by one.</p>
+        <button type="submit" class="primary">Insert & rebalance</button>
+      </fieldset></form>
+    </div>
+    <p id="rules-availability" class="field-help"></p>
+    <div id="rule-feedback" role="status" aria-live="polite" hidden></div>
+  </section>
+  <div id="combat-browser" class="combat-browser" hidden><label for="combat-choice">Combat graphs</label><div class="combat-picker"><select id="combat-choice" aria-describedby="combat-help"></select><button type="button" id="open-combat">Open combat graph ↗</button><button type="button" id="locate-combat">Locate node</button></div><p id="combat-help">Inspect a combat without advancing the game. HP variants are separate entries.</p></div>
+  <div class="graph-toolbar"><div class="tabs"><button class="active" data-tab="adventure">Game graph</button><button data-tab="scenes" id="scenes-tab" disabled>Scenes</button><button data-tab="combat" disabled id="combat-tab">Combat graphs</button><button data-tab="certificate">Certificates</button></div><div class="graph-tools"><button id="zoom-out" title="Zoom out">−</button><button id="fit" title="Fit graph">Fit</button><button id="zoom-in" title="Zoom in">+</button></div></div>
+  <div id="combat-context" class="combat-context" hidden></div>
+  <div class="canvas" id="canvas"><div class="empty" id="empty"><div class="empty-graph"><i></i><i></i><i></i><i></i></div><h3>Every choice has a place.</h3><p>Generate a graph to inspect its events,<br>exact combat outcomes and formal certificates.</p></div><svg id="graph" role="img" aria-label="Game state graph" hidden></svg><div id="proof-panel" hidden></div><div class="legend" id="legend" hidden><span><i class="blue"></i>Current state</span><span><i class="amber"></i>Combat</span><span><i class="green"></i>Victory</span><span><i class="red"></i>Defeat</span></div></div>
+  <div class="canvas-foot"><span id="graph-note">The displayed edges come from the exact model submitted to Lean.</span><span>Scroll to zoom · drag to pan</span></div>
+  <div class="distribution"><div><div class="eyebrow">COMPLETE DURATION LAW</div><h3>Within the reference band</h3><p>Discrete phase-type · ±5 points<br><span id="duration-note">The certificate covers all event times.</span></p></div><svg id="curve" viewBox="0 0 500 120" aria-label="Duration cumulative distribution"></svg><div class="curve-key"><span><i class="blue"></i>Generated</span><span><i class="gray"></i>Reference</span></div></div>
+  <details id="character-panel" class="character-panel" hidden><summary id="character-summary">Characters</summary><div id="character-list"></div></details>
+</section>
+<aside class="inspector"><div class="eyebrow">03 / FOLLOW A PATH</div><div id="inspect"><h3>Inspect a state</h3><p class="muted">Select a node to inspect it. Play becomes available after the Lean kernel accepts the certificate.</p></div><div class="player-actions"><button id="uniform-step" class="primary" disabled>Uniform step <span>→</span></button><button id="restart" class="secondary" disabled>Restart checkpoint</button></div><div class="policy-note">The certificate applies to uniform strategies. You can also choose actions manually to explore individual paths.</div><div class="history"><div class="eyebrow">PATH HISTORY</div><ol id="history"><li>Your path starts at the initial node.</li></ol></div></aside>
+</main><footer>Exact probabilities. Explicit assumptions. Kernel-checked proofs.<span>LOCAL PROTOTYPE / 02</span></footer>
+<script src="/app.js"></script></body></html>
