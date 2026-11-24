@@ -174,16 +174,17 @@ python3 .agents/skills/add-mechanic/scripts/check.py --final
 ```
 
 Within the same deadline this also runs compiled, source-bound admission for all
-adventures. On Linux it additionally requests `lake check`. On macOS it explicitly
-reports isolated replay as pending; do not claim Comparator/replay passed. Final
-proof replay requirements in `CLAUDE.md` still apply. On Linux, also run:
+adventures. It does not replay the proofs: `lake check` alone takes more than a
+minute, because it replays Lean's core library too. The runner reports replay and
+Comparator as pending; do not claim they passed. Final proof replay requirements
+in `CLAUDE.md` still apply. On Linux, run:
 
 ```sh
 make check comparator
 ```
 
-`make check` includes the adventure-source and rules guards; the
-runner's `lake check` alone does not include those guards. `make comparator`
+`make check` runs the adventure-source and rules guards, then `lake check`
+(isolated kernel replay; it fails on `sorry` and on new axioms). `make comparator`
 checks `Comparator/Proofs.lean` against the trusted declarations in
 `Comparator/Statements.lean` using `comparator.json`. The statement file's
 intentional `sorry` placeholders are not proof implementations; do not copy them

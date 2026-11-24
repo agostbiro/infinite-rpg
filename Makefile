@@ -37,13 +37,15 @@ build:
 # `@[` and `attribute [` catch every attribute, such as `@[implemented_by]`.
 FORBIDDEN = \b(implemented_by|extern|unsafe|initialize|builtin_initialize|macro|macro_rules|syntax|elab|set_option)\b|@\[|attribute *\[
 
-# Build, then replay every proof through the Lean kernel. This fails on `sorry` and on new axioms.
-# It also fails if a DM file uses a forbidden word.
-check: build
-	lake check
+# Fail if a DM file uses a forbidden word or changes the rules. Then build, and replay every proof
+# through the Lean kernel. The replay fails on `sorry` and on new axioms. The source checks come
+# first because they are fast, and the replay takes more than a minute.
+check:
 	@if grep -rnE '$(FORBIDDEN)' Rpg/Adventures; then \
 	  echo "error: a forbidden word is used above"; exit 1; fi
 	@$(MAKE) --no-print-directory check-rules
+	lake build
+	lake check
 
 # People own the rules files of each Adventure. A DM may not change them.
 # During play, the DM can propose a live change: equipment, combat effects, and new or replaced
@@ -66,7 +68,7 @@ check-rules:
 # Test the parts of the 3D page that have no browser in them: the objects for the inputs, the walk,
 # and the playback of Reports. This needs only Node.js.
 test-spatial:
-	node --test tests/spatial.test.js tests/playback.test.js tests/environment.test.js tests/travel.test.js tests/world3d.test.js tests/story.test.js tests/change.test.js tests/gear.test.js
+	node --test tests/*.test.js
 
 # The port of the test server for the browser test. It is not PORT, so the test never talks to a
 # game that a Player has open.
