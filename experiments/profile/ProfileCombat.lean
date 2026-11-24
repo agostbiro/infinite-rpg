@@ -15,6 +15,7 @@ open Rpg Rpg.Probability
 def maxDigits (cache : CombatCache) : Nat :=
   cache.fold (fun m _ a => a.outcomes.entries.foldl (fun m e => max m (toString e.2.den).length) m) 0
 
+/-- Print the timings of each Fight. With `--compare`, also compare with the old solver. -/
 def main (args : List String) : IO Unit := do
   let d := Lafayette.barrenHillDefinition
   let rules := d.rules

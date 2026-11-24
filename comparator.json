@@ -26,6 +26,8 @@
     "Verified.combat_highProbability",
     "Verified.combat_outcome_error",
     "Verified.admitted_combats",
+    "Verified.admitted_exit_law",
+    "Verified.admitted_exit_law_valid",
     "Verified.runtime_initialized",
     "Verified.runtime_preserved",
     "Verified.runtime_progress",

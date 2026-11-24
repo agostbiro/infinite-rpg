@@ -1,9 +1,9 @@
 import Rpg.Probability.CombatCertificate
 import Rpg.Spec
 
-/-! Mandatory combat evidence for an adventure. Each distinct encounter is checked
-at every possible entry HP, sharing the producer's cache across those starts.
-The expensive producer is outside the trusted proof boundary. -/
+/-! Combat evidence for an Adventure. Each distinct Fight is checked at every entry HP, with one
+witness for all entry HPs. The solver that makes the witness is not trusted. This file also gives
+the exit law of each Fight at each entry HP (`CertifiedAdventureCombat.exitLaw`). -/
 namespace Rpg.Probability
 
 def fightStart (rules : RuleSet) (hero : Being) (hp : Int) (foes : List Being) : FightState :=
@@ -92,12 +92,14 @@ theorem CertifiedEncounter.exitLaw_eq {rules : RuleSet} {hero : Being} {foes : L
     c.exitLaw hp = (c.atHP hp (by omega) (by omega)).outcomes := by
   simp [CertifiedEncounter.exitLaw, CertifiedFight.outcomes, CertifiedEncounter.atHP]
 
-/-- The exit law is the exact law of the Fight. For each result and each number of rounds `n`,
-the chance to end with that result within `n` rounds is at most the exit law's chance. The
-exit law's chance is at most that plus the chance that the Fight is not over after `n` rounds.
-The Fight ends with probability one, so this last chance goes to zero. -/
+/-- The exit law is the exact law of the Fight. For each result and each `n`, the exit law's
+chance is between the chance to end with that result within `n` rounds and that chance plus the
+chance that the Fight is not over after `n` rounds. The Fight ends with probability one, so the
+second chance goes to zero. -/
 theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes : List Being}
-    (c : CertifiedEncounter rules hero foes) (hp : Nat) (hi : hp ≤ rules.maxHP hero)
+    (c : CertifiedEncounter rules hero foes) (hp : Nat)
+    -- The entry HP is at most full HP.
+    (hi : hp ≤ rules.maxHP hero)
     (event : CombatResult → Bool) (n : Nat) :
     let p := combatProcess rules (turnOrder rules hero foes)
     let start := fightStart rules hero hp foes
@@ -130,15 +132,23 @@ theorem CertifiedEncounter.exitLaw_stalled {rules : RuleSet} {hero : Being} {foe
   -- No end state has the result `stalled`, so its chance within `n` rounds is zero.
   have never : ∀ n s, p.eventBy (fun s => terminalResult s == .stalled) n s = 0 := by
     have hz : ∀ s, (terminalResult s == .stalled) = false := by
-      intro s; unfold terminalResult; split <;> rfl
+      intro s
+      unfold terminalResult
+      split <;> rfl
     intro n
     induction n with
-    | zero => intro s; simp [StoppingProcess.eventBy, hz]
+    -- With no rounds, only an end state counts, and its result is not `stalled`.
+    | zero =>
+      intro s
+      simp [StoppingProcess.eventBy, hz]
+    -- With one more round, the chance is the round's expected value of zero.
     | succ n ih =>
       intro s
       simp only [StoppingProcess.eventBy]
       split
+      -- The Fight is over at `s`.
       · simp [hz]
+      -- The Fight goes on from `s`.
       · have zero : p.eventBy (fun s => terminalResult s == .stalled) n = fun _ => 0 := funext ih
         rw [zero]
         exact Distribution.expect_const _ (p.valid _) 0

@@ -61,6 +61,18 @@ private def twoFoesOrder := turnOrder {} (sturdy "Hero") [sturdy "A", sturdy "B"
   decide ((injuryDistribution {} (some 1) (s.foes.getD 1 s.hero) none s.hero).sameWeights
     (Prod.fst <$> attackDistribution {} (some 1) (s.foes.getD 1 s.hero) none s.hero))
 
+-- The level-by-level solver gives the same answers as the recursive solver, on each state that
+-- the recursive solver reaches, and its witness passes the check.
+#guard
+  let start := twoFoes .attack 4
+  let byLevel := solveFight (fastRound {} twoFoesOrder) [start]
+  let recursive := ((solveCombatAnswer (fastRound {} twoFoesOrder) start).run {}).2
+  0 < recursive.size &&
+  recursive.toList.all (fun (s, a) => match byLevel[s]? with
+    | some b => decide (a.outcomes.sameWeights b.outcomes) && a.rounds == b.rounds
+    | none => false) &&
+  (CombatWitness.mk byLevel).check {} twoFoesOrder [start]
+
 -- Bad output is rejected: the fast round is not the round with no attacks at all.
 #guard !decide ((fastRound {} twoFoesOrder (twoFoes .attack 4)).sameWeights
   (pure (twoFoes .attack 4)))

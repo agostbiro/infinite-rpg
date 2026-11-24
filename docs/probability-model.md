@@ -53,7 +53,7 @@ states of a group differ only in the Character's last maneuver, so a group has a
 3 states. The solver writes one linear equation for each state of the group and solves
 them exactly (Gauss-Jordan elimination over rationals). Every way out of a group loses
 HP, so the solver recurs on strictly decreasing total living HP. A group that can never
-lose HP is `stalled`. It memoizes solved states. There is no imposed combat round limit.
+lose HP is `stalled`. It keeps each solved state. There is no imposed combat round limit.
 With the policy "always Attack" (`attackOnlyPolicy`), the solver gave exactly the odds of the
 old solver on the Fights of the earlier built-in Adventure (now the test Adventure). This was a one-off check in the merge, not a build test. Exact rational state enumeration is expensive: one such
 Fight takes minutes in the interpreter. Do not assume large fights are cheap to analyze.

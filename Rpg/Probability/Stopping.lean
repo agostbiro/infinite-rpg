@@ -191,7 +191,9 @@ theorem StoppingProcess.SameOdds.unfinished_eq {q : StoppingProcess α} (h : p.S
     simp only [StoppingProcess.unfinished]
     rw [← h.terminal]
     split
+    -- The process has ended at `s`.
     · rfl
+    -- One step, then `n` more.
     · next ht =>
       rw [h.step s _ (Bool.eq_false_iff.mpr ht)]
       congr 1
@@ -207,7 +209,9 @@ theorem StoppingProcess.SameOdds.eventBy_eq {q : StoppingProcess α} (h : p.Same
     simp only [StoppingProcess.eventBy]
     rw [← h.terminal]
     split
+    -- The process has ended at `s`.
     · rfl
+    -- One step, then `n` more.
     · next ht =>
       rw [h.step s _ (Bool.eq_false_iff.mpr ht)]
       congr 1

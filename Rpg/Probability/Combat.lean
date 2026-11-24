@@ -20,8 +20,10 @@ A round can take HP, or it can leave all HP the same. The Engine never adds HP. 
 works on a **group**: every state that rounds can reach from a state without any HP loss.
 States in a group differ only in the Character's last maneuver, so a group has at most 3 states.
 The solver writes one linear equation for each state in the group, and solves them exactly.
-Every way out of the group loses HP, so the solver calls itself on states with less total HP.
-A group that never loses HP is a Fight that never ends (`stalled`).
+Every way out of the group loses HP, so a group needs only the answers of states with less
+total HP. `solveCombatAnswer` calls itself on those states. `solveFight` solves all groups of
+one total HP at the same time, from low HP to high. A group that never loses HP is a Fight that
+never ends (`stalled`).
 -/
 namespace Rpg.Probability
 
@@ -164,13 +166,19 @@ def _root_.Rpg.Maneuver.index : Maneuver → Nat
   | .allOutAttack => 1
   | .allOutDefense => 2
 
-/-- A number made from the HP and the last maneuver of each Fighter. Equal states get equal
-numbers. It is used to sort states and to hash them. Different states can get the same number. -/
-def stateKey (s : FightState) : Nat :=
-  let code (f : Fighter) : Nat := ((f.hp + 512).toNat % 1024) * 4 + f.maneuver.index
-  s.foes.foldl (fun acc f => acc * 4096 + code f) (code s.hero)
+/-- A number made from the HP and the last maneuver of a Fighter. -/
+def fighterCode (f : Fighter) : Nat :=
+  ((f.hp + 512).toNat % 1024) * 4 + f.maneuver.index
 
-instance : Hashable FightState := ⟨fun s => hash (stateKey s)⟩
+/-- A number made from the HP and the last maneuver of each Fighter, used to sort states.
+Equal states get equal numbers. Different states can get the same number. -/
+def stateKey (s : FightState) : Nat :=
+  s.foes.foldl (fun acc f => acc * 4096 + fighterCode f) (fighterCode s.hero)
+
+/-- The hash of a state mixes the code of each Fighter, so that no Fighter is lost when a Fight
+has many Creatures. -/
+instance : Hashable FightState :=
+  ⟨fun s => s.foes.foldl (fun h f => mixHash h (hash (fighterCode f))) (hash (fighterCode s.hero))⟩
 
 /-- The solved states, with their answers. -/
 abbrev CombatCache := Std.HashMap FightState CombatAnswer
@@ -249,10 +257,9 @@ def groupName (s : FightState) : FightState :=
   {s with hero := {s.hero with maneuver := .attack}}
 
 /-- Generate candidate answers for every state that the Fight can reach from `starts`, on many
-cores. First it finds each group that the Fight can reach, with the rounds of its states. Then it
-solves the groups in order of their total HP, from low to high. The groups with the same total
-HP do not depend on each other, so they are solved at the same time.
-Correctness of this producer is not trusted by the certificate checker. -/
+cores. It finds the reachable groups and their rounds, then solves the groups by total HP, from
+low to high, with each level on many cores. The certificate checker does not trust this
+producer. -/
 def solveFight (round : FightState → Distribution FightState) (starts : List FightState) :
     CombatCache := Id.run do
   let mut seen : Std.HashSet FightState := {}
@@ -263,9 +270,13 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
       seen := seen.insert g
       frontier := g :: frontier
   -- Find the groups that the Fight can reach, and the round of each of their states.
+  -- A round that leaves a group takes HP, so a shortest path to a group has at most as many
+  -- steps as the total HP. That bounds the number of passes.
+  let passes := (starts.map livingHP).foldl max 0 + 2
   let mut rounds : Std.HashMap FightState (Distribution FightState) := {}
   let mut levels : Std.HashMap Nat (List FightState) := {}
-  while !frontier.isEmpty do
+  for _ in [:passes] do
+    if frontier.isEmpty then break
     let found := parallelMap (fun g => (maneuverStates g).map fun u => (u, round u)) frontier
     let mut next : List FightState := []
     for (g, members) in frontier.zip found do

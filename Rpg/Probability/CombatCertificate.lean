@@ -2,10 +2,11 @@ import Rpg.Probability.FastCombat
 import Rpg.Probability.Stopping
 import Std.Data.HashMap.Lemmas
 
-/-! The elimination algorithm is an untrusted certificate producer. This small
-checker validates closure, probability equations, and an expected-duration bound
-against an exact round kernel. No assertion of IID seeded PRNG
-output is made: the law here is independent fair dice and `heroPolicy`.
+/-! The solver is not trusted. It gives an answer for each state of a Fight. This checker checks
+the answers against the exact odds of one round: each result of a round has an answer, each
+answer is the round followed by the answers of its results, and the expected number of rounds
+left goes down by one each round. The dice are fair and independent, and the Player is
+`heroPolicy`. This says nothing about the seeded dice of play.
 
 The theorems are about `combatProcess`, whose step is `roundDistribution`. The checker uses
 `fastProcess`, whose step is `fastRound`. The two have the same odds (`fastProcess_sameOdds`),
@@ -108,7 +109,9 @@ theorem CombatWitness.rowCheck_sound {w : CombatWitness} {rules : RuleSet} {orde
   obtain ⟨⟨⟨⟨⟨nonneg, total⟩, rounds⟩, closed⟩, drift⟩, same⟩ := h
   refine ⟨⟨nonneg, total⟩, rounds, closed, ?_, same⟩
   split
+  -- An ended Fight has no budget check.
   · trivial
+  -- A Fight that goes on passed the budget check.
   · next ongoing => simpa [ongoing] using drift
 
 /-- Check that the witness covers each state of `starts` and that every row is valid. The rows

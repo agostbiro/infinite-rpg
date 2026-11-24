@@ -8,7 +8,8 @@ PR agostbiro/infinite-rpg#4, can use them in place of the sample games.
 
 ## What Lean proves
 
-`certify` (`Rpg/Probability/StatisticalAdmission.lean`) gives a `CertifiedAdventure`. For each
+`certify` (`Rpg/Probability/StatisticalAdmission.lean`) gives a `CertifiedAdventure`, or `none`
+if a Fight fails the check. For each
 Fight in the story and each entry HP from 0 to full HP, the value
 `CertifiedAdventureCombat.exitLaw foes hf hp` (`Rpg/Probability/AdventureCertificate.lean`) is
 the exit law. Three theorems are about it:
@@ -19,6 +20,7 @@ the exit law. Three theorems are about it:
 | `CertifiedEncounter.exitLaw_stalled` | The result `stalled` has weight 0. Each Fight ends in a win or a death. |
 | `CertifiedEncounter.exitLaw_exact` | For each result and each `n`: the chance of that result within `n` rounds is at most the exit law's weight, and the weight is at most that chance plus the chance that the Fight is still going after `n` rounds. |
 
+Comparator pins these facts as `admitted_exit_law` and `admitted_exit_law_valid`.
 `admitted_combats` (Comparator) says that each Fight ends with probability one. So the chance
 that the Fight is still going goes to zero, and `exitLaw_exact` says that each weight is the
 true probability of that result. The probabilities are about `combatProcess`: rounds of
@@ -39,8 +41,8 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 | Dragoon Sergeant | 396 | BEFORE_DRAGOON_SOLVE | BEFORE_DRAGOON_CHECK | 0.08 s | 0.04 s |
 | **All (`make certify`)** | | | **BEFORE_TOTAL** | | **4.6 s** (36 s of CPU) |
 
-`lake exe profile-combat` prints the "after" numbers. On one core the new check takes about
-36 s, which is still inside the 3-minute live-change limit. With `--compare`, it also solves
+`lake exe profile-combat` prints the "after" numbers. Pinned to one core (`taskset -c 5`),
+`make certify` takes 28 s, so it fits inside the 3-minute live-change limit even on one core. With `--compare`, it also solves
 each one-foe Fight with the old solver on the spec round. The exit laws are the same, weight for
 weight, at every entry HP.
 
@@ -79,8 +81,13 @@ connect the two:
 * `parallelAll_sound`: `(Task.spawn f).get` is `f ()` in the logic, so the parallel check means
   the same as `List.all`.
 
-The solver is still untrusted, and a wrong answer fails the check. The Comparator statements
-did not change, and they use only `propext`, `Quot.sound` and `Classical.choice`.
+The solver is still untrusted, and a wrong answer fails the check. The text of the old
+Comparator statements did not change, and all statements use only `propext`, `Quot.sound` and
+`Classical.choice`. Their conclusions are still about `combatProcess`. But the hypothesis
+`CertifiedFight` now names the fast definitions (`fastProcess`, `fastRound`,
+`injuryDistribution`, `sortCollect`, `stateKey` and the others in `FastCombat.lean`). They
+decide only which certificates exist, not what the theorems conclude. A reviewer of the
+trusted surface should still read them.
 
 **Termination witness.** The check keeps the expected-rounds witness. The rounds equation is
 one number per state. The outcome equations are about 13 numbers per state. So a path

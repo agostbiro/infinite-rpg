@@ -22,11 +22,16 @@ theorem chunksOf_flatten (n : Nat) (xs : List α) : (chunksOf n xs).flatten = xs
   have go : ∀ fuel (ys : List α), (chunksOf.go n fuel ys).flatten = ys := by
     intro fuel
     induction fuel with
-    | zero => intro ys; simp [chunksOf.go]
+    -- With no fuel, the whole list is one piece.
+    | zero =>
+      intro ys
+      simp [chunksOf.go]
     | succ fuel ih =>
       intro ys
       cases ys with
+      -- An empty list has no pieces.
       | nil => simp [chunksOf.go]
+      -- The first piece, then the pieces of the rest.
       | cons y rest => simp only [chunksOf.go, List.flatten_cons, ih, List.take_append_drop]
   exact go _ xs
 

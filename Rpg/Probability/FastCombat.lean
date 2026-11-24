@@ -70,9 +70,9 @@ def mergeAdjacent [DecidableEq α] : List (α × Rat) → List (α × Rat)
     | (y, q) :: more => if x = y then (x, p + q) :: more else (x, p) :: (y, q) :: more
     | [] => [(x, p)]
 
-/-- Merge equal values, as `collect` does. It sorts the entries by `key` first and then merges
-neighbours, so it does not compare every pair. A `key` that gives two values the same number
-only makes the merge less complete. It never merges two different values. -/
+/-- Merge equal values, as `collect` does, but sort the entries by `key` first and then merge
+neighbours, so that it does not compare every pair. A `key` that gives two values the same
+number can leave some equal values unmerged, but it never merges two different values. -/
 def Distribution.sortCollect [DecidableEq α] (key : α → Nat) (d : Distribution α) :
     Distribution α :=
   let keyed := d.entries.map fun e => (key e.1, e)
@@ -152,9 +152,19 @@ theorem fastAttack_valid (rules : RuleSet) (a : Actor) (att : Fighter) (b : Acto
 theorem weightedSum_perm {xs ys : List (α × Rat)} (h : xs.Perm ys) (f : α → Rat) :
     weightedSum xs f = weightedSum ys f := by
   induction h with
+  -- Two empty lists.
   | nil => rfl
-  | cons e _ ih => rcases e with ⟨x, p⟩; simp [ih]
-  | swap e e' _ => rcases e with ⟨x, p⟩; rcases e' with ⟨y, q⟩; simp; grind
+  -- The same first entry.
+  | cons e _ ih =>
+    rcases e with ⟨x, p⟩
+    simp [ih]
+  -- The first two entries change places.
+  | swap e e' _ =>
+    rcases e with ⟨x, p⟩
+    rcases e' with ⟨y, q⟩
+    simp
+    grind
+  -- Two reorderings, one after the other.
   | trans _ _ ih ih' => exact ih.trans ih'
 
 /-- Merging neighbours does not change an expected value. -/
@@ -171,11 +181,18 @@ theorem weightedSum_mergeAdjacent [DecidableEq α] (xs : List (α × Rat)) (f : 
       rw [h] at ih
       split
       -- It holds the same value, so the two weights are added.
-      · next same => subst same; simp only [weightedSum_cons] at ih ⊢; grind
+      · next same =>
+        subst same
+        simp only [weightedSum_cons] at ih ⊢
+        grind
       -- It holds a different value, so both entries stay.
-      · simp only [weightedSum_cons] at ih ⊢; grind
+      · simp only [weightedSum_cons] at ih ⊢
+        grind
     -- The merged rest is empty.
-    · next h => rw [h] at ih; simp only [weightedSum_cons] at ih ⊢; grind
+    · next h =>
+      rw [h] at ih
+      simp only [weightedSum_cons] at ih ⊢
+      grind
 
 /-- Merging neighbours keeps every weight nonnegative. -/
 theorem mergeAdjacent_nonnegative [DecidableEq α] (xs : List (α × Rat))
@@ -188,22 +205,26 @@ theorem mergeAdjacent_nonnegative [DecidableEq α] (xs : List (α × Rat))
     have hrest := ih (fun e he => h e (by simp [he]))
     simp only [mergeAdjacent]
     split
+    -- The merged rest starts with an entry.
     · next y q more hm =>
       rw [hm] at hrest
       have hq : 0 ≤ q := hrest (y, q) (by simp)
       have hmore : ∀ e ∈ more, 0 ≤ e.2 := fun e he => hrest e (by simp [he])
       split
+      -- The two weights are added.
       · intro e he
         simp only [List.mem_cons] at he
         rcases he with rfl | he
         · exact Rat.add_nonneg hp hq
         · exact hmore e he
+      -- Both entries stay.
       · intro e he
         simp only [List.mem_cons] at he
         rcases he with rfl | rfl | he
         · exact hp
         · exact hq
         · exact hmore e he
+    -- The merged rest is empty.
     · intro e he
       simp only [List.mem_cons, List.not_mem_nil, or_false] at he
       rw [he]
@@ -228,9 +249,11 @@ private theorem sorted_perm (key : α → Nat) (xs : List (α × Rat)) :
 theorem Distribution.valid_sortCollect [DecidableEq α] (key : α → Nat) (d : Distribution α)
     (hd : d.Valid) : (d.sortCollect key).Valid := by
   constructor
+  -- Each weight is not negative.
   · apply mergeAdjacent_nonnegative
     intro e he
     exact hd.1 e ((sorted_perm key d.entries).mem_iff.mp he)
+  -- The weights add up to 1.
   · rw [← weightedSum_one]
     change (d.sortCollect key).expect (fun _ => 1) = 1
     rw [Distribution.expect_sortCollect]
@@ -345,12 +368,16 @@ theorem fastRound_expect (rules : RuleSet) (order : List Actor) (s : FightState)
 theorem fastFoes_valid (rules : RuleSet) (s : FightState) (actors : List Actor) :
     (fastFoes rules s actors).Valid := by
   induction actors generalizing s with
+  -- No Creature acts.
   | nil => exact Distribution.valid_pure _
+  -- One Creature acts, then the rest.
   | cons a actors ih =>
     apply Distribution.valid_sortCollect
     apply Distribution.valid_bind
+    -- The first turn.
     · exact Distribution.valid_sortCollect _ _
         (Distribution.valid_map _ _ (foeTurnsWith_valid (fastAttack_valid rules) _ _))
+    -- The other turns.
     · exact ih
 
 /-- `fastRound` is a probability distribution. -/
@@ -359,15 +386,19 @@ theorem fastRound_valid (rules : RuleSet) (order : List Actor) (s : FightState) 
   unfold fastRound
   apply Distribution.valid_sortCollect
   apply Distribution.valid_bind
+  -- The Creatures before the Character, then the Character.
   · apply Distribution.valid_sortCollect
     apply Distribution.valid_bind _ _ (fastFoes_valid _ _ _)
     intro u
     split
+    -- The Fight is over, so the Character does not act.
     · exact Distribution.valid_pure _
+    -- The Character acts.
     · next hu =>
       apply Distribution.valid_bind _ _ (heroPolicy_valid u (Bool.eq_false_iff.mpr hu))
       intro choice
       exact Distribution.valid_map _ _ (heroTurnWith_valid (fastAttack_valid rules) _ _ _)
+  -- The Creatures after the Character.
   · intro u
     exact fastFoes_valid _ _ _
 
@@ -376,7 +407,9 @@ theorem fastStep_valid (rules : RuleSet) (order : List Actor) (s : FightState) :
     (fastStep rules order s).Valid := by
   unfold fastStep
   split
+  -- The Fight is over and stays as it is.
   · exact Distribution.valid_pure _
+  -- One round.
   · exact fastRound_valid rules order s
 
 end Rpg.Probability

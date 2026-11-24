@@ -168,6 +168,41 @@ theorem admitted_combats (a : Probability.CertifiedAdventure) (foes : List Being
       (turnOrder a.admitted.candidate.rules a.admitted.candidate.hero foes)).AlmostSurelyTerminates
       (Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes) := a.combat.ends_almostSurely foes encounter hp lower upper
 
+/-- In a certified Adventure, the exit law of each Fight at each entry HP is the exact law of that
+Fight. For each result and each `n`, the chance to end with that result within `n` rounds is at
+most the exit law's weight, and the weight is at most that chance plus the chance that the Fight
+is not over after `n` rounds. -/
+theorem admitted_exit_law (a : Probability.CertifiedAdventure) (foes : List Being)
+    -- The Fight is in the story.
+    (encounter : foes ∈ Probability.encounterFoes a.admitted.candidate.story)
+    -- The entry HP is at most full HP.
+    (hp : Nat) (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero)
+    (event : Probability.CombatResult → Bool) (n : Nat) :
+    let p := Probability.combatProcess a.admitted.candidate.rules
+      (turnOrder a.admitted.candidate.rules a.admitted.candidate.hero foes)
+    let start := Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes
+    -- The chance to end with the event within `n` rounds is at most the exit law's weight.
+    p.eventBy (fun s => event (Probability.terminalResult s)) n start ≤
+      (a.combat.exitLaw foes encounter hp).mass event ∧
+    -- The weight is at most that chance plus the chance to be unfinished after `n` rounds.
+    (a.combat.exitLaw foes encounter hp).mass event ≤
+      p.eventBy (fun s => event (Probability.terminalResult s)) n start + p.unfinished n start := 
+  (a.combat.encounter foes encounter).exitLaw_exact hp upper event n
+
+/-- In a certified Adventure, the exit law of each Fight at each entry HP is a probability law,
+and it gives no weight to `stalled`. -/
+theorem admitted_exit_law_valid (a : Probability.CertifiedAdventure) (foes : List Being)
+    -- The Fight is in the story.
+    (encounter : foes ∈ Probability.encounterFoes a.admitted.candidate.story)
+    -- The entry HP is at most full HP.
+    (hp : Nat) (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero) :
+    -- The weights are not negative, and their sum is 1.
+    (a.combat.exitLaw foes encounter hp).Valid ∧
+    -- The result `stalled` has weight 0.
+    (a.combat.exitLaw foes encounter hp).mass (· == .stalled) = 0 := 
+  ⟨(a.combat.encounter foes encounter).exitLaw_valid hp upper,
+    (a.combat.encounter foes encounter).exitLaw_stalled hp upper⟩
+
 /-- A new game is well formed and its Character starts alive. -/
 theorem runtime_initialized (d : AdventureDefinition) (policy : Probability.BalancePolicy) :
     (Game.new d policy).WellFormed ∧ 0 < (Game.new d policy).hp := ⟨Game.new_wellFormed d policy, Game.new_alive d policy⟩
