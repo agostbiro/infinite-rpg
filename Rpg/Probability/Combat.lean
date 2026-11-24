@@ -280,6 +280,16 @@ def batchesBy (cost : α → Nat) (limit count : Nat) (xs : List α) : List (Lis
     else (done, x :: current, total + c)) ([], [], 0)
   (if current.isEmpty then done else current.reverse :: done).reverse
 
+/-- The batches in which `solveFight` computes the rounds of the states of the groups in
+`frontier`, or `none` if one round is above `budget.roundEntries` or `budget.batchEntries`. The
+batches are of single states, so each batch has at most `budget.batchEntries` results by `size`. -/
+def planRounds (size : FightState → Nat) (budget : SolveBudget) (frontier : List FightState) :
+    Option (List (List FightState)) :=
+  let states := frontier.flatMap maneuverStates
+  let sized := states.zip (parallelMap size states)
+  if sized.any (·.2 > min budget.roundEntries budget.batchEntries) then none
+  else some ((batchesBy Prod.snd budget.batchEntries 144 sized).map (·.map Prod.fst))
+
 /-- Find candidate answers for every state that the Fight can reach from `starts`, on many cores.
 `size` bounds the results of a round before it is computed, so a Fight over `budget` stops early.
 The certificate checker does not trust these answers. -/
@@ -302,26 +312,23 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
   for _ in [:passes] do
     if frontier.isEmpty then break
     let mut next : List FightState := []
+    for g in frontier do
+      levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
     -- Work in batches, so that a Fight that is too large stops before it uses much memory.
-    -- Estimate the rounds of each group before any of them is computed.
-    let sizes := parallelMap (fun g => (maneuverStates g).map size) frontier
-    if sizes.any (·.any (· > budget.roundEntries)) then return {}
-    let sized := frontier.zip (sizes.map List.sum)
-    for batch in batchesBy Prod.snd budget.batchEntries 48 sized do
+    -- Bound the round of each state before any of them is computed.
+    let some batches := planRounds size budget frontier | return {}
+    for batch in batches do
       -- Give up when the Fight is too large. Each group has 3 states.
       if 3 * seen.size > budget.states || kept > budget.entries then return {}
-      let batch := batch.map Prod.fst
-      let found := parallelMap (fun g => (maneuverStates g).map fun u => (u, round u)) batch
-      for (g, members) in batch.zip found do
-        levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
-        for (u, d) in members do
-          rounds := rounds.insert u d
-          kept := kept + d.entries.length
-          for (w, _) in d.entries do
-            let r := groupName w
-            if !w.over && !seen.contains r then
-              seen := seen.insert r
-              next := r :: next
+      let found := parallelMap (fun u => (u, round u)) batch
+      for (u, d) in found do
+        rounds := rounds.insert u d
+        kept := kept + d.entries.length
+        for (w, _) in d.entries do
+          let r := groupName w
+          if !w.over && !seen.contains r then
+            seen := seen.insert r
+            next := r :: next
     frontier := next
   if 3 * seen.size > budget.states || kept > budget.entries || !frontier.isEmpty then return {}
   -- Solve the groups, from the lowest total HP up.

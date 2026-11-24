@@ -97,6 +97,28 @@ private def sprayFourOrder :=
   ({} : SolveBudget).roundEntries
 #guard (certifyFight {} sprayFourOrder sprayFour).isNone
 
+/-- A Creature with ST 1 that punches. -/
+private def puncher (name : String) : Being :=
+  {name, st := 1, dx := 10, iq := 10, ht := 10, skills := [], weapon := .punch, armor := .none}
+
+/-- A Fight in which the Character sprays four Creatures that punch. -/
+private def sprayPunch : FightState :=
+  {sprayFour with foes := ["A", "B", "C", "D"].map fun n => {being := puncher n, hp := 1}}
+
+private def sprayPunchOrder :=
+  turnOrder {} sprayPunch.hero.being (sprayPunch.foes.map (·.being))
+
+-- Each round of the group is under the limit for one round, but the three rounds together are
+-- above the batch limit. The plan puts each round in its own batch, so no batch is above it.
+#guard
+  let size := roundSizeBound sprayPunchOrder (attackBounds {} sprayPunch)
+  let budget : SolveBudget := {}
+  let bounds := (maneuverStates sprayPunch).map size
+  bounds.all (· ≤ budget.roundEntries) && bounds.sum > budget.batchEntries &&
+  match planRounds size budget [sprayPunch] with
+  | some batches => batches.all fun b => (b.map size).sum ≤ budget.batchEntries
+  | none => false
+
 /-- Rules in which the Character gets +4 armor while guarding. -/
 private def guardArmor : RuleSet :=
   {combatRules := defaultCombatRules ++

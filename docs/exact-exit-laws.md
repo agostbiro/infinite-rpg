@@ -55,13 +55,14 @@ are the same, weight for weight. (A program at `2d4b8cf` makes the files with th
 takes about 25 times as long as one with 2. A weapon that hits every Creature (the flamethrower)
 grows it more: each round makes one result for each mix of injuries. `solveFight` has a budget
 (`SolveBudget`). Above it, the solver gives up, the check fails, and the Fight is rejected. That
-is sound. On the Fights in the table below, the most memory used was 390 MB.
+is sound. On the Fights in the table below, the most memory used was 380 MB.
 
 * Before it computes any round, the solver bounds how many results the round makes before
   they are merged (`roundSizeBound`). For each pair of Fighters it uses the most injury results
   of one attack over every HP and every maneuver of the two (`attackBounds`), so the bound holds
   whatever wounds and maneuvers change during the round. The solver rejects the Fight if one
-  round is above 1 million, and it starts rounds together only up to 1 million in total. The
+  round is above 1 million. It puts the states in batches, one round per state, and the bounds
+  of the rounds in one batch add up to at most 1 million (`planRounds`). The
   largest bound on Lafayette is 1,421. `solveChecked` is the one solver call that the check and
   `profile-combat` use.
 * It also stops at 60,000 states or 1.5 million round results in memory. The largest Fight of
@@ -77,11 +78,14 @@ a flamethrower):
 
 | Fight | 14 cores | 4 cores | Memory | Result |
 | - | -: | -: | -: | - |
-| 2 Grenadiers, paused | 1.3 s | | 180 MB | certified |
-| 3 Grenadiers, paused | 5.7 s | | 340 MB | rejected (over budget) |
-| 4 Grenadiers, paused | 18 s | 30 s | 390 MB | rejected (over budget) |
-| 2 Grenadiers, flamethrower, paused | 11 s | | 360 MB | rejected (over budget) |
+| 2 Grenadiers, paused | 1.2 s | | 180 MB | certified |
+| 3 Grenadiers, paused | 4.3 s | | 340 MB | rejected (over budget) |
+| 4 Grenadiers, paused | 17 s | 30 s | 380 MB | rejected (over budget) |
+| 2 Grenadiers, flamethrower, paused | 5.2 s | | 370 MB | rejected (over budget) |
 | 4 Grenadiers, flamethrower, paused | 0.5 s | | 85 MB | rejected (round bound 418 million) |
+
+The times are for the call `certifyContinuation` only. The memory is the most that the whole
+run used, which also checks the Fight at every entry HP first.
 
 With no budget, the Fight against 2 Grenadiers with a flamethrower has 13,959 states and 4.2
 million round results, and the solver alone takes 120 s and 815 MB.

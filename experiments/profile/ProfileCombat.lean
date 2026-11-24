@@ -76,8 +76,11 @@ def main (args : List String) : IO UInt32 := do
     (← IO.getStdout).flush
     let paused : FightPhase := ⟨0, 0, 1, order, 1, fightStart rules hero (rules.maxHP hero) foes⟩
     IO.println s!"  round bound at the start: {roundSizeBound order (attackBounds rules paused.state) paused.state}"
+    (← IO.getStdout).flush
+    -- Time only the call that a live change makes.
+    let t2 ← IO.monoMsNow
     let continuation := (certifyContinuation rules paused).isSome
-    IO.println s!"{n} Grenadiers, paused Fight: certified={continuation} ms={(← IO.monoMsNow) - t1}"
+    IO.println s!"{n} Grenadiers, paused Fight: certified={continuation} ms={(← IO.monoMsNow) - t2}"
     return 0
   let mut totalSolve := 0
   let mut totalCheck := 0
