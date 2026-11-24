@@ -61,14 +61,20 @@ def fastAttack (rules : RuleSet) : AttackFn Distribution :=
 
 /-! ## Merging equal states quickly -/
 
-/-- Merge each entry into the next one when they hold the same value. In a sorted list, equal
-values are next to each other, so this merges all of them. -/
-def mergeAdjacent [DecidableEq α] : List (α × Rat) → List (α × Rat)
-  | [] => []
-  | (x, p) :: rest =>
-    match mergeAdjacent rest with
-    | (y, q) :: more => if x = y then (x, p + q) :: more else (x, p) :: (y, q) :: more
-    | [] => [(x, p)]
+/-- Go through `xs` and merge each entry into the entry before it when they hold the same value.
+`done` holds the merged entries so far, last first. The function calls itself only as its last
+step, so it needs no stack for a long list. -/
+def mergeAdjacentInto [DecidableEq α] : List (α × Rat) → List (α × Rat) → List (α × Rat)
+  | done, [] => done.reverse
+  | (y, q) :: done, (x, p) :: rest =>
+    if x = y then mergeAdjacentInto ((y, q + p) :: done) rest
+    else mergeAdjacentInto ((x, p) :: (y, q) :: done) rest
+  | [], (x, p) :: rest => mergeAdjacentInto [(x, p)] rest
+
+/-- Merge each entry into the entry before it when they hold the same value. In a sorted list,
+equal values are next to each other, so this merges all of them. -/
+def mergeAdjacent [DecidableEq α] (xs : List (α × Rat)) : List (α × Rat) :=
+  mergeAdjacentInto [] xs
 
 /-- Merge equal values, as `collect` does, but sort the entries by `key` first and then merge
 neighbours, so that it does not compare every pair. A `key` that gives two values the same
@@ -167,68 +173,91 @@ theorem weightedSum_perm {xs ys : List (α × Rat)} (h : xs.Perm ys) (f : α →
   -- Two reorderings, one after the other.
   | trans _ _ ih ih' => exact ih.trans ih'
 
+/-- Merging neighbours does not change an expected value: the result has the expected value of
+`done` and `xs` together. -/
+theorem weightedSum_mergeAdjacentInto [DecidableEq α] (done xs : List (α × Rat)) (f : α → Rat) :
+    weightedSum (mergeAdjacentInto done xs) f = weightedSum done f + weightedSum xs f := by
+  induction xs generalizing done with
+  -- No entries are left: the merged entries are put back in order.
+  | nil =>
+    simp only [mergeAdjacentInto, weightedSum_nil, Rat.add_zero]
+    exact weightedSum_perm (List.reverse_perm done) f
+  | cons e rest ih =>
+    rcases e with ⟨x, p⟩
+    cases done with
+    -- Nothing is merged yet, so the entry starts the merged list.
+    | nil =>
+      simp only [mergeAdjacentInto, ih, weightedSum_cons, weightedSum_nil]
+      grind
+    | cons d done =>
+      rcases d with ⟨y, q⟩
+      simp only [mergeAdjacentInto]
+      split
+      -- The entry holds the value of the last merged entry, so the two weights are added.
+      · next same =>
+        subst same
+        simp only [ih, weightedSum_cons]
+        grind
+      -- The entry holds a different value, so it starts a new merged entry.
+      · simp only [ih, weightedSum_cons]
+        grind
+
 /-- Merging neighbours does not change an expected value. -/
 theorem weightedSum_mergeAdjacent [DecidableEq α] (xs : List (α × Rat)) (f : α → Rat) :
     weightedSum (mergeAdjacent xs) f = weightedSum xs f := by
-  induction xs with
-  | nil => rfl
-  | cons e rest ih =>
-    rcases e with ⟨x, p⟩
-    simp only [mergeAdjacent]
-    split
-    -- The merged rest starts with an entry.
-    · next y q more h =>
-      rw [h] at ih
-      split
-      -- It holds the same value, so the two weights are added.
-      · next same =>
-        subst same
-        simp only [weightedSum_cons] at ih ⊢
-        grind
-      -- It holds a different value, so both entries stay.
-      · simp only [weightedSum_cons] at ih ⊢
-        grind
-    -- The merged rest is empty.
-    · next h =>
-      rw [h] at ih
-      simp only [weightedSum_cons] at ih ⊢
-      grind
+  simp [mergeAdjacent, weightedSum_mergeAdjacentInto, Rat.zero_add]
 
 /-- Merging neighbours keeps every weight nonnegative. -/
-theorem mergeAdjacent_nonnegative [DecidableEq α] (xs : List (α × Rat))
-    (h : ∀ e ∈ xs, 0 ≤ e.2) : ∀ e ∈ mergeAdjacent xs, 0 ≤ e.2 := by
-  induction xs with
-  | nil => simp [mergeAdjacent]
+theorem mergeAdjacentInto_nonnegative [DecidableEq α] (done xs : List (α × Rat))
+    -- The merged entries so far have nonnegative weights.
+    (hdone : ∀ e ∈ done, 0 ≤ e.2)
+    -- The entries left have nonnegative weights.
+    (hxs : ∀ e ∈ xs, 0 ≤ e.2) :
+    ∀ e ∈ mergeAdjacentInto done xs, 0 ≤ e.2 := by
+  induction xs generalizing done with
+  -- No entries are left: the result is `done` in the other order.
+  | nil =>
+    intro e he
+    simp only [mergeAdjacentInto, List.mem_reverse] at he
+    exact hdone e he
   | cons e rest ih =>
     rcases e with ⟨x, p⟩
-    have hp : 0 ≤ p := h (x, p) (by simp)
-    have hrest := ih (fun e he => h e (by simp [he]))
-    simp only [mergeAdjacent]
-    split
-    -- The merged rest starts with an entry.
-    · next y q more hm =>
-      rw [hm] at hrest
-      have hq : 0 ≤ q := hrest (y, q) (by simp)
-      have hmore : ∀ e ∈ more, 0 ≤ e.2 := fun e he => hrest e (by simp [he])
+    have hp : 0 ≤ p := hxs (x, p) (by simp)
+    have hrest : ∀ e ∈ rest, 0 ≤ e.2 := fun e he => hxs e (by simp [he])
+    cases done with
+    -- Nothing is merged yet.
+    | nil =>
+      apply ih _ _ hrest
+      intro e he
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at he
+      rw [he]
+      exact hp
+    | cons d done =>
+      rcases d with ⟨y, q⟩
+      have hq : 0 ≤ q := hdone (y, q) (by simp)
+      have hold : ∀ e ∈ done, 0 ≤ e.2 := fun e he => hdone e (by simp [he])
+      simp only [mergeAdjacentInto]
       split
       -- The two weights are added.
-      · intro e he
+      · apply ih _ _ hrest
+        intro e he
         simp only [List.mem_cons] at he
         rcases he with rfl | he
-        · exact Rat.add_nonneg hp hq
-        · exact hmore e he
-      -- Both entries stay.
-      · intro e he
+        · exact Rat.add_nonneg hq hp
+        · exact hold e he
+      -- The entry starts a new merged entry.
+      · apply ih _ _ hrest
+        intro e he
         simp only [List.mem_cons] at he
         rcases he with rfl | rfl | he
         · exact hp
         · exact hq
-        · exact hmore e he
-    -- The merged rest is empty.
-    · intro e he
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at he
-      rw [he]
-      exact hp
+        · exact hold e he
+
+/-- Merging neighbours keeps every weight nonnegative. -/
+theorem mergeAdjacent_nonnegative [DecidableEq α] (xs : List (α × Rat))
+    (h : ∀ e ∈ xs, 0 ≤ e.2) : ∀ e ∈ mergeAdjacent xs, 0 ≤ e.2 :=
+  mergeAdjacentInto_nonnegative [] xs (by simp) h
 
 /-- The sorted entries, with their keys dropped, are the old entries in some order. -/
 private theorem sorted_perm (key : α → Nat) (xs : List (α × Rat)) :

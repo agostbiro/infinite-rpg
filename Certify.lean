@@ -44,6 +44,6 @@ def main : IO UInt32 := do
   let full := d.rules.maxHP d.hero
   IO.println s!"Exit laws at full HP ({full}):"
   for ⟨foes, hf⟩ in (encounterFoes d.story).attach do
-    let law := certified.combat.exitLaw foes hf full
+    let law := certified.combat.exitLaw foes hf full (Nat.le_refl _)
     IO.println s!"  {foes.map (·.name)}: death {percent (law.mass (· == .died))}, mean HP left after a win {meanHPLeft law}"
   return 0

@@ -183,9 +183,9 @@ theorem admitted_exit_law (a : Probability.CertifiedAdventure) (foes : List Bein
     let start := Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes
     -- The chance to end with the event within `n` rounds is at most the exit law's weight.
     p.eventBy (fun s => event (Probability.terminalResult s)) n start ≤
-      (a.combat.exitLaw foes encounter hp).mass event ∧
+      (a.combat.exitLaw foes encounter hp upper).mass event ∧
     -- The weight is at most that chance plus the chance to be unfinished after `n` rounds.
-    (a.combat.exitLaw foes encounter hp).mass event ≤
+    (a.combat.exitLaw foes encounter hp upper).mass event ≤
       p.eventBy (fun s => event (Probability.terminalResult s)) n start + p.unfinished n start := 
   (a.combat.encounter foes encounter).exitLaw_exact hp upper event n
 
@@ -197,9 +197,9 @@ theorem admitted_exit_law_valid (a : Probability.CertifiedAdventure) (foes : Lis
     -- The entry HP is at most full HP.
     (hp : Nat) (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero) :
     -- The weights are not negative, and their sum is 1.
-    (a.combat.exitLaw foes encounter hp).Valid ∧
+    (a.combat.exitLaw foes encounter hp upper).Valid ∧
     -- The result `stalled` has weight 0.
-    (a.combat.exitLaw foes encounter hp).mass (· == .stalled) = 0 := 
+    (a.combat.exitLaw foes encounter hp upper).mass (· == .stalled) = 0 := 
   ⟨(a.combat.encounter foes encounter).exitLaw_valid hp upper,
     (a.combat.encounter foes encounter).exitLaw_stalled hp upper⟩
 

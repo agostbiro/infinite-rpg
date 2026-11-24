@@ -37,9 +37,12 @@ example : checkCharacter {rules with maxHP := fun _ => 0} hero ≠ [] := by deci
 -- The exit law at each entry HP is a probability law with no weight on `stalled`, and a
 -- Character who enters with 0 HP is already dead.
 #guard match certifyEncounter rules hero [foe] with
-  | some c => (entryHPs rules hero).all (fun hp =>
-      (c.exitLaw hp).mass (fun _ => true) == 1 && (c.exitLaw hp).mass (· == .stalled) == 0) &&
-      (c.exitLaw 0).mass (· == .died) == 1
+  | some c => (List.range (rules.maxHP hero + 1)).all (fun hp => match c.exitLaw? hp with
+      | some law => law.mass (fun _ => true) == 1 && law.mass (· == .stalled) == 0
+      | none => false) &&
+      (c.exitLaw? 0).map (·.mass (· == .died)) == some 1 &&
+      -- An entry HP above full HP was not checked, so it has no exit law.
+      (c.exitLaw? (rules.maxHP hero + 1)).isNone
   | none => false
 #guard (certifyAdventureCombat definition).isSome
 

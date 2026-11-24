@@ -11,8 +11,9 @@ PR agostbiro/infinite-rpg#4, can use them in place of the sample games.
 `certify` (`Rpg/Probability/StatisticalAdmission.lean`) gives a `CertifiedAdventure`, or `none`
 if a Fight fails the check. For each
 Fight in the story and each entry HP from 0 to full HP, the value
-`CertifiedAdventureCombat.exitLaw foes hf hp` (`Rpg/Probability/AdventureCertificate.lean`) is
-the exit law. Three theorems are about it:
+`CertifiedAdventureCombat.exitLaw foes hf hp hi` (`Rpg/Probability/AdventureCertificate.lean`) is
+the exit law. The proof `hi` says that `hp` is at most full HP, because only those entry HPs are
+checked. `CertifiedEncounter.exitLaw?` gives `none` above full HP. Three theorems are about it:
 
 | Theorem | What it says |
 | - | - |
@@ -43,9 +44,13 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 | **Total wall time** | | **2,510 s (42 min)** | | **4.6 s** (36 s of CPU) | |
 
 `lake exe profile-combat` prints the "after" numbers. Pinned to one core (`taskset -c 5`),
-`make certify` takes 28 s, so it fits inside the 3-minute live-change limit even on one core. With `--compare`, it also solves
-each one-foe Fight with the old solver on the spec round. The exit laws are the same, weight for
-weight, at every entry HP.
+`make certify` takes 28 s, so it fits inside the 3-minute live-change limit even on one core.
+
+**Baseline.** `experiments/profile/exit-laws-2d4b8cf/` holds the exit laws of all six Fights at
+every entry HP, as exact fractions. The solver of commit `2d4b8cf` made them, on the spec round,
+before any code of this change existed. `lake exe profile-combat --compare
+experiments/profile/exit-laws-2d4b8cf` checks that the new exit laws are the same, weight for
+weight. (A program at `2d4b8cf` makes the files with the same text form as `--dump`.)
 
 ## Where the time went, and what changed
 
@@ -107,7 +112,7 @@ including its whole Fight. The steps:
    candidate's definition) after the Wish or the live change is built. It gives the exit law of
    each Fight at each entry HP. It is about 5 s on Lafayette.
 2. **Build the combat edges from the exit laws.** For a choice `.fight foes onWin` at a node
-   with HP `h`, the edges are `exitLaw foes hf h`, mapped by result: `.won hp` goes to
+   with HP `h`, the edges are `exitLaw foes hf h hi`, mapped by result: `.won hp` goes to
    `arrive story onWin hp`, and `.died` goes to Lose. This is the formula K(s, a, v) of section 4
    of PR agostbiro/infinite-rpg#4. `exitLaw_stalled` proves that no edge goes to `stalled`.
    `outcomeEdges` now calls `checkedCombat`, which solves the Fight again for each node. The
