@@ -1,4 +1,4 @@
-.PHONY: install run run-fake build check check-rules cheats validate certify comparator agree test-spatial test-browser
+.PHONY: install run run-fake build check check-rules cheats validate certify compare-exit-laws comparator agree test-spatial test-browser
 
 # The port of the game server: make run PORT=9000
 PORT ?= 8080
@@ -95,6 +95,11 @@ validate:
 # It builds the value that the theorem `admitted_combats` is about.
 certify:
 	lake exe certify
+
+# Compute the exit law of each Fight of Lafayette at each entry HP, and compare them, weight for
+# weight, with the exit laws of the old solver (experiments/profile/exit-laws-2d4b8cf).
+compare-exit-laws:
+	lake exe profile-combat --compare
 
 # Check that the main theorems in Comparator/Proofs.lean prove the statements in
 # Comparator/Statements.lean, pass the kernel, and use only the standard axioms (see comparator.json).

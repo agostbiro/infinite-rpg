@@ -24,9 +24,7 @@ theorem independentFaces_sum (n : Nat) (observe : Nat → Rat) :
     funext face
     exact ih (fun total => observe (face + total))
 
-@[local simp] private theorem expect_ite (p : Prop) [Decidable p] (d e : Distribution α) (f : α → Rat) :
-    (if p then d else e).expect f = if p then d.expect f else e.expect f := by
-  split <;> rfl
+attribute [local simp] Distribution.expect_ite
 
 theorem attack_injury_refinement (rules : RuleSet) (a : Actor) (att : Fighter)
     (b : Actor) (dfn : Fighter) (observe : Nat → Rat) :

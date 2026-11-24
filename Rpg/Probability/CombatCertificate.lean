@@ -217,8 +217,9 @@ theorem CertifiedFight.outcome_error (c : CertifiedFight rules order start)
   simp only [exact, ← (fastProcess_sameOdds rules order).eventBy_eq]
   exact h
 
-/-- Public probability calculations expose only checked answers. Failure is explicitly
-represented by `stalled`; it does not assert that the actual fight diverges. -/
+/-- The checked outcomes of a Fight, or `stalled` if the check fails. The check fails if the Fight
+is over the solver budget or the certificate is wrong. `stalled` does not say that the Fight
+goes on forever. -/
 def checkedCombat (rules : RuleSet) (order : List Actor) (s : FightState) : Distribution CombatResult :=
   match certifyFight rules order s with
   | some c => c.outcomes

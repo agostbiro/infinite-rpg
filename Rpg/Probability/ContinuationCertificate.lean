@@ -22,16 +22,66 @@ def continuationProcess (rules : RuleSet) (f : FightPhase) : StoppingProcess (Op
     · exact Distribution.valid_map _ _ (remainingDistribution_valid rules f)
     · exact Distribution.valid_map _ _ ((combatProcess rules f.order).valid _)
 
-/-- The checker's version of `continuationProcess`: the full rounds use `fastProcess`. -/
+/-- The rest of a round paused at the Character's turn, with `heroPolicy` and `fastAttack`. Like
+`fastRound`, it merges equal states after each turn. -/
+def fastRemaining (rules : RuleSet) (order : List Actor) (s : FightState) :
+    Distribution FightState :=
+  if s.over then pure s else
+  let mine := ((heroPolicy s).bind fun (m, t) =>
+    Prod.fst <$> heroTurnWith (fastAttack rules) s m t).sortCollect stateKey
+  (mine.bind fun s => fastFoes rules s (afterCharacter order)).sortCollect stateKey
+
+/-- For every observable of the state after the paused round, `fastRemaining` and
+`remainingDistribution` give the same expected value. -/
+theorem fastRemaining_expect (rules : RuleSet) (f : FightPhase) (observe : FightState → Rat) :
+    (fastRemaining rules f.order f.state).expect observe =
+      (remainingDistribution rules f).expect observe := by
+  simp only [remainingDistribution, Distribution.expect_collect, Distribution.expect_map]
+  rw [remaining_forgets (fastAttack_forgets rules) heroPolicy f.order f.state observe]
+  simp only [fastRemaining, remainingRoundWith, Bind.bind]
+  split
+  -- The Fight is already over.
+  · rfl
+  -- The Character acts, then the Creatures after it.
+  · simp only [Distribution.expect_sortCollect, Distribution.expect_bind, Distribution.expect_map,
+      Distribution.expect_pure]
+    congr 1
+    funext choice
+    congr 1
+    funext mine
+    exact fastFoes_correct rules mine.1 (afterCharacter f.order) observe
+
+/-- `fastRemaining` is a probability distribution. -/
+theorem fastRemaining_valid (rules : RuleSet) (order : List Actor) (s : FightState) :
+    (fastRemaining rules order s).Valid := by
+  unfold fastRemaining
+  split
+  -- The Fight is over and stays as it is.
+  · exact Distribution.valid_pure _
+  -- The Character acts, then the Creatures after it.
+  · next hs =>
+    apply Distribution.valid_sortCollect
+    apply Distribution.valid_bind
+    -- The Character's turn.
+    · apply Distribution.valid_sortCollect
+      apply Distribution.valid_bind _ _ (heroPolicy_valid s (Bool.eq_false_iff.mpr hs))
+      intro choice
+      exact Distribution.valid_map _ _ (heroTurnWith_valid (fastAttack_valid rules) _ _ _)
+    -- The Creatures after the Character.
+    · intro u
+      exact fastFoes_valid _ _ _
+
+/-- The checker's version of `continuationProcess`: the paused round uses `fastRemaining`, and
+the full rounds use `fastProcess`. -/
 def fastContinuationProcess (rules : RuleSet) (f : FightPhase) :
     StoppingProcess (Option FightState) where
   terminal s := match s with | none => false | some s => s.over
   step s := match s with
-    | none => some <$> remainingDistribution rules f
+    | none => some <$> fastRemaining rules f.order f.state
     | some s => some <$> (fastProcess rules f.order).step s
   valid s := by
     cases s
-    · exact Distribution.valid_map _ _ (remainingDistribution_valid rules f)
+    · exact Distribution.valid_map _ _ (fastRemaining_valid rules f.order f.state)
     · exact Distribution.valid_map _ _ ((fastProcess rules f.order).valid _)
 
 /-- The checker's process has the odds of `continuationProcess`. -/
@@ -40,8 +90,10 @@ theorem fastContinuation_sameOdds (rules : RuleSet) (f : FightPhase) :
   terminal := rfl
   step s g ht := by
     cases s with
-    -- The rest of the paused round is the same in both processes.
-    | none => rfl
+    -- The rest of the paused round has the same odds in both processes.
+    | none =>
+      simp only [fastContinuationProcess, continuationProcess, Distribution.expect_map]
+      exact fastRemaining_expect rules f (fun t => g (some t))
     -- A full round has the same odds in both processes.
     | some s =>
       simp only [fastContinuationProcess, continuationProcess, Distribution.expect_map]
@@ -49,15 +101,16 @@ theorem fastContinuation_sameOdds (rules : RuleSet) (f : FightPhase) :
 
 structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
   witness : CombatWitness
-  starts : ∀ e ∈ (remainingDistribution rules f).entries, witness.contains e.1
+  starts : ∀ e ∈ (fastRemaining rules f.order f.state).entries, witness.contains e.1
   rows : ∀ s ∈ witness.states, witness.RowValid rules f.order s
 
 /-- Check a paused Fight. A Fight whose round is too large for the solver's budget is rejected
-before the rest of the paused round is computed. -/
+before the rest of the paused round is computed. The paused round and the later rounds use the
+fast attack. -/
 def certifyContinuation (rules : RuleSet) (f : FightPhase) : Option (CertifiedContinuation rules f) :=
   let bounds := attackBounds rules f.state
   if roundSizeBound f.order bounds f.state > ({} : SolveBudget).roundEntries then none else
-  let starts := (remainingDistribution rules f).entries.map Prod.fst
+  let starts := (fastRemaining rules f.order f.state).entries.map Prod.fst
   let w : CombatWitness := ⟨solveChecked rules f.order bounds starts⟩
   if h : w.check rules f.order starts = true then
     some ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),
@@ -71,15 +124,16 @@ def CertifiedContinuation.invariant {rules : RuleSet} {f : FightPhase}
 def CertifiedContinuation.stopping {rules : RuleSet} {f : FightPhase}
     (c : CertifiedContinuation rules f) : StoppingCertificate (fastContinuationProcess rules f) c.invariant where
   potential s := match s with
-    | none => 1 + (remainingDistribution rules f).expect (fun s => (c.witness.answer s).rounds)
+    | none => 1 + (fastRemaining rules f.order f.state).expect (fun s => (c.witness.answer s).rounds)
     | some s => (c.witness.answer s).rounds
   nonnegative s hs := by
     cases s with
     | none =>
-      have h := (remainingDistribution rules f).expect_mono (remainingDistribution_valid rules f)
+      have h := (fastRemaining rules f.order f.state).expect_mono
+        (fastRemaining_valid rules f.order f.state)
         (fun _ => 0) (fun s => (c.witness.answer s).rounds) (fun e he =>
           (CertifiedFight.stopping ⟨c.witness,c.starts e he,c.rows⟩).nonnegative e.1 (c.starts e he))
-      simp only [Distribution.expect_const _ (remainingDistribution_valid rules f)] at h
+      simp only [Distribution.expect_const _ (fastRemaining_valid rules f.order f.state)] at h
       grind
     | some s => exact (CertifiedFight.stopping ⟨c.witness,hs,c.rows⟩).nonnegative s hs
   closed s hs e he := by

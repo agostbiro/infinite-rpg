@@ -161,9 +161,7 @@ def fastStep (rules : RuleSet) (order : List Actor) (s : FightState) : Distribut
 
 /-! ## The fast attack has the odds of `attackDistribution` -/
 
-@[local simp] private theorem expect_ite (p : Prop) [Decidable p] (d e : Distribution α)
-    (f : α → Rat) : (if p then d else e).expect f = if p then d.expect f else e.expect f := by
-  split <;> rfl
+attribute [local simp] Distribution.expect_ite
 
 /-- For every observable of the injury, `injuryDistribution` and `attackDistribution` give the
 same expected value. -/
@@ -172,6 +170,8 @@ theorem injuryDistribution_expect (rules : RuleSet) (a : Actor) (att : Fighter) 
     (injuryDistribution rules a att b dfn).expect g =
       (attackDistribution rules a att b dfn).expect (fun r => g r.1) := by
   -- Both sides become sums over the sum of three dice, one case for each Dodge score.
+  -- The proof needs the two sums to unfold to the same terms, so a change to the simp set or
+  -- to the toolchain can break it.
   cases h : dfn.dodge rules <;>
     simp [injuryDistribution, attackDistribution, attackWith, rollAgainstWith, damageFacesWith,
       Bind.bind, Distribution.expect_bind, sumAsFaces, threeDice, h]

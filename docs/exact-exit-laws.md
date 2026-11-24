@@ -48,33 +48,37 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 
 **Baseline.** `experiments/profile/exit-laws-2d4b8cf/` holds the exit laws of all six Fights at
 every entry HP, as exact fractions. The solver of commit `2d4b8cf` made them, on the spec round,
-before any code of this change existed. `lake exe profile-combat --compare
-experiments/profile/exit-laws-2d4b8cf` checks that the new exit laws are the same, weight for
-weight. (A program at `2d4b8cf` makes the files with the same text form as `--dump`.)
+before any code of this change existed. `make compare-exit-laws` checks that the new exit laws
+are the same, weight for weight. (A program at `2d4b8cf` makes the files with the same text form as `--dump`.)
 
 **Larger Fights.** The cost grows fast with the number of Creatures: one round with 4 Creatures
 takes about 25 times as long as one with 2. A weapon that hits every Creature (the flamethrower)
 grows it more: each round makes one result for each mix of injuries. `solveFight` has a budget
 (`SolveBudget`). Above it, the solver gives up, the check fails, and the Fight is rejected. That
-is sound, and it keeps memory below 400 MB.
+is sound. On the Fights in the table below, the most memory used was 390 MB.
 
 * Before it computes any round, the solver bounds how many results the round makes before
   they are merged (`roundSizeBound`). For each pair of Fighters it uses the most injury results
   of one attack over every HP and every maneuver of the two (`attackBounds`), so the bound holds
   whatever wounds and maneuvers change during the round. The solver rejects the Fight if one
-  round is above 1 million, and it starts rounds together only up to 4 million. The largest
-  bound on Lafayette is 1,421. `certifyContinuation` checks the paused round the same way before
-  it computes it. `solveChecked` is the one solver call that the check and `profile-combat` use.
-* It also stops at 60,000 states or 1.5 million round results in memory, about 3 times the
-  largest Fight of Lafayette.
+  round is above 1 million, and it starts rounds together only up to 1 million in total. The
+  largest bound on Lafayette is 1,421. `solveChecked` is the one solver call that the check and
+  `profile-combat` use.
+* It also stops at 60,000 states or 1.5 million round results in memory. The largest Fight of
+  Lafayette has 7,623 states and about 450,000 round results. The solver tests these two limits
+  before each batch of rounds, so one batch (at most 1 million results) can go above them.
+* `certifyContinuation` checks the paused round with the same bound before it computes it. It
+  then computes the paused round with the fast attack and merges after each turn
+  (`fastRemaining`), like the full rounds. `fastRemaining_expect` proves that it has the odds of
+  the spec's paused round.
 
 Measured with `lake exe profile-combat --grenadiers N` (add `--flamethrower` to give Lafayette
 a flamethrower):
 
 | Fight | 14 cores | 4 cores | Memory | Result |
 | - | -: | -: | -: | - |
-| 2 Grenadiers, paused | 1.2 s | | 180 MB | certified |
-| 3 Grenadiers, paused | 5.8 s | | 340 MB | rejected (over budget) |
+| 2 Grenadiers, paused | 1.3 s | | 180 MB | certified |
+| 3 Grenadiers, paused | 5.7 s | | 340 MB | rejected (over budget) |
 | 4 Grenadiers, paused | 18 s | 30 s | 390 MB | rejected (over budget) |
 | 2 Grenadiers, flamethrower, paused | 11 s | | 360 MB | rejected (over budget) |
 | 4 Grenadiers, flamethrower, paused | 0.5 s | | 85 MB | rejected (round bound 418 million) |
@@ -117,7 +121,7 @@ connect the two:
   states and the same one-step expected values have the same `unfinished` and `eventBy` at
   every horizon. The certificate is checked against `fastProcess`, and `fastProcess_sameOdds`
   carries each result to `combatProcess`. `fastContinuation_sameOdds` does the same for a paused
-  Fight in a live change.
+  Fight in a live change, with `fastRemaining_expect` for the paused round.
 * `parallelAll_sound`: `(Task.spawn f).get` is `f ()` in the logic, so the parallel check means
   the same as `List.all`.
 
@@ -125,7 +129,8 @@ The solver is still untrusted, and a wrong answer fails the check. The text of t
 Comparator statements did not change, and all statements use only `propext`, `Quot.sound` and
 `Classical.choice`. Their conclusions are still about `combatProcess`. But the hypothesis
 `CertifiedFight` now names the fast definitions (`fastProcess`, `fastRound`,
-`injuryDistribution`, `sortCollect`, `stateKey` and the others in `FastCombat.lean`). They
+`injuryDistribution`, `sortCollect`, `stateKey` and the others in `FastCombat.lean`), and
+`CertifiedContinuation` names `fastRemaining`. They
 decide only which certificates exist, not what the theorems conclude. A reviewer of the
 trusted surface should still read them.
 
@@ -158,8 +163,10 @@ including its whole Fight. The steps:
 4. **Live changes.** A change during play keeps the paused Fight, with its wounds, maneuvers
    and remaining turn order. `certifyContinuation` now uses the same fast path. Its witness
    gives the answer of each state after the paused round. The exit law of the paused Fight is
-   the law of the paused round followed by those answers. A model that checks from the current
-   state (section 5 of PR agostbiro/infinite-rpg#4) can start from it.
+   the law of the paused round followed by those answers. No definition or theorem gives this
+   exit law yet: `CertifiedContinuation` proves only that the paused Fight ends with probability
+   one. A model that checks from the current state (section 5 of PR agostbiro/infinite-rpg#4)
+   needs that definition and an analogue of `exitLaw_exact`.
 5. **Numbers.** The exit laws are exact rationals with large denominators. An exact
    adventure-level solve multiplies them, so it should merge equal nodes after each step, as
    `Graph.after` does with `collect`.

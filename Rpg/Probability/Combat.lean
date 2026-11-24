@@ -257,8 +257,8 @@ def groupName (s : FightState) : FightState :=
   {s with hero := {s.hero with maneuver := .attack}}
 
 /-- Limits on the work of `solveFight`. Above a limit, it gives up and returns no answers, so the
-check fails and the Fight is rejected. The defaults are well above the Fights of Lafayette (at most
-7,623 states and 450,000 round results), and they keep memory to a few hundred MB. -/
+check fails and the Fight is rejected. The solver tests `states` and `entries` before each batch,
+so one batch, at most `batchEntries` results, can go above them. -/
 structure SolveBudget where
   /-- The most states that the solver solves. -/
   states : Nat := 60000
@@ -267,8 +267,8 @@ structure SolveBudget where
   /-- The most results that one round may make before they are merged, by the estimate that
   the solver gets. A larger round is not computed. -/
   roundEntries : Nat := 1000000
-  /-- The most estimated results of the rounds that the solver computes at the same time. -/
-  batchEntries : Nat := 4000000
+  /-- The most results, by the bound, of the rounds that the solver computes at the same time. -/
+  batchEntries : Nat := 1000000
 
 /-- Split `xs` into batches, in order. A batch has at most `count` items, and the sum of `cost`
 over a batch is at most `limit`, unless the batch has only one item. -/
@@ -280,11 +280,9 @@ def batchesBy (cost : α → Nat) (limit count : Nat) (xs : List α) : List (Lis
     else (done, x :: current, total + c)) ([], [], 0)
   (if current.isEmpty then done else current.reverse :: done).reverse
 
-/-- Generate candidate answers for every state that the Fight can reach from `starts`, on many
-cores. It finds the reachable groups and their rounds, then solves the groups by total HP, from
-low to high, with each level on many cores. `size` estimates the results of a round before it is
-computed, so that a Fight that is too large is rejected before the work. The certificate checker
-does not trust this producer. -/
+/-- Find candidate answers for every state that the Fight can reach from `starts`, on many cores.
+`size` bounds the results of a round before it is computed, so a Fight over `budget` stops early.
+The certificate checker does not trust these answers. -/
 def solveFight (round : FightState → Distribution FightState) (starts : List FightState)
     (size : FightState → Nat := fun _ => 0) (budget : SolveBudget := {}) : CombatCache := Id.run do
   let mut seen : Std.HashSet FightState := {}

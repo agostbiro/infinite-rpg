@@ -20,9 +20,12 @@ def ForgetsReports (A B : AttackFn Distribution) : Prop :=
   ∀ (a : Actor) (att : Fighter) (b : Actor) (dfn : Fighter) (observe : Nat × List Report → Rat),
     (A a att b dfn).expect observe = (B a att b dfn).expect (fun result => observe (result.1, []))
 
-@[local simp] private theorem expect_ite (p : Prop) [Decidable p] (d e : Distribution α)
+/-- The expected value of an `if` is the expected value of the branch that it takes. -/
+theorem Distribution.expect_ite (p : Prop) [Decidable p] (d e : Distribution α)
     (f : α → Rat) : (if p then d else e).expect f = if p then d.expect f else e.expect f := by
   split <;> rfl
+
+attribute [local simp] Distribution.expect_ite
 
 variable {A B : AttackFn Distribution}
 
@@ -77,7 +80,9 @@ theorem foes_forgets (h : ForgetsReports A B) (s : FightState) (actors : List Ac
     (foeTurnsWith B s actors).expect (fun r => observe r.1) =
       (foeTurnsWith A s actors).expect (fun r => observe r.1) := by
   induction actors generalizing s observe with
+  -- No turn is left.
   | nil => rfl
+  -- The first actor acts, then the rest of the list.
   | cons actor actors ih =>
     cases actor with
     -- The Character is in the list. Its place is skipped.
@@ -104,7 +109,7 @@ theorem round_forgets (h : ForgetsReports A B) (policy : FightState → Distribu
     else (policy state).expect fun choice =>
       (heroTurnWith attackFn state choice.1 choice.2).expect fun r =>
         (foeTurnsWith attackFn r.1 (afterCharacter order)).expect (fun r => observe r.1)
-  simp only [roundWith, Bind.bind, expect_ite, Distribution.expect_bind, Distribution.expect_pure]
+  simp only [roundWith, Bind.bind, Distribution.expect_ite, Distribution.expect_bind, Distribution.expect_pure]
   change (foeTurnsWith B s (beforeCharacter order)).expect (fun r => tail B r.1) =
     (foeTurnsWith A s (beforeCharacter order)).expect (fun r => tail A r.1)
   rw [foes_forgets h s (beforeCharacter order) (tail B)]
@@ -122,5 +127,26 @@ theorem round_forgets (h : ForgetsReports A B) (policy : FightState → Distribu
     congr 1
     funext after
     exact foes_forgets h after.1 (afterCharacter order) observe
+
+/-- The rest of a round paused at the Character's turn gives the same odds for the state under
+`A` and under `B`. -/
+theorem remaining_forgets (h : ForgetsReports A B)
+    (policy : FightState → Distribution (Maneuver × Nat)) (order : List Actor) (s : FightState)
+    (observe : FightState → Rat) :
+    (remainingRoundWith B policy order s).expect (fun r => observe r.1) =
+      (remainingRoundWith A policy order s).expect (fun r => observe r.1) := by
+  simp only [remainingRoundWith, Bind.bind]
+  split
+  -- The Fight is already over.
+  · rfl
+  -- The Character acts, then the Creatures after it.
+  · simp only [Distribution.expect_bind, Distribution.expect_pure]
+    congr 1
+    funext choice
+    rw [hero_forgets h s choice.1 choice.2
+      (fun state => (foeTurnsWith B state (afterCharacter order)).expect (fun r => observe r.1))]
+    congr 1
+    funext mine
+    exact foes_forgets h mine.1 (afterCharacter order) observe
 
 end Rpg.Probability

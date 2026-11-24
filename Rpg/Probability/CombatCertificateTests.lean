@@ -1,4 +1,5 @@
 import Rpg.Probability.CombatCertificate
+import Rpg.Probability.ContinuationCertificate
 
 namespace Rpg.Probability.CombatCertificateTests
 
@@ -52,6 +53,13 @@ private def twoFoesOrder := turnOrder {} (sturdy "Hero") [sturdy "A", sturdy "B"
 #guard [Maneuver.attack, .allOutAttack, .allOutDefense].all fun m => [1, 2, 4].all fun hp =>
   decide ((fastRound {} twoFoesOrder (twoFoes m hp)).sameWeights
     (roundDistribution {} heroPolicy twoFoesOrder (twoFoes m hp)))
+
+-- Differential test: the rest of a paused round gives exactly the weights of the spec version,
+-- for each maneuver and HP of the Character, and when the Fight is already over.
+#guard [Maneuver.attack, .allOutAttack, .allOutDefense].all fun m => [0, 1, 2, 4].all fun hp =>
+  let f : FightPhase :=
+    {scene := 0, choice := 0, onWin := 1, order := twoFoesOrder, round := 2, state := twoFoes m hp}
+  decide ((fastRemaining {} f.order f.state).sameWeights (remainingDistribution {} f))
 
 -- The fast attack gives exactly the injury weights of `attackDistribution`.
 #guard [Maneuver.attack, .allOutAttack, .allOutDefense].all fun m =>
