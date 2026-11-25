@@ -258,8 +258,10 @@ def groupName (s : FightState) : FightState :=
 
 /-- Limits on the work of `solveFight`. Above a limit, it gives up and returns no answers, so the
 check fails and the Fight is rejected. Only `entries` is tested after the fact, so one batch, at
-most `batchEntries` results, can go above it. -/
+most `batchEntries` results, can go above it. With `limited` false, the solver ignores the limits. -/
 structure SolveBudget where
+  /-- If false, the solver does not give up at any limit. The spec odds use this. -/
+  limited : Bool := true
   /-- The most states that the solver solves. -/
   states : Nat := 60000
   /-- The most round results that the solver keeps in memory at one time. -/
@@ -274,6 +276,14 @@ structure SolveBudget where
   large Fight after a small part of its work. -/
   work : Nat := 10000000
 
+/-- A budget with no limits. The solver then gives up only if the Fight can go on forever. -/
+def SolveBudget.unlimited : SolveBudget := {limited := false}
+
+/-- True if the solver is over `budget` with `states` states, `kept` round results in memory and
+`work` results of all rounds. It is always false for an unlimited budget. -/
+def SolveBudget.over (budget : SolveBudget) (states kept work : Nat) : Bool :=
+  budget.limited && (states > budget.states || kept > budget.entries || work > budget.work)
+
 /-- Split `xs` into batches, in order. A batch has at most `count` items, and the sum of `cost`
 over a batch is at most `limit`, unless the batch has only one item. -/
 def batchesBy (cost : α → Nat) (limit count : Nat) (xs : List α) : List (List α) :=
@@ -285,14 +295,14 @@ def batchesBy (cost : α → Nat) (limit count : Nat) (xs : List α) : List (Lis
   (if current.isEmpty then done else current.reverse :: done).reverse
 
 /-- The batches in which `solveFight` computes the rounds of the groups in `frontier`, each
-state with its bound by `size`. It is `none` if one bound is above `budget.roundEntries` or
-`budget.batchEntries`. Each item is one state, not one group, so the bounds in a batch add up to
+state with its bound by `size`. For a limited budget, it is `none` if one bound is above
+`budget.roundEntries` or `budget.batchEntries`. Each item is one state, not one group, so the bounds in a batch add up to
 at most `budget.batchEntries`. -/
 def planRounds (size : FightState → Nat) (budget : SolveBudget) (frontier : List FightState) :
     Option (List (List (FightState × Nat))) :=
   let states := frontier.flatMap maneuverStates
   let sized := states.zip (parallelMap size states)
-  if sized.any (·.2 > min budget.roundEntries budget.batchEntries) then none
+  if budget.limited && sized.any (·.2 > min budget.roundEntries budget.batchEntries) then none
   else some (batchesBy Prod.snd budget.batchEntries 144 sized)
 
 /-- Find candidate answers for every state that the Fight can reach from `starts`, on many cores.
@@ -318,7 +328,7 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
   for _ in [:passes] do
     if frontier.isEmpty then break
     -- Give up before any work on the frontier if it has too many states. Each group has 3.
-    if 3 * seen.size > budget.states then return {}
+    if budget.over (3 * seen.size) 0 0 then return {}
     let mut next : List FightState := []
     for g in frontier do
       levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
@@ -328,7 +338,7 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
     for batch in batches do
       -- Give up when the Fight is too large. Each group has 3 states.
       work := work + (batch.map Prod.snd).sum
-      if 3 * seen.size > budget.states || kept > budget.entries || work > budget.work then
+      if budget.over (3 * seen.size) kept work then
         return {}
       let found := parallelMap (fun u => (u, round u)) (batch.map Prod.fst)
       for (u, d) in found do
@@ -339,9 +349,9 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
           if !w.over && !seen.contains r then
             seen := seen.insert r
             next := r :: next
-            if 3 * seen.size > budget.states then return {}
+            if budget.over (3 * seen.size) 0 0 then return {}
     frontier := next
-  if 3 * seen.size > budget.states || kept > budget.entries || !frontier.isEmpty then return {}
+  if budget.over (3 * seen.size) kept 0 || !frontier.isEmpty then return {}
   -- Solve the groups, from the lowest total HP up.
   let mut cache : CombatCache := {}
   for (_, groups) in levels.toList.mergeSort (fun a b => a.1 ≤ b.1) do

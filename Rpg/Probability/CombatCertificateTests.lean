@@ -81,6 +81,18 @@ private def twoFoesOrder := turnOrder {} (sturdy "Hero") [sturdy "A", sturdy "B"
     | none => false) &&
   (CombatWitness.mk byLevel).check {} twoFoesOrder [start]
 
+-- A small budget rejects the two-Creature Fight, but an unlimited budget certifies it.
+#guard (certifyFight {} twoFoesOrder (twoFoes .attack 4) {states := 3}).isNone
+#guard (certifyFight {} twoFoesOrder (twoFoes .attack 4) SolveBudget.unlimited).isSome
+-- The odds of the balance graph do not use a budget: they give the Fight's real exit law, with
+-- no weight on `stalled`, and the same law as the default budget.
+#guard
+  let law := checkedCombat {} twoFoesOrder (twoFoes .attack 4)
+  law.mass (· == .stalled) == 0 && law.mass (fun _ => true) == 1 &&
+  match certifyFight {} twoFoesOrder (twoFoes .attack 4) with
+  | some c => decide (law.sameWeights c.outcomes)
+  | none => false
+
 -- Batches keep at most 2 items and a cost of at most 5, except for one item alone.
 #guard batchesBy id 5 2 [1, 2, 3, 4, 10] == [[1, 2], [3], [4], [10]]
 

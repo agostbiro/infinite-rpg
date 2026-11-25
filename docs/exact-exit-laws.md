@@ -174,7 +174,10 @@ including its whole Fight. The steps:
 
 1. **Certify once per admission.** Run `certify` (or `certifyAdventureCombat` on the
    candidate's definition) after the Wish or the live change is built. It gives the exit law of
-   each Fight at each entry HP. It is about 5 s on Lafayette.
+   each Fight at each entry HP. It is about 5 s on Lafayette. A Fight over the solver budget
+   has no exit law, so admission must reject the Adventure. It must not put `stalled` in
+   its place: an exact check would then see a Fight with no deaths. The spec odds
+   (`checkedCombat`) use no budget, so only the checker can reject.
 2. **Build the combat edges from the exit laws.** For a choice `.fight foes onWin` at a node
    with HP `h`, the edges are `exitLaw foes hf h hi`, mapped by result: `.won hp` goes to
    `arrive story onWin hp`, and `.died` goes to Lose. This is the formula K(s, a, v) of section 4

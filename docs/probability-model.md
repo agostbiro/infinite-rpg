@@ -39,8 +39,9 @@ dodge, initiative, multiple foes, armor, and critical results. A fight win has
 separate edges for different remaining HP. Death and successful endings are
 separate absorbing nodes. Nonterminating combat has its own absorbing `stalled`
 node, counted as still active rather than as a win or death. A Fight that fails the combat
-check, also because it is over the solver budget (`SolveBudget`), gets a `stalled` edge too
-(`checkedCombat`). The combat check (`certifyAdventureCombat`) rejects such an Adventure.
+check gets a `stalled` edge too (`checkedCombat`). Here the solver has no budget
+(`SolveBudget.unlimited`), so a large Fight gets its real odds, not `stalled`. The budget applies
+only to the checks that run in play (`certifyEncounter`, `certifyContinuation`).
 
 For a change during play, the admission graph starts at the updated adventure's original
 start and full initial HP, with all new equipment and combat effects applied from turn zero.

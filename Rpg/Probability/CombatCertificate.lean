@@ -137,11 +137,12 @@ structure CertifiedFight (rules : RuleSet) (order : List Actor) (start : FightSt
   witness : CombatWitness
   checked : witness.Accepted rules order start
 
-/-- Solve the Fight from `start` and check the answers. It is `none` if the check fails, also
-when the Fight is over the solver budget. -/
-def certifyFight (rules : RuleSet) (order : List Actor) (start : FightState) :
-    Option (CertifiedFight rules order start) :=
-  let witness : CombatWitness := ⟨solveChecked rules order (attackBounds rules start) [start]⟩
+/-- Solve the Fight from `start` within `budget` and check the answers. It is `none` if the check
+fails, also when the Fight is over the budget. -/
+def certifyFight (rules : RuleSet) (order : List Actor) (start : FightState)
+    (budget : SolveBudget := {}) : Option (CertifiedFight rules order start) :=
+  let witness : CombatWitness :=
+    ⟨solveChecked rules order (attackBounds rules start) [start] budget⟩
   if h : witness.check rules order [start] = true then
     some ⟨witness, (CombatWitness.check_sound h).1 start (by simp), (CombatWitness.check_sound h).2⟩
   else none
@@ -227,11 +228,10 @@ theorem CertifiedFight.outcome_error (c : CertifiedFight rules order start)
   simp only [exact, ← (fastProcess_sameOdds rules order).eventBy_eq]
   exact h
 
-/-- The checked outcomes of a Fight, or `stalled` if the check fails. The check fails if the Fight
-is over the solver budget or the certificate is wrong. `stalled` does not say that the Fight
-goes on forever. -/
+/-- The checked outcomes of a Fight, or `stalled` if the check fails. The solver has no budget
+here, so the size of a Fight does not change these odds. The balance theorems are about them. -/
 def checkedCombat (rules : RuleSet) (order : List Actor) (s : FightState) : Distribution CombatResult :=
-  match certifyFight rules order s with
+  match certifyFight rules order s SolveBudget.unlimited with
   | some c => c.outcomes
   | none => pure .stalled
 
