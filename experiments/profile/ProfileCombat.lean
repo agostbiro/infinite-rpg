@@ -17,7 +17,8 @@ checker (`CombatWitness.check`) over all entry HPs.
 * `--grenadiers N` checks a Fight against `N` Grenadiers, at all entry HPs and as a paused Fight
   in a live change. A Fight above the solver's budget (`SolveBudget`) is rejected. Add
   `--flamethrower` to give Lafayette a flamethrower, which attacks every Grenadier at once. Add
-  `--st S` to give each Grenadier ST `S`, and so `S` HP. `--work W` runs only the solver, with a
+  `--st S` to give each Grenadier ST `S`, and so `S` HP. Add `--dice D` to give the Character's
+  weapon `D` damage dice. `--work W` runs only the solver, with a
   work limit of `W`.
 -/
 
@@ -69,6 +70,10 @@ def main (args : List String) : IO UInt32 := do
   let hero := d.hero
   if let some n := (argAfter "--grenadiers" args).bind String.toNat? then
     let hero := if args.contains "--flamethrower" then {hero with weapon := .flamethrower} else hero
+    -- `--dice D` gives the Character equipment with `D` damage dice, as a live change can.
+    let rules := match (argAfter "--dice" args).bind String.toNat? with
+      | some d => {rules with equipment := [⟨hero.name, hero.weapon, "Test weapon", 12, d, 0⟩]}
+      | none => rules
     let st := ((argAfter "--st" args).bind String.toNat?).getD (Lafayette.grenadier 1).st
     let foes := (List.range n).map fun i => {Lafayette.grenadier (i + 1) with st}
     let order := turnOrder rules hero foes

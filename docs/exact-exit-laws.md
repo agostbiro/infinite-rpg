@@ -58,41 +58,48 @@ grows it more: each round makes one result for each mix of injuries. `solveFight
 is sound. On the Fights in the table below, the most memory used was 330 MB.
 
 * Before it computes any round, the solver bounds how many results the round makes before
-  they are merged (`roundSizeBound`). For each pair of Fighters it uses the most injury results
-  of one attack over every HP and every maneuver of the two (`attackBounds`), so the bound holds
-  whatever wounds and maneuvers change during the round. The solver rejects the Fight if one
-  round is above 1 million. It puts the states in batches, one round per state, and the bounds
-  of the rounds in one batch add up to at most 1 million (`planRounds`). The
-  largest bound on Lafayette is 1,421. `solveChecked` is the one solver call that the check and
+  they are merged (`roundSizeBound`). For each pair of Fighters, `attackBounds` finds each damage
+  bonus and DR that one attack can have, over every HP and every maneuver of the two
+  (`injuryTerms`). For each of them it counts the different injuries over the sums of the damage
+  dice (`injuryCount`). So the bound holds whatever wounds and maneuvers change during the
+  round, and it computes no attack. The largest bound on Lafayette is 1,421.
+* The solver rejects the Fight if one round is above 200,000. A Fight with such rounds could
+  compute at most 50 of them within the work limit below, too few to finish. It puts the states
+  in batches, one round per state, and the bounds of the rounds in one batch add up to at most
+  1 million (`planRounds`). `solveChecked` is the one solver call that the check and
   `profile-combat` use.
 * It also stops at 60,000 states, 1.5 million round results in memory, or 10 million for the
   sum of the bounds of all rounds it computed (the work). The largest Fight of Lafayette has
   7,623 states, about 450,000 round results and a work of 2.2 million (Jäger 1 and 2), so the
-  limits are 4.5 to 8 times as large. The solver tests these limits before each batch of rounds,
-  so one batch (at most 1 million results) can go above them.
+  limits are 4.5 to 8 times as large. The solver tests the state limit each time it finds a new
+  state, and the other limits before each batch of rounds, so one batch (at most 1 million
+  results) can go above them.
 * The work limit makes a rejection fast. A large Fight gives up after a small part of its
   rounds, not after it fills memory.
 * The checker computes the rounds again, one round at a time on each core. So the checker's
-  memory is at most one round per core, and each round is at most 1 million results.
+  memory is at most one round per core, and each round is at most 200,000 results.
 * `certifyContinuation` checks the paused round with the same bound before it computes it. It
   then computes the paused round with the fast attack and merges after each turn
   (`fastRemaining`), like the full rounds. `fastRemaining_expect` proves that it has the odds of
   the spec's paused round.
 
 Measured with `lake exe profile-combat --grenadiers N` (add `--flamethrower` to give Lafayette
-a flamethrower, and `--st S` to give each Grenadier ST `S`; a Grenadier has ST 11). The 1-core
+a flamethrower, `--dice D` to give its weapon `D` damage dice, and `--st S` to give each
+Grenadier ST `S`; a Grenadier has ST 11). The 1-core
 column uses `taskset -c 0`. Two Grenadiers are certified up to ST 16 and rejected from ST 17, with
 or without the work limit.
 
-| Fight | 14 cores | 4 cores | 1 core | Memory | Result |
-| - | -: | -: | -: | -: | - |
-| 2 Grenadiers, paused | 1.1 s | | 6.8 s | 180 MB | certified |
-| 2 Grenadiers with ST 16, paused | 3.6 s | | 24 s | 330 MB | certified |
-| 2 Grenadiers with ST 20, paused | 2.5 s | | 18 s | 260 MB | rejected (over budget) |
-| 3 Grenadiers, paused | 2.3 s | | 16 s | 210 MB | rejected (over budget) |
-| 4 Grenadiers, paused | 1.9 s | 3.7 s | 13 s | 140 MB | rejected (over budget) |
-| 2 Grenadiers, flamethrower, paused | 1.7 s | | 9.9 s | 220 MB | rejected (over budget) |
-| 4 Grenadiers, flamethrower, paused | 0.3 s | | 1.0 s | 85 MB | rejected (round bound 418 million) |
+| Fight | 14 cores | 1 core | Memory | Result |
+| - | -: | -: | -: | - |
+| 2 Grenadiers, paused | 1.0 s | 6.6 s | 180 MB | certified |
+| 2 Grenadiers with ST 16, paused | 3.5 s | 25 s | 330 MB | certified |
+| 2 Grenadiers with ST 20, paused | 2.4 s | 18 s | 270 MB | rejected (over budget) |
+| 3 Grenadiers, paused | 2.2 s | 16 s | 210 MB | rejected (over budget) |
+| 4 Grenadiers, paused | 1.8 s | 13 s | 140 MB | rejected (over budget) |
+| 2 Grenadiers, flamethrower, paused | 1.4 s | 9.3 s | 210 MB | rejected (over budget) |
+| 4 Grenadiers, flamethrower, paused | 0.01 s | 0.01 s | 105 MB | rejected (round bound 418 million) |
+| 4 Grenadiers with ST 1, flamethrower, paused | 0.01 s | 0.01 s | 105 MB | rejected (round bound 668,169) |
+| 4 Grenadiers, flamethrower with 6 dice, paused | 0.01 s | 0.01 s | 105 MB | rejected (round bound 5.2 billion) |
 
 The times are for the call `certifyContinuation` only. The memory is the most that the whole
 run used, which also checks the Fight at every entry HP first.

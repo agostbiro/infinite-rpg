@@ -264,9 +264,10 @@ structure SolveBudget where
   states : Nat := 60000
   /-- The most round results that the solver keeps in memory at one time. -/
   entries : Nat := 1500000
-  /-- The most results that one round may make before they are merged, by the estimate that
-  the solver gets. A larger round is not computed. -/
-  roundEntries : Nat := 1000000
+  /-- The most results that one round may make before they are merged, by the bound that the
+  solver gets. A larger round is not computed. A Fight with such rounds could do at most 50 of
+  them within `work`, too few to finish. -/
+  roundEntries : Nat := 200000
   /-- The most results, by the bound, of the rounds that the solver computes at the same time. -/
   batchEntries : Nat := 1000000
   /-- The most results, by the bound, of all the rounds that the solver computes. It stops a
@@ -316,6 +317,8 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
   let mut work := 0
   for _ in [:passes] do
     if frontier.isEmpty then break
+    -- Give up before any work on the frontier if it has too many states. Each group has 3.
+    if 3 * seen.size > budget.states then return {}
     let mut next : List FightState := []
     for g in frontier do
       levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
@@ -336,6 +339,7 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
           if !w.over && !seen.contains r then
             seen := seen.insert r
             next := r :: next
+            if 3 * seen.size > budget.states then return {}
     frontier := next
   if 3 * seen.size > budget.states || kept > budget.entries || !frontier.isEmpty then return {}
   -- Solve the groups, from the lowest total HP up.

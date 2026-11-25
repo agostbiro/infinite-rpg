@@ -104,19 +104,44 @@ def fastRound (rules : RuleSet) (order : List Actor) (s : FightState) : Distribu
       Prod.fst <$> heroTurnWith (fastAttack rules) s m t).sortCollect stateKey
   (mine.bind fun s => fastFoes rules s (afterCharacter order)).sortCollect stateKey
 
-/-- The most injury results that one attack of `att` on `dfn` can have, over every HP from 1 to
+/-- The damage bonus and the DR of one attack by `att` on `dfn`, as `injuryDistribution` computes
+them. They are the only parts of the attack that change which injuries it can give. -/
+def injuryTerms (rules : RuleSet) (attId : Actor) (att : Fighter) (dfnId : Actor)
+    (dfn : Fighter) : Int × Nat :=
+  let offense := rules.combatRules.filter fun r => r.active rules attId att dfn &&
+    (r.hitBonus != 0 || r.damageBonus != 0)
+  let defense := rules.combatRules.filter fun r => r.active rules dfnId dfn att && r.armorBonus > 0
+  ((offense.map (·.damageBonus)).sum, rules.dr dfn.being + (defense.map (·.armorBonus)).sum)
+
+/-- The number of different injuries that an attack by `att` with damage bonus `bonus` against
+DR `dr` can give. Each injury is 0 or the injury of one sum of the damage dice, so this is an upper
+bound on the results of `injuryDistribution`, which merges equal injuries. -/
+def injuryCount (rules : RuleSet) (attId : Actor) (att : Fighter) (bonus : Int) (dr : Nat) :
+    Nat :=
+  let baseDice := rules.weaponDice attId.isNone att.being
+  let damageDice : Dice := { baseDice with add := baseDice.add + bonus }
+  let kind := att.being.weapon.damageType
+  let injuries := (List.range (5 * damageDice.count + 1)).map fun k =>
+    rules.injury kind dr (rules.basicDamage damageDice kind (damageDice.count + k))
+  (0 :: injuries).eraseDups.length
+
+/-- An upper bound on the injury results of one attack of `att` on `dfn`, over every HP from 1 to
 `attHP` and `dfnHP` and every maneuver of the two. HP and maneuvers are the only parts of a
-Fighter that change during a Fight. -/
+Fighter that change during a Fight. It counts injuries once for each different damage bonus and
+DR, so it does not compute any attack. -/
 def maxInjuries (rules : RuleSet) (a : Actor) (att : Fighter) (attHP : Nat) (b : Actor)
     (dfn : Fighter) (dfnHP : Nat) : Nat :=
-  (List.range attHP).foldl (fun best i => maneuverMenu.foldl (fun best m =>
-    (List.range dfnHP).foldl (fun best j => maneuverMenu.foldl (fun best n =>
-      let attacker := {att with hp := i + 1, maneuver := m}
-      let defender := {dfn with hp := j + 1, maneuver := n}
-      max best (injuryDistribution rules a attacker b defender).entries.length) best) best) best) 1
+  let add (seen : List (Int × Nat)) (i : Nat) (m : Maneuver) (j : Nat) (n : Maneuver) :=
+    let t := injuryTerms rules a {att with hp := i + 1, maneuver := m} b
+      {dfn with hp := j + 1, maneuver := n}
+    if seen.contains t then seen else t :: seen
+  let terms := (List.range attHP).foldl (fun seen i => maneuverMenu.foldl (fun seen m =>
+    (List.range dfnHP).foldl (fun seen j => maneuverMenu.foldl (fun seen n =>
+      add seen i m j n) seen) seen) seen) []
+  terms.foldl (fun best (bonus, dr) => max best (injuryCount rules a att bonus dr)) 1
 
-/-- For each Creature of a Fight, the most injury results of one attack by the Character on it
-(`heroHits`) and by it on the Character (`foeHits`), from `maxInjuries`. -/
+/-- For each Creature of a Fight, an upper bound on the injury results of one attack by the
+Character on it (`heroHits`) and by it on the Character (`foeHits`), from `maxInjuries`. -/
 structure AttackBounds where
   /-- The bound for an attack by the Character on each Creature, by number. -/
   heroHits : List Nat
@@ -127,9 +152,9 @@ structure AttackBounds where
 HP stays at most its full HP or its HP in `s`, whichever is larger. -/
 def attackBounds (rules : RuleSet) (s : FightState) : AttackBounds :=
   let limit (f : Fighter) : Nat := max (rules.maxHP f.being) f.hp.toNat
-  let pairs := parallelMap (fun (f, i) =>
+  let pairs := s.foes.zipIdx.map fun (f, i) =>
     (maxInjuries rules none s.hero (limit s.hero) (some i) f (limit f),
-     maxInjuries rules (some i) f (limit f) none s.hero (limit s.hero))) s.foes.zipIdx
+     maxInjuries rules (some i) f (limit f) none s.hero (limit s.hero))
   {heroHits := pairs.map Prod.fst, foeHits := pairs.map Prod.snd}
 
 /-- An upper bound on the number of results that `fastRound` makes from `s` before it merges

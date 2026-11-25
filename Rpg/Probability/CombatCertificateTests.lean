@@ -108,22 +108,47 @@ private def sprayPunch : FightState :=
 private def sprayPunchOrder :=
   turnOrder {} sprayPunch.hero.being (sprayPunch.foes.map (·.being))
 
--- Each round of the group is under the limit for one round, but the three rounds together are
--- above the batch limit. The plan puts each round in its own batch, so no batch is above it.
+-- With a limit of 1 million for one round, each round of the group is under it, but the three
+-- rounds together are above the batch limit. The plan puts each round in its own batch, so no
+-- batch is above it. With the default limit for one round, the Fight is rejected at once.
 #guard
   let size := roundSizeBound sprayPunchOrder (attackBounds {} sprayPunch)
-  let budget : SolveBudget := {}
+  let budget : SolveBudget := {roundEntries := 1000000}
   let bounds := (maneuverStates sprayPunch).map size
   bounds.all (· ≤ budget.roundEntries) && bounds.sum > budget.batchEntries &&
   match planRounds size budget [sprayPunch] with
   | some batches => batches.all fun b => (b.map Prod.snd).sum ≤ budget.batchEntries
   | none => false
+#guard (planRounds (roundSizeBound sprayPunchOrder (attackBounds {} sprayPunch)) {}
+  [sprayPunch]).isNone
 
 /-- Rules in which the Character gets +4 armor while guarding. -/
 private def guardArmor : RuleSet :=
   {combatRules := defaultCombatRules ++
     [{name := "Guard Armor", description := "Armor while guarding.", side := CombatSide.hero,
       trigger := CombatTrigger.guarding, armorBonus := 4}]}
+
+/-- Rules in which the Character's flamethrower rolls 6 dice. -/
+private def bigFlame : RuleSet :=
+  {equipment := [EquipmentRule.mk "Hero" .flamethrower "Big flamethrower" 12 6 0]}
+
+-- `maxInjuries` is an upper bound on the injury results of one real attack, for each HP and
+-- maneuver of both Fighters, with and without the 6-die flamethrower.
+#guard [({} : RuleSet), bigFlame, guardArmor].all fun rules =>
+  let hero : Fighter := sprayFour.hero
+  let foe : Fighter := sprayFour.foes.headD hero
+  let heroBound := maxInjuries rules none hero 4 (some 0) foe 4
+  let foeBound := maxInjuries rules (some 0) foe 4 none hero 4
+  [Maneuver.attack, .allOutAttack, .allOutDefense].all fun m =>
+    [Maneuver.attack, .allOutAttack, .allOutDefense].all fun n => [1, 2, 4].all fun hp =>
+      let att := {hero with hp, maneuver := m}
+      let dfn := {foe with hp, maneuver := n}
+      (injuryDistribution rules none att (some 0) dfn).entries.length ≤ heroBound &&
+        (injuryDistribution rules (some 0) dfn none att).entries.length ≤ foeBound
+
+-- With the 6-die flamethrower, the round against four Creatures is rejected at once.
+#guard roundSizeBound sprayFourOrder (attackBounds bigFlame sprayFour) sprayFour >
+  ({} : SolveBudget).roundEntries
 
 /-- The same Fight, paused after the Character's All-Out Defense. -/
 private def sprayFourGuarded : FightState :=
