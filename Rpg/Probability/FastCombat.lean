@@ -157,9 +157,9 @@ def attackBounds (rules : RuleSet) (s : FightState) : AttackBounds :=
      maxInjuries rules (some i) f (limit f) none s.hero (limit s.hero))
   {heroHits := pairs.map Prod.fst, foeHits := pairs.map Prod.snd}
 
-/-- An upper bound on the number of results that `fastRound` makes from `s` before it merges
-them, if no results were merged. It uses `bounds` for each attack, so it holds whatever
-maneuvers and wounds the Fighters have during the round. No proof uses it. -/
+/-- An upper bound on the number of results that `fastRound` makes from `s` if it merges none.
+It holds if `bounds` is from `attackBounds`, the combat rules read only HP and maneuvers, and
+`order` names each Creature once. Tests check it, and no proof uses it. -/
 def roundSizeBound (order : List Actor) (bounds : AttackBounds) (s : FightState) : Nat :=
   let living := s.livingFoes
   -- The Character's turn: one branch for each maneuver and target of `heroPolicy`.
@@ -262,6 +262,7 @@ theorem weightedSum_mergeAdjacentInto [DecidableEq α] (done xs : List (α × Ra
   | nil =>
     simp only [mergeAdjacentInto, weightedSum_nil, Rat.add_zero]
     exact weightedSum_perm (List.reverse_perm done) f
+  -- Entry `e` is merged into the last merged entry or put after it, then the rest follows.
   | cons e rest ih =>
     rcases e with ⟨x, p⟩
     cases done with
@@ -300,6 +301,7 @@ theorem mergeAdjacentInto_nonnegative [DecidableEq α] (done xs : List (α × Ra
     intro e he
     simp only [mergeAdjacentInto, List.mem_reverse] at he
     exact hdone e he
+  -- Entry `e` is merged into the last merged entry or put after it, then the rest follows.
   | cons e rest ih =>
     rcases e with ⟨x, p⟩
     have hp : 0 ≤ p := hxs (x, p) (by simp)
@@ -409,6 +411,7 @@ theorem foeTurnsWith_valid (s : FightState) (actors : List Actor) :
   induction actors generalizing s with
   -- No turn is left.
   | nil => exact Distribution.valid_pure _
+  -- One more turn is in the list.
   | cons a actors ih =>
     cases a with
     -- The Character's place in the list is skipped.
@@ -435,6 +438,7 @@ theorem fastFoes_correct (rules : RuleSet) (s : FightState) (actors : List Actor
   induction actors generalizing s observe with
   -- No turn is left.
   | nil => rfl
+  -- One more turn is in the list.
   | cons actor actors ih =>
     cases actor with
     -- The Character's place in the list is skipped.

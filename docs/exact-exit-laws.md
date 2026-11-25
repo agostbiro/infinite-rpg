@@ -61,19 +61,23 @@ is sound. On the Fights in the table below, the most memory used was 330 MB.
   they are merged (`roundSizeBound`). For each pair of Fighters, `attackBounds` finds each damage
   bonus and DR that one attack can have, over every HP and every maneuver of the two
   (`injuryTerms`). For each of them it counts the different injuries over the sums of the damage
-  dice (`injuryCount`). So the bound holds whatever wounds and maneuvers change during the
-  round, and it computes no attack. The largest bound on Lafayette is 1,421.
+  dice (`injuryCount`). It computes no attack. The bound is tested, not proved. It holds if the
+  combat rules read only HP and maneuvers, as they do now, and if the turn order names each
+  Creature once. Tests compare it with real rounds that are not merged. The largest bound on
+  Lafayette is 1,421. A wrong bound can only make the solver slow or reject a Fight. It cannot
+  make a wrong exit law pass the check.
 * The solver rejects the Fight if one round is above 200,000. A Fight with such rounds could
   compute at most 50 of them within the work limit below, too few to finish. It puts the states
   in batches, one round per state, and the bounds of the rounds in one batch add up to at most
   1 million (`planRounds`). `solveChecked` is the one solver call that the check and
   `profile-combat` use.
 * It also stops at 60,000 states, 1.5 million round results in memory, or 10 million for the
-  sum of the bounds of all rounds it computed (the work). The largest Fight of Lafayette has
-  7,623 states, about 450,000 round results and a work of 2.2 million (Jäger 1 and 2), so the
-  limits are 4.5 to 8 times as large. The solver tests the state limit each time it finds a new
-  state, and the other limits before each batch of rounds, so one batch (at most 1 million
-  results) can go above them.
+  sum of the bounds of all rounds it computed (the work). On Lafayette, Grenadier 1 and 2 has
+  the most states (7,623), and Jäger 1 and 2 has the most work (2.2 million). The most round
+  results in memory is about 450,000. So the limits are 3.3 to 8 times as large. The solver
+  tests the state limit each time it finds a new state. It adds a batch to the work before it
+  tests the work limit, so the work never goes above it. It tests the memory limit before each
+  batch, so one batch (at most 1 million results) can go above that limit.
 * The work limit makes a rejection fast. A large Fight gives up after a small part of its
   rounds, not after it fills memory.
 * The checker computes the rounds again, one round at a time on each core. So the checker's

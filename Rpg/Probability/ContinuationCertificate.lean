@@ -99,6 +99,8 @@ theorem fastContinuation_sameOdds (rules : RuleSet) (f : FightPhase) :
       simp only [fastContinuationProcess, continuationProcess, Distribution.expect_map]
       exact (fastProcess_sameOdds rules f.order).step s (fun t => g (some t)) ht
 
+/-- Checked answers for a paused Fight: an answer for each result of the paused round, and a
+checked row for each state of the witness. -/
 structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
   witness : CombatWitness
   starts : ∀ e ∈ (fastRemaining rules f.order f.state).entries, witness.contains e.1
@@ -117,10 +119,13 @@ def certifyContinuation (rules : RuleSet) (f : FightPhase) : Option (CertifiedCo
       (CombatWitness.check_sound h).2⟩
   else none
 
+/-- The states that the certificate covers: the paused point, and each state of the witness. -/
 def CertifiedContinuation.invariant {rules : RuleSet} {f : FightPhase}
     (c : CertifiedContinuation rules f) (s : Option FightState) : Prop :=
   match s with | none => True | some s => c.witness.contains s
 
+/-- A stopping certificate for the paused Fight. Before the paused round, the potential is one
+more than the expected rounds left after it. -/
 def CertifiedContinuation.stopping {rules : RuleSet} {f : FightPhase}
     (c : CertifiedContinuation rules f) : StoppingCertificate (fastContinuationProcess rules f) c.invariant where
   potential s := match s with
@@ -128,6 +133,7 @@ def CertifiedContinuation.stopping {rules : RuleSet} {f : FightPhase}
     | some s => (c.witness.answer s).rounds
   nonnegative s hs := by
     cases s with
+    -- Before the paused round: the potential is an expected value of nonnegative numbers.
     | none =>
       have h := (fastRemaining rules f.order f.state).expect_mono
         (fastRemaining_valid rules f.order f.state)
@@ -135,9 +141,11 @@ def CertifiedContinuation.stopping {rules : RuleSet} {f : FightPhase}
           (CertifiedFight.stopping ⟨c.witness,c.starts e he,c.rows⟩).nonnegative e.1 (c.starts e he))
       simp only [Distribution.expect_const _ (fastRemaining_valid rules f.order f.state)] at h
       grind
+    -- A state of the Fight: the Fight's own certificate gives the bound.
     | some s => exact (CertifiedFight.stopping ⟨c.witness,hs,c.rows⟩).nonnegative s hs
   closed s hs e he := by
     cases s with
+    -- Before the paused round: each result of the paused round is a start of the witness.
     | none =>
       simp only [fastContinuationProcess, Functor.map, Distribution.bind, Function.comp_def,
         List.map_cons, List.map_nil] at he
@@ -145,6 +153,7 @@ def CertifiedContinuation.stopping {rules : RuleSet} {f : FightPhase}
       have eq := List.mem_singleton.mp eq
       cases eq
       exact c.starts t ht
+    -- A state of the Fight: the Fight's own certificate keeps it in the witness.
     | some s =>
       simp only [fastContinuationProcess, Functor.map, Distribution.bind, Function.comp_def,
         List.map_cons, List.map_nil] at he
@@ -154,11 +163,14 @@ def CertifiedContinuation.stopping {rules : RuleSet} {f : FightPhase}
       exact (CertifiedFight.stopping ⟨c.witness,hs,c.rows⟩).closed s hs t ht
   decreases s hs ht := by
     cases s with
+    -- Before the paused round: the potential is one more than after it.
     | none => simp [fastContinuationProcess, Distribution.expect_map]
+    -- A state of the Fight: the Fight's own certificate gives the decrease.
     | some s =>
       simpa only [fastContinuationProcess, Distribution.expect_map, CertifiedFight.stopping] using
         (CertifiedFight.stopping ⟨c.witness,hs,c.rows⟩).decreases s hs ht
 
+/-- A checked paused Fight ends with probability 1 in the spec process. -/
 theorem CertifiedContinuation.ends_almostSurely {rules : RuleSet} {f : FightPhase}
     (c : CertifiedContinuation rules f) : (continuationProcess rules f).AlmostSurelyTerminates none :=
   ((fastContinuation_sameOdds rules f).almostSurely_iff none).mp (c.stopping.almostSure none trivial)

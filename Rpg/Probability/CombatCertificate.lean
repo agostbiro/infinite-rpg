@@ -2,7 +2,10 @@ import Rpg.Probability.FastCombat
 import Rpg.Probability.Stopping
 import Std.Data.HashMap.Lemmas
 
-/-! The solver is not trusted. It gives an answer for each state of a Fight. This checker checks
+/-!
+# Combat certificates
+
+The solver is not trusted. It gives an answer for each state of a Fight. This checker checks
 the answers against the exact odds of one round: each result of a round has an answer, each
 answer is the round followed by the answers of its results, and the expected number of rounds
 left goes down by one each round. The dice are fair and independent, and the Player is
@@ -13,6 +16,8 @@ The theorems are about `combatProcess`, whose step is `roundDistribution`. The c
 so each fact that the checker proves for `fastProcess` also holds for `combatProcess`. -/
 namespace Rpg.Probability
 
+/-- The spec Fight as a random process: each step is one round of `roundDistribution` with
+`heroPolicy`. A Fight that is over stays as it is. -/
 def combatProcess (rules : RuleSet) (order : List Actor) : StoppingProcess FightState where
   terminal := FightState.over
   step s := if s.over then pure s else roundDistribution rules heroPolicy order s
@@ -132,6 +137,8 @@ structure CertifiedFight (rules : RuleSet) (order : List Actor) (start : FightSt
   witness : CombatWitness
   checked : witness.Accepted rules order start
 
+/-- Solve the Fight from `start` and check the answers. It is `none` if the check fails, also
+when the Fight is over the solver budget. -/
 def certifyFight (rules : RuleSet) (order : List Actor) (start : FightState) :
     Option (CertifiedFight rules order start) :=
   let witness : CombatWitness := ⟨solveChecked rules order (attackBounds rules start) [start]⟩
@@ -141,6 +148,8 @@ def certifyFight (rules : RuleSet) (order : List Actor) (start : FightState) :
 
 variable {rules : RuleSet} {order : List Actor} {start : FightState}
 
+/-- The checked answers give a stopping certificate for `fastProcess`. The potential of a state
+is its expected number of rounds left. -/
 def CertifiedFight.stopping (c : CertifiedFight rules order start) :
     StoppingCertificate (fastProcess rules order) c.witness.contains where
   potential s := (c.witness.answer s).rounds
@@ -177,6 +186,7 @@ theorem CertifiedFight.finishes_with_high_probability (c : CertifiedFight rules 
   rw [← (fastProcess_sameOdds rules order).unfinished_eq]
   exact c.stopping.horizon_sound start c.checked.1 delta hd
 
+/-- The checked exit law of the Fight from `start`. -/
 def CertifiedFight.outcomes (c : CertifiedFight rules order start) : Distribution CombatResult :=
   (c.witness.answer start).outcomes
 

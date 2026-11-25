@@ -26,6 +26,7 @@ theorem chunksOf_flatten (n : Nat) (xs : List α) : (chunksOf n xs).flatten = xs
     | zero =>
       intro ys
       simp [chunksOf.go]
+    -- With fuel left, the list is empty or has a first piece.
     | succ fuel ih =>
       intro ys
       cases ys with

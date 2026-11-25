@@ -26,11 +26,13 @@ structure CertifiedEncounter (rules : RuleSet) (hero : Being) (foes : List Being
 def encounterStarts (rules : RuleSet) (hero : Being) (foes : List Being) : List FightState :=
   (entryHPs rules hero).map fun (hp : Nat) => fightStart rules hero hp foes
 
+/-- Solve one Fight at every entry HP of the Character and check the answers. It is `none` if the
+check fails, also when the Fight is over the solver budget. -/
 def certifyEncounter (rules : RuleSet) (hero : Being) (foes : List Being) :
     Option (CertifiedEncounter rules hero foes) :=
   let order := turnOrder rules hero foes
   let starts := encounterStarts rules hero foes
-  let witness : CombatWitness := 
+  let witness : CombatWitness :=
     ⟨solveChecked rules order (attackBounds rules (fightStart rules hero 0 foes)) starts⟩
   if h : witness.check rules order starts = true then
     some ⟨witness,

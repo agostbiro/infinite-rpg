@@ -146,6 +146,25 @@ private def bigFlame : RuleSet :=
       (injuryDistribution rules none att (some 0) dfn).entries.length ≤ heroBound &&
         (injuryDistribution rules (some 0) dfn none att).entries.length ≤ foeBound
 
+/-- A Fight in which the Character sprays two Creatures that punch, one of them wounded. -/
+private def sprayTwo (m : Maneuver) (hp : Int) : FightState :=
+  {hero := {sprayFour.hero with hp, maneuver := m},
+   foes := [{being := puncher "A", hp := 2}, {being := puncher "B", hp := 1}]}
+
+private def sprayTwoOrder := turnOrder {} (sprayTwo .attack 4).hero.being [puncher "A", puncher "B"]
+
+/-- The number of results of one real round from `s`, with no merging. -/
+private def unmergedSize (rules : RuleSet) (order : List Actor) (s : FightState) : Nat :=
+  (roundWith (fastAttack rules) heroPolicy order s).entries.length
+
+-- `roundSizeBound` is at least the number of results of a real round with no merging. This is so
+-- for each maneuver and HP of the Character, with and without guard armor, with one target or a
+-- spray.
+#guard [({} : RuleSet), guardArmor].all fun rules =>
+  [Maneuver.attack, .allOutAttack, .allOutDefense].all fun m => [1, 2, 4].all fun hp =>
+    [(twoFoesOrder, twoFoes m hp), (sprayTwoOrder, sprayTwo m hp)].all fun (order, s) =>
+      unmergedSize rules order s ≤ roundSizeBound order (attackBounds rules s) s
+
 -- With the 6-die flamethrower, the round against four Creatures is rejected at once.
 #guard roundSizeBound sprayFourOrder (attackBounds bigFlame sprayFour) sprayFour >
   ({} : SolveBudget).roundEntries

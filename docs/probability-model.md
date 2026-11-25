@@ -38,7 +38,9 @@ in the same turn order as play (`beforeCharacter`, the Character, `afterCharacte
 dodge, initiative, multiple foes, armor, and critical results. A fight win has
 separate edges for different remaining HP. Death and successful endings are
 separate absorbing nodes. Nonterminating combat has its own absorbing `stalled`
-node, counted as still active rather than as a win or death.
+node, counted as still active rather than as a win or death. A Fight that fails the combat
+check, also because it is over the solver budget (`SolveBudget`), gets a `stalled` edge too
+(`checkedCombat`). The combat check (`certifyAdventureCombat`) rejects such an Adventure.
 
 For a change during play, the admission graph starts at the updated adventure's original
 start and full initial HP, with all new equipment and combat effects applied from turn zero.
@@ -162,8 +164,8 @@ checked against `fastProcess` (`FastCombat.lean`), whose odds equal those of `co
 (`fastRound_expect`); its definitions, `stateKey`, the `Hashable FightState` instance and
 `Std.HashMap` appear in the certificate's type, so a reviewer should read them too. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
-but there is not yet a general theorem proving the elimination algorithm equals
-the infinite stochastic operational execution. The ideal sampling correspondence
+and for each certified Fight `exitLaw_exact` proves that the checked exit law is the exact law
+of the spec process. There is no such theorem for a Fight that the check rejects. The ideal sampling correspondence
 is an accepted assumption of `balanced`, including the idealization of SplitMix64 and
 modulo-based choices.
 

@@ -257,8 +257,8 @@ def groupName (s : FightState) : FightState :=
   {s with hero := {s.hero with maneuver := .attack}}
 
 /-- Limits on the work of `solveFight`. Above a limit, it gives up and returns no answers, so the
-check fails and the Fight is rejected. The solver tests `states`, `entries` and `work` before
-each batch, so one batch, at most `batchEntries` results, can go above them. -/
+check fails and the Fight is rejected. Only `entries` is tested after the fact, so one batch, at
+most `batchEntries` results, can go above it. -/
 structure SolveBudget where
   /-- The most states that the solver solves. -/
   states : Nat := 60000
