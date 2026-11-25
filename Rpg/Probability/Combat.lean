@@ -256,9 +256,9 @@ set to Attack. -/
 def groupName (s : FightState) : FightState :=
   {s with hero := {s.hero with maneuver := .attack}}
 
-/-- Limits on the work of `solveFight`. Above a limit, it gives up and returns no answers, so the
-check fails and the Fight is rejected. Only `entries` is tested after the fact, so one batch, at
-most `batchEntries` results, can go above it. With `limited` false, the solver ignores the limits. -/
+/-- Limits on the work of `solveFight`: above a limit, it returns no answers and the check fails.
+Only `entries` is tested after a batch, so one batch can go above it. With `limited` false, the
+solver ignores all limits. -/
 structure SolveBudget where
   /-- If false, the solver does not give up at any limit. The spec odds use this. -/
   limited : Bool := true
@@ -276,7 +276,8 @@ structure SolveBudget where
   large Fight after a small part of its work. -/
   work : Nat := 10000000
 
-/-- A budget with no limits. The solver then gives up only if the Fight can go on forever. -/
+/-- A budget with no limits. Tests show that the solver then certifies each Fight that ends, but
+no proof says so. -/
 def SolveBudget.unlimited : SolveBudget := {limited := false}
 
 /-- True if the solver is over `budget` with `states` states, `kept` round results in memory and
@@ -296,8 +297,8 @@ def batchesBy (cost : α → Nat) (limit count : Nat) (xs : List α) : List (Lis
 
 /-- The batches in which `solveFight` computes the rounds of the groups in `frontier`, each
 state with its bound by `size`. For a limited budget, it is `none` if one bound is above
-`budget.roundEntries` or `budget.batchEntries`. Each item is one state, not one group, so the bounds in a batch add up to
-at most `budget.batchEntries`. -/
+`budget.roundEntries` or `budget.batchEntries`. Each item is one state, not one group, so the
+bounds in a batch add up to at most `budget.batchEntries`. -/
 def planRounds (size : FightState → Nat) (budget : SolveBudget) (frontier : List FightState) :
     Option (List (List (FightState × Nat))) :=
   let states := frontier.flatMap maneuverStates

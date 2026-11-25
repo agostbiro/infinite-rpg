@@ -81,7 +81,8 @@ is sound. On the Fights in the table below, the most memory used was 330 MB.
 * The work limit makes a rejection fast. A large Fight gives up after a small part of its
   rounds, not after it fills memory.
 * The checker computes the rounds again, one round at a time on each core. So the checker's
-  memory is at most one round per core, and each round is at most 200,000 results.
+  memory is at most one round per core. With the default budget, each round is at most
+  200,000 results by `roundSizeBound`, which is tested, not proved.
 * `certifyContinuation` checks the paused round with the same bound before it computes it. It
   then computes the paused round with the fast attack and merges after each turn
   (`fastRemaining`), like the full rounds. `fastRemaining_expect` proves that it has the odds of

@@ -71,7 +71,9 @@ instance (w : CombatWitness) (s : FightState) : Decidable (w.contains s) := by
 theorem CombatWitness.mem_states {w : CombatWitness} {s : FightState} (h : w.contains s)
     (ongoing : s.over = false) : s ∈ w.states := by
   rcases h with done | hm
+  -- An ended state contradicts `ongoing`.
   · simp [done] at ongoing
+  -- A state in the map is one of its keys.
   · exact Std.HashMap.mem_keys.mpr (Std.HashMap.mem_iff_contains.mpr hm)
 
 /-- The checks on the row of `s`: its answer is a probability law, its round budget is not
@@ -156,19 +158,25 @@ def CertifiedFight.stopping (c : CertifiedFight rules order start) :
   potential s := (c.witness.answer s).rounds
   nonnegative s hs := by
     by_cases ht : s.over
+    -- An ended state has no rounds left.
     · simp [CombatWitness.answer, ht]
+    -- A live state has a checked row with a nonnegative budget.
     · exact (c.checked.2 s (CombatWitness.mem_states hs (by simpa using ht))).2.1
   closed s hs e he := by
     rcases hs with ht | hm
+    -- An ended state steps only to itself.
     · simp only [fastProcess, fastStep, ht, ↓reduceIte] at he
       have eq : e.1 = s := by simpa [pure, Pure.pure] using congrArg Prod.fst (List.mem_singleton.mp he)
       rw [eq]
       exact Or.inl ht
+    -- A state of the witness.
     · by_cases ht : s.over
+      -- If it is over, it steps only to itself.
       · simp only [fastProcess, fastStep, ht, ↓reduceIte] at he
         have eq : e.1 = s := by simpa [pure, Pure.pure] using congrArg Prod.fst (List.mem_singleton.mp he)
         rw [eq]
         exact Or.inl ht
+      -- If it is live, its checked row covers each result of its round.
       · exact (c.checked.2 s (CombatWitness.mem_states (Or.inr hm) (by simpa using ht))).2.2.1 e he
   decreases s hs ht := by
     change s.over = false at ht

@@ -47,6 +47,7 @@ private def twoFoes (m : Maneuver) (hp : Int) : FightState :=
   {hero := {being := sturdy "Hero", hp, maneuver := m},
    foes := [{being := sturdy "A", hp := 4}, {being := sturdy "B", hp := 2}]}
 
+/-- The turn order of `twoFoes`. -/
 private def twoFoesOrder := turnOrder {} (sturdy "Hero") [sturdy "A", sturdy "B"]
 
 -- Differential test: the fast round gives exactly the weights of the spec round.
@@ -84,6 +85,13 @@ private def twoFoesOrder := turnOrder {} (sturdy "Hero") [sturdy "A", sturdy "B"
 -- A small budget rejects the two-Creature Fight, but an unlimited budget certifies it.
 #guard (certifyFight {} twoFoesOrder (twoFoes .attack 4) {states := 3}).isNone
 #guard (certifyFight {} twoFoesOrder (twoFoes .attack 4) SolveBudget.unlimited).isSome
+/-- An unlimited budget with every limit at 0. -/
+private def zeroLimits : SolveBudget :=
+  {limited := false, states := 0, entries := 0, roundEntries := 0, batchEntries := 0, work := 0}
+
+-- An unlimited budget ignores every limit, even limits of 0.
+#guard (certifyFight {} twoFoesOrder (twoFoes .attack 4) zeroLimits).isSome
+#guard !SolveBudget.unlimited.over 1000000000 1000000000 1000000000
 -- The odds of the balance graph do not use a budget: they give the Fight's real exit law, with
 -- no weight on `stalled`, and the same law as the default budget.
 #guard
@@ -101,6 +109,7 @@ private def sprayFour : FightState :=
   {hero := {being := {sturdy "Hero" with weapon := .flamethrower}, hp := 4},
    foes := ["A", "B", "C", "D"].map fun n => {being := sturdy n, hp := 4}}
 
+/-- The turn order of `sprayFour`. -/
 private def sprayFourOrder :=
   turnOrder {} sprayFour.hero.being (sprayFour.foes.map (·.being))
 
@@ -108,6 +117,12 @@ private def sprayFourOrder :=
 #guard roundSizeBound sprayFourOrder (attackBounds {} sprayFour) sprayFour >
   ({} : SolveBudget).roundEntries
 #guard (certifyFight {} sprayFourOrder sprayFour).isNone
+/-- The spray Fight, paused at the Character's turn. -/
+private def sprayFourPaused : FightPhase :=
+  {scene := 0, choice := 0, onWin := 1, order := sprayFourOrder, round := 1, state := sprayFour}
+
+-- A paused round of this Fight is rejected before it is computed.
+#guard (certifyContinuation {} sprayFourPaused).isNone
 
 /-- A Creature with ST 1 that punches. -/
 private def puncher (name : String) : Being :=
@@ -117,6 +132,7 @@ private def puncher (name : String) : Being :=
 private def sprayPunch : FightState :=
   {sprayFour with foes := ["A", "B", "C", "D"].map fun n => {being := puncher n, hp := 1}}
 
+/-- The turn order of `sprayPunch`. -/
 private def sprayPunchOrder :=
   turnOrder {} sprayPunch.hero.being (sprayPunch.foes.map (·.being))
 
@@ -177,6 +193,7 @@ private def sprayTwo (m : Maneuver) (hp : Int) : FightState :=
   {hero := {sprayFour.hero with hp, maneuver := m},
    foes := [{being := puncher "A", hp := 2}, {being := puncher "B", hp := 1}]}
 
+/-- The turn order of `sprayTwo`. -/
 private def sprayTwoOrder := turnOrder {} (sprayTwo .attack 4).hero.being [puncher "A", puncher "B"]
 
 /-- The number of results of one real round from `s`, with no merging. -/
