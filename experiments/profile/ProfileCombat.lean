@@ -15,8 +15,10 @@ checker (`CombatWitness.check`) over all entry HPs.
   (`roundDistribution`) and none of the new code.
 * `--stress` merges two million entries, to check that the merge needs no deep stack.
 * `--grenadiers N` checks a Fight against `N` Grenadiers, at all entry HPs and as a paused Fight
-  in a live change. A Fight above the solver's budget (`SolveBudget`) is rejected fast. Add
-  `--flamethrower` to give Lafayette a flamethrower, which attacks every Grenadier at once.
+  in a live change. A Fight above the solver's budget (`SolveBudget`) is rejected. Add
+  `--flamethrower` to give Lafayette a flamethrower, which attacks every Grenadier at once. Add
+  `--st S` to give each Grenadier ST `S`, and so `S` HP. `--work W` runs only the solver, with a
+  work limit of `W`.
 -/
 
 open Rpg Rpg.Probability
@@ -67,8 +69,17 @@ def main (args : List String) : IO UInt32 := do
   let hero := d.hero
   if let some n := (argAfter "--grenadiers" args).bind String.toNat? then
     let hero := if args.contains "--flamethrower" then {hero with weapon := .flamethrower} else hero
-    let foes := (List.range n).map fun i => Lafayette.grenadier (i + 1)
+    let st := ((argAfter "--st" args).bind String.toNat?).getD (Lafayette.grenadier 1).st
+    let foes := (List.range n).map fun i => {Lafayette.grenadier (i + 1) with st}
     let order := turnOrder rules hero foes
+    if let some work := (argAfter "--work" args).bind String.toNat? then
+      -- Try the solver with a different work limit, and stop.
+      let starts := encounterStarts rules hero foes
+      let bounds := attackBounds rules (fightStart rules hero 0 foes)
+      let t ← IO.monoMsNow
+      let cache := solveFight (fastRound rules order) starts (roundSizeBound order bounds) {work}
+      IO.println s!"{n} Grenadiers, work limit {work}: states={cache.size} ms={(← IO.monoMsNow) - t}"
+      return 0
     let t0 ← IO.monoMsNow
     let encounter := (certifyEncounter rules hero foes).isSome
     let t1 ← IO.monoMsNow
@@ -102,7 +113,8 @@ def main (args : List String) : IO UInt32 := do
     totalSolve := totalSolve + (t1 - t0)
     totalCheck := totalCheck + (t2 - t1)
     let largest := cache.fold (fun m s _ => max m (roundSizeBound order bounds s)) 0
-    IO.println s!"{foes.map (·.name)} states={size} solve-ms={t1 - t0} check-ms={t2 - t1} ok={ok} max-digits={maxDigits cache} largest-round-bound={largest}"
+    let work := cache.fold (fun m s _ => if s.over then m else m + roundSizeBound order bounds s) 0
+    IO.println s!"{foes.map (·.name)} states={size} solve-ms={t1 - t0} check-ms={t2 - t1} ok={ok} max-digits={maxDigits cache} largest-round-bound={largest} work={work}"
     let text := lawsText rules hero foes w
     if let some dir := argAfter "--dump" args then
       IO.FS.createDirAll dir

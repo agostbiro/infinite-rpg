@@ -73,7 +73,7 @@ private def twoFoesOrder := turnOrder {} (sturdy "Hero") [sturdy "A", sturdy "B"
 -- the recursive solver reaches, and its witness passes the check.
 #guard
   let start := twoFoes .attack 4
-  let byLevel := solveFight (fastRound {} twoFoesOrder) [start]
+  let byLevel := solveChecked {} twoFoesOrder (attackBounds {} start) [start]
   let recursive := ((solveCombatAnswer (fastRound {} twoFoesOrder) start).run {}).2
   0 < recursive.size &&
   recursive.toList.all (fun (s, a) => match byLevel[s]? with
@@ -116,7 +116,7 @@ private def sprayPunchOrder :=
   let bounds := (maneuverStates sprayPunch).map size
   bounds.all (· ≤ budget.roundEntries) && bounds.sum > budget.batchEntries &&
   match planRounds size budget [sprayPunch] with
-  | some batches => batches.all fun b => (b.map size).sum ≤ budget.batchEntries
+  | some batches => batches.all fun b => (b.map Prod.snd).sum ≤ budget.batchEntries
   | none => false
 
 /-- Rules in which the Character gets +4 armor while guarding. -/

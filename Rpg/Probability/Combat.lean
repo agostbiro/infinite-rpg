@@ -257,8 +257,8 @@ def groupName (s : FightState) : FightState :=
   {s with hero := {s.hero with maneuver := .attack}}
 
 /-- Limits on the work of `solveFight`. Above a limit, it gives up and returns no answers, so the
-check fails and the Fight is rejected. The solver tests `states` and `entries` before each batch,
-so one batch, at most `batchEntries` results, can go above them. -/
+check fails and the Fight is rejected. The solver tests `states`, `entries` and `work` before
+each batch, so one batch, at most `batchEntries` results, can go above them. -/
 structure SolveBudget where
   /-- The most states that the solver solves. -/
   states : Nat := 60000
@@ -269,6 +269,9 @@ structure SolveBudget where
   roundEntries : Nat := 1000000
   /-- The most results, by the bound, of the rounds that the solver computes at the same time. -/
   batchEntries : Nat := 1000000
+  /-- The most results, by the bound, of all the rounds that the solver computes. It stops a
+  large Fight after a small part of its work. -/
+  work : Nat := 10000000
 
 /-- Split `xs` into batches, in order. A batch has at most `count` items, and the sum of `cost`
 over a batch is at most `limit`, unless the batch has only one item. -/
@@ -280,21 +283,22 @@ def batchesBy (cost : α → Nat) (limit count : Nat) (xs : List α) : List (Lis
     else (done, x :: current, total + c)) ([], [], 0)
   (if current.isEmpty then done else current.reverse :: done).reverse
 
-/-- The batches in which `solveFight` computes the rounds of the states of the groups in
-`frontier`, or `none` if one round is above `budget.roundEntries` or `budget.batchEntries`. The
-batches are of single states, so each batch has at most `budget.batchEntries` results by `size`. -/
+/-- The batches in which `solveFight` computes the rounds of the groups in `frontier`, each
+state with its bound by `size`. It is `none` if one bound is above `budget.roundEntries` or
+`budget.batchEntries`. Each item is one state, not one group, so the bounds in a batch add up to
+at most `budget.batchEntries`. -/
 def planRounds (size : FightState → Nat) (budget : SolveBudget) (frontier : List FightState) :
-    Option (List (List FightState)) :=
+    Option (List (List (FightState × Nat))) :=
   let states := frontier.flatMap maneuverStates
   let sized := states.zip (parallelMap size states)
   if sized.any (·.2 > min budget.roundEntries budget.batchEntries) then none
-  else some ((batchesBy Prod.snd budget.batchEntries 144 sized).map (·.map Prod.fst))
+  else some (batchesBy Prod.snd budget.batchEntries 144 sized)
 
 /-- Find candidate answers for every state that the Fight can reach from `starts`, on many cores.
 `size` bounds the results of a round before it is computed, so a Fight over `budget` stops early.
 The certificate checker does not trust these answers. -/
 def solveFight (round : FightState → Distribution FightState) (starts : List FightState)
-    (size : FightState → Nat := fun _ => 0) (budget : SolveBudget := {}) : CombatCache := Id.run do
+    (size : FightState → Nat) (budget : SolveBudget := {}) : CombatCache := Id.run do
   let mut seen : Std.HashSet FightState := {}
   let mut frontier : List FightState := []
   for s in starts do
@@ -309,6 +313,7 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
   let mut rounds : Std.HashMap FightState (Distribution FightState) := {}
   let mut levels : Std.HashMap Nat (List FightState) := {}
   let mut kept := 0
+  let mut work := 0
   for _ in [:passes] do
     if frontier.isEmpty then break
     let mut next : List FightState := []
@@ -319,8 +324,10 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
     let some batches := planRounds size budget frontier | return {}
     for batch in batches do
       -- Give up when the Fight is too large. Each group has 3 states.
-      if 3 * seen.size > budget.states || kept > budget.entries then return {}
-      let found := parallelMap (fun u => (u, round u)) batch
+      work := work + (batch.map Prod.snd).sum
+      if 3 * seen.size > budget.states || kept > budget.entries || work > budget.work then
+        return {}
+      let found := parallelMap (fun u => (u, round u)) (batch.map Prod.fst)
       for (u, d) in found do
         rounds := rounds.insert u d
         kept := kept + d.entries.length
