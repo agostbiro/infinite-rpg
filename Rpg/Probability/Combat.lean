@@ -276,8 +276,8 @@ structure SolveBudget where
   large Fight after a small part of its work. -/
   work : Nat := 10000000
 
-/-- A budget with no limits. Tests show that the solver then certifies each Fight that ends, but
-no proof says so. -/
+/-- A budget with no limits, so the solver never gives up because a Fight is large. The check can
+still fail for other reasons, also for a Fight that ends. -/
 def SolveBudget.unlimited : SolveBudget := {limited := false}
 
 /-- True if the solver is over `budget` with `states` states, `kept` round results in memory and

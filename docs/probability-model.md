@@ -40,8 +40,11 @@ separate edges for different remaining HP. Death and successful endings are
 separate absorbing nodes. Nonterminating combat has its own absorbing `stalled`
 node, counted as still active rather than as a win or death. A Fight that fails the combat
 check gets a `stalled` edge too (`checkedCombat`). Here the solver has no budget
-(`SolveBudget.unlimited`), so a large Fight gets its real odds, not `stalled` (tested, not proved). The budget applies
-only to the combat checks that run as code. The server runs `certifyContinuation` for a live
+(`SolveBudget.unlimited`), so the size of a Fight never makes it `stalled`. The check can still
+fail for other reasons and give `stalled` to a Fight that ends. The solver checks each maneuver
+of the Character in a group, also a maneuver that the Fight cannot reach from its start. If a
+state with such a maneuver can go on forever, the check fails. `main` has the same limit.
+The budget applies only to the combat checks that run as code. The server runs `certifyContinuation` for a live
 change during a paused Fight. `make certify` runs `certifyEncounter` for each Fight at every
 entry HP. Ordinary admission on the server uses the sampled balance check and runs neither.
 
