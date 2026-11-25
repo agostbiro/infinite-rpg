@@ -276,8 +276,8 @@ structure SolveBudget where
   large Fight after a small part of its work. -/
   work : Nat := 10000000
 
-/-- A budget with no limits, so the solver never gives up because a Fight is large. The check can
-still fail for other reasons, also for a Fight that ends. -/
+/-- A budget with no limits, so the solver never gives up because a Fight is large. No proof says
+that the check then passes for every Fight that ends. -/
 def SolveBudget.unlimited : SolveBudget := {limited := false}
 
 /-- True if the solver is over `budget` with `states` states, `kept` round results in memory and
@@ -305,6 +305,27 @@ def planRounds (size : FightState → Nat) (budget : SolveBudget) (frontier : Li
   let sized := states.zip (parallelMap size states)
   if budget.limited && sized.any (·.2 > min budget.roundEntries budget.batchEntries) then none
   else some (batchesBy Prod.snd budget.batchEntries 144 sized)
+
+/-- The answers in `cache` of the states that a Fight reaches from `starts`, by the rounds in
+`rounds`. A state of a group that the Fight cannot reach may go on forever, and the check would
+fail on it. `fuel` must be at least the number of starts plus the number of round results. -/
+def keepReachable (cache : CombatCache) (rounds : Std.HashMap FightState (Distribution FightState))
+    (starts : List FightState) (fuel : Nat) : CombatCache := Id.run do
+  let mut reached : CombatCache := {}
+  let mut todo := starts
+  for _ in [:fuel] do
+    match todo with
+    | [] => break
+    | s :: rest =>
+      todo := rest
+      if s.over || reached.contains s then continue
+      -- A state with no answer stays out, so the check fails on it.
+      let some a := cache[s]? | continue
+      reached := reached.insert s a
+      for (w, _) in (rounds.getD s (pure s)).entries do
+        if !w.over && !reached.contains w then
+          todo := w :: todo
+  return reached
 
 /-- Find candidate answers for every state that the Fight can reach from `starts`, on many cores.
 `size` bounds the results of a round before it is computed, so a Fight over `budget` stops early.
@@ -364,7 +385,8 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
     for members in solved do
       for (u, a) in members do
         cache := cache.insert u a
-  return cache
+  -- Each state goes into the list at most once per round result that leads to it.
+  return keepReachable cache rounds starts (starts.length + kept + 1)
 
 /-- Compatibility entry point for the candidate solver. Use certification when a
 probabilistic guarantee is required. -/

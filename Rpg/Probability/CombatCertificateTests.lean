@@ -101,6 +101,36 @@ private def zeroLimits : SolveBudget :=
   | some c => decide (law.sameWeights c.outcomes)
   | none => false
 
+/-- Rules in which every attack hits and does 1 injury, unless the defender has 50 DR or more.
+A guarding Character gets 100 DR. A wounded Creature cannot attack and gets 100 DR. The
+Creature acts first. -/
+private def stuckRules : RuleSet :=
+  {maxHP := fun _ => 2, dodge := fun _ => 0,
+   speedX4 := fun b => if b.name = "Foe" then 40 else 20,
+   successRoll := fun level _ => if level ≥ 5 then .success else .failure,
+   injury := fun _ dr _ => if dr ≥ 50 then 0 else 1,
+   combatRules := [
+     {name := "Guard", description := "100 DR while guarding.", side := .hero,
+      trigger := .guarding, armorBonus := 100},
+     {name := "Shaken", description := "A wounded Creature cannot attack.", side := .foes,
+      trigger := .wounded, hitBonus := -100, armorBonus := 100}]}
+
+/-- A Character with 1 HP against a Creature with 2 HP. The Character's last maneuver is Attack. -/
+private def stuckStart : FightState :=
+  {hero := {being := fighter "Hero", hp := 1}, foes := [{being := fighter "Foe", hp := 2}]}
+
+/-- The turn order of `stuckStart`. -/
+private def stuckOrder := turnOrder stuckRules (fighter "Hero") [fighter "Foe"]
+
+-- From the start, the Creature kills the Character before the Character acts. The same state
+-- after All-Out Defense cannot be reached: there the Character survives and wounds the Creature,
+-- and then no one can hurt the other. The check must not fail on that state.
+#guard (certifyFight stuckRules stuckOrder stuckStart SolveBudget.unlimited).isSome
+#guard (checkedCombat stuckRules stuckOrder stuckStart).mass (· == .died) == 1
+#guard
+  let guarded := {stuckStart with hero := {stuckStart.hero with maneuver := .allOutDefense}}
+  (certifyFight stuckRules stuckOrder guarded SolveBudget.unlimited).isNone
+
 -- Batches keep at most 2 items and a cost of at most 5, except for one item alone.
 #guard batchesBy id 5 2 [1, 2, 3, 4, 10] == [[1, 2], [3], [4], [10]]
 
