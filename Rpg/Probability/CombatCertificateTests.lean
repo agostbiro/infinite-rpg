@@ -134,6 +134,20 @@ private def sprayPunchOrder :=
 #guard (planRounds (roundSizeBound sprayPunchOrder (attackBounds {} sprayPunch)) {}
   [sprayPunch]).isNone
 
+/-- Rules in which a roll succeeds only on a total of 3. Few attacks hit, so the Fight is short to
+solve, but its round bound is large. -/
+private def rareHits : RuleSet := {successRoll := fun _ total => if total = 3 then .success else .failure}
+
+-- The default budget rejects the spray Fight against four Creatures that punch: one round is
+-- above `roundEntries`. The odds of the balance graph use no budget, so they still give the real
+-- exit law, with no weight on `stalled`.
+#guard roundSizeBound sprayPunchOrder (attackBounds rareHits sprayPunch) sprayPunch >
+  ({} : SolveBudget).roundEntries
+#guard (certifyFight rareHits sprayPunchOrder sprayPunch).isNone
+#guard
+  let law := checkedCombat rareHits sprayPunchOrder sprayPunch
+  law.mass (· == .stalled) == 0 && law.mass (fun _ => true) == 1
+
 /-- Rules in which the Character gets +4 armor while guarding. -/
 private def guardArmor : RuleSet :=
   {combatRules := defaultCombatRules ++
