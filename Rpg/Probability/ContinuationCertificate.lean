@@ -135,7 +135,7 @@ def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : Strin
   | .overBudget => s!"{fight} is too large to check: it has too many states. Make the change \
       after the Fight, or make the Fight smaller, with fewer or weaker Creatures."
   | .checkFailed => s!"{fight} could not be checked: no proof was found that it ends. With the \
-      changed rules it can go on forever. Make sure that each side can still hurt the other."
+      changed rules it may go on forever. Make sure that each side can still hurt the other."
 
 /-- Check a paused Fight, or give the reason why it fails. A Fight whose round is too large for
 the solver's budget is rejected before the rest of the paused round is computed. The paused round
