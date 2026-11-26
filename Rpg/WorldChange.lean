@@ -339,14 +339,14 @@ def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
     if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy then
       if hw : p.game.WellFormed then
       if hb : p.game.hp ≤ p.game.rules.maxHP p.game.hero then
-        let checkpoint : Option (match p.game.phase with
+        let checkpoint : Except String (match p.game.phase with
             | .fight f => CertifiedContinuation p.game.rules f | _ => Unit) :=
           match p.game.phase with
-          | .fight f => certifyContinuation p.game.rules f
-          | .title | .scene _ | .ended _ | .dead _ => some ()
+          | .fight f => (checkContinuation p.game.rules f).mapError (·.message f)
+          | .title | .scene _ | .ended _ | .dead _ => .ok ()
         match checkpoint with
-        | none => ({counts with combatRejected := true}, none)
-        | some checkpoint => (counts, some ⟨counts, rfl, h, hd, hw, hb, checkpoint⟩)
+        | .error message => ({counts with combatRejected := true, pausedFight := some message}, none)
+        | .ok checkpoint => (counts, some ⟨counts, rfl, h, hd, hw, hb, checkpoint⟩)
       else ({counts with combatRejected := true}, none)
       else ({counts with combatRejected := true}, none)
     else (counts, none)

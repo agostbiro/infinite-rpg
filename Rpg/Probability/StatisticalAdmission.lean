@@ -42,6 +42,8 @@ structure ValidationCounts where
   aborted : Bool := false
   /-- A structural check failed: the start point, the short-loop rule, or a paused Fight. -/
   combatRejected : Bool := false
+  /-- If the check of a paused Fight failed, the message for the author of the change. -/
+  pausedFight : Option String := none
   deriving Repr
 
 /-- Add one qualifying Bernoulli observation to its row. -/
@@ -58,7 +60,7 @@ def observationsComplete (horizon : Nat) (trace : Simulation.Trace) : Bool :=
 Exploration can use a separate seed; unresolved outcomes inside the window abort the batch. -/
 def sampleCounts (a : StatisticalCandidate) (seed games : Nat) : ValidationCounts := Id.run do
   let h := a.horizon
-  let mut counts : ValidationCounts := ⟨Array.replicate (h+1) 0, Array.replicate (h+1) 0, 0, false, false⟩
+  let mut counts : ValidationCounts := ⟨Array.replicate (h+1) 0, Array.replicate (h+1) 0, 0, false, false, none⟩
   let mut rng : Rng := ⟨seed.toUInt64⟩
   for _ in [:games] do
     let point := a.resume.getD (.scene a.story.start (a.rules.maxHP a.hero))
@@ -257,7 +259,9 @@ def failedRows (horizon : Nat) (c : ValidationCounts)
     let tenths := (r * 1000).floor
     s!"{tenths / 10}.{tenths % 10}%"
   let general :=
-    (if c.combatRejected then ["admission failed: the start point is not valid, the Adventure has a short loop, or the paused Fight could not be checked"] else []) ++
+    (if c.combatRejected then
+      [c.pausedFight.getD "admission failed: the start point is not valid, or the Adventure has a short loop"]
+    else []) ++
     (if c.aborted then ["a game did not finish inside the window (a Fight went on too long)"] else []) ++
     (if c.games != validationGames then [s!"only {c.games} of {validationGames} games were played"] else [])
   general ++ (List.range (horizon + 1)).filterMap fun row =>

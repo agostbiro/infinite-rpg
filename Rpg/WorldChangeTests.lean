@@ -254,9 +254,9 @@ private def fixedRoll (n : Nat) : Id (List Nat) := pure (List.replicate n 1)
     ((Lean.Json.parse (context roadGame "Give me iron skin" (attemptRisk 0))).toOption.get!).getObjValD "ranges"
 
 -- A missing late row and an aborted combat batch cannot be admitted.
-#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,0,0], #[0,0,0,0,0,0],1200,false,false⟩ (attemptRisk 0) 3
+#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,0,0], #[0,0,0,0,0,0],1200,false,false,none⟩ (attemptRisk 0) 3
   defaultPolicy)
-#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,1200,1200], #[0,0,0,0,0,0],1200,true,false⟩ (attemptRisk 0) 0
+#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,1200,1200], #[0,0,0,0,0,0],1200,true,false,none⟩ (attemptRisk 0) 0
   defaultPolicy)
 
 /-- A policy that is not the default, only to test that a change keeps the policy of its game. -/

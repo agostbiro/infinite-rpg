@@ -157,6 +157,16 @@ private def pausedGame : Game :=
     let (counts,admitted) := p.admit 1 Confidence.confidenceDelta
     counts.combatRejected && admitted.isNone
 
+-- When a paused Fight fails its check, the author sees its own message, not the general one.
+#guard
+  let counts : ValidationCounts :=
+    {trials := #[0, 0], deaths := #[0, 0], combatRejected := true, pausedFight := some "Too large."}
+  let lines := failedRows 1 counts Confidence.confidenceDelta 0 defaultPolicy
+  lines.contains "Too large." && !lines.any (·.startsWith "admission failed")
+#guard
+  let counts : ValidationCounts := {trials := #[0, 0], deaths := #[0, 0], combatRejected := true}
+  (failedRows 1 counts Confidence.confidenceDelta 0 defaultPolicy).any (·.startsWith "admission failed")
+
 -- Static legality and a passing sampled batch do not admit a short cycle.
 private def loopStory : Adventure :=
   {story with scenes := [

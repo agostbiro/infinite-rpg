@@ -87,6 +87,9 @@ is sound. On the Fights in the table below, the most memory used was 330 MB.
   then computes the paused round with the fast attack and merges after each turn
   (`fastRemaining`), like the full rounds. `fastRemaining_expect` proves that it has the odds of
   the spec's paused round.
+* When the check of a paused Fight fails, `checkContinuation` gives the reason: one round is too
+  large, the Fight has too many states, or the check found no proof that the Fight ends. The
+  author of the live change sees a message that names the Creatures and says what to change.
 
 Measured with `lake exe profile-combat --grenadiers N` (add `--flamethrower` to give Lafayette
 a flamethrower, `--dice D` to give its weapon `D` damage dice, and `--st S` to give each

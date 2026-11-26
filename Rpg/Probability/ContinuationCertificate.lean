@@ -106,18 +106,58 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
   starts : ∀ e ∈ (fastRemaining rules f.order f.state).entries, witness.contains e.1
   rows : ∀ s ∈ witness.states, witness.RowValid rules f.order s
 
-/-- Check a paused Fight. A Fight whose round is too large for the solver's budget is rejected
-before the rest of the paused round is computed. The paused round and the later rounds use the
-fast attack. -/
-def certifyContinuation (rules : RuleSet) (f : FightPhase) : Option (CertifiedContinuation rules f) :=
+/-- Why the check of a paused Fight failed. -/
+inductive PausedFightFailure where
+  /-- One round has more results than the solver's budget allows. -/
+  | roundTooLarge
+  /-- The solver gave up before it found all states, because the Fight is over its budget. -/
+  | overBudget
+  /-- The answers did not pass the check. The Fight can go on forever, for example. -/
+  | checkFailed
+  deriving DecidableEq, Repr
+
+/-- Names in plain English: "A", "A and B", or "A, B and C". -/
+def joinNames : List String → String
+  | [] => "no Creatures"
+  | [a] => a
+  | [a, b] => s!"{a} and {b}"
+  | a :: rest => s!"{a}, {joinNames rest}"
+
+/-- The message for the author of a live change, which names the living Creatures of the paused
+Fight `f`. It says why the check failed and what the author can change. -/
+def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : String :=
+  let fight := s!"The paused Fight against {joinNames (f.state.livingFoes.filterMap fun i =>
+    (f.state.foes[i]?).map (·.being.name))}"
+  match e with
+  | .roundTooLarge => s!"{fight} is too large to check: one round has too many results. Make the \
+      change after the Fight, or make the Fight smaller, with fewer Creatures or no weapon that \
+      hits every Creature."
+  | .overBudget => s!"{fight} is too large to check: it has too many states. Make the change \
+      after the Fight, or make the Fight smaller, with fewer or weaker Creatures."
+  | .checkFailed => s!"{fight} could not be checked: no proof was found that it ends. With the \
+      changed rules it can go on forever. Make sure that each side can still hurt the other."
+
+/-- Check a paused Fight, or give the reason why it fails. A Fight whose round is too large for
+the solver's budget is rejected before the rest of the paused round is computed. The paused round
+and the later rounds use the fast attack. -/
+def checkContinuation (rules : RuleSet) (f : FightPhase) :
+    Except PausedFightFailure (CertifiedContinuation rules f) :=
   let bounds := attackBounds rules f.state
-  if roundSizeBound f.order bounds f.state > ({} : SolveBudget).roundEntries then none else
+  if roundSizeBound f.order bounds f.state > ({} : SolveBudget).roundEntries then
+    .error .roundTooLarge else
   let starts := (fastRemaining rules f.order f.state).entries.map Prod.fst
-  let w : CombatWitness := ⟨solveChecked rules f.order bounds starts⟩
+  let cache := solveChecked rules f.order bounds starts
+  let w : CombatWitness := ⟨cache⟩
   if h : w.check rules f.order starts = true then
-    some ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),
+    .ok ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),
       (CombatWitness.check_sound h).2⟩
-  else none
+  -- The solver returns no answers when it gives up; a Fight with a live start then fails.
+  else if cache.isEmpty then .error .overBudget
+  else .error .checkFailed
+
+/-- Check a paused Fight: `checkContinuation` without the reason. -/
+def certifyContinuation (rules : RuleSet) (f : FightPhase) : Option (CertifiedContinuation rules f) :=
+  (checkContinuation rules f).toOption
 
 /-- The states that the certificate covers: the paused point, and each state of the witness. -/
 def CertifiedContinuation.invariant {rules : RuleSet} {f : FightPhase}

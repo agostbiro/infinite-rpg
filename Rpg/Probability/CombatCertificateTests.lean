@@ -167,6 +167,25 @@ private def sprayFourPaused : FightPhase :=
 
 -- A paused round of this Fight is rejected before it is computed.
 #guard (certifyContinuation {} sprayFourPaused).isNone
+-- The reason is the size of one round, and the message names the living Creatures.
+#guard match checkContinuation {} sprayFourPaused with
+  | .error e => e == .roundTooLarge &&
+      (e.message sprayFourPaused).startsWith "The paused Fight against A, B, C and D is too large"
+  | .ok _ => false
+
+/-- The first Fight, paused, under rules in which no attack can hit. -/
+private def noHitsPaused : FightPhase :=
+  {scene := 0, choice := 0, onWin := 1, order, round := 1, state}
+
+-- A paused Fight that can go on forever fails the check, and the message says so.
+#guard match checkContinuation noHits noHitsPaused with
+  | .error e => e == .checkFailed &&
+      (e.message noHitsPaused).startsWith "The paused Fight against Foe could not be checked"
+  | .ok _ => false
+
+-- Names are joined as in plain English.
+#guard joinNames ["A"] == "A" && joinNames ["A", "B"] == "A and B" &&
+  joinNames ["A", "B", "C"] == "A, B and C"
 
 /-- A Creature with ST 1 that punches. -/
 private def puncher (name : String) : Being :=
