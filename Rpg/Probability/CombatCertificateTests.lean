@@ -131,6 +131,20 @@ private def stuckOrder := turnOrder stuckRules (fighter "Hero") [fighter "Foe"]
   let guarded := {stuckStart with hero := {stuckStart.hero with maneuver := .allOutDefense}}
   (certifyFight stuckRules stuckOrder guarded SolveBudget.unlimited).isNone
 
+-- `keepReachable` follows each round result, also one with weight 0, and drops a state that no
+-- start reaches. Here `a` goes to `b` with weight 0, and `c` has an answer but no start reaches it.
+#guard
+  let a := stuckStart
+  let b := {stuckStart with foes := [{being := fighter "Foe", hp := 1}]}
+  let c := {stuckStart with hero := {stuckStart.hero with maneuver := .allOutDefense}}
+  let answer : CombatAnswer := ⟨pure .died, 0⟩
+  let cache : CombatCache := (({} : CombatCache).insert a answer |>.insert b answer).insert c answer
+  let rounds : Std.HashMap FightState (Distribution FightState) :=
+    (({} : Std.HashMap FightState (Distribution FightState)).insert a ⟨[(a, 1), (b, 0)]⟩
+      |>.insert b ⟨[(b, 1)]⟩).insert c ⟨[(c, 1)]⟩
+  let kept := keepReachable cache rounds [a] 4
+  kept.size == 2 && kept.contains a && kept.contains b && !kept.contains c
+
 -- Batches keep at most 2 items and a cost of at most 5, except for one item alone.
 #guard batchesBy id 5 2 [1, 2, 3, 4, 10] == [[1, 2], [3], [4], [10]]
 
