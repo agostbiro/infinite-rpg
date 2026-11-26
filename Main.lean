@@ -1095,6 +1095,12 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                   applyChange ref job prepared seed delta proof
                   return
                 | none =>
+                  -- A paused Fight that is too large to check stays too large after a revision of
+                  -- the counter-rules, so stop instead of spending more attempts.
+                  if let some report := counts.pausedFight then
+                    if report.final then
+                      endJob ref job .refused { text := s!"{report.message} Your game is unchanged." }
+                      return
                   let feedback := Probability.failedRows prepared.candidate.horizon counts delta
                     prepared.candidate.elapsed prepared.candidate.policy ++
                     ["The validated counter-rules were: " ++

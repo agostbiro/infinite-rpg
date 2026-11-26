@@ -116,6 +116,12 @@ inductive PausedFightFailure where
   | checkFailed
   deriving DecidableEq, Repr
 
+/-- True if the Fight is too large to check, so a revision of the counter-rules is unlikely to
+help. -/
+def PausedFightFailure.tooLarge : PausedFightFailure → Bool
+  | .roundTooLarge | .overBudget => true
+  | .checkFailed => false
+
 /-- Names in plain English: "A", "A and B", or "A, B and C". -/
 def joinNames : List String → String
   | [] => "no Creatures"

@@ -184,6 +184,10 @@ private def noHitsPaused : FightPhase :=
       (e.message noHitsPaused).startsWith "The paused Fight against Foe could not be checked"
   | .ok _ => false
 
+-- A Fight that is too large stops the live change; a failed check lets the author revise.
+#guard PausedFightFailure.roundTooLarge.tooLarge && PausedFightFailure.overBudget.tooLarge &&
+  !PausedFightFailure.checkFailed.tooLarge
+
 -- Names are joined as in plain English.
 #guard joinNames ["A"] == "A" && joinNames ["A", "B"] == "A and B" &&
   joinNames ["A", "B", "C"] == "A, B and C"

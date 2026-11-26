@@ -160,7 +160,7 @@ private def pausedGame : Game :=
 -- When a paused Fight fails its check, the author sees its own message, not the general one.
 #guard
   let counts : ValidationCounts :=
-    {trials := #[0, 0], deaths := #[0, 0], combatRejected := true, pausedFight := some "Too large."}
+    {trials := #[0, 0], deaths := #[0, 0], combatRejected := true, pausedFight := some {message := "Too large.", final := true}}
   let lines := failedRows 1 counts Confidence.confidenceDelta 0 defaultPolicy
   lines.contains "Too large." && !lines.any (·.startsWith "admission failed")
 #guard

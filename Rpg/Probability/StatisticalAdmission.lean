@@ -34,6 +34,14 @@ def validationGames : Nat := 1200
 /-- Combat timeouts abort validation rather than selecting only completed fights. -/
 def validationRoundLimit : Nat := 200
 
+/-- A failed check of a paused Fight, as a live change reports it. -/
+structure PausedFightReport where
+  /-- The message for the author of the change. -/
+  message : String
+  /-- True if a revision of the counter-rules is unlikely to help, so the change should stop. -/
+  final : Bool
+  deriving Repr
+
 /-- Counts from the same fixed game batch; later rows can have fewer qualifying games. -/
 structure ValidationCounts where
   trials : Array Nat
@@ -42,8 +50,8 @@ structure ValidationCounts where
   aborted : Bool := false
   /-- A structural check failed: the start point, the short-loop rule, or a paused Fight. -/
   combatRejected : Bool := false
-  /-- If the check of a paused Fight failed, the message for the author of the change. -/
-  pausedFight : Option String := none
+  /-- If the check of a paused Fight failed, the report for the author of the change. -/
+  pausedFight : Option PausedFightReport := none
   deriving Repr
 
 /-- Add one qualifying Bernoulli observation to its row. -/
@@ -260,7 +268,7 @@ def failedRows (horizon : Nat) (c : ValidationCounts)
     s!"{tenths / 10}.{tenths % 10}%"
   let general :=
     (if c.combatRejected then
-      [c.pausedFight.getD "admission failed: the start point is not valid, or the Adventure has a short loop"]
+      [(c.pausedFight.map (·.message)).getD "admission failed: the start point is not valid, or the Adventure has a short loop"]
     else []) ++
     (if c.aborted then ["a game did not finish inside the window (a Fight went on too long)"] else []) ++
     (if c.games != validationGames then [s!"only {c.games} of {validationGames} games were played"] else [])
