@@ -170,8 +170,8 @@ private def sprayFourPaused : FightPhase :=
 -- The reason is the size of one round, and the message names the living Creatures.
 #guard match checkContinuation {} sprayFourPaused with
   | .error e => e == .roundTooLarge &&
-      (e.message sprayFourPaused true).startsWith "The paused Fight against A, B, C and D is too large" &&
-      ((e.message sprayFourPaused true).splitOn "after the Fight ends").length == 2
+      (e.message sprayFourPaused).startsWith "The paused Fight against A, B, C and D is too large" &&
+      ((e.message sprayFourPaused).splitOn "after the Fight ends").length == 2
   | .ok _ => false
 
 /-- The first Fight, paused, under rules in which no attack can hit. -/
@@ -181,7 +181,7 @@ private def noHitsPaused : FightPhase :=
 -- A paused Fight that can go on forever fails the check, and the message says so.
 #guard match checkContinuation noHits noHitsPaused with
   | .error e => e == .checkFailed &&
-      (e.message noHitsPaused false).startsWith "The paused Fight against Foe could not be checked"
+      (e.message noHitsPaused).startsWith "The paused Fight against Foe could not be checked"
   | .ok _ => false
 
 -- Over the work limit, the solver gives up, and the reason is the budget, not a failed check.
@@ -192,6 +192,9 @@ private def twoFoesPaused : FightPhase :=
 #guard match checkContinuation {} twoFoesPaused {work := 1} with
   | .error e => e == .overBudget
   | .ok _ => false
+-- An unlimited budget also ignores the round limit of the paused round.
+#guard (checkContinuation {} twoFoesPaused zeroLimits).toOption.isSome
+#guard (checkContinuation {} twoFoesPaused {roundEntries := 0}).toOption.isNone
 
 -- Names are joined as in plain English.
 #guard joinNames ["A"] == "A" && joinNames ["A", "B"] == "A and B" &&

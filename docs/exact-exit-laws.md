@@ -92,9 +92,8 @@ is sound. On the Fights in the table below, the most memory used was 330 MB.
   author of the live change sees a message that names the Creatures. A paused Fight keeps its
   Creatures and the requested effects stay fixed, so the message suggests only what can change:
   the counter-rules, or a change after the Fight ends. Counter-rules that change damage or armor
-  can make the check larger, so `pausedFightReport` checks the size again without them. If the
-  Fight is too large also without the counter-rules, the server stops the change when it finds
-  this, so that it spends no more attempts. Otherwise the Dungeon Master can revise the
+  change the size of the check in either direction: more armor can merge injuries, more damage
+  can spread them. So no size failure is final, and the Dungeon Master can always revise the
   counter-rules.
 
 Measured with `lake exe profile-combat --grenadiers N` (add `--flamethrower` to give Lafayette

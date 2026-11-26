@@ -160,7 +160,7 @@ private def pausedGame : Game :=
 -- When a paused Fight fails its check, the author sees its own message, not the general one.
 #guard
   let counts : ValidationCounts :=
-    {trials := #[0, 0], deaths := #[0, 0], combatRejected := true, pausedFight := some {message := "Too large.", final := true}}
+    {trials := #[0, 0], deaths := #[0, 0], combatRejected := true, pausedFight := some "Too large."}
   let lines := failedRows 1 counts Confidence.confidenceDelta 0 defaultPolicy
   lines.contains "Too large." && !lines.any (·.startsWith "admission failed")
 #guard
@@ -189,26 +189,14 @@ private def furyRule : CombatRule :=
 /-- Rules with the counter-rule `furyRule`. -/
 private def fury : RuleSet := {combatRules := [furyRule]}
 
-/-- A round limit between the bound without `furyRule` (525) and with it (833). -/
-private def roundLimit600 : SolveBudget := {roundEntries := 600}
-
--- The counter-rule makes the round too large, so the failure is not final, and the author is
--- told to revise the counter-rules.
-#guard match checkContinuation fury brawl roundLimit600 with
-  | .error e =>
-    let r := WorldChange.pausedFightReport {} brawl e roundLimit600
-    e == .roundTooLarge && !r.final && (r.message.splitOn "with these counter-rules").length == 2
+-- A counter-rule changes the size of a round in either direction, so no size failure of a
+-- paused Fight is final. Here +6 damage for the Creatures raises the round bound from 525 to 833.
+#guard roundSizeBound brawl.order (attackBounds {} brawl.state) brawl.state == 525 &&
+  roundSizeBound brawl.order (attackBounds fury brawl.state) brawl.state == 833
+-- The message for a round that is too large asks for a revision of the counter-rules.
+#guard match checkContinuation fury brawl {roundEntries := 600} with
+  | .error e => e == .roundTooLarge && ((e.message brawl).splitOn "Revise them").length == 2
   | .ok _ => false
--- Without the counter-rule the round is too large as well, so the failure is final.
-#guard
-  let r := WorldChange.pausedFightReport fury brawl .roundTooLarge roundLimit600
-  r.final && (r.message.splitOn "also without the counter-rules").length == 2
--- Over the budget also without the counter-rules: final.
-#guard (WorldChange.pausedFightReport {} brawl .overBudget {work := 1}).final
--- Within the budget without the counter-rules: not final.
-#guard !(WorldChange.pausedFightReport {} brawl .overBudget).final
--- A failed check is never final.
-#guard !(WorldChange.pausedFightReport {} brawl .checkFailed).final
 
 -- Static legality and a passing sampled batch do not admit a short cycle.
 private def loopStory : Adventure :=

@@ -116,11 +116,6 @@ inductive PausedFightFailure where
   | checkFailed
   deriving DecidableEq, Repr
 
-/-- True if the Fight is too large to check under the rules that were checked. -/
-def PausedFightFailure.tooLarge : PausedFightFailure → Bool
-  | .roundTooLarge | .overBudget => true
-  | .checkFailed => false
-
 /-- Names in plain English: "A", "A and B", or "A, B and C". With no names, "no Creatures". -/
 def joinNames : List String → String
   | [] => "no Creatures"
@@ -129,36 +124,29 @@ def joinNames : List String → String
   | a :: rest => s!"{a}, {joinNames rest}"
 
 /-- The message for the author of a live change, which names the living Creatures of the paused
-Fight `f` and says why the check failed. `final` is true if the Fight is too large also without
-the counter-rules. The advice names only what can change: the counter-rules, or the time. -/
-def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) (final : Bool) : String :=
+Fight `f` and says why the check failed. A paused Fight keeps its Creatures and the requested
+effects stay fixed, so the advice names only what can change: the counter-rules, or the time. -/
+def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : String :=
   let fight := s!"The paused Fight against {joinNames (f.state.livingFoes.filterMap fun i =>
     (f.state.foes[i]?).map (·.being.name))}"
   match e with
-  | .roundTooLarge =>
-    if final then s!"{fight} is too large to check: one round has too many results, also \
-      without the counter-rules. Make the change after the Fight ends."
-    else s!"{fight} is too large to check with these counter-rules: one round has too many \
-      results. Counter-rules that change damage or armor make a round larger. Revise them, or \
-      make the change after the Fight ends."
-  | .overBudget =>
-    if final then s!"{fight} is over the solver's budget, also without the counter-rules: \
-      checking it needs more states, work or memory than the solver allows. Make the change after \
-      the Fight ends."
-    else s!"{fight} is over the solver's budget with these counter-rules: checking it needs more \
-      states, work or memory than the solver allows. Counter-rules that change damage or armor \
-      make the check larger. Revise them, or make the change after the Fight ends."
+  | .roundTooLarge => s!"{fight} is too large to check with these rules: one round has too many \
+      results. Counter-rules that change damage or armor change the size of a round. Revise them, \
+      or make the change after the Fight ends."
+  | .overBudget => s!"{fight} is over the solver's budget with these rules: checking it needs \
+      more states, work or memory than the solver allows. Counter-rules that change damage or \
+      armor change the size of the check. Revise them, or make the change after the Fight ends."
   | .checkFailed => s!"{fight} could not be checked: no proof was found that it ends. One \
       possible cause is a stalemate, in which no side can hurt the other under the changed rules. \
       If a counter-rule causes this, revise it."
 
 /-- Check a paused Fight within `budget`, or give the reason why it fails. A Fight whose round is
-too large for the budget is rejected before the rest of the paused round is computed. The paused
-round and the later rounds use the fast attack. -/
+too large for a limited budget is rejected before the rest of the paused round is computed. The
+paused round and the later rounds use the fast attack. -/
 def checkContinuation (rules : RuleSet) (f : FightPhase) (budget : SolveBudget := {}) :
     Except PausedFightFailure (CertifiedContinuation rules f) :=
   let bounds := attackBounds rules f.state
-  if roundSizeBound f.order bounds f.state > budget.roundEntries then
+  if budget.limited && roundSizeBound f.order bounds f.state > budget.roundEntries then
     .error .roundTooLarge else
   let starts := (fastRemaining rules f.order f.state).entries.map Prod.fst
   let cache := solveChecked rules f.order bounds starts budget
