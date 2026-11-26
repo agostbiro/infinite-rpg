@@ -1076,6 +1076,12 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                 pure (Probability.failedRows prepared.candidate.horizon screen delta prepared.candidate.elapsed
                   prepared.candidate.policy, content)
               | some prepared =>
+                -- Check the paused Fight before a validation is spent: this check uses no samples.
+                match prepared.checkPaused with
+                | .error message =>
+                  pure ([message, "The checked counter-rules were: " ++
+                    (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress], content)
+                | .ok checkpoint =>
                 let signature := reprStr (prepared.proposal.equipment, prepared.proposal.requestedRules,
                   prepared.proposal.rules, prepared.proposal.scenes)
                 let spent ← ref.modifyGet fun s =>
@@ -1088,7 +1094,7 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                 if !(← addStep ref job { text := "The screen passed. Checking a fresh validation batch..." }) then return
                 let seed ← if cfg.fake.isSome then pure Probability.validationSeed else randomSeed
                 validated := signature :: validated
-                let (counts, accepted) := prepared.admit seed delta
+                let (counts, accepted) := prepared.admitWith checkpoint seed delta
                 if !(← jobWanted ref job) then return
                 match accepted with
                 | some proof =>

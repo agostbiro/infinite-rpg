@@ -331,25 +331,45 @@ theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
       iv.upper ≤ (p.candidate.bands i).target + (p.candidate.bands i).tolerance :=
   (a.accepted.2.2.2.2 i).2.2.2
 
-/-- Validate one frozen proposal with a fresh, preassigned batch; every row must pass. -/
-def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
+/-- The certificate that a live change needs for the paused point: a checked paused Fight, or
+nothing outside a Fight. -/
+abbrev Prepared.Checkpoint (p : Prepared) : Type :=
+  match p.game.phase with
+  | .fight f => CertifiedContinuation p.game.rules f
+  | _ => Unit
+
+/-- Check the paused point of `p`, or give the message for the author. It uses no samples, so the
+server runs it before it spends a validation. -/
+def Prepared.checkPaused (p : Prepared) : Except String (match p.game.phase with
+    | .fight f => CertifiedContinuation p.game.rules f
+    | _ => Unit) :=
+  match p.game.phase with
+  | .fight f => (checkContinuation p.game.rules f).mapError (·.message f)
+  | .title | .scene _ | .ended _ | .dead _ => .ok ()
+
+/-- Validate one frozen proposal with a fresh, preassigned batch and an already checked paused
+point; every row must pass. -/
+def Prepared.admitWith (p : Prepared) (checkpoint : p.Checkpoint) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option (Admission p seed delta) :=
   let counts := sampleCounts p.candidate seed validationGames
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
     if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy then
       if hw : p.game.WellFormed then
       if hb : p.game.hp ≤ p.game.rules.maxHP p.game.hero then
-        let checkpoint : Except String (match p.game.phase with
-            | .fight f => CertifiedContinuation p.game.rules f | _ => Unit) :=
-          match p.game.phase with
-          | .fight f => (checkContinuation p.game.rules f).mapError (·.message f)
-          | .title | .scene _ | .ended _ | .dead _ => .ok ()
-        match checkpoint with
-        | .error message => ({counts with combatRejected := true, pausedFight := some message}, none)
-        | .ok checkpoint => (counts, some ⟨counts, rfl, h, hd, hw, hb, checkpoint⟩)
+        (counts, some ⟨counts, rfl, h, hd, hw, hb, checkpoint⟩)
       else ({counts with combatRejected := true}, none)
       else ({counts with combatRejected := true}, none)
     else (counts, none)
   else (counts, none)
+
+/-- Check the paused point, then validate one frozen proposal with a fresh, preassigned batch.
+If the paused Fight fails its check, the counts carry its message. -/
+def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
+    ValidationCounts × Option (Admission p seed delta) :=
+  match p.checkPaused with
+  | .ok checkpoint => p.admitWith checkpoint seed delta
+  | .error message =>
+    let counts := sampleCounts p.candidate seed validationGames
+    ({counts with combatRejected := true, pausedFight := some message}, none)
 
 end Rpg.WorldChange

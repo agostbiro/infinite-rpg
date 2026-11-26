@@ -110,7 +110,8 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
 inductive PausedFightFailure where
   /-- One round has more results than the solver's budget allows. -/
   | roundTooLarge
-  /-- The solver gave up at one of its limits: states, round results in memory, or work. -/
+  /-- The solver returned no answers. Usually it gave up at one of its limits: states, round
+  results in memory, or work. -/
   | overBudget
   /-- The answers did not pass the check. The Fight can go on forever, for example. -/
   | checkFailed

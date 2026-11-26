@@ -150,6 +150,11 @@ private def pausedGame : Game :=
   | .error _ => false
   | .ok p => (p.admit 1 Confidence.confidenceDelta).2.isSome
 
+-- The paused Fight passes its own check, which the server runs before it spends a validation.
+#guard match proposal.prepare pausedGame with
+  | .error _ => false
+  | .ok p => p.checkPaused.toOption.isSome
+
 -- Static legality and the sampled rows cannot authorize an inconsistent pause point.
 #guard match proposal.prepare {pausedGame with hp := 1} with
   | .error _ => false

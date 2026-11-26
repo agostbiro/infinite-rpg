@@ -45,8 +45,8 @@ each maneuver of the Character in a group, also a maneuver that the Fight cannot
 start. Then it keeps only the states that the Fight can reach (`keepReachable`). So a state that
 the Fight cannot reach, and that goes on forever, does not make the check fail. No proof says
 that the check passes for every Fight that ends.
-The budget applies only to the combat checks that run as code. The server runs `certifyContinuation` for a live
-change during a paused Fight. `make certify` runs `certifyEncounter` for each Fight at every
+The budget applies only to the combat checks that run as code. The server runs `checkContinuation` for a live
+change during a paused Fight, before it spends a validation batch. `make certify` runs `certifyEncounter` for each Fight at every
 entry HP. Ordinary admission on the server uses the sampled balance check and runs neither.
 
 For a change during play, the admission graph starts at the updated adventure's original

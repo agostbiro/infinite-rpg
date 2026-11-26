@@ -23,8 +23,9 @@ checked. `CertifiedEncounter.exitLaw?` gives `none` above full HP. Three theorem
 
 Comparator pins these facts as `admitted_exit_law` and `admitted_exit_law_valid`.
 `admitted_combats` (Comparator) says that each Fight ends with probability one. So the chance
-that the Fight is still going goes to zero, and `exitLaw_exact` says that each weight is the
-true probability of that result. The probabilities are about `combatProcess`: rounds of
+that the Fight is still going goes to zero, and `exitLaw_exact` then gives that each weight is
+the true probability of that result. This last step is an argument on paper: no Lean theorem
+states the equality. The probabilities are about `combatProcess`: rounds of
 `roundDistribution`, which `combat_full_dice` ties to the Engine with full fair dice.
 
 ## Timings
@@ -93,8 +94,11 @@ is sound. On the Fights in the table below, the most memory used was 330 MB.
   Creatures and the requested effects stay fixed, so the message suggests only what can change:
   the counter-rules, or a change after the Fight ends. Counter-rules that change damage or armor
   change the size of the check in either direction: more armor can merge injuries, more damage
-  can spread them. So no size failure is final, and the Dungeon Master can always revise the
-  counter-rules.
+  can spread them. So the server treats no size failure as final, and the Dungeon Master can
+  revise the counter-rules. One test shows a counter-rule that makes the bound larger; no test
+  shows one that brings a rejected Fight under the limit. The server runs this check before it
+  spends a validation batch (`Prepared.checkPaused`), so a rejected change costs no part of the
+  error allowance.
 
 Measured with `lake exe profile-combat --grenadiers N` (add `--flamethrower` to give Lafayette
 a flamethrower, `--dice D` to give its weapon `D` damage dice, and `--st S` to give each
