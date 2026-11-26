@@ -331,6 +331,27 @@ theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
       iv.upper ≤ (p.candidate.bands i).target + (p.candidate.bands i).tolerance :=
   (a.accepted.2.2.2.2 i).2.2.2
 
+/-- The report for a paused Fight `f` that failed its check with `e`. The failure is final only if
+the Fight is too large to check also under `base`, the rules without the counter-rules. Then no
+revision of the counter-rules can help. -/
+def pausedFightReport (base : RuleSet) (f : FightPhase) (e : PausedFightFailure)
+    (budget : SolveBudget := {}) : PausedFightReport :=
+  let final := match e with
+    -- The bound of one round is cheap to compute again.
+    | .roundTooLarge => roundSizeBound f.order (attackBounds base f.state) f.state > budget.roundEntries
+    -- Solve the Fight again without the counter-rules; this runs only after a failure.
+    | .overBudget => match checkContinuation base f budget with
+      | .error e => e.tooLarge
+      | .ok _ => false
+    | .checkFailed => false
+  {message := e.message f final, final}
+
+/-- The rules of a change without its counter-rules: the rules before it, with the requested
+equipment and the requested effects. -/
+def Prepared.baseRules (p : Prepared) : RuleSet :=
+  {p.proposal.ruleSet p.before with
+    combatRules := p.before.rules.combatRules ++ p.proposal.requestedRules}
+
 /-- Validate one frozen proposal with a fresh, preassigned batch; every row must pass. -/
 def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option (Admission p seed delta) :=
@@ -343,7 +364,7 @@ def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
             | .fight f => CertifiedContinuation p.game.rules f | _ => Unit) :=
           match p.game.phase with
           | .fight f => (checkContinuation p.game.rules f).mapError fun e =>
-              {message := e.message f, final := e.tooLarge}
+              pausedFightReport p.baseRules f e
           | .title | .scene _ | .ended _ | .dead _ => .ok ()
         match checkpoint with
         | .error report => ({counts with combatRejected := true, pausedFight := some report}, none)
