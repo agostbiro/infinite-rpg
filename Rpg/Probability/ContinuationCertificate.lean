@@ -110,7 +110,7 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
 inductive PausedFightFailure where
   /-- One round has more results than the solver's budget allows. -/
   | roundTooLarge
-  /-- The solver gave up before it found all states, because the Fight is over its budget. -/
+  /-- The solver gave up at one of its limits: states, round results in memory, or work. -/
   | overBudget
   /-- The answers did not pass the check. The Fight can go on forever, for example. -/
   | checkFailed
@@ -124,18 +124,20 @@ def joinNames : List String → String
   | a :: rest => s!"{a}, {joinNames rest}"
 
 /-- The message for the author of a live change, which names the living Creatures of the paused
-Fight `f`. It says why the check failed and what the author can change. -/
+Fight `f`. It says why the check failed and what the author can do. A paused Fight keeps its
+Creatures and the requested effects stay fixed, so the advice names only what can change. -/
 def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : String :=
   let fight := s!"The paused Fight against {joinNames (f.state.livingFoes.filterMap fun i =>
     (f.state.foes[i]?).map (·.being.name))}"
   match e with
-  | .roundTooLarge => s!"{fight} is too large to check: one round has too many results. Make the \
-      change after the Fight, or make the Fight smaller, with fewer Creatures or no weapon that \
-      hits every Creature."
-  | .overBudget => s!"{fight} is too large to check: it has too many states. Make the change \
-      after the Fight, or make the Fight smaller, with fewer or weaker Creatures."
-  | .checkFailed => s!"{fight} could not be checked: no proof was found that it ends. With the \
-      changed rules it may go on forever. Make sure that each side can still hurt the other."
+  | .roundTooLarge => s!"{fight} is too large to check: one round has too many results. A \
+      revision of the counter-rules is unlikely to fix this. Make the change after the Fight ends."
+  | .overBudget => s!"{fight} is over the solver's budget: checking it needs too much work or \
+      memory. A revision of the counter-rules is unlikely to fix this. Make the change after the \
+      Fight ends."
+  | .checkFailed => s!"{fight} could not be checked: no proof was found that it ends. One \
+      possible cause is a stalemate, in which no side can hurt the other under the changed rules. \
+      If a counter-rule causes this, revise it."
 
 /-- Check a paused Fight, or give the reason why it fails. A Fight whose round is too large for
 the solver's budget is rejected before the rest of the paused round is computed. The paused round

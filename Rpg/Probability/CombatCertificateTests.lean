@@ -170,7 +170,8 @@ private def sprayFourPaused : FightPhase :=
 -- The reason is the size of one round, and the message names the living Creatures.
 #guard match checkContinuation {} sprayFourPaused with
   | .error e => e == .roundTooLarge &&
-      (e.message sprayFourPaused).startsWith "The paused Fight against A, B, C and D is too large"
+      (e.message sprayFourPaused).startsWith "The paused Fight against A, B, C and D is too large" &&
+      ((e.message sprayFourPaused).splitOn "after the Fight ends").length == 2
   | .ok _ => false
 
 /-- The first Fight, paused, under rules in which no attack can hit. -/
