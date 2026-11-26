@@ -130,9 +130,9 @@ def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : Strin
   let fight := s!"The paused Fight against {joinNames (f.state.livingFoes.filterMap fun i =>
     (f.state.foes[i]?).map (·.being.name))}"
   match e with
-  | .roundTooLarge => s!"{fight} is too large to check with these rules: one round has too many \
-      results. Counter-rules that change damage or armor change the size of a round. Revise them, \
-      or make the change after the Fight ends."
+  | .roundTooLarge => s!"{fight} is too large to check with these rules: the estimated number \
+      of results of one round is above the check's limit. Counter-rules that change damage or \
+      armor change the size of a round. Revise them, or make the change after the Fight ends."
   | .overBudget => s!"{fight} is over the solver's budget with these rules: checking it needs \
       more states, work or memory than the solver allows. Counter-rules that change damage or \
       armor change the size of the check. Revise them, or make the change after the Fight ends."

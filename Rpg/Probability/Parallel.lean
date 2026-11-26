@@ -2,8 +2,9 @@
 # Work on many cores
 
 `parallelMap` and `parallelAll` split a list into pieces and run each piece as a `Task`.
-In the logic, `(Task.spawn f).get` is `f ()`, so they mean the same as `List.map` and
-`List.all`. `parallelAll_sound` proves this for `parallelAll`, which the combat checker uses.
+In the logic, `(Task.spawn f).get` is `f ()`. For `parallelAll`, which the combat checker uses,
+`parallelAll_sound` proves one direction: if the parallel check passes, every item passes. That is
+the direction that the soundness of the checker needs.
 -/
 namespace Rpg.Probability
 

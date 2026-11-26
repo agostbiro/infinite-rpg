@@ -156,8 +156,8 @@ connect the two:
   every horizon. The certificate is checked against `fastProcess`, and `fastProcess_sameOdds`
   carries each result to `combatProcess`. `fastContinuation_sameOdds` does the same for a paused
   Fight in a live change, with `fastRemaining_expect` for the paused round.
-* `parallelAll_sound`: `(Task.spawn f).get` is `f ()` in the logic, so the parallel check means
-  the same as `List.all`.
+* `parallelAll_sound`: `(Task.spawn f).get` is `f ()` in the logic, so if the parallel check
+  passes, every row passes. That is the direction that the soundness of the checker needs.
 
 The solver is still untrusted, and a wrong answer fails the check. The text of the old
 Comparator statements did not change, and all statements use only `propext`, `Quot.sound` and
