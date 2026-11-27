@@ -194,6 +194,28 @@ def Prepared.game (p : Prepared) : Game :=
       | .fight f => .fight { f with state := { f.state with hero := { f.state.hero with being := d.hero } } }
       | phase => phase }
 
+/-- Two changes of the same Game with the same equipment and rules give the same rules and the
+same phase, whatever their Scenes. `checkPaused` reads only these two, so it gives both changes
+the same result. -/
+theorem Prepared.game_rules_phase (p q : Prepared)
+    -- Both change the same Game.
+    (before : p.before = q.before)
+    -- They have the same equipment.
+    (equipment : p.proposal.equipment = q.proposal.equipment)
+    -- They have the same requested rules.
+    (requested : p.proposal.requestedRules = q.proposal.requestedRules)
+    -- They have the same counter-rules.
+    (counter : p.proposal.rules = q.proposal.rules) :
+    -- The rules are the same.
+    p.game.rules = q.game.rules ∧
+    -- The phase is the same.
+    p.game.phase = q.game.phase := by
+  constructor
+  -- The rules come from the Game and the three fields.
+  · simp [Prepared.game, Prepared.definition, Proposal.ruleSet, before, equipment, requested, counter]
+  -- The phase comes from the Game and the Character, whose weapon comes from the equipment.
+  · simp [Prepared.game, Prepared.definition, before, equipment]
+
 /-- State preservation does not depend on the GM following its prompt. -/
 theorem Prepared.preserves_checkpoint (p : Prepared) :
     p.game.hp = p.before.hp ∧ p.game.trail = p.before.trail ∧
@@ -363,13 +385,13 @@ def Prepared.admitWith (p : Prepared) (checkpoint : p.Checkpoint) (seed : Nat) (
   else (counts, none)
 
 /-- Check the paused point, then validate one frozen proposal with a fresh, preassigned batch.
-If the paused Fight fails its check, the counts carry its message. -/
+If the paused Fight fails its check, it plays no games, and the counts carry its message. -/
 def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option (Admission p seed delta) :=
   match p.checkPaused with
   | .ok checkpoint => p.admitWith checkpoint seed delta
   | .error message =>
-    let counts := sampleCounts p.candidate seed validationGames
-    ({counts with combatRejected := true, pausedFight := some message}, none)
+    let rows := Array.replicate (p.candidate.horizon + 1) 0
+    ({trials := rows, deaths := rows, combatRejected := true, pausedFight := some message}, none)
 
 end Rpg.WorldChange

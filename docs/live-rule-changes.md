@@ -199,7 +199,7 @@ a latency guarantee for the current admission path.
 
 Whole-adventure combat certification is not run in the server yet. It used to take 42
 minutes on Lafayette. It now takes about 5 seconds with 14 cores ([exact exit
-laws](exact-exit-laws.md)), so it fits inside the 3-minute limit. Startup, Wishes, saved loads,
+laws](exact-exit-laws.md)), inside 3 minutes on Lafayette; a larger Adventure can take longer. Startup, Wishes, saved loads,
 and live changes do not run it yet. `make certify` runs it on Lafayette by hand
 (`Probability.certify`).
 

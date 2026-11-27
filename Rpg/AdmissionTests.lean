@@ -46,7 +46,7 @@ example : checkCharacter {rules with maxHP := fun _ => 0} hero ≠ [] := by deci
   | none => false
 #guard (certifyAdventureCombat definition).isSome
 
-/-- The two bounds of `exitLaw_exact` at `n` rounds, for the results that `event` picks. -/
+/-- The two bounds of `exitLaw_bounds` at `n` rounds, for the results that `event` picks. -/
 private def withinExactBounds (law : Distribution CombatResult) (event : CombatResult → Bool)
     (n : Nat) : Bool :=
   let p := combatProcess rules (turnOrder rules hero [foe])
@@ -54,7 +54,7 @@ private def withinExactBounds (law : Distribution CombatResult) (event : CombatR
   let by_n := p.eventBy (fun s => event (terminalResult s)) n start
   by_n ≤ law.mass event && law.mass event ≤ by_n + p.unfinished n start
 
--- The real exit law at full HP is inside the bounds of `exitLaw_exact`, for death and for a win,
+-- The real exit law at full HP is inside the bounds of `exitLaw_bounds`, for death and for a win,
 -- after 1, 2 and 3 rounds of the spec process.
 #guard match certifyEncounter rules hero [foe] with
   | some c => match c.exitLaw? 2 with
@@ -67,14 +67,14 @@ private def withinExactBounds (law : Distribution CombatResult) (event : CombatR
 -- Character can die in the first round.
 #guard !withinExactBounds (pure (.won 2)) (· == .died) 1
 
--- The premises of `exitLaw_exact` hold on this fixture. A certificate exists: the `#guard` on
+-- The premises of `exitLaw_bounds` hold on this fixture. A certificate exists: the `#guard` on
 -- `certifyEncounter` above shows it, because the kernel cannot reduce the solver. The entry HP 2
 -- is full HP, and `decide` shows it.
 example (c : CertifiedEncounter rules hero [foe]) :
     (combatProcess rules (turnOrder rules hero [foe])).eventBy
       (fun s => terminalResult s == .died) 1 (fightStart rules hero 2 [foe]) ≤
       (c.exitLaw 2 (by decide)).mass (· == .died) :=
-  (c.exitLaw_exact 2 (by decide) (· == .died) 1).1
+  (c.exitLaw_bounds 2 (by decide) (· == .died) 1).1
 
 -- End-to-end positive admission includes a real stochastic fight. Seven safe
 -- choices keep its first-turn risk inside the fixed horizon-one policy band.

@@ -190,6 +190,32 @@ theorem admitted_exit_law (a : Probability.CertifiedAdventure) (foes : List Bein
     (a.combat.exitLaw foes encounter hp upper).mass event ≤
       p.eventBy (fun s => event (Probability.terminalResult s)) n start + p.unfinished n start := sorry
 
+/-- In a certified Adventure, the exit law of each Fight at each entry HP is exact. For each set of
+results, its weight is the limit of the chance to end in the set within `n` rounds: for each
+`delta > 0`, from some `N` on, the weight is at least that chance and at most `delta` above it. -/
+theorem admitted_exit_law_exact (a : Probability.CertifiedAdventure) (foes : List Being)
+    -- The Fight is in the story.
+    (encounter : foes ∈ Probability.encounterFoes a.admitted.candidate.story)
+    -- The entry HP.
+    (hp : Nat)
+    -- The entry HP is at most full HP.
+    (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero)
+    -- The set of results.
+    (event : Probability.CombatResult → Bool)
+    (delta : Rat)
+    -- The allowed difference is positive.
+    (hd : 0 < delta) :
+    let p := Probability.combatProcess a.admitted.candidate.rules
+      (turnOrder a.admitted.candidate.rules a.admitted.candidate.hero foes)
+    let start := Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes
+    ∃ N : Nat, ∀ n, N ≤ n →
+      -- The chance to end with the event within `n` rounds is at most the exit law's weight.
+      p.eventBy (fun s => event (Probability.terminalResult s)) n start ≤
+        (a.combat.exitLaw foes encounter hp upper).mass event ∧
+      -- The weight is at most `delta` above that chance.
+      (a.combat.exitLaw foes encounter hp upper).mass event ≤
+        p.eventBy (fun s => event (Probability.terminalResult s)) n start + delta := sorry
+
 /-- In a certified Adventure, the exit law of each Fight at each entry HP is a probability law,
 and it gives no weight to `stalled`. -/
 theorem admitted_exit_law_valid (a : Probability.CertifiedAdventure) (foes : List Being)

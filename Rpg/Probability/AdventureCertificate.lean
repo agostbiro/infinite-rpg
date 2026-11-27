@@ -104,7 +104,7 @@ def CertifiedEncounter.exitLaw? {rules : RuleSet} {hero : Being} {foes : List Be
 /-- Bounds on the exit law by the spec process. For each set of results and each `n`, the exit law's
 chance of the set is between the chance to end in the set within `n` rounds and that chance plus
 the chance to be unfinished after `n` rounds. -/
-theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes : List Being}
+theorem CertifiedEncounter.exitLaw_bounds {rules : RuleSet} {hero : Being} {foes : List Being}
     (c : CertifiedEncounter rules hero foes) (hp : Nat)
     -- The entry HP is at most full HP.
     (hi : hp ≤ rules.maxHP hero)
@@ -125,6 +125,35 @@ theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes 
   have same := fastProcess_sameOdds rules (turnOrder rules hero foes)
   rw [same.eventBy_eq, same.unfinished_eq] at h
   exact h
+
+/-- The exit law is exact: for each set of results, its weight is the limit of the chance to end
+in the set within `n` rounds. For each `delta > 0`, from some number of rounds on, the weight is
+at least that chance and at most `delta` above it. -/
+theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes : List Being}
+    (c : CertifiedEncounter rules hero foes) (hp : Nat)
+    -- The entry HP is at most full HP.
+    (hi : hp ≤ rules.maxHP hero)
+    -- The set of results.
+    (event : CombatResult → Bool)
+    (delta : Rat)
+    -- The allowed difference is positive.
+    (hd : 0 < delta) :
+    let p := combatProcess rules (turnOrder rules hero foes)
+    let start := fightStart rules hero hp foes
+    ∃ N : Nat, ∀ n, N ≤ n →
+      -- The chance to end with the event within `n` rounds is at most the exit law's chance.
+      p.eventBy (fun s => event (terminalResult s)) n start ≤ (c.exitLaw hp hi).mass event ∧
+      -- The exit law's chance is at most `delta` above that chance.
+      (c.exitLaw hp hi).mass event ≤ p.eventBy (fun s => event (terminalResult s)) n start + delta := by
+  intro p start
+  let f := c.atHP hp (by omega) (by omega)
+  refine ⟨f.stopping.horizon start delta, fun n hn => ?_⟩
+  have bounds := c.exitLaw_bounds hp hi event n
+  -- After the horizon, the chance to be unfinished is at most `delta`.
+  have tail : p.unfinished n start ≤ delta := by
+    rw [← (fastProcess_sameOdds rules (turnOrder rules hero foes)).unfinished_eq]
+    exact f.stopping.horizon_sound_after start f.checked.1 delta hd n hn
+  exact ⟨bounds.1, Rat.le_trans bounds.2 (Rat.add_le_add_left.mpr tail)⟩
 
 /-- The exit law is a probability distribution. -/
 theorem CertifiedEncounter.exitLaw_valid {rules : RuleSet} {hero : Being} {foes : List Being}
@@ -170,7 +199,7 @@ theorem CertifiedEncounter.exitLaw_stalled {rules : RuleSet} {hero : Being} {foe
   have upper : ∀ delta : Rat, 0 < delta → (c.exitLaw hp hi).mass (· == .stalled) ≤ delta := by
     intro delta hd
     let f := c.atHP hp (by omega) (by omega)
-    have h := (c.exitLaw_exact hp hi (· == .stalled) (f.stopping.horizon start delta)).2
+    have h := (c.exitLaw_bounds hp hi (· == .stalled) (f.stopping.horizon start delta)).2
     have tail := f.finishes_with_high_probability delta hd
     rw [never, Rat.zero_add] at h
     exact Rat.le_trans h tail

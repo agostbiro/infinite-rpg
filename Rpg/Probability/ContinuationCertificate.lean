@@ -112,7 +112,7 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
 inductive PausedFightFailure where
   /-- One round has more results than the solver's budget allows. -/
   | roundTooLarge
-  /-- The solver returned no answers. It returns none only when it stops at a limit of the budget
+  /-- The solver returned an empty map. It does so only when it stops at a limit of the budget
   (states, round results in memory, work, or round size) or at its pass bound. -/
   | overBudget
   /-- The answers did not pass the check. The Fight can go on forever, for example. -/

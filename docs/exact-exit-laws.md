@@ -19,13 +19,12 @@ checked. `CertifiedEncounter.exitLaw?` gives `none` above full HP. Three theorem
 | - | - |
 | `CertifiedEncounter.exitLaw_valid` | The weights are not negative, and their sum is 1. |
 | `CertifiedEncounter.exitLaw_stalled` | The result `stalled` has weight 0. Each Fight ends in a win or a death. |
-| `CertifiedEncounter.exitLaw_exact` | For each set of results and each `n`: the chance to end in the set within `n` rounds is at most the exit law's weight of the set, and that weight is at most this chance plus the chance that the Fight is still going after `n` rounds. |
+| `CertifiedEncounter.exitLaw_bounds` | For each set of results and each `n`: the chance to end in the set within `n` rounds is at most the exit law's weight of the set, and that weight is at most this chance plus the chance that the Fight is still going after `n` rounds. |
+| `CertifiedEncounter.exitLaw_exact` | For each set of results, the weight is the limit of the chance to end in the set within `n` rounds: for each `delta > 0`, from some `N` on, the weight is at least that chance and at most `delta` above it. |
 
-Comparator pins these facts as `admitted_exit_law` and `admitted_exit_law_valid`.
-`admitted_combats` (Comparator) says that each Fight ends with probability one. So the chance
-that the Fight is still going goes to zero, and `exitLaw_exact` then gives that each weight is
-the true probability of that result. This last step is an argument on paper: no Lean theorem
-states the equality. The probabilities are about `combatProcess`: rounds of
+Comparator pins these facts as `admitted_exit_law`, `admitted_exit_law_exact` and
+`admitted_exit_law_valid`. `exitLaw_exact` follows from `exitLaw_bounds` and the stopping
+certificate: after its horizon, the chance that the Fight is still going is at most `delta`. The probabilities are about `combatProcess`: rounds of
 `roundDistribution`, which `combat_full_dice` ties to the Engine with full fair dice.
 
 ## Timings
@@ -45,7 +44,8 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 | **Total wall time** | | **2,510 s (42 min)** | | **4.6 s** (36 s of CPU) | |
 
 `lake exe profile-combat` prints the "after" numbers. Pinned to one core (`taskset -c 0`),
-`make certify` takes 28 s, so it fits inside the 3-minute live-change limit even on one core.
+`make certify` takes 28 s on Lafayette, inside 3 minutes even on one core. No live change runs
+`certify`, and a larger Adventure can take longer.
 
 **Baseline.** `experiments/profile/exit-laws-2d4b8cf/` holds the exit laws of all six Fights at
 every entry HP, as exact fractions. The solver of commit `2d4b8cf` made them, on the spec round,
@@ -82,9 +82,10 @@ on Lafayette uses about 610 MB.
   batch, so one batch (at most 1 million results) can go above that limit.
 * The work limit makes a rejection fast. A large Fight gives up after a small part of its
   rounds, not after it fills memory.
-* The checker computes the rounds again, one round at a time on each core. So the checker's
-  memory is at most one round per core. With the default budget, each round is at most
-  200,000 results by `roundSizeBound`, which is tested, not proved.
+* The checker computes the rounds again, one round at a time on each core. So the rounds that
+  the checker computes take at most one round of memory per core. The checker also holds the
+  whole witness, whose exact answers can have very large denominators. With the default budget,
+  each round is at most 200,000 results by `roundSizeBound`, which is tested, not proved.
 * `certifyContinuation` checks the paused round with the same bound before it computes it. It
   then computes the paused round with the fast attack and merges after each turn
   (`fastRemaining`), like the full rounds. `fastRemaining_expect` proves that it has the odds of
@@ -213,8 +214,8 @@ including its whole Fight. The steps:
    exit-law table removes that work.
 3. **Use the theorems for the model's premises.** Section 3 (each combat terminates) is
    `admitted_combats`. Section 4 (a combat can be replaced by its exit law) needs the exit
-   law to be the true law of the Fight at the actual entry HP. That is `exitLaw_exact` together
-   with `admitted_combats`.
+   law to be the true law of the Fight at the actual entry HP. That is `exitLaw_exact`
+   (`admitted_exit_law_exact` in Comparator).
 4. **Live changes.** A change during play keeps the paused Fight, with its wounds, maneuvers
    and remaining turn order. `certifyContinuation` now uses the same fast path. Its witness
    gives the answer of each state after the paused round. The exit law of the paused Fight is

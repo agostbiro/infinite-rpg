@@ -110,6 +110,30 @@ theorem StoppingCertificate.horizon_sound (c : StoppingCertificate p invariant)
   rw [product] at budget
   exact c.highProbability s hs n (by simp [n,horizon]) delta budget
 
+/-- The bound of `horizon_sound` holds at the horizon and at every later number of rounds. -/
+theorem StoppingCertificate.horizon_sound_after (c : StoppingCertificate p invariant)
+    (s : α)
+    -- The start is a state that the certificate covers.
+    (hs : invariant s)
+    (delta : Rat)
+    -- The failure allowance is positive.
+    (hd : 0 < delta)
+    (n : Nat)
+    -- The number of rounds is at least the horizon.
+    (hn : c.horizon s delta ≤ n) :
+    p.unfinished n s ≤ delta := by
+  have ceiling : c.potential s / delta ≤ (((c.potential s / delta).ceil : Int) : Rat) := Rat.le_ceil
+  have castBound : (((c.potential s / delta).ceil : Int) : Rat) ≤ (n : Rat) := by
+    have hnat : (c.potential s / delta).ceil ≤ (n : Int) := by simp only [horizon] at hn; omega
+    exact Rat.intCast_le_intCast.mpr hnat
+  have ratio := Rat.le_trans ceiling castBound
+  have budget := Rat.mul_le_mul_of_nonneg_right ratio (Rat.le_of_lt hd)
+  have nonzero : delta ≠ 0 := by grind
+  have product : (c.potential s / delta) * delta = c.potential s := by grind
+  rw [product] at budget
+  have positive : 0 < n := by simp only [horizon] at hn; omega
+  exact c.highProbability s hs n positive delta budget
+
 theorem StoppingCertificate.almostSure (c : StoppingCertificate p invariant)
     (s : α) (hs : invariant s) : p.AlmostSurelyTerminates s := by
   intro delta hd

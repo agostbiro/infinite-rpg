@@ -173,8 +173,8 @@ checked against `fastProcess` (`FastCombat.lean`), whose odds equal those of `co
 `Std.HashMap` appear in the certificate's type. They decide only which certificates exist, and
 the proofs carry every conclusion to `combatProcess`, so a reviewer need not read them for soundness. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
-and for each certified Fight `exitLaw_exact` proves that the checked exit law is the exact law
-of the spec process. There is no such theorem for a Fight that the check rejects. The ideal sampling correspondence
+and for each Fight of a `CertifiedEncounter`, `exitLaw_exact` proves that each weight of the
+checked exit law is the limit of the spec process's chance to end with that result. There is no such theorem for a Fight that the check rejects. The ideal sampling correspondence
 is an accepted assumption of `balanced`, including the idealization of SplitMix64 and
 modulo-based choices.
 
