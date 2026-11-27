@@ -8,6 +8,8 @@ For each Fight of the built-in Adventure, this program times the solver (`solveF
 checker (`CombatWitness.check`) over all entry HPs.
 
 * `--dump DIR` writes the exit laws of each Fight to `DIR/fight-N.txt`, in a fixed text form.
+  `DIR` is required, and `--dump` cannot be used with `--grenadiers` or `--stress`, which dump
+  nothing.
 * `--compare [DIR]` reads files in that form and checks that the exit laws are the same. With no
   `DIR`, it uses `experiments/profile/exit-laws-2d4b8cf`. A missing file is an error, and so is a
   file `fight-N.txt` with no Fight `N`, or a folder with no Fights. `--dump` and `--compare` cannot
@@ -65,6 +67,12 @@ def main (args : List String) : IO UInt32 := do
     return 2
   if args.contains "--compare" && (args.contains "--grenadiers" || args.contains "--stress") then
     IO.eprintln "--compare checks the Fights of Lafayette: do not use it with --grenadiers or --stress."
+    return 2
+  if args.contains "--dump" && (argAfter "--dump" args).isNone then
+    IO.eprintln "--dump needs a folder: --dump DIR."
+    return 2
+  if args.contains "--dump" && (args.contains "--grenadiers" || args.contains "--stress") then
+    IO.eprintln "--dump writes the Fights of Lafayette: do not use it with --grenadiers or --stress."
     return 2
   if args.contains "--stress" then
     -- Two million entries with distinct values: the merge must not use one stack frame each.
