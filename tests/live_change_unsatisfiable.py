@@ -192,6 +192,7 @@ PAUSED_CASES = [
      TWO_GRENADIERS),
 ]
 PAUSED_CHECK = "Checking that the paused Fight still ends"
+CACHED = "This proposal already failed the paused-Fight check"
 VALIDATION = "Checking a fresh validation batch"
 
 
@@ -203,8 +204,9 @@ def proposals(view):
 
 def run_change_case(port, name, files, state, text, error, most, limit_ms, path=()):
     """Run one case of CASES on a fresh server on `port`. With `path`, make the Choices in `path`
-    first, so that the change comes during a Fight, and check that the paused Fight was checked
-    only once and that no validation batch was spent."""
+    first, so that the change comes during a Fight. Then check that the Dungeon Master made all
+    `most` proposals, that the paused Fight was checked only once and later proposals got the
+    remembered rejection, and that no validation batch was spent."""
     with tempfile.TemporaryDirectory() as folder:
         for fixture, body in files.items():
             with open(os.path.join(folder, fixture + ".sse"), "w") as f:
@@ -236,7 +238,11 @@ def run_change_case(port, name, files, state, text, error, most, limit_ms, path=
             assert checkpoint(view) == checkpoint(before), f"{name}: the game changed"
             if path:
                 texts = [s["text"] for s in gen["steps"]]
+                assert proposals(view) == most, (name, proposals(view))
                 assert sum(PAUSED_CHECK in t for t in texts) == 1, (name, texts)
+                cached = [i for i, step in enumerate(gen["steps"]) if any(CACHED in e for e in step["errors"])]
+                checked = next(i for i, t in enumerate(texts) if PAUSED_CHECK in t)
+                assert len(cached) >= most - 1 and min(cached) > checked, (name, cached, checked)
                 assert not any(VALIDATION in t for t in texts), (name, texts)
 
             # The Player can play on. The failed change stays on screen until Dismiss.
