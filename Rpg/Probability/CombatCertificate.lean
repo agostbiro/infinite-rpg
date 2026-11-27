@@ -147,11 +147,13 @@ structure CertifiedFight (rules : RuleSet) (order : List Actor) (start : FightSt
   checked : witness.Accepted rules order start
 
 /-- Solve the Fight from `start` within `budget` and check the answers. It is `none` if the check
-fails, also when the Fight is over the budget. -/
+fails, also when the Fight is over the budget. A Fight that has already ended needs no answers, so
+it gets an empty witness without the solver or `attackBounds`. -/
 def certifyFight (rules : RuleSet) (order : List Actor) (start : FightState)
     (budget : SolveBudget := {}) : Option (CertifiedFight rules order start) :=
   let witness : CombatWitness :=
-    ⟨solveChecked rules order (attackBounds rules start) [start] budget⟩
+    if start.over then ⟨{}⟩
+    else ⟨solveChecked rules order (attackBounds rules start) [start] budget⟩
   if h : witness.check rules order [start] = true then
     some ⟨witness, (CombatWitness.check_sound h).1 start (by simp), (CombatWitness.check_sound h).2⟩
   else none

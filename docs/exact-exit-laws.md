@@ -50,7 +50,9 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 **Baseline.** `experiments/profile/exit-laws-2d4b8cf/` holds the exit laws of all six Fights at
 every entry HP, as exact fractions. The solver of commit `2d4b8cf` made them, on the spec round,
 before any code of this change existed. `make compare-exit-laws` checks that the new exit laws
-are the same, weight for weight. (A program at `2d4b8cf` makes the files with the same text form as `--dump`.)
+are the same, weight for weight. It also fails if the folder does not hold exactly one file for
+each Fight, and `--dump` cannot write into the folder that `--compare` reads. (A program at
+`2d4b8cf` makes the files with the same text form as `--dump`.)
 
 **Larger Fights.** The cost grows fast with the number of Creatures: one round with 4 Creatures
 takes about 25 times as long as one with 2. A weapon that hits every Creature (the flamethrower)
@@ -107,9 +109,10 @@ on Lafayette uses about 610 MB.
   shows one that brings a rejected Fight under the limit. The server runs this check before it
   spends a validation batch (`Prepared.checkPaused`), so a proposal that this check rejects
   spends no part of the error allowance. A proposal that reaches the validation batch spends its
-  part, also if it then fails. The check uses no dice and reads no Scene, so the server
-  remembers the equipment and rules of each proposal that failed it (`combatKey`). It does not
-  check them again, also in a proposal that changes only Scenes, and the tuning of the
+  part, also if it then fails. The check uses no dice, reads no Scene, and reads no name or
+  description of a rule, so the server remembers the equipment and the side, trigger and numbers
+  of the rules of each proposal that failed it (`combatKey`). It does not check them again, also
+  in a proposal that changes only Scenes or the wording of a rule, and the tuning of the
   counter-rules skips them. The server also keeps each paused Fight that passed the check. A later
   proposal with the same equipment and rules reuses it (`Prepared.reuseCheckpoint`), and gets a
   fresh validation batch. `Prepared.game_rules_phase` proves that the two proposals have the same

@@ -9,10 +9,11 @@ fresh server on its own port, starts the built-in Adventure, and asks for a chan
 - the game is unchanged,
 - the Player can play on, and can ask again ("Try again", then Cancel).
 
-Three cases ask for the change during a Fight that is too large to check with the change. They also
+Four cases ask for the change during a Fight that is too large to check with the change. They also
 check that the server never checks the same rules twice and spends no validation batch. In the first
 case the last step names the paused Fight as the cause. The second case does the same, but each
-proposal changes the text of a future Scene and keeps the combat rules. In the third case the
+proposal changes the text of a future Scene and keeps the combat rules. A third case changes only
+the names and descriptions of the counter-rules in each proposal. In the fourth case the
 screen fails, so the server tunes the counter-rules. A tuned variant that fails the paused-Fight
 check is not picked again.
 
@@ -224,6 +225,21 @@ def with_ending_text(proposal, n):
 # The flamethrower with a new ending text in each proposal: the same combat rules every time.
 SCENE_EDITS = {f"change-{n}": stream(json.dumps(with_ending_text(proposal_of(FLAMETHROWER), n)))
                for n in range(1, MAX_CALLS + 1)}
+
+
+def with_rule_wording(proposal, n):
+    """A copy of `proposal` whose counter-rules have version `n` of their names and descriptions.
+    The sides, triggers and numbers stay the same."""
+    out = json.loads(json.dumps(proposal))
+    for rule in out["rules"]:
+        rule["name"] = f"{rule['name']} (version {n})"
+        rule["description"] = f"Version {n} of this rule: {rule['description']}"
+    return out
+
+
+# The flamethrower with new wording of its counter-rules in each proposal: the same combat rules.
+WORDING_EDITS = {f"change-{n}": stream(json.dumps(with_rule_wording(proposal_of(FLAMETHROWER), n)))
+                 for n in range(1, MAX_CALLS + 1)}
 # Each case: the same fields as CASES, then the Choices that lead to the paused Fight.
 PAUSED_CASES = [
     ("a flamethrower during a Fight against two Grenadiers, every time",
@@ -233,6 +249,12 @@ PAUSED_CASES = [
     # Each proposal changes only a future Scene, so the paused-Fight check runs once.
     ("a flamethrower with a new ending text each time, during a Fight against two Grenadiers",
      SCENE_EDITS, "failed", "The paused Fight could not be checked with the last one",
+     "The paused Fight against Grenadier 1 and Grenadier 2 is over the solver's budget", MAX_CALLS, None,
+     TWO_GRENADIERS),
+    # Each proposal changes only the names and descriptions of the counter-rules, so the
+    # paused-Fight check runs once.
+    ("a flamethrower with new counter-rule wording each time, during a Fight against two Grenadiers",
+     WORDING_EDITS, "failed", "The paused Fight could not be checked with the last one",
      "The paused Fight against Grenadier 1 and Grenadier 2 is over the solver's budget", MAX_CALLS, None,
      TWO_GRENADIERS),
     # The first two proposals are tuned to two different variants, which fail the paused-Fight check.

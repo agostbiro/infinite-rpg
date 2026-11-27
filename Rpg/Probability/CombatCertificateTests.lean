@@ -238,6 +238,15 @@ private def oneHitPaused : FightPhase :=
 #guard (solveFight (fastRound {} order) [state] (fun _ => 1) {states := 2}).isEmpty
 #guard !(solveFight (fastRound {} order) [state] (fun _ => 1) {states := 3}).isEmpty
 
+/-- Rules in which every weapon rolls 400 damage dice. -/
+private def manyDice : RuleSet := {damage := fun _ _ => {count := 400, add := 0}}
+
+-- A Fight that has already ended gets an empty witness, without the solver or the attack bounds,
+-- and its exit law is the certain result.
+#guard match certifyFight manyDice order {state with hero := {state.hero with hp := 0}} with
+  | some c => c.witness.entries.isEmpty && decide (c.outcomes.sameWeights (pure .died))
+  | none => false
+
 -- Names are joined as in plain English.
 #guard joinNames ["A"] == "A" && joinNames ["A", "B"] == "A and B" &&
   joinNames ["A", "B", "C"] == "A, B and C"

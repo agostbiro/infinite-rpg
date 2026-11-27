@@ -25,9 +25,46 @@ namespace Rpg.Probability
 /-- The sum of three fair dice. It is a top-level value, so compiled code computes it once. -/
 def threeDice : Distribution Nat := dice 3
 
+/-- One more fair die added to the sum `d`. -/
+def addDie (d : Distribution Nat) : Distribution Nat :=
+  (do
+    let a ← uniform [1, 2, 3, 4, 5, 6]
+    let b ← d
+    pure (a + b)).collect
+
+/-- The sum of `n` fair dice, as `dice` gives it. It computes the sum of one die fewer once, not
+once for each face of the new die. -/
+def sharedDice : Nat → Distribution Nat
+  | 0 => pure 0
+  | n + 1 => addDie (sharedDice n)
+
+/-- `sharedDice` is `dice`. -/
+theorem sharedDice_eq (n : Nat) : sharedDice n = dice n := by
+  induction n with
+  -- No dice: both sums are 0.
+  | zero => rfl
+  -- One more die: both add one die to the same sum.
+  | succ n ih => simp only [sharedDice, ih, addDie, dice]
+
+/-- The sums of 0 to 12 fair dice. It is a top-level value, so compiled code computes it once. -/
+def damageSumTable : Array (Distribution Nat) := Array.ofFn (n := 13) fun i => sharedDice i
+
+/-- The sum of `n` fair dice: from `damageSumTable` for at most 12 dice, else from `sharedDice`. -/
+def damageSums (n : Nat) : Distribution Nat :=
+  if h : n < damageSumTable.size then damageSumTable[n] else sharedDice n
+
+/-- `damageSums` is `dice`. -/
+theorem damageSums_eq (n : Nat) : damageSums n = dice n := by
+  unfold damageSums
+  split
+  -- At most 12 dice: the table entry is `sharedDice n`.
+  · simp [damageSumTable, sharedDice_eq]
+  -- More dice: `sharedDice n` itself.
+  · exact sharedDice_eq n
+
 /-- The exact injury of one attack by `att` on `dfn`, as in `attackWith` with fair dice.
 The attack roll is grouped by its result and by whether it is a 3. The Dodge roll and the damage
-roll are each computed once. -/
+roll are each computed once, and the sums of the damage dice come from `damageSums`. -/
 def injuryDistribution (rules : RuleSet) (attId : Actor) (att : Fighter) (dfnId : Actor)
     (dfn : Fighter) : Distribution Nat :=
   let offense := rules.combatRules.filter fun r => r.active rules attId att dfn &&
@@ -41,7 +78,7 @@ def injuryDistribution (rules : RuleSet) (attId : Actor) (att : Fighter) (dfnId 
   let kind := att.being.weapon.damageType
   let dr := rules.dr dfn.being + (defense.map (·.armorBonus)).sum
   let injuryOf (sum : Nat) : Nat := rules.injury kind dr (rules.basicDamage damageDice kind sum)
-  let rolled : Distribution Nat := (injuryOf <$> dice damageDice.count).collect
+  let rolled : Distribution Nat := (injuryOf <$> damageSums damageDice.count).collect
   let maxed : Nat := injuryOf (List.replicate damageDice.count 6).sum
   let dodged : Distribution Bool := match dfn.dodge rules with
     | none => pure false
@@ -206,7 +243,7 @@ theorem injuryDistribution_expect (rules : RuleSet) (a : Actor) (att : Fighter) 
   -- to the toolchain can break it.
   cases h : dfn.dodge rules <;>
     simp [injuryDistribution, attackDistribution, attackWith, rollAgainstWith, damageFacesWith,
-      Bind.bind, Distribution.expect_bind, sumAsFaces, threeDice, h]
+      Bind.bind, Distribution.expect_bind, sumAsFaces, threeDice, damageSums_eq, h]
   -- Split on whether the attack level is too low to roll.
   all_goals split
   -- Too low: both sides give no injury.
@@ -217,7 +254,7 @@ theorem injuryDistribution_expect (rules : RuleSet) (a : Actor) (att : Fighter) 
 /-- The injury of one attack is a probability distribution. -/
 theorem injuryDistribution_valid (rules : RuleSet) (a : Actor) (att : Fighter) (b : Actor)
     (dfn : Fighter) : (injuryDistribution rules a att b dfn).Valid := by
-  simp only [injuryDistribution, threeDice]
+  simp only [injuryDistribution, threeDice, damageSums_eq]
   repeat first
     | exact Distribution.valid_pure _
     | exact dice_valid _

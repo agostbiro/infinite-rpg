@@ -878,10 +878,16 @@ it to skip a proposal that already failed validation. -/
 def proposalKey (p : WorldChange.Proposal) : String :=
   reprStr (p.equipment, p.requestedRules, p.rules, p.scenes)
 
-/-- The text that names the combat part of a proposal: its equipment and its rules, not its Scenes.
-The paused-Fight check reads only this part, so proposals with the same key get the same result. -/
+/-- The parts of a combat rule that change a Fight: its side, its trigger and its three numbers.
+`CombatRule.active` and `injuryDistribution` read only these, not the name or the description. -/
+def combatFields (r : CombatRule) : CombatSide × CombatTrigger × Int × Int × Nat :=
+  (r.side, r.trigger, r.hitBonus, r.damageBonus, r.armorBonus)
+
+/-- The text that names the combat part of a proposal: its equipment and the `combatFields` of its
+rules. It leaves out the Scenes and the wording of the rules. The paused-Fight check reads only
+this part, so proposals with the same key get the same result. -/
 def combatKey (p : WorldChange.Proposal) : String :=
-  reprStr (p.equipment, p.requestedRules, p.rules)
+  reprStr (p.equipment, p.requestedRules.map combatFields, p.rules.map combatFields)
 
 /-- A proposal with no equipment, no rules and no Scenes, for the tests below. -/
 private def emptyProposal : WorldChange.Proposal :=
@@ -891,9 +897,20 @@ private def emptyProposal : WorldChange.Proposal :=
 private def sceneProposal : WorldChange.Proposal :=
   {emptyProposal with scenes := [{id := 13, title := "Ending", text := "Another text", choices := []}]}
 
+/-- A proposal with one counter-rule, worded by `name`, that gives `armor` armor. -/
+private def armorProposal (name : String) (armor : Nat) : WorldChange.Proposal :=
+  let rule : CombatRule :=
+    {name, description := name ++ " gives armor.", side := .foes, trigger := .guarding,
+     armorBonus := armor}
+  {emptyProposal with rules := [rule]}
+
 -- Two proposals that differ only in a Scene have the same combat key, but not the same key.
 #guard combatKey emptyProposal == combatKey sceneProposal
 #guard proposalKey emptyProposal != proposalKey sceneProposal
+-- The wording of a rule does not change the combat key, but a number does.
+#guard combatKey (armorProposal "Shell" 2) == combatKey (armorProposal "Hard Shell" 2)
+#guard proposalKey (armorProposal "Shell" 2) != proposalKey (armorProposal "Hard Shell" 2)
+#guard combatKey (armorProposal "Shell" 2) != combatKey (armorProposal "Shell" 3)
 
 /-- A paused-Fight check that passed during a live change of Game `g`. The server keeps it, so a
 revision that changes only Scenes does not run the check again. -/
@@ -1107,7 +1124,7 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
             if validated.contains signature then
               pure (["This proposal already failed validation. Make an actual revision; do not ask for new dice."], content)
             else if let some (_, message) := pausedRejected.find? (·.1 == combatKey proposal) then
-              pure (["These counter-rules already failed the paused-Fight check. Scene changes do not change this check. Revise the counter-rules.", message], content)
+              pure (["These counter-rules already failed the paused-Fight check. Scene changes and new names or descriptions do not change this check. Revise the numbers, triggers or sides of the counter-rules.", message], content)
             else
               let index := (← ref.get).changeChecks
               let delta := Probability.attemptRisk index

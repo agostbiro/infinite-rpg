@@ -65,8 +65,10 @@ development change and its proofs; runtime does not execute the development skil
 4. During a Fight, the server first checks that the paused Fight ends under the new rules
    (`Prepared.checkPaused`). This check uses no dice and spends no error allowance. If it fails,
    the DM gets the reason, and the server remembers the equipment and rules of the proposal
-   (`combatKey`). The check reads no Scene, so the server does not check the same rules again,
-   also in a proposal that changes only Scenes, and the numeric adjustments below skip them.
+   (`combatKey`: the equipment, and the side, trigger and numbers of each rule). The check reads
+   no Scene and no name or description of a rule, so the server does not check the same rules
+   again, also in a proposal that changes only Scenes or wording, and the numeric adjustments
+   below skip them.
    If the check passes, the server keeps the result. A later proposal with the same equipment
    and rules reuses it (`Prepared.reuseCheckpoint`), and still gets a fresh validation batch.
 5. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
