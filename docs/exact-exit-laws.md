@@ -107,17 +107,22 @@ is sound. On the Fights in the table below, the most memory used was 330 MB.
 Measured with `lake exe profile-combat --grenadiers N` (add `--flamethrower` to give Lafayette
 a flamethrower, `--dice D` to give its weapon `D` damage dice, and `--st S` to give each
 Grenadier ST `S`; a Grenadier has ST 11). The 1-core
-column uses `taskset -c 0`. Two Grenadiers are certified up to ST 16 and rejected from ST 17, with
-or without the work limit.
+column uses `taskset -c 0`. In the check at every entry HP, two Grenadiers are certified up to
+ST 16 and rejected from ST 17, with or without the work limit. In the paused check below, they are
+certified at ST 17 and rejected at ST 19.
 
 | Fight | 14 cores | 1 core | Memory | Result |
 | - | -: | -: | -: | - |
 | 2 Grenadiers, paused | 1.0 s | 6.6 s | 180 MB | certified |
 | 2 Grenadiers with ST 16, paused | 3.5 s | 25 s | 330 MB | certified |
+| 2 Grenadiers with ST 17, paused | 4.4 s | not measured | 334 MB | certified |
+| 2 Grenadiers with ST 19, paused | 2.3 s | not measured | 264 MB | rejected (over budget) |
 | 2 Grenadiers with ST 20, paused | 2.4 s | 18 s | 270 MB | rejected (over budget) |
 | 3 Grenadiers, paused | 2.2 s | 16 s | 210 MB | rejected (over budget) |
 | 4 Grenadiers, paused | 1.8 s | 13 s | 140 MB | rejected (over budget) |
 | 2 Grenadiers, flamethrower, paused | 1.4 s | 9.3 s | 210 MB | rejected (over budget) |
+| 2 Grenadiers with ST 6, flamethrower, paused | 3.5 s | not measured | 221 MB | certified |
+| 3 Grenadiers, flamethrower, paused | 0.001 s | not measured | 167 MB | rejected (round bound 3.7 million) |
 | 4 Grenadiers, flamethrower, paused | 0.01 s | 0.01 s | 105 MB | rejected (round bound 418 million) |
 | 4 Grenadiers with ST 1, flamethrower, paused | 0.01 s | 0.01 s | 105 MB | rejected (round bound 668,169) |
 | 4 Grenadiers, flamethrower with 6 dice, paused | 0.01 s | 0.01 s | 105 MB | rejected (round bound 5.2 billion) |

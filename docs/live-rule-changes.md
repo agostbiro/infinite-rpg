@@ -147,8 +147,8 @@ uses the whole adventure graph at turn zero. `Prepared.preserves_core` and
 `Prepared.preserves_fight_checkpoint` additionally fixes the whole paused fight record,
 including enemy wounds, turn order, round, and maneuvers; only the hero's equipped being changes.
 Admission also carries `WellFormed`, the current HP upper bound, `NoShortLoops`, and a certificate
-for the actual paused fight continuation. It does not check the other Fights of the Adventure: that
-check is too slow for play (see below). The paused-fight certificate establishes almost-sure
+for the actual paused fight continuation. It does not check the other Fights of the Adventure: the
+server does not run that check yet (see below). The paused-fight certificate establishes almost-sure
 termination under the model's random policy; it does not turn the six-turn sampled balance check into a balance guarantee for later scenes.
 
 Combat sides and triggers are enums decoded at the JSON boundary. Unknown values are rejected
