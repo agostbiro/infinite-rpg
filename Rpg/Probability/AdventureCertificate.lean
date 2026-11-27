@@ -6,9 +6,11 @@ witness for all entry HPs. The solver that makes the witness is not trusted. Thi
 the exit law of each Fight at each entry HP (`CertifiedAdventureCombat.exitLaw`). -/
 namespace Rpg.Probability
 
+/-- The start of a Fight: the Character with `hp` HP, and each Creature at full HP. -/
 def fightStart (rules : RuleSet) (hero : Being) (hp : Int) (foes : List Being) : FightState :=
   {hero := {being := hero, hp}, foes := foes.map fun f => {being := f, hp := rules.maxHP f}}
 
+/-- The Creatures of each Fight in the story, with each Fight listed once. -/
 def encounterFoes (a : Adventure) : List (List Being) :=
   (a.scenes.flatMap fun sc => sc.choices.filterMap fun ch => match ch.outcome with
     | .fight foes _ => some foes
@@ -17,6 +19,8 @@ def encounterFoes (a : Adventure) : List (List Being) :=
 /-- Zero HP is included as an already terminal state. -/
 def entryHPs (rules : RuleSet) (hero : Being) : List Nat := List.range (rules.maxHP hero + 1)
 
+/-- Checked answers for one Fight at every entry HP: the witness covers the start at each entry
+HP, and each of its rows passes the check. -/
 structure CertifiedEncounter (rules : RuleSet) (hero : Being) (foes : List Being) where
   witness : CombatWitness
   starts : ∀ hp ∈ entryHPs rules hero, witness.contains (fightStart rules hero hp foes)

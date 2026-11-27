@@ -168,8 +168,8 @@ theorem admitted_combats (a : Probability.CertifiedAdventure) (foes : List Being
       (turnOrder a.admitted.candidate.rules a.admitted.candidate.hero foes)).AlmostSurelyTerminates
       (Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes) := a.combat.ends_almostSurely foes encounter hp lower upper
 
-/-- In a certified Adventure, the exit law of each Fight at each entry HP is the exact law of that
-Fight. For each set of results and each `n`, the chance to end in the set within `n` rounds is at
+/-- In a certified Adventure, the law of each Fight at each entry HP bounds its exit law on both
+sides. For each set of results and each `n`, the chance to end in the set within `n` rounds is at
 most the exit law's weight of the set, and that weight is at most this chance plus the chance
 that the Fight is not over after `n` rounds. -/
 theorem admitted_exit_law (a : Probability.CertifiedAdventure) (foes : List Being)

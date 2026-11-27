@@ -109,14 +109,16 @@ a flamethrower, `--dice D` to give its weapon `D` damage dice, and `--st S` to g
 Grenadier ST `S`; a Grenadier has ST 11). The 1-core
 column uses `taskset -c 0`. In the check at every entry HP, two Grenadiers are certified up to
 ST 16 and rejected from ST 17, with or without the work limit. In the paused check below, they are
-certified at ST 17 and rejected at ST 19.
+certified up to ST 18 and rejected from ST 19. A check that passes can take longer than one that
+rejects: up to 35 s on one core at ST 18.
 
 | Fight | 14 cores | 1 core | Memory | Result |
 | - | -: | -: | -: | - |
 | 2 Grenadiers, paused | 1.0 s | 6.6 s | 180 MB | certified |
 | 2 Grenadiers with ST 16, paused | 3.5 s | 25 s | 330 MB | certified |
-| 2 Grenadiers with ST 17, paused | 4.4 s | not measured | 334 MB | certified |
-| 2 Grenadiers with ST 19, paused | 2.3 s | not measured | 264 MB | rejected (over budget) |
+| 2 Grenadiers with ST 17, paused | 4.4 s | 30 s | 334 MB | certified |
+| 2 Grenadiers with ST 18, paused | 5.0 s | 35 s | 320 MB | certified |
+| 2 Grenadiers with ST 19, paused | 2.3 s | 17 s | 264 MB | rejected (over budget) |
 | 2 Grenadiers with ST 20, paused | 2.4 s | 18 s | 270 MB | rejected (over budget) |
 | 3 Grenadiers, paused | 2.2 s | 16 s | 210 MB | rejected (over budget) |
 | 4 Grenadiers, paused | 1.8 s | 13 s | 140 MB | rejected (over budget) |

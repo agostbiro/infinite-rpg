@@ -1176,9 +1176,12 @@ def fullView (cfg : GameConfig) (s : ServerState) (fresh : Nat := 0) (error : Op
     IO String := do
   let g := s.session
   let base := (viewJson g.game g.seed g.reports fresh error)
+  -- `changeChecks` counts the validation batches of live changes in this session. Each one spends a
+  -- part of the error allowance. Tests read it; the page does not.
   let gen := json% {
     available: $(cfg.canWish), state: $(s.gen.state.name), steps: $(s.gen.steps), readyId: $(s.gen.readyId),
-    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender), mode: $(s.gen.mode)
+    wish: $(s.gen.wish), name: $(s.gen.name), gender: $(s.gen.gender), mode: $(s.gen.mode),
+    changeChecks: $(s.changeChecks)
   }
   let saved ← if g.game.phase.name == "title" then savedList cfg else pure (Json.arr #[])
   let v := base.setObjVal! "generation" gen

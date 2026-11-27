@@ -62,10 +62,14 @@ development change and its proofs; runtime does not execute the development skil
 3. The compiled simulator plays 1,200 games from the adventure beginning on screening seed 1. All Fights use
    the same effects and equipment as play. The rows are compared with the curve of the game's own
    policy (`defaultPolicy`). Failed rows guide revisions to the world's response.
-4. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
+4. During a Fight, the server first checks that the paused Fight ends under the new rules
+   (`Prepared.checkPaused`). This check uses no dice and spends no error allowance. If it fails,
+   the DM gets the reason, and the server remembers the proposal: it does not check it again,
+   and the numeric adjustments below skip it.
+5. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
    and plays a separate 1,200-game validation batch against the same curve. Only a source-bound `Admission` value
    permits installation. Failure returns to revision with a smaller remaining allowance.
-5. Installation preserves play RNG, reports, trail, HP, and current scene. A Fight also keeps
+6. Installation preserves play RNG, reports, trail, HP, and current scene. A Fight also keeps
    enemy HP, last maneuvers, turn order, and round number. Changes take effect on the next action.
 
 If a legal proposal fails screening, the server first tries bounded numeric adjustments to
@@ -84,7 +88,10 @@ the fixed list `changeRevisions` (1 to 6), one call for each number, so it canno
 than 6 proposals. Every proposal that is not accepted, parse errors and cut-off replies included,
 uses one of the 6. The server checks the proposal and
 validation limits after each proposal. At one of them, the change fails with "The Dungeon Master
-stopped after N proposals and could not find a balanced version. Your game is unchanged." A watch
+stopped after N proposals and could not find a balanced version. Your game is unchanged." If the
+last proposal failed the paused-Fight check, it says instead: "The Dungeon Master stopped after N
+proposals. The paused Fight could not be checked with the last one. Your game is unchanged. You can
+ask for this change again after the Fight ends." A watch
 task (`watchChange`) enforces the installation deadline: at 3 minutes it marks the change failed
 and kills its `curl` processes, as Cancel does, even during a slow provider call. The step then says "The change
 reached its time limit of 3 minutes. Your game is unchanged." Acceptance is not guaranteed: some requested mechanics cannot meet the fixed policy.

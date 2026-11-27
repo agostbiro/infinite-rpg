@@ -9,9 +9,10 @@ fresh server on its own port, starts the built-in Adventure, and asks for a chan
 - the game is unchanged,
 - the Player can play on, and can ask again ("Try again", then Cancel).
 
-One case asks for the change during a Fight that is too large to check with the change. It also
-checks that the server checks the paused Fight only once, spends no validation batch, and names the
-paused Fight as the cause in the last step.
+Two cases ask for the change during a Fight that is too large to check with the change. They also
+check that the server never checks the same rules twice and spends no validation batch. In the first
+case the last step names the paused Fight as the cause. In the second case the screen fails, so the server
+tunes the counter-rules. A tuned variant that fails the paused-Fight check is not picked again.
 
 A last case does the same for a Wish whose replies never parse.
 
@@ -38,7 +39,7 @@ from urllib.request import Request, urlopen
 # Do not leave a __pycache__ folder in the repository.
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "fake-api"))
-from make_fixtures import stream  # noqa: E402
+from make_fixtures import main as make_fixtures, stream  # noqa: E402
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8100
 BASE = f"http://127.0.0.1:{PORT}"
@@ -184,13 +185,26 @@ TWO_GRENADIERS = (1, 0, 0)
 # A flamethrower grant that passes the balance check (the last reply of the integration test).
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fake-api", "change-3.sse")) as f:
     FLAMETHROWER = f.read()
+# The same grant with a counter-rule that is too strong, so the screen fails and the server tunes it
+# (the last reply of the integration test with --tuning).
+with tempfile.TemporaryDirectory() as _folder:
+    make_fixtures(_folder, True)
+    with open(os.path.join(_folder, "change-3.sse")) as f:
+        STRONG_FLAMETHROWER = f.read()
 # Each case: the same fields as CASES, then the Choices that lead to the paused Fight.
 PAUSED_CASES = [
     ("a flamethrower during a Fight against two Grenadiers, every time",
      {"change": FLAMETHROWER}, "failed", "The paused Fight could not be checked with the last one",
      "The paused Fight against Grenadier 1 and Grenadier 2 is over the solver's budget", MAX_CALLS, None,
      TWO_GRENADIERS),
+    # The first two proposals are tuned to two different variants, which fail the paused-Fight check.
+    # After that, no variant that is left passes the screen, so the change ends with the balance rows.
+    ("a flamethrower with a too strong counter-rule during a Fight against two Grenadiers",
+     {"change": STRONG_FLAMETHROWER}, "failed", "could not find a balanced version", "the allowed range",
+     MAX_CALLS, None, TWO_GRENADIERS),
 ]
+TUNING = "Balancing the counter-rule"
+CHECKED_RULES = "The checked counter-rules were: "
 PAUSED_CHECK = "Checking that the paused Fight still ends"
 CACHED = "This proposal already failed the paused-Fight check"
 VALIDATION = "Checking a fresh validation batch"
@@ -205,8 +219,8 @@ def proposals(view):
 def run_change_case(port, name, files, state, text, error, most, limit_ms, path=()):
     """Run one case of CASES on a fresh server on `port`. With `path`, make the Choices in `path`
     first, so that the change comes during a Fight. Then check that the Dungeon Master made all
-    `most` proposals, that the paused Fight was checked only once and later proposals got the
-    remembered rejection, and that no validation batch was spent."""
+    `most` proposals, that no rules were checked twice against the paused Fight, that a proposal
+    sent again got the remembered rejection, and that no validation batch was spent."""
     with tempfile.TemporaryDirectory() as folder:
         for fixture, body in files.items():
             with open(os.path.join(folder, fixture + ".sse"), "w") as f:
@@ -239,11 +253,24 @@ def run_change_case(port, name, files, state, text, error, most, limit_ms, path=
             if path:
                 texts = [s["text"] for s in gen["steps"]]
                 assert proposals(view) == most, (name, proposals(view))
-                assert sum(PAUSED_CHECK in t for t in texts) == 1, (name, texts)
-                cached = [i for i, step in enumerate(gen["steps"]) if any(CACHED in e for e in step["errors"])]
-                checked = next(i for i, t in enumerate(texts) if PAUSED_CHECK in t)
-                assert len(cached) >= most - 1 and min(cached) > checked, (name, cached, checked)
+                # Each check of the paused Fight reports the counter-rules it checked. No rules
+                # are checked twice: a proposal sent again gets the remembered rejection, and the
+                # tuning skips a variant that failed.
+                checked = [e for step in gen["steps"] for e in step["errors"] if e.startswith(CHECKED_RULES)]
+                assert checked and sum(PAUSED_CHECK in t for t in texts) == len(checked), (name, texts)
+                assert len(set(checked)) == len(checked), (name, checked)
+                if any(TUNING in t for t in texts):
+                    # Each proposal is screened and tuned again; a new variant is checked each time.
+                    assert len(checked) >= 2, (name, checked)
+                else:
+                    # The screen passes, so the proposal itself is checked once and then remembered.
+                    assert len(checked) == 1, (name, checked)
+                    first = next(i for i, t in enumerate(texts) if PAUSED_CHECK in t)
+                    cached = [i for i, step in enumerate(gen["steps"]) if any(CACHED in e for e in step["errors"])]
+                    assert len(cached) >= most - 1 and min(cached) > first, (name, cached, first)
                 assert not any(VALIDATION in t for t in texts), (name, texts)
+                # No validation batch spent a part of the error allowance.
+                assert gen["changeChecks"] == before["generation"]["changeChecks"], (name, gen["changeChecks"])
 
             # The Player can play on. The failed change stays on screen until Dismiss.
             code, moved = request("/api/input", before["inputs"][0], base)

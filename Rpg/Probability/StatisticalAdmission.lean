@@ -229,8 +229,8 @@ theorem admitWithRisk_candidate {c : StatisticalCandidate} {seed : Nat} {delta :
   all_goals rw [← h.2]
 
 /-- An admitted Adventure whose Fights also passed the combat check: each Fight, at each
-starting HP, ends with probability one. It also holds the exact exit law of each Fight
-(`CertifiedAdventureCombat.exitLaw`). Admission does not run this check yet. `make certify` runs it. -/
+starting HP, ends with probability one. It also holds the checked exit law of each Fight
+(`CertifiedAdventureCombat.exitLaw`). Admission does not run this check yet; `make certify` runs it. -/
 structure CertifiedAdventure where
   /-- The Adventure that passed admission. -/
   admitted : StatisticalAdventure

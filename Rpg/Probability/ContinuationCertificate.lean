@@ -81,7 +81,9 @@ def fastContinuationProcess (rules : RuleSet) (f : FightPhase) :
     | some s => some <$> (fastProcess rules f.order).step s
   valid s := by
     cases s
+    -- Before the paused round: the rest of that round.
     · exact Distribution.valid_map _ _ (fastRemaining_valid rules f.order f.state)
+    -- A state of the Fight: one full round.
     · exact Distribution.valid_map _ _ ((fastProcess rules f.order).valid _)
 
 /-- The checker's process has the odds of `continuationProcess`. -/

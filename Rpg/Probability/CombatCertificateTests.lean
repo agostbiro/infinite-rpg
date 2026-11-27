@@ -102,7 +102,7 @@ private def zeroLimits : SolveBudget :=
   | none => false
 
 /-- Rules in which every attack hits and does 1 injury, unless the defender has 50 DR or more.
-A guarding Character gets 100 DR. A wounded Creature cannot attack and gets 100 DR. The
+A guarding Character, and a wounded Creature, get 100 DR; a wounded Creature cannot attack. The
 Creature acts first. -/
 private def stuckRules : RuleSet :=
   {maxHP := fun _ => 2, dodge := fun _ => 0,

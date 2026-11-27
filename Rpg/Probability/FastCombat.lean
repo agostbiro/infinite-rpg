@@ -270,6 +270,7 @@ theorem weightedSum_mergeAdjacentInto [DecidableEq α] (done xs : List (α × Ra
     | nil =>
       simp only [mergeAdjacentInto, ih, weightedSum_cons, weightedSum_nil]
       grind
+    -- Some entries are merged; `d` is the last one.
     | cons d done =>
       rcases d with ⟨y, q⟩
       simp only [mergeAdjacentInto]
@@ -314,6 +315,7 @@ theorem mergeAdjacentInto_nonnegative [DecidableEq α] (done xs : List (α × Ra
       simp only [List.mem_cons, List.not_mem_nil, or_false] at he
       rw [he]
       exact hp
+    -- Some entries are merged; `d` is the last one.
     | cons d done =>
       rcases d with ⟨y, q⟩
       have hq : 0 ≤ q := hdone (y, q) (by simp)
@@ -325,15 +327,20 @@ theorem mergeAdjacentInto_nonnegative [DecidableEq α] (done xs : List (α × Ra
         intro e he
         simp only [List.mem_cons] at he
         rcases he with rfl | he
+        -- The merged entry: the sum of two nonnegative weights.
         · exact Rat.add_nonneg hq hp
+        -- An older merged entry.
         · exact hold e he
       -- The entry starts a new merged entry.
       · apply ih _ _ hrest
         intro e he
         simp only [List.mem_cons] at he
         rcases he with rfl | rfl | he
+        -- The new entry.
         · exact hp
+        -- The last merged entry.
         · exact hq
+        -- An older merged entry.
         · exact hold e he
 
 /-- Merging neighbours keeps every weight nonnegative. -/

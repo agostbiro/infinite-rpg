@@ -68,8 +68,12 @@ instance (w : CombatWitness) (s : FightState) : Decidable (w.contains s) := by
   infer_instance
 
 /-- A state the witness covers and that is not over is one of its states. -/
-theorem CombatWitness.mem_states {w : CombatWitness} {s : FightState} (h : w.contains s)
-    (ongoing : s.over = false) : s ∈ w.states := by
+theorem CombatWitness.mem_states {w : CombatWitness} {s : FightState}
+    -- The witness covers `s`.
+    (h : w.contains s)
+    -- The Fight is not over at `s`.
+    (ongoing : s.over = false) :
+    s ∈ w.states := by
   rcases h with done | hm
   -- An ended state contradicts `ongoing`.
   · simp [done] at ongoing
@@ -130,7 +134,10 @@ def CombatWitness.check (w : CombatWitness) (rules : RuleSet) (order : List Acto
 /-- A witness that passes `check` covers each start and has only valid rows. -/
 theorem CombatWitness.check_sound {w : CombatWitness} {rules : RuleSet} {order : List Actor}
     {starts : List FightState} (h : w.check rules order starts = true) :
-    (∀ s ∈ starts, w.contains s) ∧ ∀ s ∈ w.states, w.RowValid rules order s := by
+    -- The witness covers each start.
+    (∀ s ∈ starts, w.contains s) ∧
+    -- Each row of the witness is valid.
+    ∀ s ∈ w.states, w.RowValid rules order s := by
   simp only [CombatWitness.check, Bool.and_eq_true, List.all_eq_true, decide_eq_true_eq] at h
   exact ⟨h.1, fun s hs => CombatWitness.rowCheck_sound (parallelAll_sound h.2 s hs)⟩
 
@@ -199,16 +206,22 @@ theorem CertifiedFight.finishes_with_high_probability (c : CertifiedFight rules 
 def CertifiedFight.outcomes (c : CertifiedFight rules order start) : Distribution CombatResult :=
   (c.witness.answer start).outcomes
 
+/-- The answer of a checked witness at each state it covers is a probability distribution. -/
 theorem CertifiedFight.answer_valid (c : CertifiedFight rules order start)
     (s : FightState) (hs : c.witness.contains s) : (c.witness.answer s).outcomes.Valid := by
   by_cases ht : s.over
+  -- The Fight is over: the answer is the one result of `s`.
   · simp only [CombatWitness.answer, ht, ↓reduceIte]
     exact Distribution.valid_pure _
+  -- The Fight goes on: the checked row says that the answer is valid.
   · exact (c.checked.2 s (CombatWitness.mem_states hs (by simpa using ht))).1
 
+/-- The checked exit law of the Fight is a probability distribution. -/
 theorem CertifiedFight.outcomes_valid (c : CertifiedFight rules order start) : c.outcomes.Valid :=
   c.answer_valid start c.checked.1
 
+/-- The certificate that bounds the chance of `event` in the fast process, from the answers of a
+checked witness. -/
 def CertifiedFight.outcomeCertificate (c : CertifiedFight rules order start) (event : CombatResult → Bool) :
     OutcomeCertificate (fastProcess rules order) c.witness.contains (fun s => event (terminalResult s)) where
   value s := (c.witness.answer s).outcomes.mass event
