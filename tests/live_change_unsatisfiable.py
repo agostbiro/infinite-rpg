@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Test that a live change the server cannot satisfy always ends.
+"""Test that a live change always ends, and that the paused-Fight check accepts a small Fight.
 
-For each case, the test writes recorded replies (RPG_FAKE_API) that can never pass, starts a
+For each failure case, the test writes recorded replies (RPG_FAKE_API) that can never pass, starts a
 fresh server on its own port, starts the built-in Adventure, and asks for a change. It checks that:
 
 - the change ends within a fixed time,
@@ -358,7 +358,7 @@ def main():
         print(f"FAIL {name}:\n" + "".join(traceback.format_exception(failure)), end="")
     if failures:
         sys.exit(1)
-    print("PASS: every unsatisfiable request ended, said why, and left the game unchanged")
+    print("PASS: every case passed: each failed request ended, said why, and left the game unchanged")
 
 
 if __name__ == "__main__":

@@ -101,14 +101,17 @@ def CertifiedEncounter.exitLaw? {rules : RuleSet} {hero : Being} {foes : List Be
     (c : CertifiedEncounter rules hero foes) (hp : Nat) : Option (Distribution CombatResult) :=
   if hi : hp ≤ rules.maxHP hero then some (c.exitLaw hp hi) else none
 
-/-- The exit law is the exact law of the Fight. For each set of results and each `n`, its chance
-is between the chance to end in the set within `n` rounds and that chance plus the chance that
-the Fight is not over after `n` rounds, which goes to zero. -/
+/-- Bounds on the exit law by the spec process. For each set of results and each `n`, the exit law's
+chance of the set is between the chance to end in the set within `n` rounds and that chance plus
+the chance to be unfinished after `n` rounds. -/
 theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes : List Being}
     (c : CertifiedEncounter rules hero foes) (hp : Nat)
     -- The entry HP is at most full HP.
     (hi : hp ≤ rules.maxHP hero)
-    (event : CombatResult → Bool) (n : Nat) :
+    -- The set of results.
+    (event : CombatResult → Bool)
+    -- The number of rounds.
+    (n : Nat) :
     let p := combatProcess rules (turnOrder rules hero foes)
     let start := fightStart rules hero hp foes
     -- The chance to end with the event within `n` rounds is at most the exit law's chance.
@@ -125,13 +128,17 @@ theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes 
 
 /-- The exit law is a probability distribution. -/
 theorem CertifiedEncounter.exitLaw_valid {rules : RuleSet} {hero : Being} {foes : List Being}
-    (c : CertifiedEncounter rules hero foes) (hp : Nat) (hi : hp ≤ rules.maxHP hero) :
+    (c : CertifiedEncounter rules hero foes) (hp : Nat)
+    -- The entry HP is at most full HP.
+    (hi : hp ≤ rules.maxHP hero) :
     (c.exitLaw hp hi).Valid :=
   CertifiedFight.outcomes_valid _
 
 /-- The exit law gives no weight to `stalled`: every Fight ends in a win or a death. -/
 theorem CertifiedEncounter.exitLaw_stalled {rules : RuleSet} {hero : Being} {foes : List Being}
-    (c : CertifiedEncounter rules hero foes) (hp : Nat) (hi : hp ≤ rules.maxHP hero) :
+    (c : CertifiedEncounter rules hero foes) (hp : Nat)
+    -- The entry HP is at most full HP.
+    (hi : hp ≤ rules.maxHP hero) :
     (c.exitLaw hp hi).mass (· == .stalled) = 0 := by
   let p := combatProcess rules (turnOrder rules hero foes)
   let start := fightStart rules hero hp foes

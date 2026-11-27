@@ -22,6 +22,8 @@ def canonical (d : Distribution CombatResult) : String :=
   let sorted := merged.mergeSort (fun a b => key a.1 ≤ key b.1)
   " ".intercalate (sorted.map fun (r, p) => s!"{key r}:{p}")
 
+/-- Write the exit law of each Lafayette Fight at each entry HP, one file per Fight, into the
+folder of the first argument (default `exit-laws`). -/
 def main (args : List String) : IO Unit := do
   let dir := args.headD "exit-laws"
   IO.FS.createDirAll dir

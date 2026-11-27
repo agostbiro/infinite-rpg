@@ -67,6 +67,15 @@ private def withinExactBounds (law : Distribution CombatResult) (event : CombatR
 -- Character can die in the first round.
 #guard !withinExactBounds (pure (.won 2)) (· == .died) 1
 
+-- The premises of `exitLaw_exact` hold on this fixture. A certificate exists: the `#guard` on
+-- `certifyEncounter` above shows it, because the kernel cannot reduce the solver. The entry HP 2
+-- is full HP, and `decide` shows it.
+example (c : CertifiedEncounter rules hero [foe]) :
+    (combatProcess rules (turnOrder rules hero [foe])).eventBy
+      (fun s => terminalResult s == .died) 1 (fightStart rules hero 2 [foe]) ≤
+      (c.exitLaw 2 (by decide)).mass (· == .died) :=
+  (c.exitLaw_exact 2 (by decide) (· == .died) 1).1
+
 -- End-to-end positive admission includes a real stochastic fight. Seven safe
 -- choices keep its first-turn risk inside the fixed horizon-one policy band.
 private def admissionStory : Adventure :=

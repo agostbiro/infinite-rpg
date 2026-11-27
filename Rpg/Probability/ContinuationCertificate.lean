@@ -112,8 +112,8 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
 inductive PausedFightFailure where
   /-- One round has more results than the solver's budget allows. -/
   | roundTooLarge
-  /-- The solver returned no answers. Usually it gave up at one of its limits: states, round
-  results in memory, or work. -/
+  /-- The solver returned no answers. It returns none only when it stops at a limit of the budget
+  (states, round results in memory, work, or round size) or at its pass bound. -/
   | overBudget
   /-- The answers did not pass the check. The Fight can go on forever, for example. -/
   | checkFailed
@@ -157,7 +157,8 @@ def checkContinuation (rules : RuleSet) (f : FightPhase) (budget : SolveBudget :
   if h : w.check rules f.order starts = true then
     .ok ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),
       (CombatWitness.check_sound h).2⟩
-  -- The solver returns no answers when it gives up; a Fight with a live start then fails.
+  -- The solver returns no answers only when it stops at a budget limit or at its pass bound.
+  -- The pass bound is not proved to be enough, so the message can be wrong in that case.
   else if cache.isEmpty then .error .overBudget
   else .error .checkFailed
 

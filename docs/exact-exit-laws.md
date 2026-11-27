@@ -44,7 +44,7 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 | **All** | 15,048 | 555 s | 1,955 s | 3.0 s | 1.6 s |
 | **Total wall time** | | **2,510 s (42 min)** | | **4.6 s** (36 s of CPU) | |
 
-`lake exe profile-combat` prints the "after" numbers. Pinned to one core (`taskset -c 5`),
+`lake exe profile-combat` prints the "after" numbers. Pinned to one core (`taskset -c 0`),
 `make certify` takes 28 s, so it fits inside the 3-minute live-change limit even on one core.
 
 **Baseline.** `experiments/profile/exit-laws-2d4b8cf/` holds the exit laws of all six Fights at

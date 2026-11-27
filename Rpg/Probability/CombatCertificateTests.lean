@@ -101,8 +101,9 @@ private def zeroLimits : SolveBudget :=
   | some c => decide (law.sameWeights c.outcomes)
   | none => false
 
--- `checkedCombat` gives the same exit law as the solver of `main` (`solveCombat`, on the spec
--- round), on two-Creature Fights with different maneuvers and HP.
+-- `checkedCombat` gives the same exit law as `solveCombat` on the spec round, on two-Creature
+-- Fights with different maneuvers and HP. `solveCombat` is the old recursive solver, refactored
+-- in this change; it is not the code of `main`.
 #guard [(Maneuver.attack, 4), (.attack, 1), (.allOutAttack, 3), (.allOutDefense, 2)].all fun (m, hp) =>
   let start := twoFoes m hp
   let old := (solveCombat {} heroPolicy twoFoesOrder start).run' {}

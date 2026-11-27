@@ -168,16 +168,20 @@ theorem admitted_combats (a : Probability.CertifiedAdventure) (foes : List Being
       (turnOrder a.admitted.candidate.rules a.admitted.candidate.hero foes)).AlmostSurelyTerminates
       (Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes) := a.combat.ends_almostSurely foes encounter hp lower upper
 
-/-- In a certified Adventure, the law of each Fight at each entry HP bounds its exit law on both
-sides. For each set of results and each `n`, the chance to end in the set within `n` rounds is at
-most the exit law's weight of the set, and that weight is at most this chance plus the chance
-that the Fight is not over after `n` rounds. -/
+/-- In a certified Adventure, the spec process bounds the exit law of each Fight at each entry HP.
+For each set of results and each `n`, the exit law's weight of the set is between the chance to
+end in the set within `n` rounds and that chance plus the chance to be unfinished. -/
 theorem admitted_exit_law (a : Probability.CertifiedAdventure) (foes : List Being)
     -- The Fight is in the story.
     (encounter : foes ∈ Probability.encounterFoes a.admitted.candidate.story)
+    -- The entry HP.
+    (hp : Nat)
     -- The entry HP is at most full HP.
-    (hp : Nat) (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero)
-    (event : Probability.CombatResult → Bool) (n : Nat) :
+    (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero)
+    -- The set of results.
+    (event : Probability.CombatResult → Bool)
+    -- The number of rounds.
+    (n : Nat) :
     let p := Probability.combatProcess a.admitted.candidate.rules
       (turnOrder a.admitted.candidate.rules a.admitted.candidate.hero foes)
     let start := Probability.fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes
@@ -194,8 +198,10 @@ and it gives no weight to `stalled`. -/
 theorem admitted_exit_law_valid (a : Probability.CertifiedAdventure) (foes : List Being)
     -- The Fight is in the story.
     (encounter : foes ∈ Probability.encounterFoes a.admitted.candidate.story)
+    -- The entry HP.
+    (hp : Nat)
     -- The entry HP is at most full HP.
-    (hp : Nat) (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero) :
+    (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero) :
     -- The weights are not negative, and their sum is 1.
     (a.combat.exitLaw foes encounter hp upper).Valid ∧
     -- The result `stalled` has weight 0.
