@@ -878,10 +878,10 @@ it to skip a proposal that already failed validation. -/
 def proposalKey (p : WorldChange.Proposal) : String :=
   reprStr (p.equipment, p.requestedRules, p.rules, p.scenes)
 
-/-- The text that names the combat part of a proposal: its equipment, and the effects of its
-requested rules and counter-rules (`CombatRule.effect`), sorted. It leaves out the Scenes, the
-wording of the rules and their order. `CertifiedContinuation.withEffects` proves that the paused
-Fight's check does not read these, so proposals with the same key get the same result. -/
+/-- The text that names the combat part of a proposal: its equipment, and the sorted effects
+(`CombatRule.effect`) of its requested rules and counter-rules. The server skips a key that failed
+the paused-Fight check. Only a passed check is proved to carry over to the same effects in another
+order (`CertifiedContinuation.withEffects`); a failure is expected to, but no proof says so. -/
 def combatKey (p : WorldChange.Proposal) : String :=
   let effects := (p.requestedRules ++ p.rules).map fun r => reprStr r.effect
   reprStr (p.equipment, effects.mergeSort fun a b => decide (a ≤ b))

@@ -67,9 +67,10 @@ development change and its proofs; runtime does not execute the development skil
    the DM gets the reason, and the server remembers the equipment and rules of the proposal
    (`combatKey`: the equipment, and the sorted effects of the rules, without names and
    descriptions). The check reads no Scene, no name or description of a rule, and not the order
-   of the rules (`CertifiedContinuation.withEffects` proves this). So the server does not check
-   the same rules again, also in a proposal that changes only Scenes, wording or order, and the
-   numeric adjustments below skip them.
+   of the rules. For a check that passed, `CertifiedContinuation.withEffects` proves this; for a
+   check that failed, no proof does. So the server does not check the same rules again, also in a
+   proposal that changes only Scenes, wording or order, and the numeric adjustments below skip
+   them.
    If the check passes, the server keeps the result. A later proposal with the same equipment
    and rule effects reuses it (`Prepared.reuseCheckpoint`), and still gets a fresh validation
    batch.

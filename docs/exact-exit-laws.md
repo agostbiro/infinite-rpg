@@ -109,13 +109,15 @@ on Lafayette uses about 610 MB.
   shows one that brings a rejected Fight under the limit. The server runs this check before it
   spends a validation batch (`Prepared.checkPaused`), so a proposal that this check rejects
   spends no part of the error allowance. A proposal that reaches the validation batch spends its
-  part, also if it then fails. The check uses no dice and reads no Scene. It also reads no name
-  or description of a rule, and not the order of the rules: `CertifiedContinuation.withEffects`
-  proves that a checked paused Fight stays checked for rules with the same effects in any order
-  (`CombatRule.effect`: a rule without its name and description). So the server remembers the
-  equipment and the sorted rule effects of each proposal that failed the check (`combatKey`). It
-  does not check them again, also in a proposal that changes only Scenes or the wording or order
-  of the rules, and the tuning of the counter-rules skips them. The server also keeps each paused
+  part, also if it then fails. The check uses no dice and reads no Scene. It reads a rule only
+  through its effect (`CombatRule.effect`: a rule without its name and description), and it adds
+  up the effects, so their order does not matter. For a check that passed, this is proved:
+  `CertifiedContinuation.withEffects` gives a checked paused Fight for rules with the same effects
+  in any order. For a check that failed, it is not proved: a failure also depends on
+  `attackBounds` and the budget tests of the solver. The server remembers the equipment and the
+  sorted rule effects of each proposal that failed the check (`combatKey`). It does not check them
+  again, also in a proposal that changes only Scenes or the wording or order of the rules, and the
+  tuning of the counter-rules skips them. The server also keeps each paused
   Fight that passed the check. A later proposal with the same equipment and rule effects reuses it
   (`Prepared.reuseCheckpoint`, which the kernel checks), and gets a fresh validation batch. If the
   change runs out of proposals and the last one failed this check, the last step says so, and
