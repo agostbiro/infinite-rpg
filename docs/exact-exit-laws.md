@@ -98,7 +98,8 @@ is sound. On the Fights in the table below, the most memory used was 330 MB.
   revise the counter-rules. One test shows a counter-rule that makes the bound larger; no test
   shows one that brings a rejected Fight under the limit. The server runs this check before it
   spends a validation batch (`Prepared.checkPaused`), so a rejected change costs no part of the
-  error allowance.
+  error allowance. The check uses no dice, so the server remembers each proposal that failed it.
+  It does not check that proposal again, and the tuning of the counter-rules skips it.
 
 Measured with `lake exe profile-combat --grenadiers N` (add `--flamethrower` to give Lafayette
 a flamethrower, `--dice D` to give its weapon `D` damage dice, and `--st S` to give each
