@@ -204,6 +204,31 @@ private def twoFoesPaused : FightPhase :=
 #guard (checkContinuation {} twoFoesPaused zeroLimits).toOption.isSome
 #guard (checkContinuation {} twoFoesPaused {roundEntries := 0}).toOption.isNone
 
+/-- Rules in which every attack hits and does 1 injury, every Being has 1 HP, and the Character
+acts first. -/
+private def oneHitRules : RuleSet :=
+  {maxHP := fun _ => 1, dodge := fun _ => 0,
+   speedX4 := fun b => if b.name = "Hero" then 40 else 20,
+   successRoll := fun level _ => if level ≥ 5 then .success else .failure,
+   injury := fun _ _ _ => 1}
+
+/-- A one-HP Character against a one-HP Creature, paused at the Character's turn. -/
+private def oneHitPaused : FightPhase :=
+  {sprayFourPaused with
+    order := turnOrder oneHitRules (fighter "Hero") [fighter "Foe"],
+    state := {hero := {being := fighter "Hero", hp := 1}, foes := [{being := fighter "Foe", hp := 1}]}}
+
+-- Every result of the paused round ends the Fight, so the solver gets no live state.
+#guard (fastRemaining oneHitRules oneHitPaused.order oneHitPaused.state).entries.all (·.1.over)
+#guard (checkContinuation oneHitRules oneHitPaused).toOption.isSome
+-- The paused round still counts against the work limit and the batch limit.
+#guard match checkContinuation oneHitRules oneHitPaused {work := 0} with
+  | .error e => e == .overBudget
+  | .ok _ => false
+#guard match checkContinuation oneHitRules oneHitPaused {batchEntries := 0} with
+  | .error e => e == .roundTooLarge
+  | .ok _ => false
+
 -- Names are joined as in plain English.
 #guard joinNames ["A"] == "A" && joinNames ["A", "B"] == "A and B" &&
   joinNames ["A", "B", "C"] == "A, B and C"
@@ -271,6 +296,51 @@ private def bigFlame : RuleSet :=
       let dfn := {foe with hp, maneuver := n}
       (injuryDistribution rules none att (some 0) dfn).entries.length ≤ heroBound &&
         (injuryDistribution rules (some 0) dfn none att).entries.length ≤ foeBound
+
+/-- `maxInjuries` as it was before `hpSamples`: it tries every HP from 1 to `attHP` and `dfnHP`.
+The test below compares the two. -/
+private def maxInjuriesEvery (rules : RuleSet) (a : Actor) (att : Fighter) (attHP : Nat)
+    (b : Actor) (dfn : Fighter) (dfnHP : Nat) : Nat :=
+  let add (seen : List (Int × Nat)) (i : Nat) (m : Maneuver) (j : Nat) (n : Maneuver) :=
+    let t := injuryTerms rules a {att with hp := i + 1, maneuver := m} b
+      {dfn with hp := j + 1, maneuver := n}
+    if seen.contains t then seen else t :: seen
+  let terms := (List.range attHP).foldl (fun seen i => maneuverMenu.foldl (fun seen m =>
+    (List.range dfnHP).foldl (fun seen j => maneuverMenu.foldl (fun seen n =>
+      add seen i m j n) seen) seen) seen) []
+  terms.foldl (fun best (bonus, dr) => max best (injuryCount rules a att bonus dr)) 1
+
+/-- Rules with an effect on each HP trigger and on each side: the Character gets +1 damage while
+wounded and +2 while desperate, and a Creature gets +2 armor while desperate. -/
+private def hpEffects : RuleSet :=
+  {combatRules := defaultCombatRules ++
+    [{name := "Rage", description := "Damage while wounded.", side := CombatSide.hero,
+      trigger := CombatTrigger.wounded, damageBonus := 1},
+     {name := "Fury", description := "Damage while desperate.", side := CombatSide.hero,
+      trigger := CombatTrigger.desperate, damageBonus := 2},
+     {name := "Shell", description := "Armor while desperate.", side := CombatSide.foes,
+      trigger := CombatTrigger.desperate, armorBonus := 2}]}
+
+-- `maxInjuries` gives the same bound as a search over every HP. This is so for full HP from 0 to
+-- 12 (which moves the trigger thresholds), for HP limits below and above full HP, and for rules
+-- with and without HP triggers.
+#guard [({} : RuleSet), bigFlame, guardArmor, hpEffects].all fun base =>
+  (List.range 13).all fun full => [0, 1, 3, 5, 8, 13].all fun limit =>
+    let rules := {base with maxHP := fun _ => full}
+    let hero : Fighter := sprayFour.hero
+    let foe : Fighter := sprayFour.foes.headD hero
+    maxInjuries rules none hero limit (some 0) foe limit ==
+        maxInjuriesEvery rules none hero limit (some 0) foe limit &&
+      maxInjuries rules (some 0) foe limit none hero limit ==
+        maxInjuriesEvery rules (some 0) foe limit none hero limit
+
+-- The test above can fail: with `hpEffects`, a desperate Character and a Character at full HP
+-- give different damage bonuses, so a search at full HP only would miss some injuries.
+#guard
+  let rules := {hpEffects with maxHP := fun _ => 12}
+  let foe : Fighter := sprayFour.foes.headD sprayFour.hero
+  injuryTerms rules none {sprayFour.hero with hp := 1} (some 0) foe !=
+    injuryTerms rules none {sprayFour.hero with hp := 12} (some 0) foe
 
 /-- A Fight in which the Character sprays two Creatures that punch, one of them wounded. -/
 private def sprayTwo (m : Maneuver) (hp : Int) : FightState :=

@@ -369,6 +369,32 @@ def Prepared.checkPaused (p : Prepared) : Except String (match p.game.phase with
   | .fight f => (checkContinuation p.game.rules f).mapError (·.message f)
   | .title | .scene _ | .ended _ | .dead _ => .ok ()
 
+/-- A change that `prepare` makes from Game `g` changes `g`. -/
+theorem Proposal.prepare_before {p : Proposal} {g : Game} {map : Option WorldEnvironment}
+    {q : Prepared}
+    -- `prepare` made `q` from `p` and `g`.
+    (h : p.prepare g map = .ok q) :
+    -- `q` changes `g`.
+    q.before = g := by
+  simp only [Proposal.prepare] at h
+  repeat' split at h
+  -- Each failed check gives an error, not `q`.
+  all_goals first | (cases h; rfl) | cases h
+
+/-- The checkpoint of `p` as a checkpoint of `q`, if both change the same Game with the same
+equipment and rules. Then the two have the same paused point (`game_rules_phase`), so the server
+can reuse a passed check when a revision changes only Scenes. Otherwise it gives `none`. -/
+def Prepared.reuseCheckpoint (p q : Prepared)
+    -- Both change the same Game.
+    (before : p.before = q.before)
+    (c : p.Checkpoint) : Option q.Checkpoint :=
+  if same : p.proposal.equipment = q.proposal.equipment ∧
+      p.proposal.requestedRules = q.proposal.requestedRules ∧
+      p.proposal.rules = q.proposal.rules then
+    have both := p.game_rules_phase q before same.1 same.2.1 same.2.2
+    some (cast (by simp only [Prepared.Checkpoint, both.1, both.2]) c)
+  else none
+
 /-- Validate one frozen proposal with a fresh, preassigned batch and an already checked paused
 point; every row must pass. -/
 def Prepared.admitWith (p : Prepared) (checkpoint : p.Checkpoint) (seed : Nat) (delta : Rat) :

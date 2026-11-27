@@ -317,4 +317,24 @@ def finishPlayed : Nat → Game → Roll Game
         (played.phase.name == "dead") == !result.hero.alive
     | _ => false
 
+/-- `proposal` with a new text for the last Scene of the Adventure of `fightGame`. -/
+private def newText : Proposal :=
+  { proposal with scenes := (fightGame.adventure.scenes.getLast?.map fun sc =>
+      { sc with text := sc.text ++ " The road is quiet again." }).toList }
+
+-- A passed paused-Fight check is reused by a change that differs only in a Scene, and not by a
+-- change with other counter-rules.
+#guard match hp : proposal.prepare fightGame,
+    hs : newText.prepare fightGame,
+    ht : (proposal.tune 2).prepare fightGame with
+  | .ok p, .ok scenes, .ok tuned => match p.checkPaused with
+    | .ok c =>
+      !newText.scenes.isEmpty && (proposal.tune 2).rules != proposal.rules &&
+      (p.reuseCheckpoint scenes ((Proposal.prepare_before hp).trans (Proposal.prepare_before hs).symm)
+        c).isSome &&
+      (p.reuseCheckpoint tuned ((Proposal.prepare_before hp).trans (Proposal.prepare_before ht).symm)
+        c).isNone
+    | .error _ => false
+  | _, _, _ => false
+
 end Rpg.WorldChange.Tests

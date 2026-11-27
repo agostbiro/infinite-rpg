@@ -143,16 +143,20 @@ def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : Strin
       possible cause is a stalemate, in which no side can hurt the other under the changed rules. \
       If a counter-rule causes this, revise it."
 
-/-- Check a paused Fight within `budget`, or give the reason why it fails. A Fight whose round is
-too large for a limited budget is rejected before the rest of the paused round is computed. The
-paused round and the later rounds use the fast attack. -/
+/-- Check a paused Fight within `budget`, or give the reason why it fails. The rest of the paused
+round counts against `budget` as one full round: a limited budget rejects it before it is computed
+if it is above the round or batch limit or the work limit. The paused round and the later rounds
+use the fast attack. -/
 def checkContinuation (rules : RuleSet) (f : FightPhase) (budget : SolveBudget := {}) :
     Except PausedFightFailure (CertifiedContinuation rules f) :=
   let bounds := attackBounds rules f.state
-  if budget.limited && roundSizeBound f.order bounds f.state > budget.roundEntries then
+  let paused := roundSizeBound f.order bounds f.state
+  if budget.limited && paused > min budget.roundEntries budget.batchEntries then
     .error .roundTooLarge else
+  if budget.limited && paused > budget.work then .error .overBudget else
   let starts := (fastRemaining rules f.order f.state).entries.map Prod.fst
-  let cache := solveChecked rules f.order bounds starts budget
+  -- The later rounds get the work that the paused round leaves.
+  let cache := solveChecked rules f.order bounds starts {budget with work := budget.work - paused}
   let w : CombatWitness := ⟨cache⟩
   if h : w.check rules f.order starts = true then
     .ok ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),

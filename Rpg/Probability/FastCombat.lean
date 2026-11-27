@@ -125,19 +125,26 @@ def injuryCount (rules : RuleSet) (attId : Actor) (att : Fighter) (bonus : Int) 
     rules.injury kind dr (rules.basicDamage damageDice kind (damageDice.count + k))
   (0 :: injuries).eraseDups.length
 
+/-- The HP values from 1 to `limit` that `maxInjuries` tries for `being`: the least HP in each
+case of the HP triggers. The cases are: at most one third of full HP, at most one half, and more
+than one half. -/
+def hpSamples (rules : RuleSet) (being : Being) (limit : Nat) : List Nat :=
+  let full := rules.maxHP being
+  ([1, full / 3 + 1, full / 2 + 1].filter (· ≤ limit)).eraseDups
+
 /-- An upper bound on the injury results of one attack of `att` on `dfn`, over every HP from 1 to
-`attHP` and `dfnHP` and every maneuver of the two. HP and maneuvers are the only parts of a
-Fighter that change during a Fight. It counts injuries once for each different damage bonus and
-DR, so it does not compute any attack. -/
+`attHP` and `dfnHP` and every maneuver of the two. A combat rule reads HP only through the
+`wounded` and `desperate` triggers, so it tries only the HP values of `hpSamples`. It counts
+injuries once for each different damage bonus and DR, so it does not compute any attack. -/
 def maxInjuries (rules : RuleSet) (a : Actor) (att : Fighter) (attHP : Nat) (b : Actor)
     (dfn : Fighter) (dfnHP : Nat) : Nat :=
   let add (seen : List (Int × Nat)) (i : Nat) (m : Maneuver) (j : Nat) (n : Maneuver) :=
-    let t := injuryTerms rules a {att with hp := i + 1, maneuver := m} b
-      {dfn with hp := j + 1, maneuver := n}
+    let t := injuryTerms rules a {att with hp := i, maneuver := m} b
+      {dfn with hp := j, maneuver := n}
     if seen.contains t then seen else t :: seen
-  let terms := (List.range attHP).foldl (fun seen i => maneuverMenu.foldl (fun seen m =>
-    (List.range dfnHP).foldl (fun seen j => maneuverMenu.foldl (fun seen n =>
-      add seen i m j n) seen) seen) seen) []
+  let terms := (hpSamples rules att.being attHP).foldl (fun seen i => maneuverMenu.foldl
+    (fun seen m => (hpSamples rules dfn.being dfnHP).foldl (fun seen j => maneuverMenu.foldl
+      (fun seen n => add seen i m j n) seen) seen) seen) []
   terms.foldl (fun best (bonus, dr) => max best (injuryCount rules a att bonus dr)) 1
 
 /-- For each Creature of a Fight, an upper bound on the injury results of one attack by the

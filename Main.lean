@@ -895,13 +895,23 @@ private def sceneProposal : WorldChange.Proposal :=
 #guard combatKey emptyProposal == combatKey sceneProposal
 #guard proposalKey emptyProposal != proposalKey sceneProposal
 
+/-- A paused-Fight check that passed during a live change of Game `g`. The server keeps it, so a
+revision that changes only Scenes does not run the check again. -/
+structure PassedPause (g : Game) where
+  /-- The change that passed the check. -/
+  prepared : WorldChange.Prepared
+  /-- The change is a change of `g`. -/
+  same : prepared.before = g
+  /-- The checked paused point of the change. -/
+  checkpoint : prepared.Checkpoint
+
 /-- Try bounded numeric counter adjustments on screening data only, for at most six seconds.
 It skips a variant whose `proposalKey` is in `skip` (it failed validation) or whose `combatKey`
-is in `skipCombat` (it failed the paused-Fight check). Every chosen variant still needs an
-independent, source-bound admission certificate. -/
+is in `skipCombat` (it failed the paused-Fight check). A chosen variant changes the same Game as
+`p`. Every chosen variant still needs an independent, source-bound admission certificate. -/
 def tuneChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
     (delta : Rat) (skip skipCombat : List String) (map : Option WorldEnvironment) :
-    IO (Option WorldChange.Prepared) := do
+    IO (Option {q : WorldChange.Prepared // q.before = p.before}) := do
   let started ← IO.monoMsNow
   let mut seen := proposalKey p.proposal :: skip
   for quarters in [2, 1, 3, 5, 6, 8, 12, 16] do
@@ -910,13 +920,13 @@ def tuneChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
     let signature := proposalKey proposal
     if seen.contains signature || skipCombat.contains (combatKey proposal) then continue
     seen := signature :: seen
-    match proposal.prepare p.before map with
+    match h : proposal.prepare p.before map with
     | .error _ => continue
     | .ok candidate =>
       let counts := Probability.sampleCounts candidate.candidate 1 Probability.validationGames
       if decide (Probability.ValidationAccepted candidate.candidate.horizon counts delta
           candidate.candidate.elapsed candidate.candidate.policy) then
-        return some candidate
+        return some ⟨candidate, WorldChange.Proposal.prepare_before h⟩
   return none
 
 /-- The most calls to the Dungeon Master for one live change. Each call can cost money. -/
@@ -1053,6 +1063,8 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
   -- The combat keys (`combatKey`) that failed the paused-Fight check, with the message. The check
   -- uses no dice and reads no Scene, so the same combat rules always fail it again.
   let mut pausedRejected : List (String × String) := []
+  -- The paused-Fight checks that passed. A revision with the same equipment and rules reuses one.
+  let mut pausedPassed : List (PassedPause before) := []
   let mut supportReviewed := false
   -- The last errors and the number of proposals, for the last step if the budget runs out.
   let mut lastErrors : List String := []
@@ -1087,7 +1099,7 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
               return
           else if gift.isSome && gift.getD (none, []) != (proposal.equipment, proposal.requestedRules) then
             pure (["Keep the requested equipment and requested rules exactly as first proposed. Balance the counter-rules and future encounters instead."], content)
-          else match proposal.prepare before map with
+          else match hb : proposal.prepare before map with
           | .error errs => pure (errs, content)
           | .ok prepared =>
             gift := some (proposal.equipment, proposal.requestedRules)
@@ -1102,28 +1114,42 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
               if !(← addStep ref job { text := "Checking the updated adventure from the beginning, including combat, against the balance curve..." }) then return
               let screen := Probability.sampleCounts prepared.candidate 1 Probability.validationGames
               if !(← jobWanted ref job) then return
-              let picked ← if decide (Probability.ValidationAccepted prepared.candidate.horizon screen delta
+              -- The picked change, with a proof that it changes `before`.
+              let picked : Option {q : WorldChange.Prepared // q.before = before} ←
+                if decide (Probability.ValidationAccepted prepared.candidate.horizon screen delta
                   prepared.candidate.elapsed prepared.candidate.policy) then
-                  pure (some prepared)
+                  pure (some ⟨prepared, WorldChange.Proposal.prepare_before hb⟩)
                 else do
                   if !(← addStep ref job { text := "Balancing the counter-rule while keeping your requested mechanic..." }) then pure none
-                  else tuneChange ref job prepared delta validated (pausedRejected.map (·.1)) map
+                  else
+                    let tuned ← tuneChange ref job prepared delta validated (pausedRejected.map (·.1)) map
+                    pure (tuned.map fun q => ⟨q.1, q.2.trans (WorldChange.Proposal.prepare_before hb)⟩)
               match picked with
               | none =>
                 pure (Probability.failedRows prepared.candidate.horizon screen delta prepared.candidate.elapsed
                   prepared.candidate.policy, content)
-              | some prepared =>
+              | some ⟨prepared, same⟩ =>
                 let signature := proposalKey prepared.proposal
+                -- A passed check with the same equipment and rules has the same paused point.
+                let reused := pausedPassed.findSome? fun c =>
+                  c.prepared.reuseCheckpoint prepared (c.same.trans same.symm) c.checkpoint
                 -- Check the paused Fight before a validation is spent: this check uses no samples.
                 -- The step also stops here if the Player cancelled during tuning.
                 if prepared.game.phase matches .fight _ then
-                  if !(← addStep ref job { text := "Checking that the paused Fight still ends..." }) then return
-                match prepared.checkPaused with
+                  let text := if reused.isSome then "The paused Fight already passed its check with these rules."
+                    else "Checking that the paused Fight still ends..."
+                  if !(← addStep ref job { text }) then return
+                let checked : Except String prepared.Checkpoint := match reused with
+                  | some checkpoint => .ok checkpoint
+                  | none => prepared.checkPaused
+                match checked with
                 | .error message =>
                   pausedRejected := (combatKey prepared.proposal, message) :: pausedRejected
                   pure ([message, "The checked counter-rules were: " ++
                     (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress], content)
                 | .ok checkpoint =>
+                if reused.isNone then
+                  pausedPassed := ⟨prepared, same, checkpoint⟩ :: pausedPassed
                 let spent ← ref.modifyGet fun s =>
                   if s.gen.job != job || s.gen.state != .running || s.changeChecks != index then (false, s)
                   else (true, { s with changeChecks := index + 1 })

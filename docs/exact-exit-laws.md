@@ -61,11 +61,13 @@ on Lafayette uses about 610 MB.
 
 * Before it computes any round, the solver bounds how many results the round makes before
   they are merged (`roundSizeBound`). For each pair of Fighters, `attackBounds` finds each damage
-  bonus and DR that one attack can have, over every HP and every maneuver of the two
-  (`injuryTerms`). For each of them it counts the different injuries over the sums of the damage
-  dice (`injuryCount`). It computes no attack. The bound is tested, not proved. It holds if the
-  combat rules read only HP and maneuvers, as they do now, and if the turn order names each
-  Creature once. Tests compare it with real rounds that are not merged. The largest bound on
+  bonus and DR that one attack can have, over every maneuver of the two (`injuryTerms`). A combat
+  rule reads HP only through the `wounded` and `desperate` triggers, so it tries one HP for each
+  case of the two triggers, three per Fighter (`hpSamples`), not every HP. A test compares this
+  with a search over every HP. For each damage bonus and DR it counts the different injuries over
+  the sums of the damage dice (`injuryCount`). It computes no attack. The bound is tested, not
+  proved. It holds if the combat rules read only HP and maneuvers, as they do now, and if the turn
+  order names each Creature once. Tests compare it with real rounds that are not merged. The largest bound on
   Lafayette is 1,421. A wrong bound can only make the solver slow or reject a Fight. It cannot
   make a wrong exit law pass the check.
 * The solver rejects the Fight if one round is above 200,000. A Fight with such rounds could
@@ -86,8 +88,9 @@ on Lafayette uses about 610 MB.
   the checker computes take at most one round of memory per core. The checker also holds the
   whole witness, whose exact answers can have very large denominators. With the default budget,
   each round is at most 200,000 results by `roundSizeBound`, which is tested, not proved.
-* `certifyContinuation` checks the paused round with the same bound before it computes it. It
-  then computes the paused round with the fast attack and merges after each turn
+* `certifyContinuation` checks the paused round with the same bound before it computes it. The
+  paused round counts against the budget as one full round: against the round and batch limits,
+  and against the work limit, and the later rounds get the work that is left. It then computes the paused round with the fast attack and merges after each turn
   (`fastRemaining`), like the full rounds. `fastRemaining_expect` proves that it has the odds of
   the spec's paused round.
 * When the check of a paused Fight fails, `checkContinuation` gives the reason: one round is too
@@ -104,7 +107,10 @@ on Lafayette uses about 610 MB.
   part, also if it then fails. The check uses no dice and reads no Scene, so the server
   remembers the equipment and rules of each proposal that failed it (`combatKey`). It does not
   check them again, also in a proposal that changes only Scenes, and the tuning of the
-  counter-rules skips them. If the
+  counter-rules skips them. The server also keeps each paused Fight that passed the check. A later
+  proposal with the same equipment and rules reuses it (`Prepared.reuseCheckpoint`), and gets a
+  fresh validation batch. `Prepared.game_rules_phase` proves that the two proposals have the same
+  paused point. If the
   change runs out of proposals and the last one failed this check, the last step says so, and
   that the change can be asked for again after the Fight ends (`changeOutOfBudget`).
 

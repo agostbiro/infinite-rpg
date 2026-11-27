@@ -67,6 +67,8 @@ development change and its proofs; runtime does not execute the development skil
    the DM gets the reason, and the server remembers the equipment and rules of the proposal
    (`combatKey`). The check reads no Scene, so the server does not check the same rules again,
    also in a proposal that changes only Scenes, and the numeric adjustments below skip them.
+   If the check passes, the server keeps the result. A later proposal with the same equipment
+   and rules reuses it (`Prepared.reuseCheckpoint`), and still gets a fresh validation batch.
 5. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
    and plays a separate 1,200-game validation batch against the same curve. Only a source-bound `Admission` value
    permits installation. Failure returns to revision with a smaller remaining allowance.
