@@ -13,7 +13,7 @@ if a Fight fails the check. For each
 Fight in the story and each entry HP from 0 to full HP, the value
 `CertifiedAdventureCombat.exitLaw foes hf hp hi` (`Rpg/Probability/AdventureCertificate.lean`) is
 the exit law. The proof `hi` says that `hp` is at most full HP, because only those entry HPs are
-checked. `CertifiedEncounter.exitLaw?` gives `none` above full HP. Three theorems are about it:
+checked. `CertifiedEncounter.exitLaw?` gives `none` above full HP. Four theorems are about it:
 
 | Theorem | What it says |
 | - | - |

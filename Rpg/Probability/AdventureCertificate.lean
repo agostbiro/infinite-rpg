@@ -135,6 +135,7 @@ theorem CertifiedEncounter.exitLaw_exact {rules : RuleSet} {hero : Being} {foes 
     (hi : hp ≤ rules.maxHP hero)
     -- The set of results.
     (event : CombatResult → Bool)
+    -- The allowed difference.
     (delta : Rat)
     -- The allowed difference is positive.
     (hd : 0 < delta) :

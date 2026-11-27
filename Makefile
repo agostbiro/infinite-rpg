@@ -92,7 +92,7 @@ validate:
 # Run the combat check on the built-in Adventure: each Fight must end with probability one, at
 # each starting HP. It also prints the exact exit law of each Fight at full HP. It takes about 5
 # seconds on Lafayette with 14 cores (docs/exact-exit-laws.md). The server does not run it yet.
-# It builds the value that the theorem `admitted_combats` is about.
+# It builds the value that `admitted_combats` and the exit-law statements are about.
 certify:
 	lake exe certify
 

@@ -76,6 +76,34 @@ example (c : CertifiedEncounter rules hero [foe]) :
       (c.exitLaw 2 (by decide)).mass (· == .died) :=
   (c.exitLaw_bounds 2 (by decide) (· == .died) 1).1
 
+/-- The test rules, with 0 HP for every Being, so each Fight is over at its start. -/
+private def zeroRules : RuleSet := {rules with maxHP := fun _ => 0}
+
+/-- A certificate for the Fight against `foe` under `zeroRules` that the kernel checks. The only
+entry HP is 0, so the start is over, and the empty witness needs no rows. -/
+private def zeroEncounter : CertifiedEncounter zeroRules hero [foe] where
+  witness := ⟨{}⟩
+  starts := by decide
+  rows := by simp [CombatWitness.states]
+
+-- Every premise of `exitLaw_exact` holds on a concrete certificate, entry HP and allowance.
+example : ∃ N : Nat, ∀ n, N ≤ n →
+    (combatProcess zeroRules (turnOrder zeroRules hero [foe])).eventBy
+      (fun s => terminalResult s == .died) n (fightStart zeroRules hero 0 [foe]) ≤
+      (zeroEncounter.exitLaw 0 (by decide)).mass (· == .died) ∧
+    (zeroEncounter.exitLaw 0 (by decide)).mass (· == .died) ≤
+      (combatProcess zeroRules (turnOrder zeroRules hero [foe])).eventBy
+        (fun s => terminalResult s == .died) n (fightStart zeroRules hero 0 [foe]) + 1/2 :=
+  zeroEncounter.exitLaw_exact 0 (by decide) (· == .died) (1/2) (by decide +kernel)
+
+-- The exit law of this Fight is a sure death: the Character enters with 0 HP.
+example : (zeroEncounter.exitLaw 0 (by decide)).mass (· == .died) = 1 := by decide +kernel
+
+-- The bounds reject a wrong exit law: a sure win breaks the lower bound for death at 0 rounds.
+example : ¬ ((combatProcess zeroRules (turnOrder zeroRules hero [foe])).eventBy
+    (fun s => terminalResult s == .died) 0 (fightStart zeroRules hero 0 [foe]) ≤
+    (pure (CombatResult.won 0) : Distribution CombatResult).mass (· == .died)) := by decide +kernel
+
 -- End-to-end positive admission includes a real stochastic fight. Seven safe
 -- choices keep its first-turn risk inside the fixed horizon-one policy band.
 private def admissionStory : Adventure :=

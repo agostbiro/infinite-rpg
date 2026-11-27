@@ -112,12 +112,15 @@ theorem StoppingCertificate.horizon_sound (c : StoppingCertificate p invariant)
 
 /-- The bound of `horizon_sound` holds at the horizon and at every later number of rounds. -/
 theorem StoppingCertificate.horizon_sound_after (c : StoppingCertificate p invariant)
+    -- The start.
     (s : α)
     -- The start is a state that the certificate covers.
     (hs : invariant s)
+    -- The failure allowance.
     (delta : Rat)
     -- The failure allowance is positive.
     (hd : 0 < delta)
+    -- The number of rounds.
     (n : Nat)
     -- The number of rounds is at least the horizon.
     (hn : c.horizon s delta ≤ n) :

@@ -8,7 +8,7 @@ import Std.Data.HashMap.Lemmas
 The solver is not trusted. It gives an answer for each state of a Fight. This checker checks
 the answers against the exact odds of one round: each result of a round has an answer, each
 answer is the round followed by the answers of its results, and the expected number of rounds
-left goes down by one each round. The dice are fair and independent, and the Player is
+left goes down by at least one each round. The dice are fair and independent, and the Player is
 `heroPolicy`. This says nothing about the seeded dice of play.
 
 The theorems are about `combatProcess`, whose step is `roundDistribution`. The checker uses

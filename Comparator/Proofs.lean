@@ -205,6 +205,7 @@ theorem admitted_exit_law_exact (a : Probability.CertifiedAdventure) (foes : Lis
     (upper : hp ≤ a.admitted.candidate.rules.maxHP a.admitted.candidate.hero)
     -- The set of results.
     (event : Probability.CombatResult → Bool)
+    -- The allowed difference.
     (delta : Rat)
     -- The allowed difference is positive.
     (hd : 0 < delta) :
