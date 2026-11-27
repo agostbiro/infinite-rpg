@@ -998,14 +998,22 @@ def watchChange (children : Children) (ref : IO.Ref ServerState) (job limitMs : 
     IO.sleep (min 500 (limitMs - elapsed)).toUInt32
 
 /-- The last step of a live change that used all its calls, validations, or time. It says how many
-proposals the Dungeon Master made, and keeps the last errors. -/
-def changeOutOfBudget (calls : Nat) (errors : List String) : Step :=
-  { text := s!"The Dungeon Master stopped after {calls} proposals and could not find a balanced version. " ++
-      "Your game is unchanged.",
+proposals the Dungeon Master made, and keeps the last errors. If the last proposal failed the
+check of the paused Fight (`pausedFight`), it says that, not that no balanced version was found. -/
+def changeOutOfBudget (calls : Nat) (errors : List String) (pausedFight : Bool := false) : Step :=
+  { text := if pausedFight then
+        s!"The Dungeon Master stopped after {calls} proposals. The paused Fight could not be checked " ++
+          "with the last one. Your game is unchanged. You can ask for this change again after the Fight ends."
+      else
+        s!"The Dungeon Master stopped after {calls} proposals and could not find a balanced version. " ++
+          "Your game is unchanged.",
     errors := errors.take 20 }
 
 #guard (changeOutOfBudget 6 ["a row failed"]).text ==
   "The Dungeon Master stopped after 6 proposals and could not find a balanced version. Your game is unchanged."
+#guard (changeOutOfBudget 6 ["Too large."] true).text ==
+  "The Dungeon Master stopped after 6 proposals. The paused Fight could not be checked with the last one. " ++
+    "Your game is unchanged. You can ask for this change again after the Fight ends."
 
 /-- Generate a fun patch, screen local counter variants, then validate a frozen proposal. Stop
 after `maxChangeCalls` calls (the loop over `changeRevisions`), `maxChangeValidations`
@@ -1130,7 +1138,9 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
     messages := [userTurn initial, assistantTurn content, userTurn (WorldChange.correction errors risk ++ locked)]
   -- Each pass that did not end the job came here: the budget of calls or validations is used up.
   -- If the job ended already (Cancel or the time limit), `endJob` does nothing.
-  endJob ref job .failed (changeOutOfBudget calls lastErrors)
+  -- The last proposal failed the paused-Fight check if its errors hold a message of that check.
+  let pausedFight := lastErrors.any fun e => pausedRejected.any (·.2 == e)
+  endJob ref job .failed (changeOutOfBudget calls lastErrors pausedFight)
 
 /-- Freeze an active session atomically before asking the Dungeon Master for a rule change. -/
 def startChange (cfg : GameConfig) (children : Children) (ref : IO.Ref ServerState)
