@@ -7,9 +7,10 @@ import Std.Data.HashMap.Lemmas
 
 The solver is not trusted. It gives an answer for each state of a Fight. This checker checks
 the answers against the exact odds of one round: each result of a round has an answer, each
-answer is the round followed by the answers of its results, and the expected number of rounds
-left goes down by at least one each round. The dice are fair and independent, and the Player is
-`heroPolicy`. This says nothing about the seeded dice of play.
+answer is the round followed by the answers of its results, and each answer gives a number of
+rounds that is at least one more than the expected number of its results. That number is an upper
+bound on the expected number of rounds left, not that number itself. The exit laws are exact. The
+dice are fair and independent, and the Player is `heroPolicy`. This says nothing about the seeded dice of play.
 
 The theorems are about `combatProcess`, whose step is `roundDistribution`. The checker uses
 `fastProcess`, whose step is `fastRound`. The two have the same odds (`fastProcess_sameOdds`),
@@ -161,7 +162,8 @@ def certifyFight (rules : RuleSet) (order : List Actor) (start : FightState)
 variable {rules : RuleSet} {order : List Actor} {start : FightState}
 
 /-- The checked answers give a stopping certificate for `fastProcess`. The potential of a state
-is its expected number of rounds left. -/
+is the number of rounds in its answer, which the check accepts as an upper bound on the expected
+number of rounds left. -/
 def CertifiedFight.stopping (c : CertifiedFight rules order start) :
     StoppingCertificate (fastProcess rules order) c.witness.contains where
   potential s := (c.witness.answer s).rounds

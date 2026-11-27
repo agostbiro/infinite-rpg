@@ -24,7 +24,8 @@ checker (`CombatWitness.check`) over all entry HPs.
   `--flamethrower` to give Lafayette a flamethrower, which attacks every Grenadier at once. Add
   `--st S` to give each Grenadier ST `S`, and so `S` HP. Add `--dice D` to give the Character's
   weapon `D` damage dice. `--work W` runs only the solver, with a
-  work limit of `W`.
+  work limit of `W`. Each of these numbers must be a whole number, and `--st`, `--dice`, `--work`
+  and `--flamethrower` need `--grenadiers`; else the program stops with exit code 2.
 -/
 
 open Rpg Rpg.Probability
@@ -52,6 +53,13 @@ def argAfter (flag : String) : List String → Option String
   | f :: v :: rest => if f == flag && !v.startsWith "--" then some v else argAfter flag (v :: rest)
   | _ => none
 
+/-- The number flags of the Grenadier experiment. -/
+def numberFlags : List String := ["--grenadiers", "--st", "--dice", "--work"]
+
+/-- The flags of `args` that need a whole number after them but do not have one. -/
+def badNumbers (args : List String) : List String :=
+  numberFlags.filter fun f => args.contains f && ((argAfter f args).bind String.toNat?).isNone
+
 /-- The fixtures that the solver of commit `2d4b8cf` made. -/
 def baselineDir : String := "experiments/profile/exit-laws-2d4b8cf"
 
@@ -62,6 +70,14 @@ def compareDir (args : List String) : Option String :=
 /-- Print the timings of each Fight, and dump or compare the exit laws if asked. Return 1 if a
 check or a comparison fails. -/
 def main (args : List String) : IO UInt32 := do
+  -- A typo in a number must not run another experiment and look like a success.
+  if !(badNumbers args).isEmpty then
+    IO.eprintln s!"These flags need a whole number after them: {badNumbers args}."
+    return 2
+  if !args.contains "--grenadiers" &&
+      ["--st", "--dice", "--work", "--flamethrower"].any args.contains then
+    IO.eprintln "--st, --dice, --work and --flamethrower change the Grenadier Fight: add --grenadiers N."
+    return 2
   if args.contains "--dump" && args.contains "--compare" then
     IO.eprintln "Use --dump or --compare, not both: a dump writes over the files of a comparison."
     return 2

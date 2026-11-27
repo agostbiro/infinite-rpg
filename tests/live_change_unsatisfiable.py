@@ -20,6 +20,9 @@ check is not picked again.
 A last case does the same for a Wish whose replies never parse. One more case checks the other side:
 the same flamethrower during a Fight against one wounded Grenadier passes the paused-Fight check
 and is installed. It spends one validation batch, and the Fight keeps its HP, maneuvers and round.
+In a last case a proposal passes the paused-Fight check and fails validation, and the next one
+has the same effects with new wording and order. The server reuses the passed check: one paused
+check and two validation batches.
 
 The cases run at the same time, each with its own server on its own port.
 
@@ -384,6 +387,52 @@ def run_accept_case(port):
             print(f"PASS {name}: installed after {took:.1f}s")
 
 
+# A weaker flamethrower counter-rule. With seed 7, during the Fight against the wounded Grenadier,
+# it passes the paused-Fight check and the screen, but fails the fresh validation batch. A search
+# over the numbers of the two counter-rules found it; a change to the balance check can move it.
+BORDERLINE = proposal_of(FLAMETHROWER)
+BORDERLINE["rules"][0].update(hitBonus=1, damageBonus=1)
+BORDERLINE["rules"][1].update(armorBonus=2)
+REUSED = "The paused Fight already passed its check with these rules"
+
+
+def run_reuse_case(port):
+    """A proposal passes the paused-Fight check and fails validation. The next proposal has the same
+    effects with new wording and order, so the server reuses the passed check and validates again.
+    It runs on a fresh server on `port`."""
+    name = "a reworded proposal after a failed validation, during a Fight against one wounded Grenadier"
+    with tempfile.TemporaryDirectory() as folder:
+        files = {"change-1": stream(json.dumps(BORDERLINE)),
+                 "change-2": stream(json.dumps(with_rule_wording(BORDERLINE, 2))),
+                 "change": stream("Not JSON, so the change ends after its last proposal.")}
+        for fixture, body in files.items():
+            with open(os.path.join(folder, fixture + ".sse"), "w") as f:
+                f.write(body)
+        with Server(folder, port=port) as server:
+            base = server.base
+            code, before = request("/api/input", "begin", base)
+            assert code == 200, name
+            for choice in WOUNDED_GRENADIER:
+                code, before = request("/api/input", before["inputs"][choice], base)
+                assert code == 200, name
+            assert before["phase"] == "fight" and before["canChange"], (name, before["phase"])
+            code, working = request("/api/change", {"wish": "Give me a flamethrower now"}, base)
+            assert code == 200 and working["generation"]["state"] == "running", name
+            view, took = wait_ended(60, base)
+            gen = view["generation"]
+            texts = [s["text"] for s in gen["steps"]]
+            assert gen["state"] == "failed", (name, gen["state"], texts[-1:])
+            assert not any(TUNING in t for t in texts), (name, texts)
+            # The first proposal runs the paused-Fight check; the second reuses it.
+            assert sum(PAUSED_CHECK in t for t in texts) == 1, (name, texts)
+            assert sum(REUSED in t for t in texts) == 1, (name, texts)
+            # Both proposals reach a fresh validation batch, and both fail it.
+            assert sum(VALIDATION in t for t in texts) == 2, (name, texts)
+            assert gen["changeChecks"] == before["generation"]["changeChecks"] + 2, (name, gen["changeChecks"])
+            assert checkpoint(view) == checkpoint(before), f"{name}: the game changed"
+            print(f"PASS {name}: one paused check, two validation batches, after {took:.1f}s")
+
+
 def run_wish_case(port):
     """A Wish whose replies never parse fails after all its tries, and the title screen stays.
     It runs on a fresh server on `port`."""
@@ -415,6 +464,8 @@ def main():
     jobs.append(("a Wish whose replies never parse", lambda port=PORT + len(cases): run_wish_case(port)))
     jobs.append(("a flamethrower during a Fight against one Grenadier",
                  lambda port=PORT + len(cases) + 1: run_accept_case(port)))
+    jobs.append(("a reworded proposal after a failed validation",
+                 lambda port=PORT + len(cases) + 2: run_reuse_case(port)))
     with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
         futures = [(name, pool.submit(job)) for name, job in jobs]
     failures = [(name, f.exception()) for name, f in futures if f.exception() is not None]

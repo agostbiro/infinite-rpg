@@ -180,7 +180,8 @@ def CertifiedContinuation.invariant {rules : RuleSet} {f : FightPhase}
   match s with | none => True | some s => c.witness.contains s
 
 /-- A stopping certificate for the paused Fight. Before the paused round, the potential is one
-more than the expected rounds left after it. -/
+more than the expected number of rounds in the answers of its results. Each of these numbers is
+an upper bound on the expected rounds left, so the potential is one too. -/
 def CertifiedContinuation.stopping {rules : RuleSet} {f : FightPhase}
     (c : CertifiedContinuation rules f) : StoppingCertificate (fastContinuationProcess rules f) c.invariant where
   potential s := match s with

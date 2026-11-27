@@ -202,8 +202,10 @@ Comparator statements did not change, and all statements use only `propext`, `Qu
 decide only which certificates exist, not what the theorems conclude, so a reviewer need not
 read them for soundness. Which Fights get a certificate depends on the solver and its budget.
 
-**Termination witness.** The check keeps the expected-rounds witness. The rounds equation is
-one number per state. The outcome equations are about 13 numbers per state. So a path
+**Termination witness.** The check keeps the rounds witness: one number per state that is at
+least one more than the expected number of its results. So it is an upper bound on the expected
+rounds left, not that number; the exit laws are exact, but the horizon is only a bound. The
+rounds condition is one number per state. The outcome equations are about 13 numbers per state. So a path
 certificate, like `Paths.terminates` in PR agostbiro/infinite-rpg#4, would save only a small part
 of the time, and it needs a new proof. The witness also gives `finishes_with_high_probability`,
 an explicit horizon for each error allowance.
