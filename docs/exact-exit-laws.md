@@ -56,7 +56,8 @@ are the same, weight for weight. (A program at `2d4b8cf` makes the files with th
 takes about 25 times as long as one with 2. A weapon that hits every Creature (the flamethrower)
 grows it more: each round makes one result for each mix of injuries. `solveFight` has a budget
 (`SolveBudget`). Above it, the solver gives up, the check fails, and the Fight is rejected. That
-is sound. On the Fights in the table below, the most memory used was 330 MB.
+is sound. On the paused Fights in the table below, the most memory used was 334 MB. `make certify`
+on Lafayette uses about 610 MB.
 
 * Before it computes any round, the solver bounds how many results the round makes before
   they are merged (`roundSizeBound`). For each pair of Fighters, `attackBounds` finds each damage
@@ -180,8 +181,8 @@ Comparator statements did not change, and all statements use only `propext`, `Qu
 `CertifiedFight` now names the fast definitions (`fastProcess`, `fastRound`,
 `injuryDistribution`, `sortCollect`, `stateKey` and the others in `FastCombat.lean`), and
 `CertifiedContinuation` names `fastRemaining`. They
-decide only which certificates exist, not what the theorems conclude. A reviewer of the
-trusted surface should still read them.
+decide only which certificates exist, not what the theorems conclude, so a reviewer need not
+read them for soundness. Which Fights get a certificate depends on the solver and its budget.
 
 **Termination witness.** The check keeps the expected-rounds witness. The rounds equation is
 one number per state. The outcome equations are about 13 numbers per state. So a path

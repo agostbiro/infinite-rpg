@@ -101,6 +101,13 @@ private def zeroLimits : SolveBudget :=
   | some c => decide (law.sameWeights c.outcomes)
   | none => false
 
+-- `checkedCombat` gives the same exit law as the solver of `main` (`solveCombat`, on the spec
+-- round), on two-Creature Fights with different maneuvers and HP.
+#guard [(Maneuver.attack, 4), (.attack, 1), (.allOutAttack, 3), (.allOutDefense, 2)].all fun (m, hp) =>
+  let start := twoFoes m hp
+  let old := (solveCombat {} heroPolicy twoFoesOrder start).run' {}
+  decide ((checkedCombat {} twoFoesOrder start).sameWeights old)
+
 /-- Rules in which every attack hits and does 1 injury, unless the defender has 50 DR or more.
 A guarding Character, and a wounded Creature, get 100 DR; a wounded Creature cannot attack. The
 Creature acts first. -/

@@ -154,7 +154,7 @@ counts and requires every interval to fit the shared Weibull band. Its resulting
 `StatisticalAdventure` carries both `balanced` and the passing observation evidence.
 The test Adventure and every Wish go through the same `admitWithSeed`.
 
-Live changes use `WorldChange.Prepared.admit`. Its certificate also binds the observations
+Live changes use `WorldChange.Prepared.checkPaused`, then `WorldChange.Prepared.admitWith`. Its certificate also binds the observations
 to the updated adventure from its beginning and the error allowance. `Prepared.preserves_core` proves that the
 patch changes only the adventure equipment/effect fields of `RuleSet`.
 
@@ -170,7 +170,8 @@ The probability specification, graph builder, distribution operations, and
 combat elimination algorithm are part of the trusted definitions. The combat certificate is
 checked against `fastProcess` (`FastCombat.lean`), whose odds equal those of `combatProcess`
 (`fastRound_expect`); its definitions, `stateKey`, the `Hashable FightState` instance and
-`Std.HashMap` appear in the certificate's type, so a reviewer should read them too. Sharing the
+`Std.HashMap` appear in the certificate's type. They decide only which certificates exist, and
+the proofs carry every conclusion to `combatProcess`, so a reviewer need not read them for soundness. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
 and for each certified Fight `exitLaw_exact` proves that the checked exit law is the exact law
 of the spec process. There is no such theorem for a Fight that the check rejects. The ideal sampling correspondence

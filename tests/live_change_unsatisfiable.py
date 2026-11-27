@@ -14,7 +14,9 @@ check that the server never checks the same rules twice and spends no validation
 case the last step names the paused Fight as the cause. In the second case the screen fails, so the server
 tunes the counter-rules. A tuned variant that fails the paused-Fight check is not picked again.
 
-A last case does the same for a Wish whose replies never parse.
+A last case does the same for a Wish whose replies never parse. One more case checks the other side:
+the same flamethrower during a Fight against one Grenadier passes the paused-Fight check and is
+installed, and it spends one validation batch.
 
 The cases run at the same time, each with its own server on its own port.
 
@@ -182,6 +184,8 @@ CASES = [
 
 # The Choices from the start, with seed 7, that lead to the Fight against Grenadier 1 and 2.
 TWO_GRENADIERS = (1, 0, 0)
+# The Choices from the start, with seed 7, that lead to the Fight against Grenadier 1 alone.
+ONE_GRENADIER = (0, 0, 0, 0)
 # A flamethrower grant that passes the balance check (the last reply of the integration test).
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fake-api", "change-3.sse")) as f:
     FLAMETHROWER = f.read()
@@ -285,6 +289,37 @@ def run_change_case(port, name, files, state, text, error, most, limit_ms, path=
             print(f"PASS {name}: {state} after {took:.1f}s and {proposals(view)} proposals: {last[:90]}")
 
 
+def run_accept_case(port):
+    """A change during a small Fight passes the paused-Fight check and is installed. It runs on a
+    fresh server on `port`."""
+    name = "a flamethrower during a Fight against one Grenadier"
+    with tempfile.TemporaryDirectory() as folder:
+        with open(os.path.join(folder, "change.sse"), "w") as f:
+            f.write(FLAMETHROWER)
+        with Server(folder, port=port) as server:
+            base = server.base
+            code, before = request("/api/input", "begin", base)
+            assert code == 200, name
+            for choice in ONE_GRENADIER:
+                code, before = request("/api/input", before["inputs"][choice], base)
+                assert code == 200, name
+            assert before["phase"] == "fight" and before["canChange"], (name, before["phase"])
+            assert [f["name"] for f in before["fight"]["foes"]] == ["Grenadier 1"], name
+            code, working = request("/api/change", {"wish": "Give me a flamethrower now"}, base)
+            assert code == 200 and working["generation"]["state"] == "running", name
+            view, took = wait_ended(60, base)
+            gen = view["generation"]
+            assert gen["state"] == "idle", (name, gen)
+            # One validation batch was spent, and the change was installed into the paused Fight.
+            assert gen["changeChecks"] == before["generation"]["changeChecks"] + 1, (name, gen["changeChecks"])
+            assert view["character"]["weapon"] == "Stormglass Flamethrower", (name, view["character"])
+            assert "changeApplied" in view["reports"][-1], (name, view["reports"][-1])
+            assert view["phase"] == "fight", (name, view["phase"])
+            for key in ("hp", "maneuver", "alive"):
+                assert [f[key] for f in view["fight"]["foes"]] == [f[key] for f in before["fight"]["foes"]], (name, key)
+            print(f"PASS {name}: installed after {took:.1f}s")
+
+
 def run_wish_case(port):
     """A Wish whose replies never parse fails after all its tries, and the title screen stays.
     It runs on a fresh server on `port`."""
@@ -314,6 +349,8 @@ def main():
     jobs = [(case[0], lambda port=PORT + i, case=case: run_change_case(port, *case))
             for i, case in enumerate(cases)]
     jobs.append(("a Wish whose replies never parse", lambda port=PORT + len(cases): run_wish_case(port)))
+    jobs.append(("a flamethrower during a Fight against one Grenadier",
+                 lambda port=PORT + len(cases) + 1: run_accept_case(port)))
     with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
         futures = [(name, pool.submit(job)) for name, job in jobs]
     failures = [(name, f.exception()) for name, f in futures if f.exception() is not None]
