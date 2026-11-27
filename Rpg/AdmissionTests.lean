@@ -265,4 +265,13 @@ example (a : CertifiedAdventure) (foes : List Being) (hf : foes ∈ encounterFoe
       (fightStart a.admitted.candidate.rules a.admitted.candidate.hero hp foes) :=
   a.combat.ends_almostSurely foes hf hp lo hi
 
+-- A Fight whose starts alone are over the state limit is rejected before they are made: 20,001
+-- entry HP from 1 up give 60,003 states, above the limit of 60,000.
+#guard (certifyEncounter {rules with maxHP := fun b => if b.name = "Hero" then 20001 else 2}
+  hero [foe]).isNone
+-- The early rejection needs a living Creature. With none, every start has ended, and the Fight
+-- is certified.
+#guard (certifyEncounter {rules with maxHP := fun b => if b.name = "Hero" then 20001 else 0}
+  hero [foe]).isSome
+
 end Rpg.AdmissionTests

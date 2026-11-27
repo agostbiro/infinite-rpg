@@ -31,9 +31,14 @@ def encounterStarts (rules : RuleSet) (hero : Being) (foes : List Being) : List 
   (entryHPs rules hero).map fun (hp : Nat) => fightStart rules hero hp foes
 
 /-- Solve one Fight at every entry HP of the Character and check the answers. It is `none` if the
-check fails, also when the Fight is over the solver budget. -/
+check fails, also when the Fight is over the solver budget. A Fight whose starts alone are over the
+state limit is rejected before they are made. -/
 def certifyEncounter (rules : RuleSet) (hero : Being) (foes : List Being) :
     Option (CertifiedEncounter rules hero foes) :=
+  -- Each entry HP from 1 up gives a start of its own group of 3 states, unless no Creature lives.
+  -- The solver rejects the Fight if these groups are over the state limit, so reject it now.
+  if !(fightStart rules hero 1 foes).over &&
+      ({} : SolveBudget).over (3 * rules.maxHP hero) 0 0 then none else
   let order := turnOrder rules hero foes
   let starts := encounterStarts rules hero foes
   let witness : CombatWitness :=

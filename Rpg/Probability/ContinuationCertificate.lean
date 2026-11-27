@@ -112,8 +112,9 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
 inductive PausedFightFailure where
   /-- One round has more results than the solver's budget allows. -/
   | roundTooLarge
-  /-- The solver returned an empty map. It does so only when it stops at a limit of the budget
-  (states, round results in memory, work, or round size) or at its pass bound. -/
+  /-- The paused round is over the work or memory limit, or the solver returned an empty map. The
+  solver does so only when it stops at a limit of the budget (states, round results in memory,
+  work, or round size) or at its pass bound. -/
   | overBudget
   /-- The answers did not pass the check. The Fight can go on forever, for example. -/
   | checkFailed
@@ -145,8 +146,8 @@ def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : Strin
 
 /-- Check a paused Fight within `budget`, or give the reason why it fails. The rest of the paused
 round counts against `budget` as one full round: a limited budget rejects it before it is computed
-if it is above the round or batch limit or the work limit. The paused round and the later rounds
-use the fast attack. -/
+if it is above the round, batch or work limit, and after it is computed if its results are above
+the memory limit. The paused round and the later rounds use the fast attack. -/
 def checkContinuation (rules : RuleSet) (f : FightPhase) (budget : SolveBudget := {}) :
     Except PausedFightFailure (CertifiedContinuation rules f) :=
   let bounds := attackBounds rules f.state
@@ -155,8 +156,11 @@ def checkContinuation (rules : RuleSet) (f : FightPhase) (budget : SolveBudget :
     .error .roundTooLarge else
   if budget.limited && paused > budget.work then .error .overBudget else
   let starts := (fastRemaining rules f.order f.state).entries.map Prod.fst
-  -- The later rounds get the work that the paused round leaves.
-  let cache := solveChecked rules f.order bounds starts {budget with work := budget.work - paused}
+  -- The results of the paused round stay in memory, so they count against the memory limit.
+  if budget.limited && starts.length > budget.entries then .error .overBudget else
+  -- The later rounds get the work and the memory that the paused round leaves.
+  let cache := solveChecked rules f.order bounds starts
+    {budget with work := budget.work - paused, entries := budget.entries - starts.length}
   let w : CombatWitness := ⟨cache⟩
   if h : w.check rules f.order starts = true then
     .ok ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),

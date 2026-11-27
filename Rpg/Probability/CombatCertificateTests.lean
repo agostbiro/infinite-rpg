@@ -228,6 +228,15 @@ private def oneHitPaused : FightPhase :=
 #guard match checkContinuation oneHitRules oneHitPaused {batchEntries := 0} with
   | .error e => e == .roundTooLarge
   | .ok _ => false
+-- The results of the paused round count against the memory limit.
+#guard match checkContinuation oneHitRules oneHitPaused {entries := 0} with
+  | .error e => e == .overBudget
+  | .ok _ => false
+
+-- The solver gives up when its starts alone are over the state limit: one live start is a group
+-- of 3 states.
+#guard (solveFight (fastRound {} order) [state] (fun _ => 1) {states := 2}).isEmpty
+#guard !(solveFight (fastRound {} order) [state] (fun _ => 1) {states := 3}).isEmpty
 
 -- Names are joined as in plain English.
 #guard joinNames ["A"] == "A" && joinNames ["A", "B"] == "A and B" &&

@@ -339,6 +339,8 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
     if !s.over && !seen.contains g then
       seen := seen.insert g
       frontier := g :: frontier
+      -- Give up as soon as the starts alone are over the state limit. Each group has 3 states.
+      if budget.over (3 * seen.size) 0 0 then return {}
   -- Find the groups that the Fight can reach, and the round of each of their states.
   -- A round that leaves a group takes HP, so a shortest path to a group has at most as many
   -- steps as the total HP. That bounds the number of passes.

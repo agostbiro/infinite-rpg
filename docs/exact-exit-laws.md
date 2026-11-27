@@ -79,7 +79,9 @@ on Lafayette uses about 610 MB.
   sum of the bounds of all rounds it computed (the work). On Lafayette, Grenadier 1 and 2 has
   the most states (7,623), and Jäger 1 and 2 has the most work (2.2 million). The most round
   results in memory is about 450,000. So the limits are 3.3 to 8 times as large. The solver
-  tests the state limit each time it finds a new state. It adds a batch to the work before it
+  tests the state limit each time it finds a new state, also while it adds the starts. Each entry
+  HP gives a start of its own, so `certifyEncounter` rejects a Character with more than 20,000 HP
+  (with a living Creature) before it makes the starts. It adds a batch to the work before it
   tests the work limit, so the work never goes above it. It tests the memory limit before each
   batch, so one batch (at most 1 million results) can go above that limit.
 * The work limit makes a rejection fast. A large Fight gives up after a small part of its
@@ -90,7 +92,8 @@ on Lafayette uses about 610 MB.
   each round is at most 200,000 results by `roundSizeBound`, which is tested, not proved.
 * `certifyContinuation` checks the paused round with the same bound before it computes it. The
   paused round counts against the budget as one full round: against the round and batch limits,
-  and against the work limit, and the later rounds get the work that is left. It then computes the paused round with the fast attack and merges after each turn
+  and against the work limit. Its results stay in memory, so they also count against the memory
+  limit. The later rounds get the work and the memory that are left. It then computes the paused round with the fast attack and merges after each turn
   (`fastRemaining`), like the full rounds. `fastRemaining_expect` proves that it has the odds of
   the spec's paused round.
 * When the check of a paused Fight fails, `checkContinuation` gives the reason: one round is too
