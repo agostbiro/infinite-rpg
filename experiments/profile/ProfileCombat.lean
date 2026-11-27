@@ -9,7 +9,7 @@ checker (`CombatWitness.check`) over all entry HPs.
 
 * `--dump DIR` writes the exit laws of each Fight to `DIR/fight-N.txt`, in a fixed text form.
   `DIR` is required, and `--dump` cannot be used with `--grenadiers` or `--stress`, which dump
-  nothing.
+  nothing. `DIR` must hold no `fight-N.txt` file yet, so a dump never writes over a baseline.
 * `--compare [DIR]` reads files in that form and checks that the exit laws are the same. With no
   `DIR`, it uses `experiments/profile/exit-laws-2d4b8cf`. A missing file is an error, and so is a
   file `fight-N.txt` with no Fight `N`, or a folder with no Fights. `--dump` and `--compare` cannot
@@ -90,6 +90,15 @@ def main (args : List String) : IO UInt32 := do
   if args.contains "--dump" && (args.contains "--grenadiers" || args.contains "--stress") then
     IO.eprintln "--dump writes the Fights of Lafayette: do not use it with --grenadiers or --stress."
     return 2
+  if let some dir := argAfter "--dump" args then
+    -- A dump never writes over existing files, such as the baseline of `2d4b8cf`.
+    let dirPath : System.FilePath := dir
+    if ← dirPath.pathExists then
+      let old := (← dirPath.readDir).toList.map (·.fileName) |>.filter fun n =>
+        n.startsWith "fight-" && n.endsWith ".txt"
+      if !old.isEmpty then
+        IO.eprintln s!"{dir} already holds {old.length} fight files. Dump into a new folder."
+        return 2
   if args.contains "--stress" then
     -- Two million entries with distinct values: the merge must not use one stack frame each.
     let size := 2000000 + args.length

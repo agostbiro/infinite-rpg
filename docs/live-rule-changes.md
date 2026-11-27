@@ -71,7 +71,7 @@ development change and its proofs; runtime does not execute the development skil
    check that failed, no proof does. So the server does not check the same rules again, also in a
    proposal that changes only Scenes, wording or order, and the numeric adjustments below skip
    them.
-   If the check passes, the server keeps the result. A later proposal with the same equipment
+   If the check passes, the server keeps the result, and only the last one. A later proposal with the same equipment
    and rule effects reuses it (`Prepared.reuseCheckpoint`), and still gets a fresh validation
    batch.
 5. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,

@@ -78,16 +78,19 @@ def injuryDistribution (rules : RuleSet) (attId : Actor) (att : Fighter) (dfnId 
   let kind := att.being.weapon.damageType
   let dr := rules.dr dfn.being + (defense.map (·.armorBonus)).sum
   let injuryOf (sum : Nat) : Nat := rules.injury kind dr (rules.basicDamage damageDice kind sum)
-  let rolled : Distribution Nat := (injuryOf <$> damageSums damageDice.count).collect
+  -- The rolled damage is computed only if a hit needs it, and then once for all such hits.
+  let rolled : Thunk (Distribution Nat) :=
+    Thunk.mk fun _ => (injuryOf <$> damageSums damageDice.count).collect
   let maxed : Nat := injuryOf (List.replicate damageDice.count 6).sum
   let dodged : Distribution Bool := match dfn.dodge rules with
     | none => pure false
     | some d => ((fun t => (rules.successRoll d t).succeeded) <$> threeDice).collect
+  -- `damage` is a function, so a miss does not force the rolled damage.
   let onHit (result : RollResult) (top : Bool) : Distribution Nat :=
-    let damage := if top then pure maxed else rolled
+    let damage (_ : Unit) := if top then pure maxed else rolled.get
     if !result.succeeded then pure 0
-    else if result = .criticalSuccess then damage
-    else dodged.bind fun d => if d then pure 0 else damage
+    else if result = .criticalSuccess then damage ()
+    else dodged.bind fun d => if d then pure 0 else damage ()
   let classes := ((fun t => (rules.successRoll level t, t == 3)) <$> threeDice).collect
   (classes.bind fun c => onHit c.1 c.2).collect
 
@@ -243,7 +246,7 @@ theorem injuryDistribution_expect (rules : RuleSet) (a : Actor) (att : Fighter) 
   -- to the toolchain can break it.
   cases h : dfn.dodge rules <;>
     simp [injuryDistribution, attackDistribution, attackWith, rollAgainstWith, damageFacesWith,
-      Bind.bind, Distribution.expect_bind, sumAsFaces, threeDice, damageSums_eq, h]
+      Bind.bind, Distribution.expect_bind, sumAsFaces, threeDice, damageSums_eq, Thunk.get, h]
   -- Split on whether the attack level is too low to roll.
   all_goals split
   -- Too low: both sides give no injury.
@@ -254,7 +257,7 @@ theorem injuryDistribution_expect (rules : RuleSet) (a : Actor) (att : Fighter) 
 /-- The injury of one attack is a probability distribution. -/
 theorem injuryDistribution_valid (rules : RuleSet) (a : Actor) (att : Fighter) (b : Actor)
     (dfn : Fighter) : (injuryDistribution rules a att b dfn).Valid := by
-  simp only [injuryDistribution, threeDice, damageSums_eq]
+  simp only [injuryDistribution, threeDice, damageSums_eq, Thunk.get]
   repeat first
     | exact Distribution.valid_pure _
     | exact dice_valid _

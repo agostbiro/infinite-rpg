@@ -117,8 +117,8 @@ on Lafayette uses about 610 MB.
   `attackBounds` and the budget tests of the solver. The server remembers the equipment and the
   sorted rule effects of each proposal that failed the check (`combatKey`). It does not check them
   again, also in a proposal that changes only Scenes or the wording or order of the rules, and the
-  tuning of the counter-rules skips them. The server also keeps each paused
-  Fight that passed the check. A later proposal with the same equipment and rule effects reuses it
+  tuning of the counter-rules skips them. The server also keeps the last paused
+  Fight that passed the check (one witness at most, so its memory stays bounded). A later proposal with the same equipment and rule effects reuses it
   (`Prepared.reuseCheckpoint`, which the kernel checks), and gets a fresh validation batch. If the
   change runs out of proposals and the last one failed this check, the last step says so, and
   that the change can be asked for again after the Fight ends (`changeOutOfBudget`).

@@ -1083,7 +1083,8 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
   -- The combat keys (`combatKey`) that failed the paused-Fight check, with the message. The check
   -- uses no dice and reads no Scene, so the same combat rules always fail it again.
   let mut pausedRejected : List (String × String) := []
-  -- The paused-Fight checks that passed. A revision with the same equipment and rules reuses one.
+  -- The last paused-Fight check that passed. A revision with the same equipment and rule effects
+  -- reuses it. Each one holds a whole witness, so the server keeps at most one.
   let mut pausedPassed : List (PassedPause before) := []
   let mut supportReviewed := false
   -- The last errors and the number of proposals, for the last step if the budget runs out.
@@ -1169,7 +1170,7 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                     (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress], content)
                 | .ok checkpoint =>
                 if reused.isNone then
-                  pausedPassed := ⟨prepared, same, checkpoint⟩ :: pausedPassed
+                  pausedPassed := [⟨prepared, same, checkpoint⟩]
                 let spent ← ref.modifyGet fun s =>
                   if s.gen.job != job || s.gen.state != .running || s.changeChecks != index then (false, s)
                   else (true, { s with changeChecks := index + 1 })
