@@ -9,14 +9,16 @@ fresh server on its own port, starts the built-in Adventure, and asks for a chan
 - the game is unchanged,
 - the Player can play on, and can ask again ("Try again", then Cancel).
 
-Two cases ask for the change during a Fight that is too large to check with the change. They also
+Three cases ask for the change during a Fight that is too large to check with the change. They also
 check that the server never checks the same rules twice and spends no validation batch. In the first
-case the last step names the paused Fight as the cause. In the second case the screen fails, so the server
-tunes the counter-rules. A tuned variant that fails the paused-Fight check is not picked again.
+case the last step names the paused Fight as the cause. The second case does the same, but each
+proposal changes the text of a future Scene and keeps the combat rules. In the third case the
+screen fails, so the server tunes the counter-rules. A tuned variant that fails the paused-Fight
+check is not picked again.
 
 A last case does the same for a Wish whose replies never parse. One more case checks the other side:
-the same flamethrower during a Fight against one Grenadier passes the paused-Fight check and is
-installed, and it spends one validation batch.
+the same flamethrower during a Fight against one wounded Grenadier passes the paused-Fight check
+and is installed. It spends one validation batch, and the Fight keeps its HP, maneuvers and round.
 
 The cases run at the same time, each with its own server on its own port.
 
@@ -186,6 +188,8 @@ CASES = [
 TWO_GRENADIERS = (1, 0, 0)
 # The Choices from the start, with seed 7, that lead to the Fight against Grenadier 1 alone.
 ONE_GRENADIER = (0, 0, 0, 0)
+# Then All-Out Defense and Attack, with seed 7: in round 3, Grenadier 1 is alive with 7 of 11 HP.
+WOUNDED_GRENADIER = ONE_GRENADIER + (2, 0)
 # A flamethrower grant that passes the balance check (the last reply of the integration test).
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fake-api", "change-3.sse")) as f:
     FLAMETHROWER = f.read()
@@ -195,10 +199,40 @@ with tempfile.TemporaryDirectory() as _folder:
     make_fixtures(_folder, True)
     with open(os.path.join(_folder, "change-3.sse")) as f:
         STRONG_FLAMETHROWER = f.read()
+
+
+def proposal_of(sse):
+    """The JSON proposal in the text blocks of a recorded reply."""
+    text = ""
+    for line in sse.splitlines():
+        if line.startswith("data: "):
+            data = json.loads(line[6:])
+            if data.get("type") == "content_block_delta" and data["delta"].get("type") == "text_delta":
+                text += data["delta"]["text"]
+    return json.loads(text)
+
+
+def with_ending_text(proposal, n):
+    """A copy of `proposal` that also replaces the text of the future ending, Scene 13, with
+    version `n`. The combat rules stay the same."""
+    out = json.loads(json.dumps(proposal))
+    out["scenes"] = [{"id": 13, "title": "Ending: Cut Off", "choices": [],
+                      "text": f"The dragoons cut off the rear guard. You get away across the river (version {n})."}]
+    return out
+
+
+# The flamethrower with a new ending text in each proposal: the same combat rules every time.
+SCENE_EDITS = {f"change-{n}": stream(json.dumps(with_ending_text(proposal_of(FLAMETHROWER), n)))
+               for n in range(1, MAX_CALLS + 1)}
 # Each case: the same fields as CASES, then the Choices that lead to the paused Fight.
 PAUSED_CASES = [
     ("a flamethrower during a Fight against two Grenadiers, every time",
      {"change": FLAMETHROWER}, "failed", "The paused Fight could not be checked with the last one",
+     "The paused Fight against Grenadier 1 and Grenadier 2 is over the solver's budget", MAX_CALLS, None,
+     TWO_GRENADIERS),
+    # Each proposal changes only a future Scene, so the paused-Fight check runs once.
+    ("a flamethrower with a new ending text each time, during a Fight against two Grenadiers",
+     SCENE_EDITS, "failed", "The paused Fight could not be checked with the last one",
      "The paused Fight against Grenadier 1 and Grenadier 2 is over the solver's budget", MAX_CALLS, None,
      TWO_GRENADIERS),
     # The first two proposals are tuned to two different variants, which fail the paused-Fight check.
@@ -210,7 +244,7 @@ PAUSED_CASES = [
 TUNING = "Balancing the counter-rule"
 CHECKED_RULES = "The checked counter-rules were: "
 PAUSED_CHECK = "Checking that the paused Fight still ends"
-CACHED = "This proposal already failed the paused-Fight check"
+CACHED = "These counter-rules already failed the paused-Fight check"
 VALIDATION = "Checking a fresh validation batch"
 
 
@@ -292,7 +326,7 @@ def run_change_case(port, name, files, state, text, error, most, limit_ms, path=
 def run_accept_case(port):
     """A change during a small Fight passes the paused-Fight check and is installed. It runs on a
     fresh server on `port`."""
-    name = "a flamethrower during a Fight against one Grenadier"
+    name = "a flamethrower during a Fight against one wounded Grenadier"
     with tempfile.TemporaryDirectory() as folder:
         with open(os.path.join(folder, "change.sse"), "w") as f:
             f.write(FLAMETHROWER)
@@ -300,11 +334,14 @@ def run_accept_case(port):
             base = server.base
             code, before = request("/api/input", "begin", base)
             assert code == 200, name
-            for choice in ONE_GRENADIER:
+            for choice in WOUNDED_GRENADIER:
                 code, before = request("/api/input", before["inputs"][choice], base)
                 assert code == 200, name
             assert before["phase"] == "fight" and before["canChange"], (name, before["phase"])
-            assert [f["name"] for f in before["fight"]["foes"]] == ["Grenadier 1"], name
+            foes = before["fight"]["foes"]
+            assert [f["name"] for f in foes] == ["Grenadier 1"], name
+            # The Grenadier is wounded, so the test sees it if the change heals it.
+            assert foes[0]["alive"] and foes[0]["hp"] < foes[0]["maxHP"], (name, foes)
             code, working = request("/api/change", {"wish": "Give me a flamethrower now"}, base)
             assert code == 200 and working["generation"]["state"] == "running", name
             view, took = wait_ended(60, base)
@@ -316,7 +353,9 @@ def run_accept_case(port):
             assert "changeApplied" in view["reports"][-1], (name, view["reports"][-1])
             assert view["phase"] == "fight", (name, view["phase"])
             for key in ("hp", "maneuver", "alive"):
-                assert [f[key] for f in view["fight"]["foes"]] == [f[key] for f in before["fight"]["foes"]], (name, key)
+                assert [f[key] for f in view["fight"]["foes"]] == [f[key] for f in foes], (name, key)
+            assert view["fight"]["round"] == before["fight"]["round"], name
+            assert view["fight"]["hero"]["hp"] == before["fight"]["hero"]["hp"], name
             print(f"PASS {name}: installed after {took:.1f}s")
 
 

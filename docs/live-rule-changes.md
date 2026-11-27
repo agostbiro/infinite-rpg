@@ -64,8 +64,9 @@ development change and its proofs; runtime does not execute the development skil
    policy (`defaultPolicy`). Failed rows guide revisions to the world's response.
 4. During a Fight, the server first checks that the paused Fight ends under the new rules
    (`Prepared.checkPaused`). This check uses no dice and spends no error allowance. If it fails,
-   the DM gets the reason, and the server remembers the proposal: it does not check it again,
-   and the numeric adjustments below skip it.
+   the DM gets the reason, and the server remembers the equipment and rules of the proposal
+   (`combatKey`). The check reads no Scene, so the server does not check the same rules again,
+   also in a proposal that changes only Scenes, and the numeric adjustments below skip them.
 5. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
    and plays a separate 1,200-game validation batch against the same curve. Only a source-bound `Admission` value
    permits installation. Failure returns to revision with a smaller remaining allowance.

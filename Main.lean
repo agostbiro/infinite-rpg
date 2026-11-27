@@ -873,19 +873,42 @@ def applyChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared
       source := { s.source with environment := s.source.environment.map p.proposal.map }
       gen := { s.gen with state := .idle, steps := #[] } }
 
+/-- The text that names a whole proposal: its equipment, its rules and its Scenes. The server uses
+it to skip a proposal that already failed validation. -/
+def proposalKey (p : WorldChange.Proposal) : String :=
+  reprStr (p.equipment, p.requestedRules, p.rules, p.scenes)
+
+/-- The text that names the combat part of a proposal: its equipment and its rules, not its Scenes.
+The paused-Fight check reads only this part, so proposals with the same key get the same result. -/
+def combatKey (p : WorldChange.Proposal) : String :=
+  reprStr (p.equipment, p.requestedRules, p.rules)
+
+/-- A proposal with no equipment, no rules and no Scenes, for the tests below. -/
+private def emptyProposal : WorldChange.Proposal :=
+  {summary := "", moment := "", equipment := none, requestedRules := [], rules := [], scenes := []}
+
+/-- `emptyProposal` with a new text for Scene 13. -/
+private def sceneProposal : WorldChange.Proposal :=
+  {emptyProposal with scenes := [{id := 13, title := "Ending", text := "Another text", choices := []}]}
+
+-- Two proposals that differ only in a Scene have the same combat key, but not the same key.
+#guard combatKey emptyProposal == combatKey sceneProposal
+#guard proposalKey emptyProposal != proposalKey sceneProposal
+
 /-- Try bounded numeric counter adjustments on screening data only, for at most six seconds.
-It skips the variants in `skip`: those that failed validation or the paused-Fight check. Every
-chosen variant still needs an independent, source-bound admission certificate. -/
+It skips a variant whose `proposalKey` is in `skip` (it failed validation) or whose `combatKey`
+is in `skipCombat` (it failed the paused-Fight check). Every chosen variant still needs an
+independent, source-bound admission certificate. -/
 def tuneChange (ref : IO.Ref ServerState) (job : Nat) (p : WorldChange.Prepared)
-    (delta : Rat) (skip : List String) (map : Option WorldEnvironment) :
+    (delta : Rat) (skip skipCombat : List String) (map : Option WorldEnvironment) :
     IO (Option WorldChange.Prepared) := do
   let started ← IO.monoMsNow
-  let mut seen := reprStr (p.proposal.equipment, p.proposal.requestedRules, p.proposal.rules, p.proposal.scenes) :: skip
+  let mut seen := proposalKey p.proposal :: skip
   for quarters in [2, 1, 3, 5, 6, 8, 12, 16] do
     if !(← jobWanted ref job) || (← IO.monoMsNow) - started > 6000 then return none
     let proposal := p.proposal.tune quarters
-    let signature := reprStr (proposal.equipment, proposal.requestedRules, proposal.rules, proposal.scenes)
-    if seen.contains signature then continue
+    let signature := proposalKey proposal
+    if seen.contains signature || skipCombat.contains (combatKey proposal) then continue
     seen := signature :: seen
     match proposal.prepare p.before map with
     | .error _ => continue
@@ -1027,8 +1050,8 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
   let mut messages := [userTurn initial]
   let mut gift : Option (Option EquipmentRule × List CombatRule) := none
   let mut validated : List String := []
-  -- The proposals that failed the paused-Fight check, with the message. The check uses no dice,
-  -- so the same proposal always fails it again.
+  -- The combat keys (`combatKey`) that failed the paused-Fight check, with the message. The check
+  -- uses no dice and reads no Scene, so the same combat rules always fail it again.
   let mut pausedRejected : List (String × String) := []
   let mut supportReviewed := false
   -- The last errors and the number of proposals, for the last step if the budget runs out.
@@ -1068,11 +1091,11 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
           | .error errs => pure (errs, content)
           | .ok prepared =>
             gift := some (proposal.equipment, proposal.requestedRules)
-            let signature := reprStr (proposal.equipment, proposal.requestedRules, proposal.rules, proposal.scenes)
+            let signature := proposalKey proposal
             if validated.contains signature then
               pure (["This proposal already failed validation. Make an actual revision; do not ask for new dice."], content)
-            else if let some (_, message) := pausedRejected.find? (·.1 == signature) then
-              pure (["This proposal already failed the paused-Fight check. Make an actual revision.", message], content)
+            else if let some (_, message) := pausedRejected.find? (·.1 == combatKey proposal) then
+              pure (["These counter-rules already failed the paused-Fight check. Scene changes do not change this check. Revise the counter-rules.", message], content)
             else
               let index := (← ref.get).changeChecks
               let delta := Probability.attemptRisk index
@@ -1084,21 +1107,20 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                   pure (some prepared)
                 else do
                   if !(← addStep ref job { text := "Balancing the counter-rule while keeping your requested mechanic..." }) then pure none
-                  else tuneChange ref job prepared delta (validated ++ pausedRejected.map (·.1)) map
+                  else tuneChange ref job prepared delta validated (pausedRejected.map (·.1)) map
               match picked with
               | none =>
                 pure (Probability.failedRows prepared.candidate.horizon screen delta prepared.candidate.elapsed
                   prepared.candidate.policy, content)
               | some prepared =>
-                let signature := reprStr (prepared.proposal.equipment, prepared.proposal.requestedRules,
-                  prepared.proposal.rules, prepared.proposal.scenes)
+                let signature := proposalKey prepared.proposal
                 -- Check the paused Fight before a validation is spent: this check uses no samples.
                 -- The step also stops here if the Player cancelled during tuning.
                 if prepared.game.phase matches .fight _ then
                   if !(← addStep ref job { text := "Checking that the paused Fight still ends..." }) then return
                 match prepared.checkPaused with
                 | .error message =>
-                  pausedRejected := (signature, message) :: pausedRejected
+                  pausedRejected := (combatKey prepared.proposal, message) :: pausedRejected
                   pure ([message, "The checked counter-rules were: " ++
                     (toJson (prepared.proposal.rules.map WorldChange.ruleJson)).compress], content)
                 | .ok checkpoint =>

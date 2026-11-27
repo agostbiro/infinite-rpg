@@ -100,8 +100,10 @@ on Lafayette uses about 610 MB.
   shows one that brings a rejected Fight under the limit. The server runs this check before it
   spends a validation batch (`Prepared.checkPaused`), so a proposal that this check rejects
   spends no part of the error allowance. A proposal that reaches the validation batch spends its
-  part, also if it then fails. The check uses no dice, so the server remembers each proposal that failed it.
-  It does not check that proposal again, and the tuning of the counter-rules skips it. If the
+  part, also if it then fails. The check uses no dice and reads no Scene, so the server
+  remembers the equipment and rules of each proposal that failed it (`combatKey`). It does not
+  check them again, also in a proposal that changes only Scenes, and the tuning of the
+  counter-rules skips them. If the
   change runs out of proposals and the last one failed this check, the last step says so, and
   that the change can be asked for again after the Fight ends (`changeOutOfBudget`).
 
