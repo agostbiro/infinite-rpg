@@ -11,7 +11,8 @@ checker (`CombatWitness.check`) over all entry HPs.
 * `--compare [DIR]` reads files in that form and checks that the exit laws are the same. With no
   `DIR`, it uses `experiments/profile/exit-laws-2d4b8cf`. A missing file is an error, and so is a
   file `fight-N.txt` with no Fight `N`, or a folder with no Fights. `--dump` and `--compare` cannot
-  be used together, so a dump never writes over the files that it is compared with.
+  be used together, so a dump never writes over the files that it is compared with. `--compare`
+  also cannot be used with `--grenadiers` or `--stress`, which compare nothing.
   `experiments/profile/exit-laws-2d4b8cf` holds the exit laws that the solver of commit
   `2d4b8cf` gave, before this program's solver existed. It used the spec round
   (`roundDistribution`) and none of the new code.
@@ -61,6 +62,9 @@ check or a comparison fails. -/
 def main (args : List String) : IO UInt32 := do
   if args.contains "--dump" && args.contains "--compare" then
     IO.eprintln "Use --dump or --compare, not both: a dump writes over the files of a comparison."
+    return 2
+  if args.contains "--compare" && (args.contains "--grenadiers" || args.contains "--stress") then
+    IO.eprintln "--compare checks the Fights of Lafayette: do not use it with --grenadiers or --stress."
     return 2
   if args.contains "--stress" then
     -- Two million entries with distinct values: the merge must not use one stack frame each.

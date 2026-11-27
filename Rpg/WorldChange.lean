@@ -194,27 +194,30 @@ def Prepared.game (p : Prepared) : Game :=
       | .fight f => .fight { f with state := { f.state with hero := { f.state.hero with being := d.hero } } }
       | phase => phase }
 
-/-- Two changes of the same Game with the same equipment and rules give the same rules and the
-same phase, whatever their Scenes. `checkPaused` reads only these two, so it gives both changes
-the same result. -/
-theorem Prepared.game_rules_phase (p q : Prepared)
+/-- Two changes of the same Game with the same equipment have the same phase, and the rules of
+`q` are the rules of `p` with the combat rules of `q`. `checkPaused` reads only the phase and the
+rules. -/
+theorem Prepared.game_same_equipment (p q : Prepared)
     -- Both change the same Game.
     (before : p.before = q.before)
     -- They have the same equipment.
-    (equipment : p.proposal.equipment = q.proposal.equipment)
-    -- They have the same requested rules.
-    (requested : p.proposal.requestedRules = q.proposal.requestedRules)
-    -- They have the same counter-rules.
-    (counter : p.proposal.rules = q.proposal.rules) :
-    -- The rules are the same.
-    p.game.rules = q.game.rules ∧
+    (equipment : p.proposal.equipment = q.proposal.equipment) :
+    -- The rules differ at most in the combat rules.
+    q.game.rules = {p.game.rules with combatRules := q.game.rules.combatRules} ∧
     -- The phase is the same.
-    p.game.phase = q.game.phase := by
+    q.game.phase = p.game.phase := by
   constructor
-  -- The rules come from the Game and the three fields.
-  · simp [Prepared.game, Prepared.definition, Proposal.ruleSet, before, equipment, requested, counter]
+  -- The other fields of the rules come from the Game and the equipment.
+  · simp [Prepared.game, Prepared.definition, Proposal.ruleSet, before, equipment]
   -- The phase comes from the Game and the Character, whose weapon comes from the equipment.
   · simp [Prepared.game, Prepared.definition, before, equipment]
+
+/-- The combat rules of a change: the rules of the Game, then the requested rules, then the
+counter-rules. -/
+theorem Prepared.game_combatRules (p : Prepared) :
+    p.game.rules.combatRules =
+      p.before.rules.combatRules ++ (p.proposal.requestedRules ++ p.proposal.rules) := by
+  simp [Prepared.game, Prepared.definition, Proposal.ruleSet]
 
 /-- State preservation does not depend on the GM following its prompt. -/
 theorem Prepared.preserves_checkpoint (p : Prepared) :
@@ -381,18 +384,42 @@ theorem Proposal.prepare_before {p : Proposal} {g : Game} {map : Option WorldEnv
   -- Each failed check gives an error, not `q`.
   all_goals first | (cases h; rfl) | cases h
 
+/-- A checkpoint for rules `r` and phase `ph` is one for combat rules `B` too, if `B` has the
+effects of the rules of `r` in some order (`CertifiedContinuation.withEffects`). -/
+def transferCheckpoint (r : RuleSet) (B : List CombatRule)
+    -- The effects of `B` are the effects of the rules of `r` in some order.
+    (h : (r.combatRules.map CombatRule.effect).Perm (B.map CombatRule.effect)) :
+    (ph : Phase) → (match ph with
+      | .fight f => CertifiedContinuation r f
+      | _ => Unit) → (match ph with
+      | .fight f => CertifiedContinuation {r with combatRules := B} f
+      | _ => Unit)
+  | .fight _, c => c.withEffects B h
+  | .title, c => c
+  | .scene _, c => c
+  | .ended _, c => c
+  | .dead _, c => c
+
 /-- The checkpoint of `p` as a checkpoint of `q`, if both change the same Game with the same
-equipment and rules. Then the two have the same paused point (`game_rules_phase`), so the server
-can reuse a passed check when a revision changes only Scenes. Otherwise it gives `none`. -/
+equipment, and their requested rules and counter-rules have the same effects in some order. Names,
+descriptions and the order of the rules do not change the paused Fight's check
+(`CertifiedContinuation.withEffects`). Otherwise it gives `none`. -/
 def Prepared.reuseCheckpoint (p q : Prepared)
     -- Both change the same Game.
     (before : p.before = q.before)
     (c : p.Checkpoint) : Option q.Checkpoint :=
   if same : p.proposal.equipment = q.proposal.equipment ∧
-      p.proposal.requestedRules = q.proposal.requestedRules ∧
-      p.proposal.rules = q.proposal.rules then
-    have both := p.game_rules_phase q before same.1 same.2.1 same.2.2
-    some (cast (by simp only [Prepared.Checkpoint, both.1, both.2]) c)
+      ((p.proposal.requestedRules ++ p.proposal.rules).map CombatRule.effect).isPerm
+        ((q.proposal.requestedRules ++ q.proposal.rules).map CombatRule.effect) = true then
+    have both := p.game_same_equipment q before same.1
+    have perm : (p.game.rules.combatRules.map CombatRule.effect).Perm
+        (q.game.rules.combatRules.map CombatRule.effect) := by
+      have effects := List.isPerm_iff.mp same.2
+      rw [p.game_combatRules, q.game_combatRules, ← before]
+      simp only [List.map_append] at effects ⊢
+      exact effects.append_left _
+    some (cast (by unfold Prepared.Checkpoint; rw [both.2, ← both.1])
+      (transferCheckpoint p.game.rules q.game.rules.combatRules perm p.game.phase c))
   else none
 
 /-- Validate one frozen proposal with a fresh, preassigned batch and an already checked paused

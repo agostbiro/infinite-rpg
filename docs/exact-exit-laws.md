@@ -109,14 +109,15 @@ on Lafayette uses about 610 MB.
   shows one that brings a rejected Fight under the limit. The server runs this check before it
   spends a validation batch (`Prepared.checkPaused`), so a proposal that this check rejects
   spends no part of the error allowance. A proposal that reaches the validation batch spends its
-  part, also if it then fails. The check uses no dice, reads no Scene, and reads no name or
-  description of a rule, so the server remembers the equipment and the side, trigger and numbers
-  of the rules of each proposal that failed it (`combatKey`). It does not check them again, also
-  in a proposal that changes only Scenes or the wording of a rule, and the tuning of the
-  counter-rules skips them. The server also keeps each paused Fight that passed the check. A later
-  proposal with the same equipment and rules reuses it (`Prepared.reuseCheckpoint`), and gets a
-  fresh validation batch. `Prepared.game_rules_phase` proves that the two proposals have the same
-  paused point. If the
+  part, also if it then fails. The check uses no dice and reads no Scene. It also reads no name
+  or description of a rule, and not the order of the rules: `CertifiedContinuation.withEffects`
+  proves that a checked paused Fight stays checked for rules with the same effects in any order
+  (`CombatRule.effect`: a rule without its name and description). So the server remembers the
+  equipment and the sorted rule effects of each proposal that failed the check (`combatKey`). It
+  does not check them again, also in a proposal that changes only Scenes or the wording or order
+  of the rules, and the tuning of the counter-rules skips them. The server also keeps each paused
+  Fight that passed the check. A later proposal with the same equipment and rule effects reuses it
+  (`Prepared.reuseCheckpoint`, which the kernel checks), and gets a fresh validation batch. If the
   change runs out of proposals and the last one failed this check, the last step says so, and
   that the change can be asked for again after the Fight ends (`changeOutOfBudget`).
 

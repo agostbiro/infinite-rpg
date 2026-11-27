@@ -878,16 +878,13 @@ it to skip a proposal that already failed validation. -/
 def proposalKey (p : WorldChange.Proposal) : String :=
   reprStr (p.equipment, p.requestedRules, p.rules, p.scenes)
 
-/-- The parts of a combat rule that change a Fight: its side, its trigger and its three numbers.
-`CombatRule.active` and `injuryDistribution` read only these, not the name or the description. -/
-def combatFields (r : CombatRule) : CombatSide × CombatTrigger × Int × Int × Nat :=
-  (r.side, r.trigger, r.hitBonus, r.damageBonus, r.armorBonus)
-
-/-- The text that names the combat part of a proposal: its equipment and the `combatFields` of its
-rules. It leaves out the Scenes and the wording of the rules. The paused-Fight check reads only
-this part, so proposals with the same key get the same result. -/
+/-- The text that names the combat part of a proposal: its equipment, and the effects of its
+requested rules and counter-rules (`CombatRule.effect`), sorted. It leaves out the Scenes, the
+wording of the rules and their order. `CertifiedContinuation.withEffects` proves that the paused
+Fight's check does not read these, so proposals with the same key get the same result. -/
 def combatKey (p : WorldChange.Proposal) : String :=
-  reprStr (p.equipment, p.requestedRules.map combatFields, p.rules.map combatFields)
+  let effects := (p.requestedRules ++ p.rules).map fun r => reprStr r.effect
+  reprStr (p.equipment, effects.mergeSort fun a b => decide (a ≤ b))
 
 /-- A proposal with no equipment, no rules and no Scenes, for the tests below. -/
 private def emptyProposal : WorldChange.Proposal :=
@@ -911,9 +908,15 @@ private def armorProposal (name : String) (armor : Nat) : WorldChange.Proposal :
 #guard combatKey (armorProposal "Shell" 2) == combatKey (armorProposal "Hard Shell" 2)
 #guard proposalKey (armorProposal "Shell" 2) != proposalKey (armorProposal "Hard Shell" 2)
 #guard combatKey (armorProposal "Shell" 2) != combatKey (armorProposal "Shell" 3)
+-- The order of the rules does not change the combat key, but a second copy of a rule does.
+#guard
+  let two := {emptyProposal with rules := (armorProposal "A" 2).rules ++ (armorProposal "B" 3).rules}
+  combatKey two == combatKey {two with rules := two.rules.reverse} &&
+    combatKey two != combatKey {two with rules := two.rules ++ (armorProposal "C" 3).rules}
 
 /-- A paused-Fight check that passed during a live change of Game `g`. The server keeps it, so a
-revision that changes only Scenes does not run the check again. -/
+revision that changes only Scenes, or the wording or order of the rules, does not run the check
+again. -/
 structure PassedPause (g : Game) where
   /-- The change that passed the check. -/
   prepared : WorldChange.Prepared
@@ -1124,7 +1127,7 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
             if validated.contains signature then
               pure (["This proposal already failed validation. Make an actual revision; do not ask for new dice."], content)
             else if let some (_, message) := pausedRejected.find? (·.1 == combatKey proposal) then
-              pure (["These counter-rules already failed the paused-Fight check. Scene changes and new names or descriptions do not change this check. Revise the numbers, triggers or sides of the counter-rules.", message], content)
+              pure (["These counter-rules already failed the paused-Fight check. Scene changes, new names or descriptions, and a new order of the rules do not change this check. Revise the numbers, triggers or sides of the counter-rules.", message], content)
             else
               let index := (← ref.get).changeChecks
               let delta := Probability.attemptRisk index
@@ -1147,7 +1150,7 @@ def generateChange (cfg : GameConfig) (children : Children) (ref : IO.Ref Server
                   prepared.candidate.policy, content)
               | some ⟨prepared, same⟩ =>
                 let signature := proposalKey prepared.proposal
-                -- A passed check with the same equipment and rules has the same paused point.
+                -- A passed check with the same equipment and rule effects is reused.
                 let reused := pausedPassed.findSome? fun c =>
                   c.prepared.reuseCheckpoint prepared (c.same.trans same.symm) c.checkpoint
                 -- Check the paused Fight before a validation is spent: this check uses no samples.

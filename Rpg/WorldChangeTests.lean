@@ -322,6 +322,11 @@ private def newText : Proposal :=
   { proposal with scenes := (fightGame.adventure.scenes.getLast?.map fun sc =>
       { sc with text := sc.text ++ " The road is quiet again." }).toList }
 
+/-- `proposal` with new names and descriptions of its counter-rules, in the other order. -/
+private def reworded : Proposal :=
+  { proposal with rules := (proposal.rules.map fun r =>
+      { r with name := r.name ++ " Again", description := "New words: " ++ r.description }).reverse }
+
 -- A passed paused-Fight check is reused by a change that differs only in a Scene, and not by a
 -- change with other counter-rules.
 #guard match hp : proposal.prepare fightGame,
@@ -336,5 +341,15 @@ private def newText : Proposal :=
         c).isNone
     | .error _ => false
   | _, _, _ => false
+
+-- A passed paused-Fight check is also reused by a change that rewords its counter-rules and puts
+-- them in another order.
+#guard match hp : proposal.prepare fightGame, hr : reworded.prepare fightGame with
+  | .ok p, .ok q => match p.checkPaused with
+    | .ok c => reworded.rules != proposal.rules &&
+      (p.reuseCheckpoint q ((Proposal.prepare_before hp).trans (Proposal.prepare_before hr).symm)
+        c).isSome
+    | .error _ => false
+  | _, _ => false
 
 end Rpg.WorldChange.Tests

@@ -582,4 +582,103 @@ theorem fastStep_valid (rules : RuleSet) (order : List Actor) (s : FightState) :
   -- One round.
   · exact fastRound_valid rules order s
 
+/-! ## The wording and the order of the combat rules do not matter
+
+The fast round reads a combat rule only through its side, its trigger and its three numbers, and
+it adds the numbers of the rules that are active. So two lists of rules with the same effects, in
+any order, give the same round. The server uses this to reuse a checked paused Fight. -/
+
+/-- The effect of a combat rule: the rule with no name and no description. -/
+def _root_.Rpg.CombatRule.effect (r : CombatRule) : CombatRule :=
+  {name := "", description := "", side := r.side, trigger := r.trigger,
+   hitBonus := r.hitBonus, damageBonus := r.damageBonus, armorBonus := r.armorBonus}
+
+/-- Two lists of integers in a different order have the same sum. -/
+theorem perm_sum_int {a b : List Int}
+    -- `b` is `a` in another order.
+    (h : a.Perm b) :
+    a.sum = b.sum := by
+  induction h with
+  -- Two empty lists.
+  | nil => rfl
+  -- The same first item.
+  | cons x _ ih => simp [ih]
+  -- The first two items change places.
+  | swap x y l => simp; omega
+  -- Two steps of reordering.
+  | trans _ _ ih1 ih2 => exact ih1.trans ih2
+
+/-- If two lists of rules have the same effects in some order, then a filter and a map that read
+only the effect give the same items in some order. -/
+theorem map_filter_perm {β : Type} {A B : List CombatRule}
+    -- The effects of `B` are the effects of `A` in some order.
+    (h : (A.map CombatRule.effect).Perm (B.map CombatRule.effect))
+    (P : CombatRule → Bool) (g : CombatRule → β)
+    -- `P` reads only the effect.
+    (hP : ∀ x, P x.effect = P x)
+    -- `g` reads only the effect.
+    (hg : ∀ x, g x.effect = g x) :
+    ((A.filter P).map g).Perm ((B.filter P).map g) := by
+  have onEffects (L : List CombatRule) :
+      (L.filter P).map g = ((L.map CombatRule.effect).filter P).map g := by
+    rw [List.filter_map, List.map_map]
+    have e1 : P ∘ CombatRule.effect = P := funext hP
+    have e2 : g ∘ CombatRule.effect = g := funext hg
+    rw [e1, e2]
+  rw [onEffects A, onEffects B]
+  exact (h.filter P).map g
+
+/-- The injury of an attack is the same with combat rules `B` as with the rules of `r`, if `B` has
+the same effects in some order. -/
+theorem injuryDistribution_effects (r : RuleSet) (B : List CombatRule)
+    -- The effects of `B` are the effects of the rules of `r` in some order.
+    (h : (r.combatRules.map CombatRule.effect).Perm (B.map CombatRule.effect))
+    (a : Actor) (att : Fighter) (b : Actor) (dfn : Fighter) :
+    injuryDistribution {r with combatRules := B} a att b dfn = injuryDistribution r a att b dfn := by
+  have hit := perm_sum_int (map_filter_perm h
+    (fun x => x.active r a att dfn && (x.hitBonus != 0 || x.damageBonus != 0)) (·.hitBonus)
+    (fun _ => rfl) (fun _ => rfl))
+  have dmg := perm_sum_int (map_filter_perm h
+    (fun x => x.active r a att dfn && (x.hitBonus != 0 || x.damageBonus != 0)) (·.damageBonus)
+    (fun _ => rfl) (fun _ => rfl))
+  have arm := (map_filter_perm h
+    (fun x => x.active r b dfn att && decide (x.armorBonus > 0)) (·.armorBonus)
+    (fun _ => rfl) (fun _ => rfl)).sum_nat
+  -- A rule reads only the HP limit of the rules, which the two rule sets share.
+  have same (x : CombatRule) (i : Actor) (f g : Fighter) :
+      x.active {r with combatRules := B} i f g = x.active r i f g := rfl
+  simp only [injuryDistribution, same]
+  rw [← hit, ← dmg, ← arm]
+  rfl
+
+/-- The fast attack is the same with combat rules `B`, if `B` has the effects of the rules of `r`
+in some order. -/
+theorem fastAttack_effects (r : RuleSet) (B : List CombatRule)
+    -- The effects of `B` are the effects of the rules of `r` in some order.
+    (h : (r.combatRules.map CombatRule.effect).Perm (B.map CombatRule.effect)) :
+    fastAttack {r with combatRules := B} = fastAttack r := by
+  funext a att b dfn
+  simp only [fastAttack, injuryDistribution_effects r B h]
+
+/-- The turns of the Creatures are the same with combat rules `B`, as for `fastAttack_effects`. -/
+theorem fastFoes_effects (r : RuleSet) (B : List CombatRule)
+    -- The effects of `B` are the effects of the rules of `r` in some order.
+    (h : (r.combatRules.map CombatRule.effect).Perm (B.map CombatRule.effect)) :
+    fastFoes {r with combatRules := B} = fastFoes r := by
+  funext s actors
+  induction actors generalizing s with
+  -- No turns.
+  | nil => rfl
+  -- One turn, then the rest.
+  | cons a rest ih => simp only [fastFoes, fastAttack_effects r B h, ih]
+
+/-- One fast round is the same with combat rules `B`, as for `fastAttack_effects`. -/
+theorem fastStep_effects (r : RuleSet) (B : List CombatRule)
+    -- The effects of `B` are the effects of the rules of `r` in some order.
+    (h : (r.combatRules.map CombatRule.effect).Perm (B.map CombatRule.effect))
+    (order : List Actor) :
+    fastStep {r with combatRules := B} order = fastStep r order := by
+  funext s
+  simp only [fastStep, fastRound, fastFoes_effects r B h, fastAttack_effects r B h]
+
 end Rpg.Probability

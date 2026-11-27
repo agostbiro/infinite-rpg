@@ -230,4 +230,26 @@ theorem CertifiedContinuation.ends_almostSurely {rules : RuleSet} {f : FightPhas
     (c : CertifiedContinuation rules f) : (continuationProcess rules f).AlmostSurelyTerminates none :=
   ((fastContinuation_sameOdds rules f).almostSurely_iff none).mp (c.stopping.almostSure none trivial)
 
+/-- A checked paused Fight stays checked with combat rules `B`, if `B` has the effects of the
+rules of `r` in some order. The witness is the same: `fastStep_effects` shows that the rounds it
+was checked against are the same. -/
+def CertifiedContinuation.withEffects {r : RuleSet} {f : FightPhase}
+    (c : CertifiedContinuation r f) (B : List CombatRule)
+    -- The effects of `B` are the effects of the rules of `r` in some order.
+    (h : (r.combatRules.map CombatRule.effect).Perm (B.map CombatRule.effect)) :
+    CertifiedContinuation {r with combatRules := B} f where
+  witness := c.witness
+  starts := by
+    have same : fastRemaining {r with combatRules := B} f.order f.state =
+        fastRemaining r f.order f.state := by
+      simp only [fastRemaining, fastFoes_effects r B h, fastAttack_effects r B h]
+    rw [same]
+    exact c.starts
+  rows s hs := by
+    have same : (fastProcess {r with combatRules := B} f.order).step =
+        (fastProcess r f.order).step := fastStep_effects r B h f.order
+    unfold CombatWitness.RowValid
+    rw [same]
+    exact c.rows s hs
+
 end Rpg.Probability
