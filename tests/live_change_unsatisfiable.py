@@ -9,6 +9,10 @@ fresh server on its own port, starts the built-in Adventure, and asks for a chan
 - the game is unchanged,
 - the Player can play on, and can ask again ("Try again", then Cancel).
 
+One case asks for the change during a Fight that is too large to check with the change. It also
+checks that the server checks the paused Fight only once, spends no validation batch, and names the
+paused Fight as the cause in the last step.
+
 A last case does the same for a Wish whose replies never parse.
 
 The cases run at the same time, each with its own server on its own port.
@@ -175,6 +179,21 @@ CASES = [
      {"change": stream(json.dumps(UNKILLABLE))}, "failed", "time limit of 2 seconds", None, MAX_CALLS, 2000),
 ]
 
+# The Choices from the start, with seed 7, that lead to the Fight against Grenadier 1 and 2.
+TWO_GRENADIERS = (1, 0, 0)
+# A flamethrower grant that passes the balance check (the last reply of the integration test).
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fake-api", "change-3.sse")) as f:
+    FLAMETHROWER = f.read()
+# Each case: the same fields as CASES, then the Choices that lead to the paused Fight.
+PAUSED_CASES = [
+    ("a flamethrower during a Fight against two Grenadiers, every time",
+     {"change": FLAMETHROWER}, "failed", "The paused Fight could not be checked with the last one",
+     "The paused Fight against Grenadier 1 and Grenadier 2 is over the solver's budget", MAX_CALLS, None,
+     TWO_GRENADIERS),
+]
+PAUSED_CHECK = "Checking that the paused Fight still ends"
+VALIDATION = "Checking a fresh validation batch"
+
 
 def proposals(view):
     """The highest proposal number in the steps of a change."""
@@ -182,8 +201,10 @@ def proposals(view):
     return max(numbers, default=0)
 
 
-def run_change_case(port, name, files, state, text, error, most, limit_ms):
-    """Run one case of CASES on a fresh server on `port`."""
+def run_change_case(port, name, files, state, text, error, most, limit_ms, path=()):
+    """Run one case of CASES on a fresh server on `port`. With `path`, make the Choices in `path`
+    first, so that the change comes during a Fight, and check that the paused Fight was checked
+    only once and that no validation batch was spent."""
     with tempfile.TemporaryDirectory() as folder:
         for fixture, body in files.items():
             with open(os.path.join(folder, fixture + ".sse"), "w") as f:
@@ -192,6 +213,10 @@ def run_change_case(port, name, files, state, text, error, most, limit_ms):
             base = server.base
             code, before = request("/api/input", "begin", base)
             assert code == 200 and before["canChange"], (name, before.get("error"))
+            for choice in path:
+                code, before = request("/api/input", before["inputs"][choice], base)
+                assert code == 200, name
+            assert not path or (before["phase"] == "fight" and before["canChange"]), (name, before["phase"])
             code, working = request("/api/change", {"wish": "Make me unkillable"}, base)
             assert code == 200 and working["generation"]["state"] == "running", name
             # Each proposal waits 1.5 seconds for its recorded reply, so 6 proposals take about 10.
@@ -209,6 +234,10 @@ def run_change_case(port, name, files, state, text, error, most, limit_ms):
             assert state == "refused" or "unchanged" in last, (name, last)
             assert 1 <= proposals(view) <= most, (name, proposals(view))
             assert checkpoint(view) == checkpoint(before), f"{name}: the game changed"
+            if path:
+                texts = [s["text"] for s in gen["steps"]]
+                assert sum(PAUSED_CHECK in t for t in texts) == 1, (name, texts)
+                assert not any(VALIDATION in t for t in texts), (name, texts)
 
             # The Player can play on. The failed change stays on screen until Dismiss.
             code, moved = request("/api/input", before["inputs"][0], base)
@@ -248,9 +277,10 @@ def main():
     assert os.path.exists(BINARY), "Build first: lake build rpg"
     # Each case waits for recorded replies most of the time, so the cases run at the same time.
     # Each one has its own server and port, and no case reads the state of another.
+    cases = CASES + PAUSED_CASES
     jobs = [(case[0], lambda port=PORT + i, case=case: run_change_case(port, *case))
-            for i, case in enumerate(CASES)]
-    jobs.append(("a Wish whose replies never parse", lambda port=PORT + len(CASES): run_wish_case(port)))
+            for i, case in enumerate(cases)]
+    jobs.append(("a Wish whose replies never parse", lambda port=PORT + len(cases): run_wish_case(port)))
     with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
         futures = [(name, pool.submit(job)) for name, job in jobs]
     failures = [(name, f.exception()) for name, f in futures if f.exception() is not None]
