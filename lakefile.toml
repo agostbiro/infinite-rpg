@@ -24,7 +24,8 @@ root = "Cheats"
 name = "validate"
 root = "Validate"
 
-# Runs the slow combat check on the built-in Adventure. Run: make certify
+# Runs the combat check on the built-in Adventure: the value behind `admitted_combats` and the
+# exit-law statements. Run: make certify
 [[lean_exe]]
 name = "certify"
 root = "Certify"
@@ -58,3 +59,11 @@ root = "ChangeCheck"
 [[lean_exe]]
 name = "balance-study"
 root = "BalanceStudy"
+
+# Times the combat solver and its checker on each Fight of the built-in Adventure.
+# Run: lake exe profile-combat. Add --compare experiments/profile/exit-laws-2d4b8cf to check the
+# exit laws against the ones that commit 2d4b8cf gave.
+[[lean_exe]]
+name = "profile-combat"
+srcDir = "experiments/profile"
+root = "ProfileCombat"

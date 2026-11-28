@@ -1,5 +1,8 @@
 import Rpg.Engine
 import Rpg.Probability.Distribution
+import Std.Data.HashMap.Basic
+import Std.Data.HashSet.Basic
+import Rpg.Probability.Parallel
 
 /-!
 # Exact Fight odds
@@ -9,16 +12,18 @@ independently verifies them before the graph or admission trusts them. It uses t
 functions as play (`attackWith`, `heroTurnWith`, `foeTurnsWith`), in the same turn order
 (`beforeCharacter`, then the Character, then `afterCharacter`), with exact dice odds.
 
-The model's Player is `heroPolicy`: on each turn it picks Attack, All-Out Attack, or
-All-Out Defense, each with chance 1/3. If the maneuver attacks, it picks a living Creature,
-each with the same chance. Creatures always Attack.
+The model's Player is `heroPolicy`: on each turn it picks a maneuver from `maneuverMenu`
+(Attack, All-Out Attack, All-Out Defense), each with the same chance. If the maneuver attacks, it
+picks a living Creature, each with the same chance. Creatures always Attack.
 
 A round can take HP, or it can leave all HP the same. The Engine never adds HP. So the solver
 works on a **group**: every state that rounds can reach from a state without any HP loss.
 States in a group differ only in the Character's last maneuver, so a group has at most 3 states.
 The solver writes one linear equation for each state in the group, and solves them exactly.
-Every way out of the group loses HP, so the solver calls itself on states with less total HP.
-A group that never loses HP is a Fight that never ends (`stalled`).
+Every way out of the group loses HP, so a group needs only the answers of states with less
+total HP. `solveCombatAnswer` calls itself on those states. `solveFight` solves all groups of
+one total HP at the same time, from low HP to high. A group that never loses HP is a Fight that
+never ends (`stalled`).
 -/
 namespace Rpg.Probability
 
@@ -45,8 +50,8 @@ def attackDistribution (rules : RuleSet) : AttackFn Distribution :=
 def livingTargets (s : FightState) : List Nat :=
   s.livingFoes
 
-/-- The model's Player: each maneuver with chance 1/3, then a living target with equal chances
-if the maneuver attacks. A maneuver with no attack has no target, so it uses 0. -/
+/-- The model's Player: each maneuver of `maneuverMenu` with the same chance, then a living
+target with equal chances if the maneuver attacks. A maneuver with no attack has no target, so it uses 0. -/
 def heroPolicy (s : FightState) : Distribution (Maneuver × Nat) :=
   (uniform maneuverMenu).bind fun m =>
     if m.attacks then (uniform (livingTargets s)).bind fun t => pure (m, t)
@@ -93,6 +98,11 @@ abbrev Weighted := List (CombatResult × Rat)
 def Weighted.scale (c : Rat) (w : Weighted) : Weighted :=
   w.map fun (x, p) => (x, c * p)
 
+/-- Add `c` times the weights of `v` to `w`, and merge equal results. A Fight has few results,
+so the lists stay short. -/
+def Weighted.addScaled (w : Weighted) (c : Rat) (v : Weighted) : Weighted :=
+  v.foldl (fun acc (x, p) => addWeight x (c * p) acc) w
+
 /-- Solve the linear system `m · x = b` by Gauss-Jordan elimination. Each `x` and `b` is a list of
 weighted results. `m` must have an inverse. Rows with no pivot keep their `b`. -/
 def solveLinear (m : Array (Array Rat)) (b : Array Weighted) : Array Weighted := Id.run do
@@ -115,7 +125,7 @@ def solveLinear (m : Array (Array Rat)) (b : Array Weighted) : Array Weighted :=
       if r != k && f != 0 then
         let row := m[k]!
         m := m.set! r ((Array.range n).map fun j => m[r]![j]! - f * row[j]!)
-        b := b.set! r (b[r]! ++ b[k]!.scale (-f))
+        b := b.set! r (b[r]!.addScaled (-f) b[k]!)
   return b
 
 /-- The results of each state in a group.
@@ -150,23 +160,45 @@ structure CombatAnswer where
   outcomes : Distribution CombatResult
   rounds : Rat
 
-abbrev CombatCache := List (FightState × CombatAnswer)
+/-- A small number for a maneuver. -/
+def _root_.Rpg.Maneuver.index : Maneuver → Nat
+  | .attack => 0
+  | .allOutAttack => 1
+  | .allOutDefense => 2
+
+/-- A number made from the HP and the last maneuver of a Fighter. -/
+def fighterCode (f : Fighter) : Nat :=
+  ((f.hp + 512).toNat % 1024) * 4 + f.maneuver.index
+
+/-- A number made from the HP and the last maneuver of each Fighter, used to sort states.
+Equal states get equal numbers. Different states can get the same number. -/
+def stateKey (s : FightState) : Nat :=
+  s.foes.foldl (fun acc f => acc * 4096 + fighterCode f) (fighterCode s.hero)
+
+/-- The hash of a state mixes the code of each Fighter, so that no Fighter is lost when a Fight
+has many Creatures. -/
+instance : Hashable FightState :=
+  ⟨fun s => s.foes.foldl (fun h f => mixHash h (hash (fighterCode f))) (hash (fighterCode s.hero))⟩
+
+/-- The solved states, with their answers. -/
+abbrev CombatCache := Std.HashMap FightState CombatAnswer
 
 /-- Reuse the elimination algorithm for a single scalar coordinate. The marker is
 only a coordinate label; these weights are not a probability distribution. -/
 def solveScalar (m : Array (Array Rat)) (b : Array Rat) : Array Rat :=
   (solveLinear m (b.map fun x => [(CombatResult.died, x)])).map fun row => (row.map Prod.snd).sum
 
-/-- Generate candidate answers by HP recursion and three-state elimination.
-Correctness of this producer is not trusted by the certificate checker. -/
-def solveCombatAnswer (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
-    (order : List Actor) (s : FightState) : StateM CombatCache CombatAnswer := do
-  if !s.hero.alive then return ⟨pure .died, 0⟩
-  if s.foes.all (!·.alive) then return ⟨pure (.won s.hero.hp), 0⟩
-  if let some entry := (← get).find? (fun e => decide (e.1 = s)) then
-    return entry.2
-  let group := maneuverStates s
-  let rounds := group.map (roundDistribution rules policy order)
+/-- The answer that the solver knows for `w`: an ended Fight has its result, and a state with
+no answer in `cache` gets `stalled`. -/
+def knownAnswer (cache : CombatCache) (w : FightState) : CombatAnswer :=
+  if !w.hero.alive then ⟨pure .died, 0⟩
+  else if w.foes.all (!·.alive) then ⟨pure (.won w.hero.hp), 0⟩
+  else cache.getD w ⟨pure .stalled, 0⟩
+
+/-- Solve one group. `rounds` are the rounds of the states of `group`, in the same order.
+`exitAnswer` gives the answer of each state outside the group that a round can reach. -/
+def groupAnswers (group : List FightState) (rounds : List (Distribution FightState))
+    (exitAnswer : FightState → CombatAnswer) : List CombatAnswer := Id.run do
   let mut exits : Array Weighted := #[]
   let mut costs : Array Rat := #[]
   for d in rounds do
@@ -174,11 +206,8 @@ def solveCombatAnswer (rules : RuleSet) (policy : FightState → Distribution (M
     let mut cost : Rat := 1
     for (w, p) in d.entries do
       if p ≠ 0 ∧ w ∉ group then
-        -- A malformed transition can produce a candidate, but cannot pass the
-        -- independently checked closure and expected-duration inequalities.
-        let r ← if _h : livingHP w < livingHP s then solveCombatAnswer rules policy order w
-          else pure ⟨pure .stalled, 0⟩
-        acc := acc ++ r.outcomes.entries.map fun (o, q) => (o, p * q)
+        let r := exitAnswer w
+        acc := acc.addScaled p r.outcomes.entries
         cost := cost + p * r.rounds
     exits := exits.push acc
     costs := costs.push cost
@@ -195,17 +224,208 @@ def solveCombatAnswer (rules : RuleSet) (policy : FightState → Distribution (M
   let matrix := (Array.range n).map fun i => (Array.range n).map fun j =>
     (if i = j then 1 else 0) - stay i j
   let budgets := solveScalar matrix costs
-  let solutions := answers.zip budgets.toList |>.map fun (outcomes, rounds) => ({outcomes, rounds} : CombatAnswer)
+  return answers.zip budgets.toList |>.map fun (outcomes, rounds) => ({outcomes, rounds} : CombatAnswer)
+
+/-- Generate candidate answers by HP recursion and three-state elimination. `round` gives the
+odds of one round. Correctness of this producer is not trusted by the certificate checker. -/
+def solveCombatAnswer (round : FightState → Distribution FightState) (s : FightState) :
+    StateM CombatCache CombatAnswer := do
+  if !s.hero.alive then return ⟨pure .died, 0⟩
+  if s.foes.all (!·.alive) then return ⟨pure (.won s.hero.hp), 0⟩
+  if let some answer := (← get)[s]? then
+    return answer
+  let group := maneuverStates s
+  let rounds := group.map round
+  for d in rounds do
+    for (w, p) in d.entries do
+      if p ≠ 0 ∧ w ∉ group then
+        -- A malformed transition can produce a candidate, but cannot pass the
+        -- independently checked closure and expected-duration inequalities.
+        if _h : livingHP w < livingHP s then
+          discard <| solveCombatAnswer round w
+  let cache ← get
+  let solutions := groupAnswers group rounds fun w =>
+    if livingHP w < livingHP s then knownAnswer cache w else ⟨pure .stalled, 0⟩
   for (u, a) in group.zip solutions do
-    modify ((u, a) :: ·)
+    modify (·.insert u a)
   return solutions.headD ⟨pure .stalled, 0⟩
 termination_by livingHP s
+
+/-- The state that names the group of `s`: the same state, with the Character's last maneuver
+set to Attack. -/
+def groupName (s : FightState) : FightState :=
+  {s with hero := {s.hero with maneuver := .attack}}
+
+/-- Limits on the work of `solveFight`: above a limit, it returns no answers and the check fails.
+Only `entries` is tested after a batch, so one batch can go above it. With `limited` false, the
+solver ignores all limits. -/
+structure SolveBudget where
+  /-- If false, the solver does not give up at any limit. The spec odds use this. -/
+  limited : Bool := true
+  /-- The most states that the solver solves. -/
+  states : Nat := 60000
+  /-- The most round results that the solver keeps in memory at one time. -/
+  entries : Nat := 1500000
+  /-- The most results that one round may make before they are merged, by the bound that the
+  solver gets. A larger round is not computed. A Fight with such rounds could do at most 50 of
+  them within `work`, too few to finish. -/
+  roundEntries : Nat := 200000
+  /-- The most results, by the bound, of the rounds that the solver computes at the same time. -/
+  batchEntries : Nat := 1000000
+  /-- The most results, by the bound, of all the rounds that the solver computes. It stops a
+  large Fight after a small part of its work. -/
+  work : Nat := 10000000
+
+/-- A budget with no limits, so the solver never gives up because a Fight is large. No proof says
+that the check then passes for every Fight that ends. -/
+def SolveBudget.unlimited : SolveBudget := {limited := false}
+
+/-- True if the solver is over `budget` with `states` states, `kept` round results in memory and
+`work` results of all rounds. It is always false for an unlimited budget. -/
+def SolveBudget.over (budget : SolveBudget) (states kept work : Nat) : Bool :=
+  budget.limited && (states > budget.states || kept > budget.entries || work > budget.work)
+
+/-- Split `xs` into batches, in order. A batch has at most `count` items, and the sum of `cost`
+over a batch is at most `limit`, unless the batch has only one item. -/
+def batchesBy (cost : α → Nat) (limit count : Nat) (xs : List α) : List (List α) :=
+  let (done, current, _) := xs.foldl (fun (done, current, total) x =>
+    let c := cost x
+    if !current.isEmpty && (total + c > limit || current.length ≥ count) then
+      (current.reverse :: done, [x], c)
+    else (done, x :: current, total + c)) ([], [], 0)
+  (if current.isEmpty then done else current.reverse :: done).reverse
+
+/-- The batches in which `solveFight` computes the rounds of the groups in `frontier`, each
+state with its bound by `size`. For a limited budget, it is `none` if one bound is above
+`budget.roundEntries` or `budget.batchEntries`. Each item is one state, not one group, so the
+bounds in a batch add up to at most `budget.batchEntries`. -/
+def planRounds (size : FightState → Nat) (budget : SolveBudget) (frontier : List FightState) :
+    Option (List (List (FightState × Nat))) :=
+  let states := frontier.flatMap maneuverStates
+  let sized := states.zip (parallelMap size states)
+  if budget.limited && sized.any (·.2 > min budget.roundEntries budget.batchEntries) then none
+  else some (batchesBy Prod.snd budget.batchEntries 144 sized)
+
+/-- The answers in `cache` of the states that a Fight reaches from `starts`, by the rounds in
+`rounds`, and `true` if the fuel ran out with states left to visit. A state of a group that the
+Fight cannot reach may go on forever, and the check would fail on it. `fuel` must be at least the
+number of starts plus the number of round results. -/
+def keepReachable (cache : CombatCache) (rounds : Std.HashMap FightState (Distribution FightState))
+    (starts : List FightState) (fuel : Nat) : CombatCache × Bool := Id.run do
+  let mut reached : CombatCache := {}
+  let mut todo := starts
+  for _ in [:fuel] do
+    match todo with
+    | [] => break
+    | s :: rest =>
+      todo := rest
+      if s.over || reached.contains s then continue
+      -- A state with no answer stays out, so the check fails on it.
+      let some a := cache[s]? | continue
+      reached := reached.insert s a
+      for (w, _) in (rounds.getD s (pure s)).entries do
+        if !w.over && !reached.contains w then
+          todo := w :: todo
+  return (reached, !todo.isEmpty)
+
+/-- Why `solveFightReport` stopped. Only `finished` and `outOfFuel` give answers, and the checker
+checks them in every case. -/
+inductive SolveStop where
+  /-- The solver explored every state that the Fight reaches, and solved each group. -/
+  | finished
+  /-- The Fight went over a limit of the budget, so the solver gave up. -/
+  | overBudget
+  /-- States were still left to explore after the last pass. A comment argues that the passes
+  are enough, and no proof says so. -/
+  | outOfPasses
+  /-- `keepReachable` still had states to visit when its fuel ran out. A comment argues that the
+  fuel is enough, and no proof says so. -/
+  | outOfFuel
+  deriving DecidableEq, Repr
+
+/-- The answers of the solver, and why it stopped. -/
+structure SolveReport where
+  /-- The candidate answers. The checker does not trust them. -/
+  cache : CombatCache
+  /-- Why the solver stopped. -/
+  stop : SolveStop
+
+/-- Find candidate answers for every state that the Fight can reach from `starts`, on many cores,
+and say why the search stopped. `size` bounds the results of a round before it is computed, so a
+Fight over `budget` stops early. The certificate checker does not trust these answers. -/
+def solveFightReport (round : FightState → Distribution FightState) (starts : List FightState)
+    (size : FightState → Nat) (budget : SolveBudget := {}) : SolveReport := Id.run do
+  let mut seen : Std.HashSet FightState := {}
+  let mut frontier : List FightState := []
+  for s in starts do
+    let g := groupName s
+    if !s.over && !seen.contains g then
+      seen := seen.insert g
+      frontier := g :: frontier
+      -- Give up as soon as the starts alone are over the state limit. Each group has 3 states.
+      if budget.over (3 * seen.size) 0 0 then return ⟨{}, .overBudget⟩
+  -- Find the groups that the Fight can reach, and the round of each of their states.
+  -- A round that leaves a group takes HP, so a shortest path to a group has at most as many
+  -- steps as the total HP. That bounds the number of passes.
+  let passes := (starts.map livingHP).foldl max 0 + 2
+  let mut rounds : Std.HashMap FightState (Distribution FightState) := {}
+  let mut levels : Std.HashMap Nat (List FightState) := {}
+  let mut kept := 0
+  let mut work := 0
+  for _ in [:passes] do
+    if frontier.isEmpty then break
+    -- Give up before any work on the frontier if it has too many states. Each group has 3.
+    if budget.over (3 * seen.size) 0 0 then return ⟨{}, .overBudget⟩
+    let mut next : List FightState := []
+    for g in frontier do
+      levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
+    -- Work in batches, so that a Fight that is too large stops before it uses much memory.
+    -- Bound the round of each state before any of them is computed.
+    let some batches := planRounds size budget frontier | return ⟨{}, .overBudget⟩
+    for batch in batches do
+      -- Give up when the Fight is too large. Each group has 3 states.
+      work := work + (batch.map Prod.snd).sum
+      if budget.over (3 * seen.size) kept work then
+        return ⟨{}, .overBudget⟩
+      let found := parallelMap (fun u => (u, round u)) (batch.map Prod.fst)
+      for (u, d) in found do
+        rounds := rounds.insert u d
+        kept := kept + d.entries.length
+        for (w, _) in d.entries do
+          let r := groupName w
+          if !w.over && !seen.contains r then
+            seen := seen.insert r
+            next := r :: next
+            if budget.over (3 * seen.size) 0 0 then return ⟨{}, .overBudget⟩
+    frontier := next
+  if budget.over (3 * seen.size) kept 0 then return ⟨{}, .overBudget⟩
+  -- The passes ran out before the search did.
+  if !frontier.isEmpty then return ⟨{}, .outOfPasses⟩
+  -- Solve the groups, from the lowest total HP up.
+  let mut cache : CombatCache := {}
+  for (_, groups) in levels.toList.mergeSort (fun a b => a.1 ≤ b.1) do
+    let known := cache
+    let solved := parallelMap (fun g =>
+      let group := maneuverStates g
+      group.zip (groupAnswers group (group.map fun u => rounds.getD u (pure u)) (knownAnswer known)))
+      groups
+    for members in solved do
+      for (u, a) in members do
+        cache := cache.insert u a
+  -- Each state goes into the list at most once per round result that leads to it.
+  let (reached, ranOut) := keepReachable cache rounds starts (starts.length + kept + 1)
+  return ⟨reached, if ranOut then .outOfFuel else .finished⟩
+
+/-- The answers of `solveFightReport`, without the reason why it stopped. -/
+def solveFight (round : FightState → Distribution FightState) (starts : List FightState)
+    (size : FightState → Nat) (budget : SolveBudget := {}) : CombatCache :=
+  (solveFightReport round starts size budget).cache
 
 /-- Compatibility entry point for the candidate solver. Use certification when a
 probabilistic guarantee is required. -/
 def solveCombat (rules : RuleSet) (policy : FightState → Distribution (Maneuver × Nat))
     (order : List Actor) (s : FightState) : StateM CombatCache (Distribution CombatResult) := do
-  return (← solveCombatAnswer rules policy order s).outcomes
+  return (← solveCombatAnswer (roundDistribution rules policy order) s).outcomes
 
 /-- Unverified candidate odds for a Character at `hp` against `foes`.
 Use `checkedCombat` or a `CertifiedFight` for probability guarantees. -/
@@ -213,7 +433,7 @@ def combatDistributionWith (rules : RuleSet) (policy : FightState → Distributi
     (hero : Being) (hp : Int) (foes : List Being) : Distribution CombatResult :=
   let start : FightState :=
     { hero := { being := hero, hp }, foes := foes.map fun f => { being := f, hp := rules.maxHP f } }
-  (solveCombat rules policy (turnOrder rules hero foes) start).run' []
+  (solveCombat rules policy (turnOrder rules hero foes) start).run' {}
 
 /-- Unverified candidate odds for `heroPolicy`; kept for producer diagnostics. -/
 def combatDistribution (rules : RuleSet) (hero : Being) (hp : Int) (foes : List Being) :

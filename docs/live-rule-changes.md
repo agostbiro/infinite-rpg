@@ -62,10 +62,22 @@ development change and its proofs; runtime does not execute the development skil
 3. The compiled simulator plays 1,200 games from the adventure beginning on screening seed 1. All Fights use
    the same effects and equipment as play. The rows are compared with the curve of the game's own
    policy (`defaultPolicy`). Failed rows guide revisions to the world's response.
-4. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
+4. During a Fight, the server first checks that the paused Fight ends under the new rules
+   (`Prepared.checkPaused`). This check uses no dice and spends no error allowance. If it fails,
+   the DM gets the reason, and the server remembers the equipment and rules of the proposal
+   (`combatKey`: the equipment, and the sorted effects of the rules, without names and
+   descriptions). The check reads no Scene, no name or description of a rule, and not the order
+   of the rules. For a check that passed, `CertifiedContinuation.withEffects` proves this; for a
+   check that failed, no proof does. So the server does not check the same rules again, also in a
+   proposal that changes only Scenes, wording or order, and the numeric adjustments below skip
+   them.
+   If the check passes, the server keeps the result, and only the last one. A later proposal with the same equipment
+   and rule effects reuses it (`Prepared.reuseCheckpoint`), and still gets a fresh validation
+   batch.
+5. A passing proposal is frozen. The server assigns a fresh OS seed and error allowance,
    and plays a separate 1,200-game validation batch against the same curve. Only a source-bound `Admission` value
    permits installation. Failure returns to revision with a smaller remaining allowance.
-5. Installation preserves play RNG, reports, trail, HP, and current scene. A Fight also keeps
+6. Installation preserves play RNG, reports, trail, HP, and current scene. A Fight also keeps
    enemy HP, last maneuvers, turn order, and round number. Changes take effect on the next action.
 
 If a legal proposal fails screening, the server first tries bounded numeric adjustments to
@@ -84,7 +96,10 @@ the fixed list `changeRevisions` (1 to 6), one call for each number, so it canno
 than 6 proposals. Every proposal that is not accepted, parse errors and cut-off replies included,
 uses one of the 6. The server checks the proposal and
 validation limits after each proposal. At one of them, the change fails with "The Dungeon Master
-stopped after N proposals and could not find a balanced version. Your game is unchanged." A watch
+stopped after N proposals and could not find a balanced version. Your game is unchanged." If the
+last proposal failed the paused-Fight check, it says instead: "The Dungeon Master stopped after N
+proposals. The paused Fight could not be checked with the last one. Your game is unchanged. You can
+ask for this change again after the Fight ends." A watch
 task (`watchChange`) enforces the installation deadline: at 3 minutes it marks the change failed
 and kills its `curl` processes, as Cancel does, even during a slow provider call. The step then says "The change
 reached its time limit of 3 minutes. Your game is unchanged." Acceptance is not guaranteed: some requested mechanics cannot meet the fixed policy.
@@ -147,8 +162,8 @@ uses the whole adventure graph at turn zero. `Prepared.preserves_core` and
 `Prepared.preserves_fight_checkpoint` additionally fixes the whole paused fight record,
 including enemy wounds, turn order, round, and maneuvers; only the hero's equipped being changes.
 Admission also carries `WellFormed`, the current HP upper bound, `NoShortLoops`, and a certificate
-for the actual paused fight continuation. It does not check the other Fights of the Adventure: that
-check is too slow for play (see below). The paused-fight certificate establishes almost-sure
+for the actual paused fight continuation. It does not check the other Fights of the Adventure: the
+server does not run that check yet (see below). The paused-fight certificate establishes almost-sure
 termination under the model's random policy; it does not turn the six-turn sampled balance check into a balance guarantee for later scenes.
 
 Combat sides and triggers are enums decoded at the JSON boundary. Unknown values are rejected
@@ -189,9 +204,14 @@ The preceding real request took 156 seconds and needed a second DM proposal. The
 individual measurements from before mandatory whole-adventure combat certification, not
 a latency guarantee for the current admission path.
 
-Whole-adventure combat certification is too slow to run in the server. On Lafayette it did not
-finish in 20 minutes. So startup, Wishes, saved loads, and live changes do not run it. `make
-certify` runs it on Lafayette by hand (`Probability.certify`).
+Whole-adventure combat certification is not run in the server yet. It used to take 42
+minutes on Lafayette. It now takes about 5 seconds with 14 cores ([exact exit
+laws](exact-exit-laws.md)), inside 3 minutes on Lafayette. A larger Adventure can take longer:
+the time grows with the number of Fights, and with the size of each Fight up to the budget. One
+Fight under the budget took 40 s on one core. A Fight over the budget is rejected sooner, and gets
+no exit law. Startup, Wishes, saved loads,
+and live changes do not run it yet. `make certify` runs it on Lafayette by hand
+(`Probability.certify`).
 
 Thirty seconds is an earlier target, not a demonstrated bound for the current checker.
 The 3-minute watch prevents late installation and stops provider processes, but it does not

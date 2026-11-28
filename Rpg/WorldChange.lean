@@ -194,6 +194,31 @@ def Prepared.game (p : Prepared) : Game :=
       | .fight f => .fight { f with state := { f.state with hero := { f.state.hero with being := d.hero } } }
       | phase => phase }
 
+/-- Two changes of the same Game with the same equipment have the same phase, and the rules of
+`q` are the rules of `p` with the combat rules of `q`. `checkPaused` reads only the phase and the
+rules. -/
+theorem Prepared.game_same_equipment (p q : Prepared)
+    -- Both change the same Game.
+    (before : p.before = q.before)
+    -- They have the same equipment.
+    (equipment : p.proposal.equipment = q.proposal.equipment) :
+    -- The rules differ at most in the combat rules.
+    q.game.rules = {p.game.rules with combatRules := q.game.rules.combatRules} ∧
+    -- The phase is the same.
+    q.game.phase = p.game.phase := by
+  constructor
+  -- The other fields of the rules come from the Game and the equipment.
+  · simp [Prepared.game, Prepared.definition, Proposal.ruleSet, before, equipment]
+  -- The phase comes from the Game and the Character, whose weapon comes from the equipment.
+  · simp [Prepared.game, Prepared.definition, before, equipment]
+
+/-- The combat rules of a change: the rules of the Game, then the requested rules, then the
+counter-rules. -/
+theorem Prepared.game_combatRules (p : Prepared) :
+    p.game.rules.combatRules =
+      p.before.rules.combatRules ++ (p.proposal.requestedRules ++ p.proposal.rules) := by
+  simp [Prepared.game, Prepared.definition, Proposal.ruleSet]
+
 /-- State preservation does not depend on the GM following its prompt. -/
 theorem Prepared.preserves_checkpoint (p : Prepared) :
     p.game.hp = p.before.hp ∧ p.game.trail = p.before.trail ∧
@@ -331,25 +356,95 @@ theorem Admission.intervals_fit {p : Prepared} {seed : Nat} {delta : Rat}
       iv.upper ≤ (p.candidate.bands i).target + (p.candidate.bands i).tolerance :=
   (a.accepted.2.2.2.2 i).2.2.2
 
-/-- Validate one frozen proposal with a fresh, preassigned batch; every row must pass. -/
-def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
+/-- The certificate that a live change needs for the paused point: a checked paused Fight, or
+nothing outside a Fight. -/
+abbrev Prepared.Checkpoint (p : Prepared) : Type :=
+  match p.game.phase with
+  | .fight f => CertifiedContinuation p.game.rules f
+  | _ => Unit
+
+/-- Check the paused point of `p`, or give the message for the author. It uses no samples, so the
+server runs it before it spends a validation. -/
+def Prepared.checkPaused (p : Prepared) : Except String (match p.game.phase with
+    | .fight f => CertifiedContinuation p.game.rules f
+    | _ => Unit) :=
+  match p.game.phase with
+  | .fight f => (checkContinuation p.game.rules f).mapError (·.message f)
+  | .title | .scene _ | .ended _ | .dead _ => .ok ()
+
+/-- A change that `prepare` makes from Game `g` changes `g`. -/
+theorem Proposal.prepare_before {p : Proposal} {g : Game} {map : Option WorldEnvironment}
+    {q : Prepared}
+    -- `prepare` made `q` from `p` and `g`.
+    (h : p.prepare g map = .ok q) :
+    -- `q` changes `g`.
+    q.before = g := by
+  simp only [Proposal.prepare] at h
+  repeat' split at h
+  -- Each failed check gives an error, not `q`.
+  all_goals first | (cases h; rfl) | cases h
+
+/-- A checkpoint for rules `r` and phase `ph` is one for combat rules `B` too, if `B` has the
+effects of the rules of `r` in some order (`CertifiedContinuation.withEffects`). -/
+def transferCheckpoint (r : RuleSet) (B : List CombatRule)
+    -- The effects of `B` are the effects of the rules of `r` in some order.
+    (h : (r.combatRules.map CombatRule.effect).Perm (B.map CombatRule.effect)) :
+    (ph : Phase) → (match ph with
+      | .fight f => CertifiedContinuation r f
+      | _ => Unit) → (match ph with
+      | .fight f => CertifiedContinuation {r with combatRules := B} f
+      | _ => Unit)
+  | .fight _, c => c.withEffects B h
+  | .title, c => c
+  | .scene _, c => c
+  | .ended _, c => c
+  | .dead _, c => c
+
+/-- The checkpoint of `p` as a checkpoint of `q`, if both change the same Game with the same
+equipment, and their requested rules and counter-rules have the same effects in some order. Names,
+descriptions and the order of the rules do not change the paused Fight's check
+(`CertifiedContinuation.withEffects`). Otherwise it gives `none`. -/
+def Prepared.reuseCheckpoint (p q : Prepared)
+    -- Both change the same Game.
+    (before : p.before = q.before)
+    (c : p.Checkpoint) : Option q.Checkpoint :=
+  if same : p.proposal.equipment = q.proposal.equipment ∧
+      ((p.proposal.requestedRules ++ p.proposal.rules).map CombatRule.effect).isPerm
+        ((q.proposal.requestedRules ++ q.proposal.rules).map CombatRule.effect) = true then
+    have both := p.game_same_equipment q before same.1
+    have perm : (p.game.rules.combatRules.map CombatRule.effect).Perm
+        (q.game.rules.combatRules.map CombatRule.effect) := by
+      have effects := List.isPerm_iff.mp same.2
+      rw [p.game_combatRules, q.game_combatRules, ← before]
+      simp only [List.map_append] at effects ⊢
+      exact effects.append_left _
+    some (cast (by unfold Prepared.Checkpoint; rw [both.2, ← both.1])
+      (transferCheckpoint p.game.rules q.game.rules.combatRules perm p.game.phase c))
+  else none
+
+/-- Validate one frozen proposal with a fresh, preassigned batch and an already checked paused
+point; every row must pass. -/
+def Prepared.admitWith (p : Prepared) (checkpoint : p.Checkpoint) (seed : Nat) (delta : Rat) :
     ValidationCounts × Option (Admission p seed delta) :=
   let counts := sampleCounts p.candidate seed validationGames
   if hd : 0 < delta ∧ delta ≤ confidenceDelta then
     if h : ValidationAccepted p.candidate.horizon counts delta p.candidate.elapsed p.candidate.policy then
       if hw : p.game.WellFormed then
       if hb : p.game.hp ≤ p.game.rules.maxHP p.game.hero then
-        let checkpoint : Option (match p.game.phase with
-            | .fight f => CertifiedContinuation p.game.rules f | _ => Unit) :=
-          match p.game.phase with
-          | .fight f => certifyContinuation p.game.rules f
-          | .title | .scene _ | .ended _ | .dead _ => some ()
-        match checkpoint with
-        | none => ({counts with combatRejected := true}, none)
-        | some checkpoint => (counts, some ⟨counts, rfl, h, hd, hw, hb, checkpoint⟩)
+        (counts, some ⟨counts, rfl, h, hd, hw, hb, checkpoint⟩)
       else ({counts with combatRejected := true}, none)
       else ({counts with combatRejected := true}, none)
     else (counts, none)
   else (counts, none)
+
+/-- Check the paused point, then validate one frozen proposal with a fresh, preassigned batch.
+If the paused Fight fails its check, it plays no games, and the counts carry its message. -/
+def Prepared.admit (p : Prepared) (seed : Nat) (delta : Rat) :
+    ValidationCounts × Option (Admission p seed delta) :=
+  match p.checkPaused with
+  | .ok checkpoint => p.admitWith checkpoint seed delta
+  | .error message =>
+    let rows := Array.replicate (p.candidate.horizon + 1) 0
+    ({trials := rows, deaths := rows, combatRejected := true, pausedFight := some message}, none)
 
 end Rpg.WorldChange

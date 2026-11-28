@@ -5,7 +5,7 @@ import Rpg.Probability.StatisticalAdmission
 Check that the model and the simulation agree on one fight.
 The model's death chance comes from `combatDistribution`; the simulation's from
 `validationGames` runs of `Simulation.fight`. Both use the same Player: each maneuver
-with chance 1/3, then a random living target, with the admission round limit.
+with the same chance, then a random living target, with the admission round limit.
 The check says `ok` when the model's chance is inside the simulation's exact
 binomial interval at the admission confidence level (`confidenceDelta`).
 `DISAGREE` flags a discrepancy, but sampling alone can also produce it with probability

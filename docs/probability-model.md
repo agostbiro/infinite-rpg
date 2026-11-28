@@ -22,8 +22,8 @@ shape parameters are not supported by this implementation.
 
 One turn is one scene choice. A fight, including all its rounds, consumes that
 choice's turn. Combat rounds are **not** extra scene turns. Scene choices are uniform over the available options. On each turn of a Fight,
-the model's Player picks Attack, All-Out Attack, or All-Out Defense with chance 1/3
-each, then a living target uniformly (`heroPolicy`; the simulator uses `pickManeuver`). Dice are modeled
+the model's Player picks a maneuver (Attack, All-Out Attack or All-Out Defense) uniformly,
+then a living target uniformly (`heroPolicy`; the simulator uses `pickManeuver`). Dice are modeled
 as independent, fair d6; the seeded game RNG is not proved equivalent to IID dice.
 Human players are still free to choose; the certificate concerns this uniform
 policy, not every possible player strategy.
@@ -38,7 +38,20 @@ in the same turn order as play (`beforeCharacter`, the Character, `afterCharacte
 dodge, initiative, multiple foes, armor, and critical results. A fight win has
 separate edges for different remaining HP. Death and successful endings are
 separate absorbing nodes. Nonterminating combat has its own absorbing `stalled`
-node, counted as still active rather than as a win or death.
+node, counted as still active rather than as a win or death. A Fight that fails the combat
+check gets a `stalled` edge too (`checkedCombat`). Here the solver has no budget
+(`SolveBudget.unlimited`), so the size of a Fight never makes it `stalled`. The solver solves
+each maneuver of the Character in a group, also a maneuver that the Fight cannot reach from its
+start. Then it keeps only the states that the Fight can reach (`keepReachable`). So a state that
+the Fight cannot reach, and that goes on forever, does not make the check fail. No proof says
+that the check passes for every Fight that ends. Two loops of the solver have a fixed number of
+steps: the passes that find the states, and the fuel of `keepReachable`. Comments argue that both
+are enough. If one ran out, the Fight would get `stalled`. The solver reports a stop at either
+limit apart from a budget limit (`SolveStop`), and `Rpg/Probability/SolverStopTests.lean` checks
+on 133 small Fights that it does not happen.
+The budget applies only to the combat checks that run as code. The server runs `checkContinuation` for a live
+change during a paused Fight, before it spends a validation batch. `make certify` runs `certifyEncounter` for each Fight at every
+entry HP. Ordinary admission on the server uses the sampled balance check and runs neither.
 
 For a change during play, the admission graph starts at the updated adventure's original
 start and full initial HP, with all new equipment and combat effects applied from turn zero.
@@ -53,10 +66,14 @@ states of a group differ only in the Character's last maneuver, so a group has a
 3 states. The solver writes one linear equation for each state of the group and solves
 them exactly (Gauss-Jordan elimination over rationals). Every way out of a group loses
 HP, so the solver recurs on strictly decreasing total living HP. A group that can never
-lose HP is `stalled`. It memoizes solved states. There is no imposed combat round limit.
+lose HP is `stalled`. It returns the solved states that the Fight can reach from its start.
+There is no imposed combat round limit.
 With the policy "always Attack" (`attackOnlyPolicy`), the solver gave exactly the odds of the
 old solver on the Fights of the earlier built-in Adventure (now the test Adventure). This was a one-off check in the merge, not a build test. Exact rational state enumeration is expensive: one such
 Fight takes minutes in the interpreter. Do not assume large fights are cheap to analyze.
+The combat check compiles the solver and checks a faster round (`fastRound`) that has the same
+odds as the spec round (`fastRound_expect`). On Lafayette all Fights at all entry HPs take about
+5 seconds with 14 cores. See [exact exit laws](exact-exit-laws.md).
 
 ## Meaning of `balanced`
 
@@ -141,7 +158,7 @@ counts and requires every interval to fit the shared Weibull band. Its resulting
 `StatisticalAdventure` carries both `balanced` and the passing observation evidence.
 The test Adventure and every Wish go through the same `admitWithSeed`.
 
-Live changes use `WorldChange.Prepared.admit`. Its certificate also binds the observations
+Live changes use `WorldChange.Prepared.checkPaused`, then `WorldChange.Prepared.admitWith`. Its certificate also binds the observations
 to the updated adventure from its beginning and the error allowance. `Prepared.preserves_core` proves that the
 patch changes only the adventure equipment/effect fields of `RuleSet`.
 
@@ -154,10 +171,17 @@ model tests.
 ## Trusted surface and validation
 
 The probability specification, graph builder, distribution operations, and
-combat elimination algorithm are part of the trusted definitions. Sharing the
+combat elimination algorithm are part of the trusted definitions. The combat certificate is
+checked against `fastProcess` (`FastCombat.lean`), whose odds equal those of `combatProcess`
+(`fastRound_expect`); its definitions, `stateKey`, the `Hashable FightState` instance and
+`Std.HashMap` appear in the certificate's type. For a theorem that takes a certificate as a
+premise, they decide only which certificates exist, and the proofs carry every conclusion to
+`combatProcess`. But `checkedCombat` runs the solver and this checker to give the odds of the
+balance graph, so for the balance theorems they are part of the spec, and a reviewer should read
+them. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
-but there is not yet a general theorem proving the elimination algorithm equals
-the infinite stochastic operational execution. The ideal sampling correspondence
+and for each Fight of a `CertifiedEncounter`, `exitLaw_exact` proves that each weight of the
+checked exit law is the limit of the spec process's chance to end with that result. There is no such theorem for a Fight that the check rejects. The ideal sampling correspondence
 is an accepted assumption of `balanced`, including the idealization of SplitMix64 and
 modulo-based choices.
 

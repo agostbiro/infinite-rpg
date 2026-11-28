@@ -254,9 +254,9 @@ private def fixedRoll (n : Nat) : Id (List Nat) := pure (List.replicate n 1)
     ((Lean.Json.parse (context roadGame "Give me iron skin" (attemptRisk 0))).toOption.get!).getObjValD "ranges"
 
 -- A missing late row and an aborted combat batch cannot be admitted.
-#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,0,0], #[0,0,0,0,0,0],1200,false,false⟩ (attemptRisk 0) 3
+#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,0,0], #[0,0,0,0,0,0],1200,false,false,none⟩ (attemptRisk 0) 3
   defaultPolicy)
-#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,1200,1200], #[0,0,0,0,0,0],1200,true,false⟩ (attemptRisk 0) 0
+#guard !decide (ValidationAccepted 5 ⟨#[1200,1200,1200,1200,1200,1200], #[0,0,0,0,0,0],1200,true,false,none⟩ (attemptRisk 0) 0
   defaultPolicy)
 
 /-- A policy that is not the default, only to test that a change keeps the policy of its game. -/
@@ -316,5 +316,40 @@ def finishPlayed : Nat → Game → Roll Game
       | some result => played.hp == result.hero.hp && playDice.state == simDice.state &&
         (played.phase.name == "dead") == !result.hero.alive
     | _ => false
+
+/-- `proposal` with a new text for the last Scene of the Adventure of `fightGame`. -/
+private def newText : Proposal :=
+  { proposal with scenes := (fightGame.adventure.scenes.getLast?.map fun sc =>
+      { sc with text := sc.text ++ " The road is quiet again." }).toList }
+
+/-- `proposal` with new names and descriptions of its counter-rules, in the other order. -/
+private def reworded : Proposal :=
+  { proposal with rules := (proposal.rules.map fun r =>
+      { r with name := r.name ++ " Again", description := "New words: " ++ r.description }).reverse }
+
+-- A passed paused-Fight check is reused by a change that differs only in a Scene, and not by a
+-- change with other counter-rules.
+#guard match hp : proposal.prepare fightGame,
+    hs : newText.prepare fightGame,
+    ht : (proposal.tune 2).prepare fightGame with
+  | .ok p, .ok scenes, .ok tuned => match p.checkPaused with
+    | .ok c =>
+      !newText.scenes.isEmpty && (proposal.tune 2).rules != proposal.rules &&
+      (p.reuseCheckpoint scenes ((Proposal.prepare_before hp).trans (Proposal.prepare_before hs).symm)
+        c).isSome &&
+      (p.reuseCheckpoint tuned ((Proposal.prepare_before hp).trans (Proposal.prepare_before ht).symm)
+        c).isNone
+    | .error _ => false
+  | _, _, _ => false
+
+-- A passed paused-Fight check is also reused by a change that rewords its counter-rules and puts
+-- them in another order.
+#guard match hp : proposal.prepare fightGame, hr : reworded.prepare fightGame with
+  | .ok p, .ok q => match p.checkPaused with
+    | .ok c => reworded.rules != proposal.rules &&
+      (p.reuseCheckpoint q ((Proposal.prepare_before hp).trans (Proposal.prepare_before hr).symm)
+        c).isSome
+    | .error _ => false
+  | _, _ => false
 
 end Rpg.WorldChange.Tests

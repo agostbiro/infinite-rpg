@@ -110,6 +110,33 @@ theorem StoppingCertificate.horizon_sound (c : StoppingCertificate p invariant)
   rw [product] at budget
   exact c.highProbability s hs n (by simp [n,horizon]) delta budget
 
+/-- The bound of `horizon_sound` holds at the horizon and at every later number of rounds. -/
+theorem StoppingCertificate.horizon_sound_after (c : StoppingCertificate p invariant)
+    -- The start.
+    (s : α)
+    -- The start is a state that the certificate covers.
+    (hs : invariant s)
+    -- The failure allowance.
+    (delta : Rat)
+    -- The failure allowance is positive.
+    (hd : 0 < delta)
+    -- The number of rounds.
+    (n : Nat)
+    -- The number of rounds is at least the horizon.
+    (hn : c.horizon s delta ≤ n) :
+    p.unfinished n s ≤ delta := by
+  have ceiling : c.potential s / delta ≤ (((c.potential s / delta).ceil : Int) : Rat) := Rat.le_ceil
+  have castBound : (((c.potential s / delta).ceil : Int) : Rat) ≤ (n : Rat) := by
+    have hnat : (c.potential s / delta).ceil ≤ (n : Int) := by simp only [horizon] at hn; omega
+    exact Rat.intCast_le_intCast.mpr hnat
+  have ratio := Rat.le_trans ceiling castBound
+  have budget := Rat.mul_le_mul_of_nonneg_right ratio (Rat.le_of_lt hd)
+  have nonzero : delta ≠ 0 := by grind
+  have product : (c.potential s / delta) * delta = c.potential s := by grind
+  rw [product] at budget
+  have positive : 0 < n := by simp only [horizon] at hn; omega
+  exact c.highProbability s hs n positive delta budget
+
 theorem StoppingCertificate.almostSure (c : StoppingCertificate p invariant)
     (s : α) (hs : invariant s) : p.AlmostSurelyTerminates s := by
   intro delta hd
@@ -166,5 +193,65 @@ theorem OutcomeCertificate.highProbability_error {event : α → Bool}
   constructor
   · exact finite.1
   · have bound := finite.2; grind
+
+/-! ## Two processes with the same odds
+
+A fast process and a slow process can list the results of a step in a different order, or merge
+them differently. If every step gives the same expected values, then every probability that this
+file defines is the same for both. So a certificate for the fast process proves the same facts
+about the slow one. -/
+
+/-- `p` and `q` have the same odds: they have the same end states, and from each state that has
+not ended, one step gives the same expected value for every observable. -/
+structure StoppingProcess.SameOdds (p q : StoppingProcess α) : Prop where
+  /-- The two processes end in the same states. -/
+  terminal : p.terminal = q.terminal
+  /-- One step from a state that has not ended gives the same expected values. -/
+  step : ∀ s (f : α → Rat), p.terminal s = false → (p.step s).expect f = (q.step s).expect f
+
+/-- Processes with the same odds have the same chance to be unfinished after `n` steps. -/
+theorem StoppingProcess.SameOdds.unfinished_eq {q : StoppingProcess α} (h : p.SameOdds q)
+    (n : Nat) (s : α) : p.unfinished n s = q.unfinished n s := by
+  induction n generalizing s with
+  -- No steps: only the end states count, and they are the same.
+  | zero => simp only [StoppingProcess.unfinished, h.terminal]
+  -- One more step.
+  | succ n ih =>
+    simp only [StoppingProcess.unfinished]
+    rw [← h.terminal]
+    split
+    -- The process has ended at `s`.
+    · rfl
+    -- One step, then `n` more.
+    · next ht =>
+      rw [h.step s _ (Bool.eq_false_iff.mpr ht)]
+      congr 1
+      funext t
+      exact ih t
+
+/-- Processes with the same odds have the same chance of each end event within `n` steps. -/
+theorem StoppingProcess.SameOdds.eventBy_eq {q : StoppingProcess α} (h : p.SameOdds q)
+    (event : α → Bool) (n : Nat) (s : α) : p.eventBy event n s = q.eventBy event n s := by
+  induction n generalizing s with
+  -- No steps: only the end states count, and they are the same.
+  | zero => simp only [StoppingProcess.eventBy, h.terminal]
+  -- One more step.
+  | succ n ih =>
+    simp only [StoppingProcess.eventBy]
+    rw [← h.terminal]
+    split
+    -- The process has ended at `s`.
+    · rfl
+    -- One step, then `n` more.
+    · next ht =>
+      rw [h.step s _ (Bool.eq_false_iff.mpr ht)]
+      congr 1
+      funext t
+      exact ih t
+
+/-- Processes with the same odds end with probability one from the same states. -/
+theorem StoppingProcess.SameOdds.almostSurely_iff {q : StoppingProcess α} (h : p.SameOdds q)
+    (s : α) : p.AlmostSurelyTerminates s ↔ q.AlmostSurelyTerminates s := by
+  simp only [StoppingProcess.AlmostSurelyTerminates, h.unfinished_eq]
 
 end Rpg.Probability

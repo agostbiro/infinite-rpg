@@ -23,8 +23,8 @@ def choose (n : Nat) : Roll Nat := do
   set next
   return word.toNat % n
 
-/-- The simulator's Player, with seeded random choices: each maneuver with chance 1/3, then a
-living target with equal chances if the maneuver attacks. This is `heroPolicy` in the model. -/
+/-- The simulator's Player, with seeded random choices: each maneuver with the same chance, then
+a living target with equal chances if the maneuver attacks. This is `heroPolicy` in the model. -/
 def pickManeuver (s : FightState) : Roll (Maneuver × Nat) := do
   let m := maneuverMenu.getD (← choose maneuverMenu.length) .attack
   if !m.attacks then return (m, 0)
