@@ -170,7 +170,8 @@ def main (args : List String) : IO UInt32 := do
       let t ← IO.monoMsNow
       let report := solveFightReport (fastRound rules order) starts (roundSizeBound order bounds) {work}
       IO.println s!"{n} Grenadiers, work limit {work}: states={report.cache.size} stop={repr report.stop} ms={(← IO.monoMsNow) - t}"
-      return 0
+      -- Over the budget is an expected result here. A stop at the pass or fuel limit is not.
+      return if report.stop == .outOfPasses || report.stop == .outOfFuel then 1 else 0
     let t0 ← IO.monoMsNow
     let encounter := (certifyEncounter rules hero foes).isSome
     let t1 ← IO.monoMsNow
