@@ -26,6 +26,8 @@ checker (`CombatWitness.check`) over all entry HPs.
   weapon `D` damage dice. `--work W` runs only the solver, with a
   work limit of `W`. Each of these numbers must be a whole number, and `--st`, `--dice`, `--work`
   and `--flamethrower` need `--grenadiers`; else the program stops with exit code 2.
+* Any other argument also stops the program with exit code 2. This includes `--compare=DIR`: write
+  `--compare DIR`.
 -/
 
 open Rpg Rpg.Probability
@@ -60,6 +62,30 @@ def numberFlags : List String := ["--grenadiers", "--st", "--dice", "--work"]
 def badNumbers (args : List String) : List String :=
   numberFlags.filter fun f => args.contains f && ((argAfter f args).bind String.toNat?).isNone
 
+/-- The flags that take a value after them. The value of `--compare` is optional. -/
+def valueFlags : List String := ["--dump", "--compare", "--grenadiers", "--st", "--dice", "--work"]
+
+/-- The flags that take no value. -/
+def plainFlags : List String := ["--stress", "--flamethrower"]
+
+/-- The arguments that the program does not know: a flag that is not in `valueFlags` or
+`plainFlags`, or a value that does not follow a flag of `valueFlags`. -/
+def unknownArgs : List String → List String
+  | [] => []
+  | f :: v :: rest =>
+    if valueFlags.contains f && !v.startsWith "--" then unknownArgs rest
+    else if valueFlags.contains f || plainFlags.contains f then unknownArgs (v :: rest)
+    else f :: unknownArgs (v :: rest)
+  | [f] => if valueFlags.contains f || plainFlags.contains f then [] else [f]
+
+-- A flag with `=` is not known, so it cannot skip the comparison.
+#guard unknownArgs ["--compare=/does/not/exist"] == ["--compare=/does/not/exist"]
+#guard unknownArgs ["--compare"] == []
+#guard unknownArgs ["--compare", "dir"] == []
+#guard unknownArgs ["--compare", "dir", "extra"] == ["extra"]
+#guard unknownArgs ["--grenadiers", "3", "--flamethrower", "--st", "7"] == []
+#guard unknownArgs ["--stress", "2"] == ["2"]
+
 /-- The fixtures that the solver of commit `2d4b8cf` made. -/
 def baselineDir : String := "experiments/profile/exit-laws-2d4b8cf"
 
@@ -70,6 +96,10 @@ def compareDir (args : List String) : Option String :=
 /-- Print the timings of each Fight, and dump or compare the exit laws if asked. Return 1 if a
 check or a comparison fails. -/
 def main (args : List String) : IO UInt32 := do
+  -- An unknown argument must not run another experiment and look like a success.
+  if !(unknownArgs args).isEmpty then
+    IO.eprintln s!"Unknown arguments: {unknownArgs args}. The flags are {valueFlags ++ plainFlags}, each a separate argument."
+    return 2
   -- A typo in a number must not run another experiment and look like a success.
   if !(badNumbers args).isEmpty then
     IO.eprintln s!"These flags need a whole number after them: {badNumbers args}."

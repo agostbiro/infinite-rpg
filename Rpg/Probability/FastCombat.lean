@@ -1,4 +1,5 @@
 import Rpg.Probability.RoundRefinement
+import Std.Data.HashSet.Basic
 
 /-!
 # A faster exact round
@@ -155,7 +156,8 @@ def injuryTerms (rules : RuleSet) (attId : Actor) (att : Fighter) (dfnId : Actor
 
 /-- The number of different injuries that an attack by `att` with damage bonus `bonus` against
 DR `dr` can give. Each injury is 0 or the injury of one sum of the damage dice, so this is an upper
-bound on the results of `injuryDistribution`, which merges equal injuries. -/
+bound on the results of `injuryDistribution`, which merges equal injuries. A hash set counts them,
+so the time grows linearly with the number of dice. -/
 def injuryCount (rules : RuleSet) (attId : Actor) (att : Fighter) (bonus : Int) (dr : Nat) :
     Nat :=
   let baseDice := rules.weaponDice attId.isNone att.being
@@ -163,7 +165,7 @@ def injuryCount (rules : RuleSet) (attId : Actor) (att : Fighter) (bonus : Int) 
   let kind := att.being.weapon.damageType
   let injuries := (List.range (5 * damageDice.count + 1)).map fun k =>
     rules.injury kind dr (rules.basicDamage damageDice kind (damageDice.count + k))
-  (0 :: injuries).eraseDups.length
+  (injuries.foldl (fun seen i => seen.insert i) (({} : Std.HashSet Nat).insert 0)).size
 
 /-- The HP values from 1 to `limit` that `maxInjuries` tries for `being`: the least HP in each
 case of the HP triggers. The cases are: at most one third of full HP, at most one half, and more

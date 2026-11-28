@@ -328,6 +328,34 @@ private def maxInjuriesEvery (rules : RuleSet) (a : Actor) (att : Fighter) (attH
       add seen i m j n) seen) seen) seen) []
   terms.foldl (fun best (bonus, dr) => max best (injuryCount rules a att bonus dr)) 1
 
+/-- `injuryCount` as it was before the hash set: it removes the repeated injuries from a list,
+which takes quadratic time. The test below compares the two. -/
+private def injuryCountList (rules : RuleSet) (attId : Actor) (att : Fighter) (bonus : Int)
+    (dr : Nat) : Nat :=
+  let baseDice := rules.weaponDice attId.isNone att.being
+  let damageDice : Dice := { baseDice with add := baseDice.add + bonus }
+  let kind := att.being.weapon.damageType
+  let injuries := (List.range (5 * damageDice.count + 1)).map fun k =>
+    rules.injury kind dr (rules.basicDamage damageDice kind (damageDice.count + k))
+  (0 :: injuries).eraseDups.length
+
+/-- Rules in which the Character's flamethrower rolls `n` dice. -/
+private def flameDice (n : Nat) : RuleSet :=
+  {equipment := [EquipmentRule.mk "Hero" .flamethrower "Test flamethrower" 12 n 0]}
+
+-- `injuryCount` gives the same count as the list search. This is so for an attack by the
+-- Character and by a Creature, for 1 to 12 dice, and for each damage bonus and DR tried.
+#guard (List.range 12).all fun n => [-4, 0, 3].all fun bonus => [0, 1, 4, 9].all fun dr =>
+  let rules := flameDice (n + 1)
+  let foe : Fighter := sprayFour.foes.headD sprayFour.hero
+  injuryCount rules none sprayFour.hero bonus dr ==
+      injuryCountList rules none sprayFour.hero bonus dr &&
+    injuryCount rules (some 0) foe bonus dr == injuryCountList rules (some 0) foe bonus dr
+
+-- With 5,000 dice there are 25,001 sums, each with its own injury, and the injury 0. The list
+-- search compares each injury with all the injuries before it; the hash set does not.
+#guard injuryCount (flameDice 5000) none sprayFour.hero 0 0 == 25002
+
 /-- Rules with an effect on each HP trigger and on each side: the Character gets +1 damage while
 wounded and +2 while desperate, and a Creature gets +2 armor while desperate. -/
 private def hpEffects : RuleSet :=

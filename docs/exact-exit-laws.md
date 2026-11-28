@@ -80,7 +80,8 @@ on Lafayette uses about 216 MB (most resident memory).
   rule reads HP only through the `wounded` and `desperate` triggers, so it tries one HP for each
   case of the two triggers, three per Fighter (`hpSamples`), not every HP. A test compares this
   with a search over every HP. For each damage bonus and DR it counts the different injuries over
-  the sums of the damage dice (`injuryCount`). It computes no attack. The bound is tested, not
+  the sums of the damage dice (`injuryCount`), with a hash set, so the time grows linearly with
+  the number of dice. It computes no attack. The bound is tested, not
   proved. It holds if the combat rules read only HP and maneuvers, as they do now, and if the turn
   order names each Creature once. Tests compare it with real rounds that are not merged. The largest bound on
   Lafayette is 1,421. A wrong bound can only make the solver slow or reject a Fight. It cannot
