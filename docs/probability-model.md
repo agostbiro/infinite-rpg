@@ -22,8 +22,8 @@ shape parameters are not supported by this implementation.
 
 One turn is one scene choice. A fight, including all its rounds, consumes that
 choice's turn. Combat rounds are **not** extra scene turns. Scene choices are uniform over the available options. On each turn of a Fight,
-the model's Player picks Attack, All-Out Attack, or All-Out Defense with chance 1/3
-each, then a living target uniformly (`heroPolicy`; the simulator uses `pickManeuver`). Dice are modeled
+the model's Player picks a maneuver (Attack, All-Out Attack or All-Out Defense) uniformly,
+then a living target uniformly (`heroPolicy`; the simulator uses `pickManeuver`). Dice are modeled
 as independent, fair d6; the seeded game RNG is not proved equivalent to IID dice.
 Human players are still free to choose; the certificate concerns this uniform
 policy, not every possible player strategy.

@@ -12,9 +12,9 @@ independently verifies them before the graph or admission trusts them. It uses t
 functions as play (`attackWith`, `heroTurnWith`, `foeTurnsWith`), in the same turn order
 (`beforeCharacter`, then the Character, then `afterCharacter`), with exact dice odds.
 
-The model's Player is `heroPolicy`: on each turn it picks Attack, All-Out Attack, or
-All-Out Defense, each with chance 1/3. If the maneuver attacks, it picks a living Creature,
-each with the same chance. Creatures always Attack.
+The model's Player is `heroPolicy`: on each turn it picks a maneuver from `maneuverMenu`
+(Attack, All-Out Attack, All-Out Defense), each with the same chance. If the maneuver attacks, it
+picks a living Creature, each with the same chance. Creatures always Attack.
 
 A round can take HP, or it can leave all HP the same. The Engine never adds HP. So the solver
 works on a **group**: every state that rounds can reach from a state without any HP loss.
@@ -50,8 +50,8 @@ def attackDistribution (rules : RuleSet) : AttackFn Distribution :=
 def livingTargets (s : FightState) : List Nat :=
   s.livingFoes
 
-/-- The model's Player: each maneuver with chance 1/3, then a living target with equal chances
-if the maneuver attacks. A maneuver with no attack has no target, so it uses 0. -/
+/-- The model's Player: each maneuver of `maneuverMenu` with the same chance, then a living
+target with equal chances if the maneuver attacks. A maneuver with no attack has no target, so it uses 0. -/
 def heroPolicy (s : FightState) : Distribution (Maneuver × Nat) :=
   (uniform maneuverMenu).bind fun m =>
     if m.attacks then (uniform (livingTargets s)).bind fun t => pure (m, t)
