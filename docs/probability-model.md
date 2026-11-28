@@ -170,8 +170,11 @@ The probability specification, graph builder, distribution operations, and
 combat elimination algorithm are part of the trusted definitions. The combat certificate is
 checked against `fastProcess` (`FastCombat.lean`), whose odds equal those of `combatProcess`
 (`fastRound_expect`); its definitions, `stateKey`, the `Hashable FightState` instance and
-`Std.HashMap` appear in the certificate's type. They decide only which certificates exist, and
-the proofs carry every conclusion to `combatProcess`, so a reviewer need not read them for soundness. Sharing the
+`Std.HashMap` appear in the certificate's type. For a theorem that takes a certificate as a
+premise, they decide only which certificates exist, and the proofs carry every conclusion to
+`combatProcess`. But `checkedCombat` runs the solver and this checker to give the odds of the
+balance graph, so for the balance theorems they are part of the spec, and a reviewer should read
+them. Sharing the
 engine's attack and actor-turn code prevents independent copies of damage rules,
 and for each Fight of a `CertifiedEncounter`, `exitLaw_exact` proves that each weight of the
 checked exit law is the limit of the spec process's chance to end with that result. There is no such theorem for a Fight that the check rejects. The ideal sampling correspondence

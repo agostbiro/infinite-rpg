@@ -138,8 +138,9 @@ def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : Strin
       of results of one round is above the check's limit. Counter-rules that change damage or \
       armor change the size of a round. Revise them, or make the change after the Fight ends."
   | .overBudget => s!"{fight} is over the solver's budget with these rules: checking it needs \
-      more states, work or memory than the solver allows. Counter-rules that change damage or \
-      armor change the size of the check. Revise them, or make the change after the Fight ends."
+      more states, work, memory or larger rounds than the solver allows. Counter-rules that \
+      change damage or armor change the size of the check. Revise them, or make the change after \
+      the Fight ends."
   | .checkFailed => s!"{fight} could not be checked: no proof was found that it ends. One \
       possible cause is a stalemate, in which no side can hurt the other under the changed rules. \
       If a counter-rule causes this, revise it."

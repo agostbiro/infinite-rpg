@@ -45,7 +45,9 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 
 `lake exe profile-combat` prints the "after" numbers. Pinned to one core (`taskset -c 0`),
 `make certify` takes 28 s on Lafayette, inside 3 minutes even on one core. No live change runs
-`certify`, and a larger Adventure can take longer.
+`certify`. A larger Fight does not take longer; it is rejected. A Fight with 3 Creatures of ST
+7 or more (Lafayette's Grenadiers have ST 11) is over the default budget, so `certify` rejects it
+within seconds and gives it no exit law. The Wish prompt asks for 1 to 3 Creatures per Fight.
 
 **Baseline.** `experiments/profile/exit-laws-2d4b8cf/` holds the exit laws of all six Fights at
 every entry HP, as exact fractions. The solver of commit `2d4b8cf` made them, on the spec round,
@@ -59,7 +61,7 @@ takes about 25 times as long as one with 2. A weapon that hits every Creature (t
 grows it more: each round makes one result for each mix of injuries. `solveFight` has a budget
 (`SolveBudget`). Above it, the solver gives up, the check fails, and the Fight is rejected. That
 is sound. On the paused Fights in the table below, the most memory used was 334 MB. `make certify`
-on Lafayette uses about 610 MB.
+on Lafayette uses about 216 MB (most resident memory).
 
 * Before it computes any round, the solver bounds how many results the round makes before
   they are merged (`roundSizeBound`). For each pair of Fighters, `attackBounds` finds each damage
@@ -198,9 +200,13 @@ Comparator statements did not change, and all statements use only `propext`, `Qu
 `Classical.choice`. Their conclusions are still about `combatProcess`. But the hypothesis
 `CertifiedFight` now names the fast definitions (`fastProcess`, `fastRound`,
 `injuryDistribution`, `sortCollect`, `stateKey` and the others in `FastCombat.lean`), and
-`CertifiedContinuation` names `fastRemaining`. They
-decide only which certificates exist, not what the theorems conclude, so a reviewer need not
-read them for soundness. Which Fights get a certificate depends on the solver and its budget.
+`CertifiedContinuation` names `fastRemaining`. For a theorem that takes a certificate as a
+premise, they decide only which certificates exist, not what the theorem concludes. But the
+balance theorems (`balanced`, `live_change_balanced` and the others) read `checkedCombat`, which
+runs the solver and this checker. There they decide the odds of the balance graph, so they are
+part of the spec of those theorems, and a reviewer should read them (see the README). The text of
+those statements did not change, but their meaning did: a Fight that the old solver gave
+`stalled` can now get its real law.
 
 **Termination witness.** The check keeps the rounds witness: one number per state that is at
 least one more than the expected number of its results. So it is an upper bound on the expected
