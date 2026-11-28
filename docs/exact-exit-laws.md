@@ -45,9 +45,20 @@ On Lafayette at Barren Hill, all Fights, all 12 entry HPs (0 to 11). The machine
 
 `lake exe profile-combat` prints the "after" numbers. Pinned to one core (`taskset -c 0`),
 `make certify` takes 28 s on Lafayette, inside 3 minutes even on one core. No live change runs
-`certify`. A larger Fight does not take longer; it is rejected. A Fight with 3 Creatures of ST
-7 or more (Lafayette's Grenadiers have ST 11) is over the default budget, so `certify` rejects it
-within seconds and gives it no exit law. The Wish prompt asks for 1 to 3 Creatures per Fight.
+`certify`. A larger Adventure can take longer. The time grows with the number of Fights, and with
+the size of each Fight up to the default budget (`SolveBudget`). For example, a Fight against 2
+Grenadiers with ST 16 is under the budget, and `certify` takes 6.3 s on it with 14 cores and 40.5 s
+on one core. Five such Fights would take more than 3 minutes on one core. A Fight over the budget
+is rejected sooner, and gets no exit law: 3 Grenadiers with ST 7 take 3.1 s with 14 cores and 17 s
+on one core.
+
+**Which Fights `certify` rejects.** These limits were measured only against Lafayette, with
+Creatures like the Grenadiers (a large knife at skill 10; a Grenadier has ST 11). `certify`
+rejects a Fight against 3 such Creatures with ST 7 or more, against 2 with ST 17 or more, and
+against 2 when Lafayette has a flamethrower. The limits depend on the weapons and HP of both
+sides, and no general bound is known. The paused check of a live change has other limits: it
+accepts the Fight against 3 Grenadiers with ST 7. The Wish prompt asks for 1 to 3 Creatures per
+Fight.
 
 **Baseline.** `experiments/profile/exit-laws-2d4b8cf/` holds the exit laws of all six Fights at
 every entry HP, as exact fractions. The solver of commit `2d4b8cf` made them, on the spec round,
@@ -60,7 +71,7 @@ each Fight, and `--dump` cannot write into the folder that `--compare` reads. (A
 takes about 25 times as long as one with 2. A weapon that hits every Creature (the flamethrower)
 grows it more: each round makes one result for each mix of injuries. `solveFight` has a budget
 (`SolveBudget`). Above it, the solver gives up, the check fails, and the Fight is rejected. That
-is sound. On the paused Fights in the table below, the most memory used was 334 MB. `make certify`
+is sound. On the Fights in the table below, the most memory used was 367 MB. `make certify`
 on Lafayette uses about 216 MB (most resident memory).
 
 * Before it computes any round, the solver bounds how many results the round makes before
@@ -130,8 +141,9 @@ a flamethrower, `--dice D` to give its weapon `D` damage dice, and `--st S` to g
 Grenadier ST `S`; a Grenadier has ST 11). The 1-core
 column uses `taskset -c 0`. In the check at every entry HP, two Grenadiers are certified up to
 ST 16 and rejected from ST 17, with or without the work limit. In the paused check below, they are
-certified up to ST 18 and rejected from ST 19. A check that passes can take longer than one that
-rejects: up to 35 s on one core at ST 18.
+certified up to ST 18 and rejected from ST 19. Three Grenadiers with ST 7 are rejected in the
+check at every entry HP, but certified in the paused check. A check that passes can take longer
+than one that rejects: up to 40 s on one core, for 3 Grenadiers with ST 7.
 
 | Fight | 14 cores | 1 core | Memory | Result |
 | - | -: | -: | -: | - |
@@ -141,6 +153,7 @@ rejects: up to 35 s on one core at ST 18.
 | 2 Grenadiers with ST 18, paused | 5.0 s | 35 s | 320 MB | certified |
 | 2 Grenadiers with ST 19, paused | 2.3 s | 17 s | 264 MB | rejected (over budget) |
 | 2 Grenadiers with ST 20, paused | 2.4 s | 18 s | 270 MB | rejected (over budget) |
+| 3 Grenadiers with ST 7, paused | 7.2 s | 39.8 s | 367 MB | certified |
 | 3 Grenadiers, paused | 2.2 s | 16 s | 210 MB | rejected (over budget) |
 | 4 Grenadiers, paused | 1.8 s | 13 s | 140 MB | rejected (over budget) |
 | 2 Grenadiers, flamethrower, paused | 1.4 s | 9.3 s | 210 MB | rejected (over budget) |
@@ -202,11 +215,12 @@ Comparator statements did not change, and all statements use only `propext`, `Qu
 `injuryDistribution`, `sortCollect`, `stateKey` and the others in `FastCombat.lean`), and
 `CertifiedContinuation` names `fastRemaining`. For a theorem that takes a certificate as a
 premise, they decide only which certificates exist, not what the theorem concludes. But the
-balance theorems (`balanced`, `live_change_balanced` and the others) read `checkedCombat`, which
-runs the solver and this checker. There they decide the odds of the balance graph, so they are
-part of the spec of those theorems, and a reviewer should read them (see the README). The text of
-those statements did not change, but their meaning did: a Fight that the old solver gave
-`stalled` can now get its real law.
+balance theorems read `checkedCombat`, which runs the solver and this checker. There they decide
+the odds of the balance graph, so they are part of the spec of those theorems, and a reviewer
+should read them (see the README). Five Comparator statements read `checkedCombat`: `balanced`,
+`live_change_balanced`, `retry_balanced`, `live_change_from_start` and `generated_graph_valid`.
+Their text did not change. The meaning of the first three did: a Fight that the old solver gave
+`stalled` can now get its real law. The other two hold for any result of `checkedCombat`.
 
 **Termination witness.** The check keeps the rounds witness: one number per state that is at
 least one more than the expected number of its results. So it is an upper bound on the expected

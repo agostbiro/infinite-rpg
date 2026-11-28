@@ -206,7 +206,10 @@ a latency guarantee for the current admission path.
 
 Whole-adventure combat certification is not run in the server yet. It used to take 42
 minutes on Lafayette. It now takes about 5 seconds with 14 cores ([exact exit
-laws](exact-exit-laws.md)), inside 3 minutes on Lafayette. A larger Fight is rejected, not slower: a Fight with 3 Creatures of ST 7 or more is over the budget. Startup, Wishes, saved loads,
+laws](exact-exit-laws.md)), inside 3 minutes on Lafayette. A larger Adventure can take longer:
+the time grows with the number of Fights, and with the size of each Fight up to the budget. One
+Fight under the budget took 40 s on one core. A Fight over the budget is rejected sooner, and gets
+no exit law. Startup, Wishes, saved loads,
 and live changes do not run it yet. `make certify` runs it on Lafayette by hand
 (`Probability.certify`).
 

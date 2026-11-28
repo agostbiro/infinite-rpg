@@ -68,9 +68,11 @@ private def withinExactBounds (law : Distribution CombatResult) (event : CombatR
 #guard !withinExactBounds (pure (.won 2)) (· == .died) 1
 
 -- The premises of `exitLaw_bounds` hold on this fixture. A certificate exists: the `#guard` on
--- `certifyEncounter` above shows it in compiled code. The kernel cannot check a witness with
--- entries, because the witness is a `Std.HashMap` and the hash of a `FightState` uses `mixHash`,
--- which the kernel cannot reduce. The entry HP 2 is full HP, and `decide` shows it.
+-- `certifyEncounter` above shows it in compiled code. The witness is a `Std.HashMap`, and the hash
+-- of a `FightState` uses `mixHash`, which the kernel cannot reduce. So `decide` cannot look up a
+-- state in a witness with entries. A kernel-checked instance with entries needs a proof by the
+-- HashMap lemmas, or a hash that the kernel can reduce. The entry HP 2 is full HP, and `decide`
+-- shows it.
 example (c : CertifiedEncounter rules hero [foe]) :
     (combatProcess rules (turnOrder rules hero [foe])).eventBy
       (fun s => terminalResult s == .died) 1 (fightStart rules hero 2 [foe]) ≤
