@@ -27,7 +27,7 @@ checker (`CombatWitness.check`) over all entry HPs.
   work limit of `W`. Each of these numbers must be a whole number, and `--st`, `--dice`, `--work`
   and `--flamethrower` need `--grenadiers`; else the program stops with exit code 2.
 * Any other argument also stops the program with exit code 2. This includes `--compare=DIR`: write
-  `--compare DIR`.
+  `--compare DIR`. A flag given twice, such as two `--compare` folders, also stops it.
 -/
 
 open Rpg Rpg.Probability
@@ -86,6 +86,16 @@ def unknownArgs : List String → List String
 #guard unknownArgs ["--grenadiers", "3", "--flamethrower", "--st", "7"] == []
 #guard unknownArgs ["--stress", "2"] == ["2"]
 
+/-- The flags that `args` gives more than once. The program reads only the first of each, so a
+second one would be ignored. -/
+def repeatedFlags (args : List String) : List String :=
+  (valueFlags ++ plainFlags).filter fun f => (args.filter (· == f)).length > 1
+
+-- A second `--compare` folder is not ignored: the program stops.
+#guard repeatedFlags ["--compare", "a", "--compare", "b"] == ["--compare"]
+#guard repeatedFlags ["--compare", "a"] == []
+#guard repeatedFlags ["--grenadiers", "3", "--st", "7", "--grenadiers", "4"] == ["--grenadiers"]
+
 /-- The fixtures that the solver of commit `2d4b8cf` made. -/
 def baselineDir : String := "experiments/profile/exit-laws-2d4b8cf"
 
@@ -99,6 +109,9 @@ def main (args : List String) : IO UInt32 := do
   -- An unknown argument must not run another experiment and look like a success.
   if !(unknownArgs args).isEmpty then
     IO.eprintln s!"Unknown arguments: {unknownArgs args}. The flags are {valueFlags ++ plainFlags}, each a separate argument."
+    return 2
+  if !(repeatedFlags args).isEmpty then
+    IO.eprintln s!"These flags are given more than once: {repeatedFlags args}. Give each flag once."
     return 2
   -- A typo in a number must not run another experiment and look like a success.
   if !(badNumbers args).isEmpty then
