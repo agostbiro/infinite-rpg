@@ -77,10 +77,12 @@ def rolled_faces(reports):
 def main():
     _, home = request("/api/view")
     assert home["phase"] == "title", "Use a fresh disposable test server"
-    # With no Adventure loaded, a change and an input are both refused, and nothing changes.
+    # The server starts on the title screen of the built-in Adventure. There, the game refuses a
+    # change (no Character is in a Scene or Fight yet) and a Choice (the title offers only `begin`).
+    # Nothing changes.
     code, refused = request("/api/change", {"wish": "Give me a flamethrower now"})
     assert code == 409 and checkpoint(refused) == checkpoint(home)
-    code, refused = request("/api/input", "begin")
+    code, refused = request("/api/input", {"choose": {"choice": 0}})
     assert code == 400 and checkpoint(refused) == checkpoint(home)
 
     # Make an Adventure from a Wish, with the recorded replies.
