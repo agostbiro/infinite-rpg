@@ -112,10 +112,12 @@ structure CertifiedContinuation (rules : RuleSet) (f : FightPhase) where
 inductive PausedFightFailure where
   /-- One round has more results than the solver's budget allows. -/
   | roundTooLarge
-  /-- The paused round is over the work or memory limit, or the solver returned an empty map. The
-  solver does so only when it stops at a limit of the budget (states, round results in memory,
-  work, or round size) or at its pass bound. -/
+  /-- The paused round, or the solver, went over a limit of the budget: states, round results in
+  memory, work, or round size. -/
   | overBudget
+  /-- The solver ran out of passes or of fuel before it explored the whole Fight. Comments argue
+  that this cannot happen, and no proof says so. -/
+  | solverCutoff
   /-- The answers did not pass the check. The Fight can go on forever, for example. -/
   | checkFailed
   deriving DecidableEq, Repr
@@ -141,6 +143,9 @@ def PausedFightFailure.message (e : PausedFightFailure) (f : FightPhase) : Strin
       more states, work, memory or larger rounds than the solver allows. Counter-rules that \
       change damage or armor change the size of the check. Revise them, or make the change after \
       the Fight ends."
+  | .solverCutoff => s!"{fight} could not be checked: the solver stopped before it explored the \
+      whole Fight. This is a fault in the solver, not in the counter-rules. Make the change after \
+      the Fight ends."
   | .checkFailed => s!"{fight} could not be checked: no proof was found that it ends. One \
       possible cause is a stalemate, in which no side can hurt the other under the changed rules. \
       If a counter-rule causes this, revise it."
@@ -160,16 +165,17 @@ def checkContinuation (rules : RuleSet) (f : FightPhase) (budget : SolveBudget :
   -- The results of the paused round stay in memory, so they count against the memory limit.
   if budget.limited && starts.length > budget.entries then .error .overBudget else
   -- The later rounds get the work and the memory that the paused round leaves.
-  let cache := solveChecked rules f.order bounds starts
+  let report := solveCheckedReport rules f.order bounds starts
     {budget with work := budget.work - paused, entries := budget.entries - starts.length}
-  let w : CombatWitness := ⟨cache⟩
+  let w : CombatWitness := ⟨report.cache⟩
   if h : w.check rules f.order starts = true then
     .ok ⟨w, fun e he => (CombatWitness.check_sound h).1 e.1 (List.mem_map.mpr ⟨e, he, rfl⟩),
       (CombatWitness.check_sound h).2⟩
-  -- The solver returns no answers only when it stops at a budget limit or at its pass bound.
-  -- The pass bound is not proved to be enough, so the message can be wrong in that case.
-  else if cache.isEmpty then .error .overBudget
-  else .error .checkFailed
+  -- The solver says why it stopped, so a cutoff is not reported as a budget limit.
+  else match report.stop with
+    | .overBudget => .error .overBudget
+    | .outOfPasses | .outOfFuel => .error .solverCutoff
+    | .finished => .error .checkFailed
 
 /-- Check a paused Fight: `checkContinuation` without the reason. -/
 def certifyContinuation (rules : RuleSet) (f : FightPhase) : Option (CertifiedContinuation rules f) :=

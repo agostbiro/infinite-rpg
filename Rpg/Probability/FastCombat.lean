@@ -224,10 +224,16 @@ def roundSizeBound (order : List Actor) (bounds : AttackBounds) (s : FightState)
   max 1 heroPart * foePart
 
 /-- The solver as the combat check runs it: `fastRound`, with each round bounded by
-`roundSizeBound` with the attack bounds of the Fight, within `budget`. -/
+`roundSizeBound` with the attack bounds of the Fight, within `budget`. It also says why the solver
+stopped. -/
+def solveCheckedReport (rules : RuleSet) (order : List Actor) (bounds : AttackBounds)
+    (starts : List FightState) (budget : SolveBudget := {}) : SolveReport :=
+  solveFightReport (fastRound rules order) starts (roundSizeBound order bounds) budget
+
+/-- The answers of `solveCheckedReport`, without the reason why the solver stopped. -/
 def solveChecked (rules : RuleSet) (order : List Actor) (bounds : AttackBounds)
     (starts : List FightState) (budget : SolveBudget := {}) : CombatCache :=
-  solveFight (fastRound rules order) starts (roundSizeBound order bounds) budget
+  (solveCheckedReport rules order bounds starts budget).cache
 
 /-- One round of the fast process. An ended Fight stays as it is. -/
 def fastStep (rules : RuleSet) (order : List Actor) (s : FightState) : Distribution FightState :=

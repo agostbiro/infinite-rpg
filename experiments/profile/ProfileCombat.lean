@@ -5,7 +5,8 @@ import Rpg.Probability.ContinuationCertificate
 # Timings and baseline of the combat check
 
 For each Fight of the built-in Adventure, this program times the solver (`solveFight`) and the
-checker (`CombatWitness.check`) over all entry HPs.
+checker (`CombatWitness.check`) over all entry HPs. It also prints why the solver stopped
+(`SolveStop`), and fails if the solver ran out of passes or of fuel.
 
 * `--dump DIR` writes the exit laws of each Fight to `DIR/fight-N.txt`, in a fixed text form.
   `DIR` is required, and `--dump` cannot be used with `--grenadiers` or `--stress`, which dump
@@ -167,8 +168,8 @@ def main (args : List String) : IO UInt32 := do
       let starts := encounterStarts rules hero foes
       let bounds := attackBounds rules (fightStart rules hero 0 foes)
       let t ← IO.monoMsNow
-      let cache := solveFight (fastRound rules order) starts (roundSizeBound order bounds) {work}
-      IO.println s!"{n} Grenadiers, work limit {work}: states={cache.size} ms={(← IO.monoMsNow) - t}"
+      let report := solveFightReport (fastRound rules order) starts (roundSizeBound order bounds) {work}
+      IO.println s!"{n} Grenadiers, work limit {work}: states={report.cache.size} stop={repr report.stop} ms={(← IO.monoMsNow) - t}"
       return 0
     let t0 ← IO.monoMsNow
     let encounter := (certifyEncounter rules hero foes).isSome
@@ -205,18 +206,21 @@ def main (args : List String) : IO UInt32 := do
     let t0 ← IO.monoMsNow
     -- The same solver call as `certifyEncounter`, with the same round bounds.
     let bounds := attackBounds rules (fightStart rules hero 0 foes)
-    let cache := solveChecked rules order bounds starts
+    let report := solveCheckedReport rules order bounds starts
+    let cache := report.cache
     let size := cache.size
     let t1 ← IO.monoMsNow
     let w : CombatWitness := ⟨cache⟩
     let ok := w.check rules order starts
     let t2 ← IO.monoMsNow
-    allOk := allOk && ok
+    -- A cutoff would also fail the check, but this names the cause.
+    let cutoff := report.stop == .outOfPasses || report.stop == .outOfFuel
+    allOk := allOk && ok && !cutoff
     totalSolve := totalSolve + (t1 - t0)
     totalCheck := totalCheck + (t2 - t1)
     let largest := cache.fold (fun m s _ => max m (roundSizeBound order bounds s)) 0
     let work := cache.fold (fun m s _ => if s.over then m else m + roundSizeBound order bounds s) 0
-    IO.println s!"{foes.map (·.name)} states={size} solve-ms={t1 - t0} check-ms={t2 - t1} ok={ok} max-digits={maxDigits cache} largest-round-bound={largest} work={work}"
+    IO.println s!"{foes.map (·.name)} states={size} stop={repr report.stop} solve-ms={t1 - t0} check-ms={t2 - t1} ok={ok} max-digits={maxDigits cache} largest-round-bound={largest} work={work}"
     let text := lawsText rules hero foes w
     if let some dir := argAfter "--dump" args then
       IO.FS.createDirAll dir

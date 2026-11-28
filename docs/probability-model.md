@@ -44,7 +44,11 @@ check gets a `stalled` edge too (`checkedCombat`). Here the solver has no budget
 each maneuver of the Character in a group, also a maneuver that the Fight cannot reach from its
 start. Then it keeps only the states that the Fight can reach (`keepReachable`). So a state that
 the Fight cannot reach, and that goes on forever, does not make the check fail. No proof says
-that the check passes for every Fight that ends.
+that the check passes for every Fight that ends. Two loops of the solver have a fixed number of
+steps: the passes that find the states, and the fuel of `keepReachable`. Comments argue that both
+are enough. If one ran out, the Fight would get `stalled`. The solver reports a stop at either
+limit apart from a budget limit (`SolveStop`), and `Rpg/Probability/SolverStopTests.lean` checks
+on 133 small Fights that it does not happen.
 The budget applies only to the combat checks that run as code. The server runs `checkContinuation` for a live
 change during a paused Fight, before it spends a validation batch. `make certify` runs `certifyEncounter` for each Fight at every
 entry HP. Ordinary admission on the server uses the sampled balance check and runs neither.

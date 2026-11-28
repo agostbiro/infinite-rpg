@@ -192,7 +192,11 @@ Creatures needs a faster round or a smaller state space, not a larger budget.
    Jäger Fight has denominators of up to 1,067 digits.
 6. **Everything ran on one core.** `solveFight` finds all reachable states with their rounds,
    then solves the groups level by level, by total HP. Groups at the same level do not depend
-   on each other. `parallelAll` checks the rows in pieces.
+   on each other. `parallelAll` checks the rows in pieces. The solver also says why it stopped
+   (`SolveStop`): it finished, it went over the budget, or it ran out of passes or of
+   `keepReachable` fuel. Comments argue that the last two cannot happen, and no proof says so.
+   Tests on 133 small Fights check it (`SolverStopTests.lean`), and `profile-combat` prints the
+   reason for each Fight of Lafayette.
 
 The checker does not trust the new code. The fast round is not the spec round. These facts
 connect the two:

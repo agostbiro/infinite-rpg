@@ -141,6 +141,8 @@ private def stuckOrder := turnOrder stuckRules (fighter "Hero") [fighter "Foe"]
 
 -- `keepReachable` follows each round result, also one with weight 0, and drops a state that no
 -- start reaches. Here `a` goes to `b` with weight 0, and `c` has an answer but no start reaches it.
+-- The fuel of 4 is enough, so it does not report that the fuel ran out. With a fuel of 1, it
+-- visits `a` only, and it reports that `b` is left.
 #guard
   let a := stuckStart
   let b := {stuckStart with foes := [{being := fighter "Foe", hp := 1}]}
@@ -150,8 +152,10 @@ private def stuckOrder := turnOrder stuckRules (fighter "Hero") [fighter "Foe"]
   let rounds : Std.HashMap FightState (Distribution FightState) :=
     (({} : Std.HashMap FightState (Distribution FightState)).insert a ⟨[(a, 1), (b, 0)]⟩
       |>.insert b ⟨[(b, 1)]⟩).insert c ⟨[(c, 1)]⟩
-  let kept := keepReachable cache rounds [a] 4
-  kept.size == 2 && kept.contains a && kept.contains b && !kept.contains c
+  let (kept, ranOut) := keepReachable cache rounds [a] 4
+  let (short, shortRanOut) := keepReachable cache rounds [a] 1
+  kept.size == 2 && kept.contains a && kept.contains b && !kept.contains c && !ranOut &&
+    short.size == 1 && shortRanOut
 
 -- Batches keep at most 2 items and a cost of at most 5, except for one item alone.
 #guard batchesBy id 5 2 [1, 2, 3, 4, 10] == [[1, 2], [3], [4], [10]]

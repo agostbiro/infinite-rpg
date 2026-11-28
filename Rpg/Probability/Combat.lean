@@ -307,10 +307,11 @@ def planRounds (size : FightState → Nat) (budget : SolveBudget) (frontier : Li
   else some (batchesBy Prod.snd budget.batchEntries 144 sized)
 
 /-- The answers in `cache` of the states that a Fight reaches from `starts`, by the rounds in
-`rounds`. A state of a group that the Fight cannot reach may go on forever, and the check would
-fail on it. `fuel` must be at least the number of starts plus the number of round results. -/
+`rounds`, and `true` if the fuel ran out with states left to visit. A state of a group that the
+Fight cannot reach may go on forever, and the check would fail on it. `fuel` must be at least the
+number of starts plus the number of round results. -/
 def keepReachable (cache : CombatCache) (rounds : Std.HashMap FightState (Distribution FightState))
-    (starts : List FightState) (fuel : Nat) : CombatCache := Id.run do
+    (starts : List FightState) (fuel : Nat) : CombatCache × Bool := Id.run do
   let mut reached : CombatCache := {}
   let mut todo := starts
   for _ in [:fuel] do
@@ -325,13 +326,35 @@ def keepReachable (cache : CombatCache) (rounds : Std.HashMap FightState (Distri
       for (w, _) in (rounds.getD s (pure s)).entries do
         if !w.over && !reached.contains w then
           todo := w :: todo
-  return reached
+  return (reached, !todo.isEmpty)
 
-/-- Find candidate answers for every state that the Fight can reach from `starts`, on many cores.
-`size` bounds the results of a round before it is computed, so a Fight over `budget` stops early.
-The certificate checker does not trust these answers. -/
-def solveFight (round : FightState → Distribution FightState) (starts : List FightState)
-    (size : FightState → Nat) (budget : SolveBudget := {}) : CombatCache := Id.run do
+/-- Why `solveFightReport` stopped. Only `finished` and `outOfFuel` give answers, and the checker
+checks them in every case. -/
+inductive SolveStop where
+  /-- The solver explored every state that the Fight reaches, and solved each group. -/
+  | finished
+  /-- The Fight went over a limit of the budget, so the solver gave up. -/
+  | overBudget
+  /-- States were still left to explore after the last pass. A comment argues that the passes
+  are enough, and no proof says so. -/
+  | outOfPasses
+  /-- `keepReachable` still had states to visit when its fuel ran out. A comment argues that the
+  fuel is enough, and no proof says so. -/
+  | outOfFuel
+  deriving DecidableEq, Repr
+
+/-- The answers of the solver, and why it stopped. -/
+structure SolveReport where
+  /-- The candidate answers. The checker does not trust them. -/
+  cache : CombatCache
+  /-- Why the solver stopped. -/
+  stop : SolveStop
+
+/-- Find candidate answers for every state that the Fight can reach from `starts`, on many cores,
+and say why the search stopped. `size` bounds the results of a round before it is computed, so a
+Fight over `budget` stops early. The certificate checker does not trust these answers. -/
+def solveFightReport (round : FightState → Distribution FightState) (starts : List FightState)
+    (size : FightState → Nat) (budget : SolveBudget := {}) : SolveReport := Id.run do
   let mut seen : Std.HashSet FightState := {}
   let mut frontier : List FightState := []
   for s in starts do
@@ -340,7 +363,7 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
       seen := seen.insert g
       frontier := g :: frontier
       -- Give up as soon as the starts alone are over the state limit. Each group has 3 states.
-      if budget.over (3 * seen.size) 0 0 then return {}
+      if budget.over (3 * seen.size) 0 0 then return ⟨{}, .overBudget⟩
   -- Find the groups that the Fight can reach, and the round of each of their states.
   -- A round that leaves a group takes HP, so a shortest path to a group has at most as many
   -- steps as the total HP. That bounds the number of passes.
@@ -352,18 +375,18 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
   for _ in [:passes] do
     if frontier.isEmpty then break
     -- Give up before any work on the frontier if it has too many states. Each group has 3.
-    if budget.over (3 * seen.size) 0 0 then return {}
+    if budget.over (3 * seen.size) 0 0 then return ⟨{}, .overBudget⟩
     let mut next : List FightState := []
     for g in frontier do
       levels := levels.alter (livingHP g) fun l => some (g :: l.getD [])
     -- Work in batches, so that a Fight that is too large stops before it uses much memory.
     -- Bound the round of each state before any of them is computed.
-    let some batches := planRounds size budget frontier | return {}
+    let some batches := planRounds size budget frontier | return ⟨{}, .overBudget⟩
     for batch in batches do
       -- Give up when the Fight is too large. Each group has 3 states.
       work := work + (batch.map Prod.snd).sum
       if budget.over (3 * seen.size) kept work then
-        return {}
+        return ⟨{}, .overBudget⟩
       let found := parallelMap (fun u => (u, round u)) (batch.map Prod.fst)
       for (u, d) in found do
         rounds := rounds.insert u d
@@ -373,9 +396,11 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
           if !w.over && !seen.contains r then
             seen := seen.insert r
             next := r :: next
-            if budget.over (3 * seen.size) 0 0 then return {}
+            if budget.over (3 * seen.size) 0 0 then return ⟨{}, .overBudget⟩
     frontier := next
-  if budget.over (3 * seen.size) kept 0 || !frontier.isEmpty then return {}
+  if budget.over (3 * seen.size) kept 0 then return ⟨{}, .overBudget⟩
+  -- The passes ran out before the search did.
+  if !frontier.isEmpty then return ⟨{}, .outOfPasses⟩
   -- Solve the groups, from the lowest total HP up.
   let mut cache : CombatCache := {}
   for (_, groups) in levels.toList.mergeSort (fun a b => a.1 ≤ b.1) do
@@ -388,7 +413,13 @@ def solveFight (round : FightState → Distribution FightState) (starts : List F
       for (u, a) in members do
         cache := cache.insert u a
   -- Each state goes into the list at most once per round result that leads to it.
-  return keepReachable cache rounds starts (starts.length + kept + 1)
+  let (reached, ranOut) := keepReachable cache rounds starts (starts.length + kept + 1)
+  return ⟨reached, if ranOut then .outOfFuel else .finished⟩
+
+/-- The answers of `solveFightReport`, without the reason why it stopped. -/
+def solveFight (round : FightState → Distribution FightState) (starts : List FightState)
+    (size : FightState → Nat) (budget : SolveBudget := {}) : CombatCache :=
+  (solveFightReport round starts size budget).cache
 
 /-- Compatibility entry point for the candidate solver. Use certification when a
 probabilistic guarantee is required. -/
